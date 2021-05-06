@@ -10,40 +10,7 @@ Fix by adding:
 pub mod silly_rpc;
 ```
 to file `node/src/lib.rs`.
-# Custom types
-```
-{
-  "WorkerStatus": {
-    "_enum": [
-      "NormalStatus",
-      "BlackList"
-    ]
-  },
-  "Worker": {
-    "ip": "[u8;4]",
-    "is_black_list": "WorkerStatus"
-  },
-  "WorkerIndex": "u32",
-  "JobReportIndex": "u32",
-  "JobProposalIndex": "u32",
-  "JobReport": {
-    "responsible_account_id": "AccountId",
-    "responsible_worker_id": "WorkerIndex",
-    "job_input": "u32",
-    "job_output": "u32",
-    "verify_agree_workers": "Vec<WorkerIndex>",
-    "verify_deny_workers": "Vec<WorkerIndex>",
-    "client_account": "u32"
-  },
-  "JobProposal": {
-    "name": "Vec<u8>",
-    "stake": "u32",
-    "description": "Vec<u8>",
-    "call_url": "Vec<u8>",
-    "proposer_account_id": "AccountId"
-  }
-}
-```
+
 # RPC call
 
 ```
@@ -82,11 +49,12 @@ Add the following code into `Additional types as a JSON file (or edit below)`:
     ]
   },
   "Worker": {
-    "ip": "[u8;4]",
+    "ip": "Vec<u8>",
     "is_black_list": "WorkerStatus"
   },
   "WorkerIndex": "u32",
   "JobReportIndex": "u32",
+  "JobProposalIndex": "u32",
   "JobReport": {
     "responsible_account_id": "AccountId",
     "responsible_worker_id": "WorkerIndex",
@@ -95,8 +63,15 @@ Add the following code into `Additional types as a JSON file (or edit below)`:
     "verify_agree_workers": "Vec<WorkerIndex>",
     "verify_deny_workers": "Vec<WorkerIndex>",
     "client_account": "u32"
+  },
+  "JobProposal": {
+    "name": "Vec<u8>",
+    "stake": "u32",
+    "description": "Vec<u8>",
+    "call_url": "Vec<u8>",
+    "proposer_account_id": "AccountId"
   }
-} 
+}
 ```
 ## Create 5 worker
 ### Action

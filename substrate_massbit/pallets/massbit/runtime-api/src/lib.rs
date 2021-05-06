@@ -7,7 +7,7 @@ use sp_std::vec::Vec;
 // runtime amalgamator file (the `runtime/src/lib.rs`)
 sp_api::decl_runtime_apis! {
 	pub trait SumStorageApi {
-		fn get_workers() -> Vec<[u8;4]>;
+		fn get_workers() -> Vec<Vec<u8>>;
 		fn get_job_reports() -> Vec<(u32,u32,u32)>;
 	}
 }

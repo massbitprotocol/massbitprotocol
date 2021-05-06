@@ -23,9 +23,10 @@ pub enum WorkerStatus {
 }
 
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
-pub struct Worker{
-	pub ip: [u8;4],
+pub struct Worker<JobProposalIndex>{
+	pub ip: Vec<u8>,
 	pub status: WorkerStatus,
+	pub job_proposal_id: JobProposalIndex,
 }
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
 pub struct JobProposal<AccountId>{
@@ -56,7 +57,7 @@ pub trait Trait: pallet_balances::Trait{
 decl_storage! {
 	trait Store for Module<T: Trait> as Massbit {
 		/// Stores all the workers
-		pub Workers get(fn workers): double_map hasher(blake2_128_concat) T::AccountId, hasher(blake2_128_concat) T::WorkerIndex => Option<Worker>;
+		pub Workers get(fn workers): double_map hasher(blake2_128_concat) T::AccountId, hasher(blake2_128_concat) T::WorkerIndex => Option<Worker<T::JobProposalIndex>>;
 		/// Stores the workers number
 		pub ActiveWorkerCount: u32;
 		/// Stores the next worker ID
@@ -81,11 +82,11 @@ decl_event! {
 		//<T as pallet_balances::Trait>::Balance,
 	{
 		/// A Worker is registered. \[owner, worker_id, worker, active_worker_count\]
-		WorkerRegistered(AccountId, WorkerIndex, Worker, u32),
+		WorkerRegistered(AccountId, WorkerIndex, Worker<JobProposalIndex>, u32),
 		/// A report Worker is saved. \[owner, job_report_id, job_report\]
 		JobReportSaved(AccountId, JobReportIndex, JobReport<WorkerIndex,AccountId>),
 		/// A vote on report is saved. \[owner, job_report_id, resposible_worker, activate_worker_count\]
-		JobReportVoteSaved(AccountId, JobReportIndex, Worker, u32),
+		JobReportVoteSaved(AccountId, JobReportIndex, Worker<JobProposalIndex>, u32),
 		/// A vote on report is saved. \[job_report_id, job_report, responsive_worker,responsive_account, activate_worker_count\]
 		JobReportProcessFinished(JobReportIndex, JobReport<WorkerIndex,AccountId>, WorkerIndex, AccountId, u32),
 		/// A job proposal is create. \[job_prposal_id, job_prposal_id\]
@@ -101,6 +102,7 @@ decl_error! {
 		InvalidJobReportId,
 		AlreadyVoteWorker,
 		JobProposalIdOverflow,
+		NotRegisteredJobProposal,
 	}
 }
 
@@ -112,8 +114,9 @@ decl_module! {
 
 		/// Create a new worker
 		#[weight = 1000]
-		pub fn register_worker(origin, ip: [u8;4]) {
+		pub fn register_worker(origin, ip: Vec<u8>,job_proposal_id: T::JobProposalIndex) {
 			let sender = ensure_signed(origin)?;
+			ensure!(JobProposals::<T>::contains_key(&job_proposal_id),Error::<T>::NotRegisteredJobProposal);
 
 			let worker_id = Self::get_next_worker_id()?;
 
@@ -121,6 +124,7 @@ decl_module! {
 			let worker = Worker{
 				ip: ip,
 				status: WorkerStatus::NormalStatus,
+				job_proposal_id: job_proposal_id,
 			};
 			Workers::<T>::insert(&sender, worker_id, worker.clone());
 			
@@ -269,7 +273,7 @@ impl<T: Trait> Module<T> {
 }
 
 impl<T: Trait> Module<T> {
-	pub fn get_workers(/*acc_id: T::AccountId,worker_id: T::WorkerIndex*/) -> Vec<[u8;4]> {
+	pub fn get_workers(/*acc_id: T::AccountId,worker_id: T::WorkerIndex*/) -> Vec<Vec<u8>> {
 		let mut vec_workers = Vec::new();
 		
 		for  (_k1, _k2, v) in Workers::<T>::iter() {
