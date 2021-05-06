@@ -11,7 +11,7 @@ use sum_storage_runtime_api::SumStorageApi as SumStorageRuntimeApi;
 #[rpc]
 pub trait SumStorageApi<BlockHash> {
 	#[rpc(name = "massbit_getWorkers")]
-	fn get_workers(&self, at: Option<BlockHash>) -> Result<Vec<[u8;4]>>;
+	fn get_workers(&self, at: Option<BlockHash>) -> Result<Vec<Vec<u8>>>;
 	#[rpc(name = "massbit_getJobReports")]
 	fn get_job_reports(&self, at: Option<BlockHash>) -> Result<Vec<(u32,u32,u32)>>;
 	
@@ -60,7 +60,7 @@ where
 	C: HeaderBackend<Block>,
 	C::Api: SumStorageRuntimeApi<Block>,
 {
-	fn get_workers(&self, at: Option<<Block as BlockT>::Hash>) -> Result<Vec<[u8;4]>> {
+	fn get_workers(&self, at: Option<<Block as BlockT>::Hash>) -> Result<Vec<Vec<u8>>> {
 		let api = self.client.runtime_api();
 		let at = BlockId::hash(at.unwrap_or_else(||
 			// If the block hash is not supplied assume the best block.
