@@ -273,11 +273,11 @@ impl<T: Trait> Module<T> {
 }
 
 impl<T: Trait> Module<T> {
-	pub fn get_workers(/*acc_id: T::AccountId,worker_id: T::WorkerIndex*/) -> Vec<Vec<u8>> {
+	pub fn get_workers() -> Vec<(T::WorkerIndex,Vec<u8>,T::AccountId,T::JobProposalIndex)> {
 		let mut vec_workers = Vec::new();
 		
-		for  (_k1, _k2, v) in Workers::<T>::iter() {
-			vec_workers.push(v.ip);	
+		for  (_account_id, worker_id, v) in Workers::<T>::iter() {
+			vec_workers.push((worker_id, v.ip, _account_id, v.job_proposal_id));	
 		}
 		vec_workers
 	}

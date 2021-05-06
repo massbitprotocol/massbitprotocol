@@ -7,11 +7,11 @@ use sp_blockchain::HeaderBackend;
 use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 use std::sync::Arc;
 use sum_storage_runtime_api::SumStorageApi as SumStorageRuntimeApi;
-
+use frame_support::Parameter;
 #[rpc]
-pub trait SumStorageApi<BlockHash> {
+pub trait SumStorageApi<BlockHash,AccountId> {
 	#[rpc(name = "massbit_getWorkers")]
-	fn get_workers(&self, at: Option<BlockHash>) -> Result<Vec<Vec<u8>>>;
+	fn get_workers(&self, at: Option<BlockHash>) -> Result<Vec<(u32,Vec<u8>, AccountId,u32)>>;
 	#[rpc(name = "massbit_getJobReports")]
 	fn get_job_reports(&self, at: Option<BlockHash>) -> Result<Vec<(u32,u32,u32)>>;
 	
@@ -52,15 +52,16 @@ impl<C, M> SumStorage<C, M> {
 // 	}
 // }
 
-impl<C, Block> SumStorageApi<<Block as BlockT>::Hash> for SumStorage<C, Block>
+impl<C, Block, AccountId> SumStorageApi<<Block as BlockT>::Hash, AccountId> for SumStorage<C, Block>
 where
 	Block: BlockT,
+	AccountId: Parameter,
 	C: Send + Sync + 'static,
 	C: ProvideRuntimeApi<Block>,
 	C: HeaderBackend<Block>,
-	C::Api: SumStorageRuntimeApi<Block>,
+	C::Api: SumStorageRuntimeApi<Block, AccountId>,
 {
-	fn get_workers(&self, at: Option<<Block as BlockT>::Hash>) -> Result<Vec<Vec<u8>>> {
+	fn get_workers(&self, at: Option<<Block as BlockT>::Hash>) -> Result<Vec<(u32,Vec<u8>, AccountId,u32)>> {
 		let api = self.client.runtime_api();
 		let at = BlockId::hash(at.unwrap_or_else(||
 			// If the block hash is not supplied assume the best block.

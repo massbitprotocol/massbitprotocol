@@ -456,8 +456,8 @@ impl_runtime_apis! {
 	}
 
 	// Here we implement our custom runtime API.
-	impl sum_storage_runtime_api::SumStorageApi<Block> for Runtime {
-		fn get_workers() -> Vec<Vec<u8>> {
+	impl sum_storage_runtime_api::SumStorageApi<Block, AccountId> for Runtime {
+		fn get_workers() -> Vec<(<Runtime as pallet_massbit::Trait>::WorkerIndex,Vec<u8>, AccountId,<Runtime as pallet_massbit::Trait>::JobProposalIndex)> {
 			// This Runtime API calls into a specific pallet. Calling a pallet is a common
 			// design pattern. You can see most other APIs in this file do the same.
 			// It is also possible to write your logic right here in the runtime
