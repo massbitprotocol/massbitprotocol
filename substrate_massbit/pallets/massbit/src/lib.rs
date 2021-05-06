@@ -27,6 +27,14 @@ pub struct Worker{
 	pub ip: [u8;4],
 	pub status: WorkerStatus,
 }
+#[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
+pub struct JobProposal<AccountId>{
+	pub name: Vec<u8>, 
+	pub stake: u32, 
+	pub description: Vec<u8>, 
+	pub call_url: Vec<u8>, 
+	pub proposer_account_id: AccountId,
+}
 
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
 pub struct JobReport<WorkerIndex,AccountId>{
@@ -43,6 +51,7 @@ pub trait Trait: pallet_balances::Trait{
 	type Event: From<Event<Self>> + Into<<Self as frame_system::Trait>::Event>;
 	type WorkerIndex: Parameter + AtLeast32BitUnsigned + Bounded + Default + Copy;
 	type JobReportIndex: Parameter + AtLeast32BitUnsigned + Bounded + Default + Copy;
+	type JobProposalIndex: Parameter + AtLeast32BitUnsigned + Bounded + Default + Copy;
 }
 decl_storage! {
 	trait Store for Module<T: Trait> as Massbit {
@@ -55,8 +64,11 @@ decl_storage! {
 		/// Stores job reports
 		pub JobReports get(fn job_reports): map hasher(blake2_128_concat) T::JobReportIndex => Option<JobReport<T::WorkerIndex,T::AccountId>>;
 		/// Stores the next job ID
-		pub NextJobId get(fn next_job_report_id): T::JobReportIndex;
-
+		pub NextJobReportId get(fn next_job_report_id): T::JobReportIndex;
+		/// Store Proposal 
+		pub JobProposals get(fn job_proposals): map hasher(blake2_128_concat) T::JobProposalIndex => Option<JobProposal<T::AccountId>>;
+		/// Stores the next Proposal ID
+		pub NextJobProposalId get(fn next_job_proposal_id): T::JobProposalIndex;
 	}
 }
 
@@ -65,6 +77,7 @@ decl_event! {
 		<T as frame_system::Trait>::AccountId,
 		<T as Trait>::WorkerIndex,
 		<T as Trait>::JobReportIndex,
+		<T as Trait>::JobProposalIndex,
 		//<T as pallet_balances::Trait>::Balance,
 	{
 		/// A Worker is registered. \[owner, worker_id, worker, active_worker_count\]
@@ -75,6 +88,8 @@ decl_event! {
 		JobReportVoteSaved(AccountId, JobReportIndex, Worker, u32),
 		/// A vote on report is saved. \[job_report_id, job_report, responsive_worker,responsive_account, activate_worker_count\]
 		JobReportProcessFinished(JobReportIndex, JobReport<WorkerIndex,AccountId>, WorkerIndex, AccountId, u32),
+		/// A job proposal is create. \[job_prposal_id, job_prposal_id\]
+		JobProposalRegistered(JobProposalIndex, JobProposal<AccountId>),
 	}
 }
 
@@ -85,6 +100,7 @@ decl_error! {
 		NotRegisteredWorker,
 		InvalidJobReportId,
 		AlreadyVoteWorker,
+		JobProposalIdOverflow,
 	}
 }
 
@@ -96,7 +112,7 @@ decl_module! {
 
 		/// Create a new worker
 		#[weight = 1000]
-		pub fn create(origin, ip: [u8;4]) {
+		pub fn register_worker(origin, ip: [u8;4]) {
 			let sender = ensure_signed(origin)?;
 
 			let worker_id = Self::get_next_worker_id()?;
@@ -137,6 +153,7 @@ decl_module! {
 			// Emit event
 			Self::deposit_event(RawEvent::JobReportSaved(sender, job_report_id, job_report))
 		}
+
 		/// Add a vote report
 		#[weight = 1000]
 		pub fn vote_job_report(origin, voted_worker_id: T::WorkerIndex, job_report_id: T::JobReportIndex, verify_agree: bool) {
@@ -181,17 +198,32 @@ decl_module! {
 					*job_report = Some(clone_job_report);
 				}
 				
-				
-
-				//JobReports::<T>::insert(&job_report_id,job_report);
 				// Emit event
-				
 				Self::deposit_event(RawEvent::JobReportVoteSaved(sender, job_report_id, reponsive_worker , ActiveWorkerCount::get()));
 
 				Ok(())
 			})?;
-			//Self::deposit_event(RawEvent::JobReportVoteSaved(sender, job_report_id, job_report))
-		}	
+		}
+		
+		/// Register a new job proposal
+		#[weight = 1000]
+		pub fn regiter_job_proposal(origin, name: Vec<u8>, stake: u32, description: Vec<u8>, call_url: Vec<u8>) {
+			let sender = ensure_signed(origin)?;
+
+			let job_proposal_id = Self::get_next_job_proposal_id()?;
+
+			let job_proposal = JobProposal{
+				name: name, 
+				stake: stake, 
+				description: description, 
+				call_url: call_url, 
+				proposer_account_id: sender,
+			};
+
+			JobProposals::<T>::insert(job_proposal_id, job_proposal.clone());
+			// Emit event
+			Self::deposit_event(RawEvent::JobProposalRegistered(job_proposal_id, job_proposal))
+		}		
 	}
 }
 
@@ -205,7 +237,7 @@ impl<T: Trait> Module<T> {
 		})
 	}
 	fn get_next_job_report_id() -> sp_std::result::Result<T::JobReportIndex, DispatchError> {
-		NextJobId::<T>::try_mutate(|next_id| -> sp_std::result::Result<T::JobReportIndex, DispatchError> {
+		NextJobReportId::<T>::try_mutate(|next_id| -> sp_std::result::Result<T::JobReportIndex, DispatchError> {
 			let current_id = *next_id;
 			*next_id = next_id.checked_add(&One::one()).ok_or(Error::<T>::JobReportIdOverflow)?;
 			Ok(current_id)
@@ -226,6 +258,14 @@ impl<T: Trait> Module<T> {
 		// Reduce number of activate worker
 		ActiveWorkerCount::mutate(|v| *v -= 1);
 	} 
+
+	fn get_next_job_proposal_id() -> sp_std::result::Result<T::JobProposalIndex, DispatchError> {
+		NextJobProposalId::<T>::try_mutate(|next_id| -> sp_std::result::Result<T::JobProposalIndex, DispatchError> {
+			let current_id = *next_id;
+			*next_id = next_id.checked_add(&One::one()).ok_or(Error::<T>::JobProposalIdOverflow)?;
+			Ok(current_id)
+		})
+	}
 }
 
 impl<T: Trait> Module<T> {
@@ -246,5 +286,13 @@ impl<T: Trait> Module<T> {
 		vec_job_reports
 	}
 
+	// pub fn get_job_proposals(/*acc_id: T::AccountId,worker_id: T::WorkerIndex*/) -> Vec<(T::JobReportIndex,u32,u32)> {
+	// 	let mut vec_job_reports = Vec::new();
+		
+	// 	for  (k, v) in JobReports::<T>::iter() {
+	// 		vec_job_reports.push((k,v.job_input,v.job_output));	
+	// 	}
+	// 	vec_job_reports
+	// }
 
 }

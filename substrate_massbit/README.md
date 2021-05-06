@@ -25,6 +25,7 @@ to file `node/src/lib.rs`.
   },
   "WorkerIndex": "u32",
   "JobReportIndex": "u32",
+  "JobProposalIndex": "u32",
   "JobReport": {
     "responsible_account_id": "AccountId",
     "responsible_worker_id": "WorkerIndex",
@@ -33,6 +34,13 @@ to file `node/src/lib.rs`.
     "verify_agree_workers": "Vec<WorkerIndex>",
     "verify_deny_workers": "Vec<WorkerIndex>",
     "client_account": "u32"
+  },
+  "JobProposal": {
+    "name": "Vec<u8>",
+    "stake": "u32",
+    "description": "Vec<u8>",
+    "call_url": "Vec<u8>",
+    "proposer_account_id": "AccountId"
   }
 }
 ```
