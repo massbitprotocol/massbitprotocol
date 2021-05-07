@@ -8,12 +8,16 @@ use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 use std::sync::Arc;
 use massbit_runtime_api::MassbitApi as MassbitRuntimeApi;
 use frame_support::Parameter;
+//use pallet_massbit::WorkerStatus;
+
 #[rpc]
 pub trait MassbitApi<BlockHash,WorkerIndex,AccountId,JobProposalIndex> {
 	#[rpc(name = "massbit_getWorkers")]
-	fn get_workers(&self, at: Option<BlockHash>) -> Result<Vec<(WorkerIndex,Vec<u8>,AccountId,JobProposalIndex)>>;
+	fn get_workers(&self, at: Option<BlockHash>) -> Result<Vec<(WorkerIndex,Vec<u8>,AccountId, /*WorkerStatus,*/ JobProposalIndex)>>;
 	#[rpc(name = "massbit_getJobReports")]
-	fn get_job_reports(&self, at: Option<BlockHash>) -> Result<Vec<(u32,u32,u32)>>;
+	fn get_job_reports(&self, at: Option<BlockHash>) -> Result<Vec<(u32,Vec<u8>,Vec<u8>)>>;
+	#[rpc(name = "massbit_getJobProposals")]
+	fn get_job_proposals(&self, at: Option<BlockHash>) -> Result<Vec<(JobProposalIndex, AccountId, Vec<u8>, u128, Vec<u8>, Vec<u8>)>>;
 	
 }
 
@@ -63,7 +67,7 @@ where
 	C: HeaderBackend<Block>,
 	C::Api: MassbitRuntimeApi<Block, AccountId,WorkerIndex,JobProposalIndex>,
 {
-	fn get_workers(&self, at: Option<<Block as BlockT>::Hash>) -> Result<Vec<(WorkerIndex,Vec<u8>,AccountId,JobProposalIndex)>> {
+	fn get_workers(&self, at: Option<<Block as BlockT>::Hash>) -> Result<Vec<(WorkerIndex,Vec<u8>,AccountId, /*WorkerStatus,*/ JobProposalIndex)>> {
 		let api = self.client.runtime_api();
 		let at = BlockId::hash(at.unwrap_or_else(||
 			// If the block hash is not supplied assume the best block.
@@ -72,11 +76,11 @@ where
 		let runtime_api_result = api.get_workers(&at);
 		runtime_api_result.map_err(|e| RpcError {
 			code: ErrorCode::ServerError(1000), // No real reason for this value
-			message: "Something wrong".into(),
+			message: "Something wrong with get_workers".into(),
 			data: Some(format!("{:?}", e).into()),
 		})
 	}
-	fn get_job_reports(&self, at: Option<<Block as BlockT>::Hash>) -> Result<Vec<(u32,u32,u32)>> {
+	fn get_job_reports(&self, at: Option<<Block as BlockT>::Hash>) -> Result<Vec<(u32,Vec<u8>,Vec<u8>)>> {
 		let api = self.client.runtime_api();
 		let at = BlockId::hash(at.unwrap_or_else(||
 			// If the block hash is not supplied assume the best block.
@@ -85,7 +89,20 @@ where
 		let runtime_api_result = api.get_job_reports(&at);
 		runtime_api_result.map_err(|e| RpcError {
 			code: ErrorCode::ServerError(2000), // No real reason for this value
-			message: "Something wrong".into(),
+			message: "Something wrong with get_job_reports".into(),
+			data: Some(format!("{:?}", e).into()),
+		})
+	}
+	fn get_job_proposals(&self, at: Option<<Block as BlockT>::Hash>) -> Result<Vec<(JobProposalIndex, AccountId, Vec<u8>, u128, Vec<u8>, Vec<u8>)>> {
+		let api = self.client.runtime_api();
+		let at = BlockId::hash(at.unwrap_or_else(||
+			// If the block hash is not supplied assume the best block.
+			self.client.info().best_hash));
+
+		let runtime_api_result = api.get_job_proposals(&at);
+		runtime_api_result.map_err(|e| RpcError {
+			code: ErrorCode::ServerError(3000), // No real reason for this value
+			message: "Something wrong qith get_job_proposals".into(),
 			data: Some(format!("{:?}", e).into()),
 		})
 	}

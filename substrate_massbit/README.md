@@ -50,7 +50,8 @@ Add the following code into `Additional types as a JSON file (or edit below)`:
   },
   "Worker": {
     "ip": "Vec<u8>",
-    "is_black_list": "WorkerStatus"
+    "is_black_list": "WorkerStatus",
+    "job_proposal_id": "JobProposalIndex"
   },
   "WorkerIndex": "u32",
   "JobReportIndex": "u32",
@@ -58,18 +59,18 @@ Add the following code into `Additional types as a JSON file (or edit below)`:
   "JobReport": {
     "responsible_account_id": "AccountId",
     "responsible_worker_id": "WorkerIndex",
-    "job_input": "u32",
-    "job_output": "u32",
+    "job_input": "Vec<u8>",
+    "job_output": "Vec<u8>",
     "verify_agree_workers": "Vec<WorkerIndex>",
     "verify_deny_workers": "Vec<WorkerIndex>",
-    "client_account": "u32"
+    "client_account": "AccountId"
   },
   "JobProposal": {
+    "proposer_account_id": "AccountId",
     "name": "Vec<u8>",
-    "stake": "u32",
+    "stake": "u128",
     "description": "Vec<u8>",
-    "call_url": "Vec<u8>",
-    "proposer_account_id": "AccountId"
+    "call_url": "Vec<u8>"
   }
 }
 ```
