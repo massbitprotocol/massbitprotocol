@@ -1,6 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-//use std::u32;
 
 use codec::{Encode, Decode};
 use frame_support::{
@@ -30,22 +29,22 @@ pub struct Worker<JobProposalIndex>{
 }
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
 pub struct JobProposal<AccountId>{
+	pub proposer_account_id: AccountId,
 	pub name: Vec<u8>, 
-	pub stake: u32, 
+	pub stake: u128, 
 	pub description: Vec<u8>, 
 	pub call_url: Vec<u8>, 
-	pub proposer_account_id: AccountId,
 }
 
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
 pub struct JobReport<WorkerIndex,AccountId>{
 	pub responsible_account_id: AccountId,
 	pub responsible_worker_id: WorkerIndex,
-	pub job_input: u32,
-	pub job_output: u32,
+	pub job_input: Vec<u8>,
+	pub job_output: Vec<u8>,
 	pub verify_agree_workers: Vec<WorkerIndex>,
 	pub verify_deny_workers: Vec<WorkerIndex>,
-	pub client_account: u32,
+	pub client_account: AccountId,
 }
 
 pub trait Trait: pallet_balances::Trait{
@@ -53,6 +52,8 @@ pub trait Trait: pallet_balances::Trait{
 	type WorkerIndex: Parameter + AtLeast32BitUnsigned + Bounded + Default + Copy;
 	type JobReportIndex: Parameter + AtLeast32BitUnsigned + Bounded + Default + Copy;
 	type JobProposalIndex: Parameter + AtLeast32BitUnsigned + Bounded + Default + Copy;
+	type JobRequestUrl: Parameter;
+	type JobResponse: Parameter;
 }
 decl_storage! {
 	trait Store for Module<T: Trait> as MassbitModule {
@@ -138,7 +139,7 @@ decl_module! {
 
 		/// Create a new report
 		#[weight = 1000]
-		pub fn save_job_report(origin, responsible_account_id: T::AccountId, responsible_worker_id: T::WorkerIndex, job_input: u32, job_output: u32) {
+		pub fn save_job_report(origin, responsible_account_id: T::AccountId, responsible_worker_id: T::WorkerIndex, job_input: Vec<u8>, job_output: Vec<u8>) {
 			let sender = ensure_signed(origin)?;
 
 			let job_report_id = Self::get_next_job_report_id()?;
@@ -150,7 +151,7 @@ decl_module! {
 				job_output : job_output,
 				verify_deny_workers: Vec::new(),
 				verify_agree_workers: Vec::new(),
-				client_account: 0,
+				client_account: sender.clone(),
 			};
 
 			JobReports::<T>::insert(job_report_id, job_report.clone());
@@ -211,7 +212,7 @@ decl_module! {
 		
 		/// Register a new job proposal
 		#[weight = 1000]
-		pub fn regiter_job_proposal(origin, name: Vec<u8>, stake: u32, description: Vec<u8>, call_url: Vec<u8>) {
+		pub fn regiter_job_proposal(origin, name: Vec<u8>, stake: u128, description: Vec<u8>, call_url: Vec<u8>) {
 			let sender = ensure_signed(origin)?;
 
 			let job_proposal_id = Self::get_next_job_proposal_id()?;
@@ -273,15 +274,15 @@ impl<T: Trait> Module<T> {
 }
 
 impl<T: Trait> Module<T> {
-	pub fn get_workers() -> Vec<(T::WorkerIndex,Vec<u8>,T::AccountId,T::JobProposalIndex)> {
+	pub fn get_workers() -> Vec<(T::WorkerIndex,Vec<u8>,T::AccountId, /*WorkerStatus,*/ T::JobProposalIndex)> {
 		let mut vec_workers = Vec::new();
 		
 		for  (_account_id, worker_id, v) in Workers::<T>::iter() {
-			vec_workers.push((worker_id, v.ip, _account_id, v.job_proposal_id));	
+			vec_workers.push((worker_id, v.ip, _account_id, /*v.status,*/ v.job_proposal_id));	
 		}
 		vec_workers
 	}
-	pub fn get_job_reports(/*acc_id: T::AccountId,worker_id: T::WorkerIndex*/) -> Vec<(T::JobReportIndex,u32,u32)> {
+	pub fn get_job_reports() -> Vec<(T::JobReportIndex,Vec<u8>,Vec<u8>)> {
 		let mut vec_job_reports = Vec::new();
 		
 		for  (k, v) in JobReports::<T>::iter() {
@@ -290,13 +291,12 @@ impl<T: Trait> Module<T> {
 		vec_job_reports
 	}
 
-	// pub fn get_job_proposals(/*acc_id: T::AccountId,worker_id: T::WorkerIndex*/) -> Vec<(T::JobReportIndex,u32,u32)> {
-	// 	let mut vec_job_reports = Vec::new();
+	pub fn get_job_proposals() -> Vec<(T::JobProposalIndex, T::AccountId, Vec<u8>, u128, Vec<u8>, Vec<u8>)> {
+		let mut vec_job_proposals = Vec::new();
 		
-	// 	for  (k, v) in JobReports::<T>::iter() {
-	// 		vec_job_reports.push((k,v.job_input,v.job_output));	
-	// 	}
-	// 	vec_job_reports
-	// }
-
+		for  (job_proposal_index, v) in JobProposals::<T>::iter() {
+			vec_job_proposals.push((job_proposal_index, v.proposer_account_id, v.name, v.stake, v.description, v.call_url));
+		}
+		vec_job_proposals
+	}
 }
