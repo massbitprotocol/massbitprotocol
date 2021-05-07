@@ -480,7 +480,7 @@ impl_runtime_apis! {
 			// amalgamator file
 			MassbitModule::get_job_reports()
 		}
-		fn get_job_proposals() -> Vec<(JobProposalIndex, AccountId, Vec<u8>, u128, Vec<u8>, Vec<u8>)> {
+		fn get_job_proposals() -> Vec<(JobProposalIndex, AccountId, Vec<u8>, u64, Vec<u8>, Vec<u8>)> {
 			// This Runtime API calls into a specific pallet. Calling a pallet is a common
 			// design pattern. You can see most other APIs in this file do the same.
 			// It is also possible to write your logic right here in the runtime

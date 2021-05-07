@@ -14,6 +14,6 @@ sp_api::decl_runtime_apis! {
 	{
 		fn get_workers() -> Vec<(WorkerIndex,Vec<u8>,AccountId,/*WorkerStatus,*/ JobProposalIndex)>;
 		fn get_job_reports() -> Vec<(u32,Vec<u8>,Vec<u8>)>;
-		fn get_job_proposals() -> Vec<(JobProposalIndex, AccountId, Vec<u8>, u128, Vec<u8>, Vec<u8>)>;
+		fn get_job_proposals() -> Vec<(JobProposalIndex, AccountId, Vec<u8>, u64, Vec<u8>, Vec<u8>)>;
 	}
 }

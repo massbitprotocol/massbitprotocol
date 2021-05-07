@@ -26,6 +26,12 @@ curl http://localhost:9933 -H "Content-Type:application/json;charset=utf-8" -d  
       "method":"massbit_getWorkers",
       "params": []
     }'
+curl http://localhost:9933 -H "Content-Type:application/json;charset=utf-8" -d   '{
+     "jsonrpc":"2.0",
+      "id":1,
+      "method":"massbit_getJobProposals",
+      "params": []
+    }'
 ```
 # Demo
 ## Clone project
@@ -68,7 +74,7 @@ Add the following code into `Additional types as a JSON file (or edit below)`:
   "JobProposal": {
     "proposer_account_id": "AccountId",
     "name": "Vec<u8>",
-    "stake": "u128",
+    "stake": "64",
     "description": "Vec<u8>",
     "call_url": "Vec<u8>"
   }
@@ -123,8 +129,4 @@ Repeat until create 5 workers
 -> Job report delete
 -> Worker id 0: blacklist
 -> massbit.activeWorkerCount = 4
-
-
-
-
 

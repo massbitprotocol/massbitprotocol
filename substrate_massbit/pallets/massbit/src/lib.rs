@@ -31,7 +31,7 @@ pub struct Worker<JobProposalIndex>{
 pub struct JobProposal<AccountId>{
 	pub proposer_account_id: AccountId,
 	pub name: Vec<u8>, 
-	pub stake: u128, 
+	pub stake: u64, 
 	pub description: Vec<u8>, 
 	pub call_url: Vec<u8>, 
 }
@@ -212,7 +212,7 @@ decl_module! {
 		
 		/// Register a new job proposal
 		#[weight = 1000]
-		pub fn regiter_job_proposal(origin, name: Vec<u8>, stake: u128, description: Vec<u8>, call_url: Vec<u8>) {
+		pub fn regiter_job_proposal(origin, name: Vec<u8>, stake: u64, description: Vec<u8>, call_url: Vec<u8>) {
 			let sender = ensure_signed(origin)?;
 
 			let job_proposal_id = Self::get_next_job_proposal_id()?;
@@ -291,7 +291,7 @@ impl<T: Trait> Module<T> {
 		vec_job_reports
 	}
 
-	pub fn get_job_proposals() -> Vec<(T::JobProposalIndex, T::AccountId, Vec<u8>, u128, Vec<u8>, Vec<u8>)> {
+	pub fn get_job_proposals() -> Vec<(T::JobProposalIndex, T::AccountId, Vec<u8>, u64, Vec<u8>, Vec<u8>)> {
 		let mut vec_job_proposals = Vec::new();
 		
 		for  (job_proposal_index, v) in JobProposals::<T>::iter() {
