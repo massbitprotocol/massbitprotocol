@@ -9,9 +9,9 @@ use std::sync::Arc;
 use massbit_runtime_api::MassbitApi as MassbitRuntimeApi;
 use frame_support::Parameter;
 #[rpc]
-pub trait MassbitApi<BlockHash,AccountId> {
+pub trait MassbitApi<BlockHash,WorkerIndex,AccountId,JobProposalIndex> {
 	#[rpc(name = "massbit_getWorkers")]
-	fn get_workers(&self, at: Option<BlockHash>) -> Result<Vec<(u32,Vec<u8>, AccountId,u32)>>;
+	fn get_workers(&self, at: Option<BlockHash>) -> Result<Vec<(WorkerIndex,Vec<u8>,AccountId,JobProposalIndex)>>;
 	#[rpc(name = "massbit_getJobReports")]
 	fn get_job_reports(&self, at: Option<BlockHash>) -> Result<Vec<(u32,u32,u32)>>;
 	
@@ -52,16 +52,18 @@ impl<C, M> Massbit<C, M> {
 // 	}
 // }
 
-impl<C, Block, AccountId> MassbitApi<<Block as BlockT>::Hash, AccountId> for Massbit<C, Block>
+impl<C, Block, WorkerIndex, AccountId, JobProposalIndex> MassbitApi<<Block as BlockT>::Hash, WorkerIndex, AccountId, JobProposalIndex> for Massbit<C, Block>
 where
 	Block: BlockT,
 	AccountId: Parameter,
+	WorkerIndex: Parameter,
+	JobProposalIndex: Parameter,
 	C: Send + Sync + 'static,
 	C: ProvideRuntimeApi<Block>,
 	C: HeaderBackend<Block>,
-	C::Api: MassbitRuntimeApi<Block, AccountId>,
+	C::Api: MassbitRuntimeApi<Block, AccountId,WorkerIndex,JobProposalIndex>,
 {
-	fn get_workers(&self, at: Option<<Block as BlockT>::Hash>) -> Result<Vec<(u32,Vec<u8>, AccountId,u32)>> {
+	fn get_workers(&self, at: Option<<Block as BlockT>::Hash>) -> Result<Vec<(WorkerIndex,Vec<u8>,AccountId,JobProposalIndex)>> {
 		let api = self.client.runtime_api();
 		let at = BlockId::hash(at.unwrap_or_else(||
 			// If the block hash is not supplied assume the best block.
