@@ -17,7 +17,7 @@ pub trait MassbitApi<BlockHash,WorkerIndex,AccountId,JobProposalIndex> {
 	#[rpc(name = "massbit_getJobReports")]
 	fn get_job_reports(&self, at: Option<BlockHash>) -> Result<Vec<(u32,Vec<u8>,Vec<u8>)>>;
 	#[rpc(name = "massbit_getJobProposals")]
-	fn get_job_proposals(&self, at: Option<BlockHash>) -> Result<Vec<(JobProposalIndex, AccountId, Vec<u8>, u128, Vec<u8>, Vec<u8>)>>;
+	fn get_job_proposals(&self, at: Option<BlockHash>) -> Result<Vec<(JobProposalIndex, AccountId, Vec<u8>, u64, Vec<u8>, Vec<u8>)>>;
 	
 }
 
@@ -93,7 +93,7 @@ where
 			data: Some(format!("{:?}", e).into()),
 		})
 	}
-	fn get_job_proposals(&self, at: Option<<Block as BlockT>::Hash>) -> Result<Vec<(JobProposalIndex, AccountId, Vec<u8>, u128, Vec<u8>, Vec<u8>)>> {
+	fn get_job_proposals(&self, at: Option<<Block as BlockT>::Hash>) -> Result<Vec<(JobProposalIndex, AccountId, Vec<u8>, u64, Vec<u8>, Vec<u8>)>> {
 		let api = self.client.runtime_api();
 		let at = BlockId::hash(at.unwrap_or_else(||
 			// If the block hash is not supplied assume the best block.
