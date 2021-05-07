@@ -55,7 +55,7 @@ pub trait Trait: pallet_balances::Trait{
 	type JobProposalIndex: Parameter + AtLeast32BitUnsigned + Bounded + Default + Copy;
 }
 decl_storage! {
-	trait Store for Module<T: Trait> as Massbit {
+	trait Store for Module<T: Trait> as MassbitModule {
 		/// Stores all the workers
 		pub Workers get(fn workers): double_map hasher(blake2_128_concat) T::AccountId, hasher(blake2_128_concat) T::WorkerIndex => Option<Worker<T::JobProposalIndex>>;
 		/// Stores the workers number
