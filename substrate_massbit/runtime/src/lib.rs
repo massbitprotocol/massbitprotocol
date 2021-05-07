@@ -67,6 +67,13 @@ pub type Hash = sp_core::H256;
 /// Digest item type.
 pub type DigestItem = generic::DigestItem<Hash>;
 
+/// Massbit worker index type.
+pub type WorkerIndex = u32;
+
+/// Massbit worker index type.
+pub type JobProposalIndex = u32;
+
+
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
 /// of data like extrinsics, allowing for them to continue syncing the network through upgrades
@@ -456,7 +463,7 @@ impl_runtime_apis! {
 	}
 
 	// Here we implement our custom runtime API.
-	impl massbit_runtime_api::MassbitApi<Block, AccountId> for Runtime {
+	impl massbit_runtime_api::MassbitApi<Block, AccountId, WorkerIndex, JobProposalIndex> for Runtime {
 		fn get_workers() -> Vec<(<Runtime as pallet_massbit::Trait>::WorkerIndex,Vec<u8>, AccountId,<Runtime as pallet_massbit::Trait>::JobProposalIndex)> {
 			// This Runtime API calls into a specific pallet. Calling a pallet is a common
 			// design pattern. You can see most other APIs in this file do the same.
