@@ -291,7 +291,7 @@ construct_runtime!(
 		// Include the custom logic from the template pallet in the runtime.
 		TemplateModule: pallet_template::{Module, Call, Storage, Event<T>},
 		// Substrate Workers module
-		Massbit: pallet_massbit::{Module, Storage, Call, Event<T>},
+		MassbitModule: pallet_massbit::{Module, Storage, Call, Event<T>},
 	}
 );
 
@@ -456,20 +456,20 @@ impl_runtime_apis! {
 	}
 
 	// Here we implement our custom runtime API.
-	impl sum_storage_runtime_api::SumStorageApi<Block, AccountId> for Runtime {
+	impl massbit_runtime_api::MassbitApi<Block, AccountId> for Runtime {
 		fn get_workers() -> Vec<(<Runtime as pallet_massbit::Trait>::WorkerIndex,Vec<u8>, AccountId,<Runtime as pallet_massbit::Trait>::JobProposalIndex)> {
 			// This Runtime API calls into a specific pallet. Calling a pallet is a common
 			// design pattern. You can see most other APIs in this file do the same.
 			// It is also possible to write your logic right here in the runtime
 			// amalgamator file
-			Massbit::get_workers()
+			MassbitModule::get_workers()
 		}
 		fn get_job_reports() -> Vec<(<Runtime as pallet_massbit::Trait>::JobReportIndex,u32,u32)> {
 			// This Runtime API calls into a specific pallet. Calling a pallet is a common
 			// design pattern. You can see most other APIs in this file do the same.
 			// It is also possible to write your logic right here in the runtime
 			// amalgamator file
-			Massbit::get_job_reports()
+			MassbitModule::get_job_reports()
 		}
 	}	
 

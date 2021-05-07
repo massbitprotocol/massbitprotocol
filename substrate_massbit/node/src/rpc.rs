@@ -37,7 +37,7 @@ pub fn create_full<C, P>(
 	C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Index>,
 	C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
 	C::Api: BlockBuilder<Block>,
-	C::Api: sum_storage_runtime_api::SumStorageApi<Block,AccountId>,
+	C::Api: massbit_runtime_api::MassbitApi<Block,AccountId>,
 	P: TransactionPool + 'static,
 {
 	use substrate_frame_rpc_system::{FullSystem, SystemApi};
@@ -66,8 +66,8 @@ pub fn create_full<C, P>(
 		crate::silly_rpc::SillyRpc::to_delegate(crate::silly_rpc::Silly {})
 	);
 	
-	io.extend_with(sum_storage_rpc::SumStorageApi::to_delegate(
-		sum_storage_rpc::SumStorage::new(client),
+	io.extend_with(massbit_rpc::MassbitApi::to_delegate(
+		massbit_rpc::Massbit::new(client),
 	));
 
 	io

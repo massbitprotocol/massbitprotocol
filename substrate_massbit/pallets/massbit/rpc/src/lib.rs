@@ -6,10 +6,10 @@ use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_runtime::{generic::BlockId, traits::Block as BlockT};
 use std::sync::Arc;
-use sum_storage_runtime_api::SumStorageApi as SumStorageRuntimeApi;
+use massbit_runtime_api::MassbitApi as MassbitRuntimeApi;
 use frame_support::Parameter;
 #[rpc]
-pub trait SumStorageApi<BlockHash,AccountId> {
+pub trait MassbitApi<BlockHash,AccountId> {
 	#[rpc(name = "massbit_getWorkers")]
 	fn get_workers(&self, at: Option<BlockHash>) -> Result<Vec<(u32,Vec<u8>, AccountId,u32)>>;
 	#[rpc(name = "massbit_getJobReports")]
@@ -17,16 +17,16 @@ pub trait SumStorageApi<BlockHash,AccountId> {
 	
 }
 
-/// A struct that implements the `SumStorageApi`.
-pub struct SumStorage<C, M> {
-	// If you have more generics, no need to SumStorage<C, M, N, P, ...>
-	// just use a tuple like SumStorage<C, (M, N, P, ...)>
+/// A struct that implements the `MassbitApi`.
+pub struct Massbit<C, M> {
+	// If you have more generics, no need to Massbit<C, M, N, P, ...>
+	// just use a tuple like Massbit<C, (M, N, P, ...)>
 	client: Arc<C>,
 	_marker: std::marker::PhantomData<M>,
 }
 
-impl<C, M> SumStorage<C, M> {
-	/// Create new `SumStorage` instance with the given reference to the client.
+impl<C, M> Massbit<C, M> {
+	/// Create new `Massbit` instance with the given reference to the client.
 	pub fn new(client: Arc<C>) -> Self {
 		Self {
 			client,
@@ -52,14 +52,14 @@ impl<C, M> SumStorage<C, M> {
 // 	}
 // }
 
-impl<C, Block, AccountId> SumStorageApi<<Block as BlockT>::Hash, AccountId> for SumStorage<C, Block>
+impl<C, Block, AccountId> MassbitApi<<Block as BlockT>::Hash, AccountId> for Massbit<C, Block>
 where
 	Block: BlockT,
 	AccountId: Parameter,
 	C: Send + Sync + 'static,
 	C: ProvideRuntimeApi<Block>,
 	C: HeaderBackend<Block>,
-	C::Api: SumStorageRuntimeApi<Block, AccountId>,
+	C::Api: MassbitRuntimeApi<Block, AccountId>,
 {
 	fn get_workers(&self, at: Option<<Block as BlockT>::Hash>) -> Result<Vec<(u32,Vec<u8>, AccountId,u32)>> {
 		let api = self.client.runtime_api();
