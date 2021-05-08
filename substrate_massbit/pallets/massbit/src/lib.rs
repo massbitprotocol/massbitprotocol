@@ -144,10 +144,12 @@ decl_module! {
 		pub fn submit_report(origin, responsible_account_id: T::AccountId, responsible_worker_id: T::WorkerIndex, job_input: Vec<u8>, job_output: Vec<u8>) {
 			let sender = ensure_signed(origin)?;
 
+			// Checking if responsible_worker_id is created from responsible_account_id
+			ensure!(Workers::<T>::contains_key(&responsible_account_id,&responsible_worker_id),Error::<T>::NotRegisteredWorker);
+
 			let job_report_id = Self::get_next_job_report_id()?;
 
-			// TODO(huy): checking if responsible_worker_id is created from responsible_account_id
-			// TODO(huy): add signature
+			// TODO(huy): add signature of the job_output 
 
 			let job_report = JobReport{
 				responsible_account_id : responsible_account_id,
