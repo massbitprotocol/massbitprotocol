@@ -6,7 +6,7 @@ use frame_support::{
 	decl_module, decl_storage, decl_event, decl_error, ensure, StorageValue, StorageDoubleMap, Parameter,
 /*traits::Randomness,*/ RuntimeDebug, dispatch::{DispatchError, DispatchResult},
 };
-/*use sp_io::hashing::blake2_128;*/
+
 use frame_system::ensure_signed;
 use sp_runtime::traits::{AtLeast32BitUnsigned, Bounded,  One, CheckedAdd};
 use sp_std::vec::Vec;
@@ -119,6 +119,8 @@ decl_module! {
 			let sender = ensure_signed(origin)?;
 			ensure!(JobProposals::<T>::contains_key(&job_proposal_id),Error::<T>::NotRegisteredJobProposal);
 
+			// TODO(huy): call http to check if the worker is live
+
 			let worker_id = Self::get_next_worker_id()?;
 
 			// Create and store worker
@@ -139,10 +141,13 @@ decl_module! {
 
 		/// Create a new report
 		#[weight = 1000]
-		pub fn save_job_report(origin, responsible_account_id: T::AccountId, responsible_worker_id: T::WorkerIndex, job_input: Vec<u8>, job_output: Vec<u8>) {
+		pub fn submit_report(origin, responsible_account_id: T::AccountId, responsible_worker_id: T::WorkerIndex, job_input: Vec<u8>, job_output: Vec<u8>) {
 			let sender = ensure_signed(origin)?;
 
 			let job_report_id = Self::get_next_job_report_id()?;
+
+			// TODO(huy): checking if responsible_worker_id is created from responsible_account_id
+			// TODO(huy): add signature
 
 			let job_report = JobReport{
 				responsible_account_id : responsible_account_id,
@@ -194,7 +199,7 @@ decl_module! {
 						let _job_report = job_report.take().ok_or(Error::<T>::InvalidJobReportId)?;
 						is_delete_report = true;
 						// Add response worker to blacklist
-						Self::add_worker_to_blacklist(&clone_job_report.responsible_account_id,&clone_job_report.responsible_worker_id);
+						Self::add_worker_to_blacklist(&clone_job_report.responsible_account_id,&clone_job_report.responsible_worker_id)?;
 					}
 				}
 
@@ -250,7 +255,7 @@ impl<T: Trait> Module<T> {
 	}
 
 	
-	fn add_worker_to_blacklist(responsible_account_id: &T::AccountId,responsible_worker_id: &T::WorkerIndex){
+	fn add_worker_to_blacklist(responsible_account_id: &T::AccountId,responsible_worker_id: &T::WorkerIndex)-> DispatchResult{
 		// Clone the worker
 		let mut clone_worker = Workers::<T>::get(&responsible_account_id, &responsible_worker_id).clone().unwrap();
 		Workers::<T>::try_mutate_exists(&responsible_account_id, &responsible_worker_id, |worker| -> DispatchResult{
@@ -258,10 +263,11 @@ impl<T: Trait> Module<T> {
 			clone_worker.status = WorkerStatus::BlackList;
 			*worker = Some(clone_worker);
 			Ok(())
-		});
+		})?;
 
 		// Reduce number of activate worker
 		ActiveWorkerCount::mutate(|v| *v -= 1);
+		Ok(())
 	} 
 
 	fn get_next_job_proposal_id() -> sp_std::result::Result<T::JobProposalIndex, DispatchError> {
@@ -274,11 +280,11 @@ impl<T: Trait> Module<T> {
 }
 
 impl<T: Trait> Module<T> {
-	pub fn get_workers() -> Vec<(T::WorkerIndex,Vec<u8>,T::AccountId, /*WorkerStatus,*/ T::JobProposalIndex)> {
+	pub fn get_workers() -> Vec<(T::WorkerIndex,Vec<u8>,T::AccountId, bool, T::JobProposalIndex)> {
 		let mut vec_workers = Vec::new();
 		
 		for  (_account_id, worker_id, v) in Workers::<T>::iter() {
-			vec_workers.push((worker_id, v.ip, _account_id, /*v.status,*/ v.job_proposal_id));	
+			vec_workers.push((worker_id, v.ip, _account_id, v.status==WorkerStatus::NormalStatus, v.job_proposal_id));	
 		}
 		vec_workers
 	}
