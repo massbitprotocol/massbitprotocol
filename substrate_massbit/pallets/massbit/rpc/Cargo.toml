@@ -20,7 +20,6 @@ sp-api = { version = '2.0.0', default-features = false }
 sp-blockchain = { version = '2.0.0', default-features = false}
 sp-rpc = { version = '2.0.0', default-features = false}
 sp-runtime = { version = '2.0.0', default-features = false}
-pallet-massbit = { path = '../../../pallets/massbit', default-features = false}
 frame-system = { default-features = false, version = '2.0.1' }
 frame-support = { default-features = false, version = '2.0.1' }
 
@@ -35,5 +34,4 @@ std = [
   "sp-api/std",
   "sp-runtime/std",
   "massbit-runtime-api/std",
-  "pallet-massbit/std",
 ]

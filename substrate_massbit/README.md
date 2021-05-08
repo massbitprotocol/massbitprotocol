@@ -56,7 +56,7 @@ Add the following code into `Additional types as a JSON file (or edit below)`:
   },
   "Worker": {
     "ip": "Vec<u8>",
-    "is_black_list": "WorkerStatus",
+    "status": "WorkerStatus",
     "job_proposal_id": "JobProposalIndex"
   },
   "WorkerIndex": "u32",
@@ -74,7 +74,7 @@ Add the following code into `Additional types as a JSON file (or edit below)`:
   "JobProposal": {
     "proposer_account_id": "AccountId",
     "name": "Vec<u8>",
-    "stake": "64",
+    "stake": "u64",
     "description": "Vec<u8>",
     "call_url": "Vec<u8>"
   }
