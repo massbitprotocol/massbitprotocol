@@ -256,6 +256,12 @@ def call_extrinsic_vote_report(voted_worker_id,job_report_id, verify_agree):
 ip = get('https://api.ipify.org').text
 print('My public IP address is: {}'.format(ip))
 
+if "IS_TEST" in os.environ:
+    IS_TEST = True
+else:
+    print("Cannot find IS_TEST env variable")
+    IS_TEST = False
+
 if "MASSBIT_ACCOUNT" in os.environ:
     account_name = os.environ["MASSBIT_ACCOUNT"]
 else:
@@ -279,6 +285,7 @@ if "MASSBIT_WSS" in os.environ:
 else:
     print("Cannot find MASSBIT_WSS env variable")
     massbit_wss = "wss://dev-api.massbit.io/websocket"
+
 
 
 if __name__ == "__main__":
