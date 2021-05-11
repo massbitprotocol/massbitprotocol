@@ -103,8 +103,8 @@ def get_workers(massbit_url):
     print (f"Workers:{workers}")
     return workers
 
-
-def get_result(url,method,block_number):
+# Get job result from localhost
+def get_job_result(url,method,block_number):
 
     if not IS_TEST:
         url = "http://localhost"
@@ -168,7 +168,7 @@ def check_reports_and_vote():
             continue
 
         #print(f"job_input:{job_input}")
-        my_result = get_result(job_input["url"],job_input["method"],job_input["block_number"])
+        my_result = get_job_result(job_input["url"],job_input["method"],job_input["block_number"])
         #print(f"my_result:{my_result}")
         # Hash the result
         my_result = hash_output(my_result)
