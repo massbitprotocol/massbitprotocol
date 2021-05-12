@@ -21,3 +21,6 @@ Cargo.lock
 .local
 
 .idea
+
+# Py cache
+__pycache__
