@@ -37,7 +37,7 @@ pub struct JobProposal<AccountId>{
 }
 
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq)]
-pub struct JobReport<WorkerIndex,AccountId>{
+pub struct JobReport<WorkerIndex,AccountId,JobProposalIndex>{
 	pub responsible_account_id: AccountId,
 	pub responsible_worker_id: WorkerIndex,
 	pub job_input: Vec<u8>,
@@ -45,6 +45,7 @@ pub struct JobReport<WorkerIndex,AccountId>{
 	pub verify_agree_workers: Vec<WorkerIndex>,
 	pub verify_deny_workers: Vec<WorkerIndex>,
 	pub client_account: AccountId,
+	pub job_proposal_id: JobProposalIndex,
 }
 
 pub trait Trait: pallet_balances::Trait{
@@ -60,11 +61,11 @@ decl_storage! {
 		/// Stores all the workers
 		pub Workers get(fn workers): double_map hasher(blake2_128_concat) T::AccountId, hasher(blake2_128_concat) T::WorkerIndex => Option<Worker<T::JobProposalIndex>>;
 		/// Stores the workers number
-		pub ActiveWorkerCount: u32;
+		pub ActiveWorkerCount get(fn _active_worker_count): map hasher(blake2_128_concat) T::JobProposalIndex => Option<u32>;
 		/// Stores the next worker ID
 		pub NextWorkerId get(fn next_worker_id): T::WorkerIndex;
 		/// Stores job reports
-		pub JobReports get(fn job_reports): map hasher(blake2_128_concat) T::JobReportIndex => Option<JobReport<T::WorkerIndex,T::AccountId>>;
+		pub JobReports get(fn job_reports): map hasher(blake2_128_concat) T::JobReportIndex => Option<JobReport<T::WorkerIndex,T::AccountId,T::JobProposalIndex>>;
 		/// Stores the next job ID
 		pub NextJobReportId get(fn next_job_report_id): T::JobReportIndex;
 		/// Store Proposal 
@@ -85,11 +86,11 @@ decl_event! {
 		/// A Worker is registered. \[owner, worker_id, worker, active_worker_count\]
 		WorkerRegistered(AccountId, WorkerIndex, Worker<JobProposalIndex>, u32),
 		/// A report Worker is saved. \[owner, job_report_id, job_report\]
-		JobReportSaved(AccountId, JobReportIndex, JobReport<WorkerIndex,AccountId>),
-		/// A vote on report is saved. \[owner, job_report_id, resposible_worker, activate_worker_count\]
+		JobReportSaved(AccountId, JobReportIndex, JobReport<WorkerIndex,AccountId,JobProposalIndex>),
+		/// A vote on report is saved. \[owner, job_report_id, resposible_worker, active_worker_count\]
 		JobReportVoteSaved(AccountId, JobReportIndex, Worker<JobProposalIndex>, u32),
-		/// A vote on report is saved. \[job_report_id, job_report, responsive_worker,responsive_account, activate_worker_count\]
-		JobReportProcessFinished(JobReportIndex, JobReport<WorkerIndex,AccountId>, WorkerIndex, AccountId, u32),
+		/// A vote on report is saved. \[job_report_id, job_report, responsive_worker,responsive_account, active_worker_count\]
+		JobReportProcessFinished(JobReportIndex, JobReport<WorkerIndex,AccountId,JobProposalIndex>, WorkerIndex, AccountId, u32),
 		/// A job proposal is create. \[job_prposal_id, job_prposal_id\]
 		JobProposalRegistered(JobProposalIndex, JobProposal<AccountId>),
 	}
@@ -132,8 +133,12 @@ decl_module! {
 			Workers::<T>::insert(&sender, worker_id, worker.clone());
 			
 			// Increase WorkerCount
-			ActiveWorkerCount::mutate(|v| *v += 1);
-			let active_worker_count = ActiveWorkerCount::get();
+			ActiveWorkerCount::<T>::try_mutate_exists(job_proposal_id,|v| -> DispatchResult{
+				let count = (*v).unwrap() + 1;
+				*v = Some(count);
+				Ok(())
+			})?;
+			let active_worker_count = ActiveWorkerCount::<T>::get(&job_proposal_id).unwrap();
 
 			// Emit event
 			Self::deposit_event(RawEvent::WorkerRegistered(sender, worker_id, worker, active_worker_count))
@@ -141,7 +146,7 @@ decl_module! {
 
 		/// Create a new report
 		#[weight = 1000]
-		pub fn submit_report(origin, responsible_account_id: T::AccountId, responsible_worker_id: T::WorkerIndex, job_input: Vec<u8>, job_output: Vec<u8>) {
+		pub fn submit_report(origin, responsible_account_id: T::AccountId, responsible_worker_id: T::WorkerIndex, job_input: Vec<u8>, job_output: Vec<u8>, job_proposal_id: T::JobProposalIndex) {
 			let sender = ensure_signed(origin)?;
 
 			// Checking if responsible_worker_id is created from responsible_account_id
@@ -159,6 +164,7 @@ decl_module! {
 				verify_deny_workers: Vec::new(),
 				verify_agree_workers: Vec::new(),
 				client_account: sender.clone(),
+				job_proposal_id: job_proposal_id,
 			};
 
 			JobReports::<T>::insert(job_report_id, job_report.clone());
@@ -181,7 +187,7 @@ decl_module! {
 			JobReports::<T>::try_mutate_exists(&job_report_id, |job_report| -> DispatchResult{
 				
 				//let mut job_report = job_report.unwrap();
-				let total_workers = ActiveWorkerCount::get();
+				let total_workers = ActiveWorkerCount::<T>::get(&clone_job_report.job_proposal_id).unwrap();
 				let mut is_delete_report = false;
 				// Update vote vec
 				if verify_agree{
@@ -211,7 +217,7 @@ decl_module! {
 				}
 				
 				// Emit event
-				Self::deposit_event(RawEvent::JobReportVoteSaved(sender, job_report_id, reponsive_worker , ActiveWorkerCount::get()));
+				Self::deposit_event(RawEvent::JobReportVoteSaved(sender, job_report_id, reponsive_worker , total_workers));
 
 				Ok(())
 			})?;
@@ -231,7 +237,10 @@ decl_module! {
 				call_url: call_url, 
 				proposer_account_id: sender,
 			};
+			// Init active worker count
+			ActiveWorkerCount::<T>::insert(job_proposal_id,0);
 
+			// Init Job proposal
 			JobProposals::<T>::insert(job_proposal_id, job_proposal.clone());
 			// Emit event
 			Self::deposit_event(RawEvent::JobProposalRegistered(job_proposal_id, job_proposal))
@@ -263,12 +272,17 @@ impl<T: Trait> Module<T> {
 		Workers::<T>::try_mutate_exists(&responsible_account_id, &responsible_worker_id, |worker| -> DispatchResult{
 			// Set worker status to BlackList
 			clone_worker.status = WorkerStatus::BlackList;
+			let job_proposal_id = clone_worker.job_proposal_id;
 			*worker = Some(clone_worker);
+
+					// Reduce number of activate worker
+			ActiveWorkerCount::<T>::try_mutate_exists(job_proposal_id,|v| -> DispatchResult{
+				let count = (*v).unwrap() - 1;
+				*v = Some(count);
+				Ok(())
+			})?;
 			Ok(())
 		})?;
-
-		// Reduce number of activate worker
-		ActiveWorkerCount::mutate(|v| *v -= 1);
 		Ok(())
 	} 
 

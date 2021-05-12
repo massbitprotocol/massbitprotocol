@@ -69,7 +69,8 @@ Add the following code into `Additional types as a JSON file (or edit below)`:
     "job_output": "Vec<u8>",
     "verify_agree_workers": "Vec<WorkerIndex>",
     "verify_deny_workers": "Vec<WorkerIndex>",
-    "client_account": "AccountId"
+    "client_account": "AccountId",
+    "job_proposal_id": "JobProposalIndex"
   },
   "JobProposal": {
     "proposer_account_id": "AccountId",
