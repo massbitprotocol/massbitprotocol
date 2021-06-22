@@ -1,4 +1,4 @@
-mod interfaces;
+mod db;
 mod models;
 mod types;
 
