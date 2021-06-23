@@ -1,18 +1,30 @@
-use ormx::{Insert, Table};
-use sqlx::PgPool;
+// use ormx::{Insert, Table};
+// use sqlx::PgPool;
+#[macro_use]
+extern crate diesel_derive_table;
+#[macro_use]
+extern crate diesel;
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let database_url = "abc".to_string();
-    let db = PgPool::connect(&database_url).await?;
-    let mut block = Block {
-        id: 1,
-    }.insert()
-    Ok(())
+use diesel::prelude::*;
+
+fn main() {
+    let database_url = "postgres://postgres:postgres@localhost".to_string();
+    let connection = PgConnection::establish(&database_url)
+        .unwrap_or_else(|_| panic!("Error connecting to {}", database_url));
+    let block = create_block(&connection);
 }
 
-#[derive(Debug, ormx::Table)]
-#[ormx(table = "blocks", insertable)]
+#[derive(Table, Insertable, Queryable)]
+#[table_name = "blocks"]
 pub struct Block {
+    #[column_type = "BigInt"]
     pub id: i64,
+}
+
+pub fn create_block(conn: &PgConnection) -> Block {
+    let block = Block { id: 1 };
+    diesel::insert_into(blocks::table)
+        .values(&block)
+        .get_result(conn)
+        .expect("Error saving new post")
 }
