@@ -1,0 +1,15 @@
+[package]
+name = "common"
+version = "0.1.0"
+authors = ["datzero9 <nguyenmanhdat2903@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+Inflector = "0.10.1"
+quote = "0.3.15"
+syn = "0.11.11"
+
+[lib]
+proc-macro = true

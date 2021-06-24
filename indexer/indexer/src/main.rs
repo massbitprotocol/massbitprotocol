@@ -1,7 +1,5 @@
-// use ormx::{Insert, Table};
-// use sqlx::PgPool;
 #[macro_use]
-extern crate diesel_derive_table;
+extern crate common;
 #[macro_use]
 extern crate diesel;
 
