@@ -24,3 +24,6 @@ Cargo.lock
 
 # Py cache
 __pycache__
+
+.vscode/
+massbit-indexer/data/
