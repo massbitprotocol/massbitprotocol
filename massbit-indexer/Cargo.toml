@@ -18,7 +18,7 @@ serde_json      = { version = "1.0", optional = false }
 thiserror       = { version = "1.0", optional =true }
 primitive-types = { version = "0.6.1", optional = true, features = ["codec"] }
 
-substrate-api-client = { version = "0.6.0",path = "/home/huy/work/block_chain/substrate/substrate-api-client"}
+substrate-api-client = { version = "0.6.0",path = "../../substrate-api-client"}
 
 [dependencies.sp-core]
 git = "https://github.com/paritytech/substrate.git"
