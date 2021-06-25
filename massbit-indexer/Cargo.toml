@@ -20,60 +20,23 @@ primitive-types = { version = "0.6.1", optional = true, features = ["codec"] }
 
 substrate-api-client = { version = "0.6.0",path = "/home/huy/work/block_chain/substrate/substrate-api-client"}
 
+# For protobuf
+tonic = "0.4"
+prost = "0.7"
+futures-core = "0.3"
+futures-util = "0.3"
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "sync", "time"] }
+tokio-stream = "0.1"
+
+async-stream = "0.2"
+rand = "0.7"
+
 [dependencies.sp-core]
 git = "https://github.com/paritytech/substrate.git"
 branch = "master"
 package = "sp-core"
 default-features = false
 features = ["full_crypto"]
-
-#[dependencies.codec]
-#package = "parity-scale-codec"
-#features = ["derive"]
-#version = "2.0.0"
-#default-features = false
-
-#[dependencies.metadata]
-#git = "https://github.com/paritytech/substrate.git"
-#branch = "master"
-#package = "frame-metadata"
-#default-features=false
-
-#[dependencies.sp-version]
-#git = "https://github.com/paritytech/substrate.git"
-#branch = "master"
-#package = "sp-version"
-#optional = true
-
-#[dependencies.balances]
-#git = "https://github.com/paritytech/substrate.git"
-#branch = "master"
-#package = "pallet-balances"
-#optional = true
-
-#[dependencies.system]
-#git = "https://github.com/paritytech/substrate.git"
-#branch = "master"
-#package = "frame-system"
-#optional = true
-
-#[dependencies.sp-runtime]
-#git = "https://github.com/paritytech/substrate.git"
-#branch = "master"
-#package = "sp-runtime"
-#default-features=false
-
-#[dependencies.support]
-#git = "https://github.com/paritytech/substrate.git"
-#branch = "master"
-#package = "frame-support"
-#default-features=false
-
-#[dependencies.sp-std]
-#git = "https://github.com/paritytech/substrate.git"
-#branch = "master"
-#package = "sp-std"
-#default-features = false
 
 [dependencies.sc-rpc-api]
 git = "https://github.com/paritytech/substrate.git"
@@ -96,25 +59,14 @@ features = ["yaml"]
 [features]
 default = ["std"]
 std = [
-#    "sc-rpc-api",
     "sp-core/std",
-#    "codec/std",
-#    "metadata/std",
-#    "sp-version",
-#    "balances",
-#    "system",
-#    "sp-runtime/std",
-#    "support/std",
-#    "sp-std/std",
-#    "serde/std",
-#    "serde_json",
-#    "env_logger",
-#    "log",
-#    "ws",
-#    "hex/std",
-#    "primitive-types",
-#    "thiserror",
 ]
 # need to add this for the app_crypto macro
 full_crypto = []
 
+[build-dependencies]
+tonic-build = "0.4"
+
+[[bin]] # Bin to run the HelloWorld gRPC server
+name = "helloworld-server"
+path = "src/server.rs"

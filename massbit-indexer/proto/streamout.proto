@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+//option java_multiple_files = true;
+//option java_package = "io.grpc.examples.stream_out";
+//option java_outer_classname = "StreamOutProto";
+
+// struct GenericData{
+//    chain_type: ChainType,
+//    version: String,
+//    data_type: DataType,
+//    block_hash: String,
+//    block_number: u64,
+//    payload: Vec<u8>
+// }
+
+package streamout;
+
+// Interface exported by the server.
+service Streamout {
+  // A simple RPC.
+  rpc SayHello(HelloRequest) returns (HelloReply);
+
+  // A server-to-client streaming RPC.
+  rpc ListFeatures(HelloRequest) returns (stream GenericDataProto);
+}
+
+message GenericDataProto {
+  enum ChainType {
+      Substrate = 0;
+      Ethereum = 1;
+      Solana = 2;
+  }
+  enum DataType {
+      Block = 0;
+      Event = 1;
+      Transaction = 2;
+  }
+
+//  ChainType chain_type = 1;
+  string version = 2;
+//  DataType data_type = 3;
+//  string block_hash = 4;
+//  uint64 block_number = 5;
+//  bytes payload = 6;
+}
+
+
+message HelloRequest {
+  // Request message contains the name to be greeted
+  string name = 1;
+}
+
+message HelloReply {
+  // Reply contains the greeting message
+  string message = 1;
+}
