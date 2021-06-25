@@ -33,3 +33,7 @@
 //     pub extrinsic: Extrinsic,
 //     pub block: SubstrateBlock,
 // }
+
+pub struct SubstrateBlock {
+    pub idx: i64,
+}

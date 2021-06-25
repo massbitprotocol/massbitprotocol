@@ -1,5 +1,5 @@
 [package]
-name = "common"
+name = "diesel_derive_table"
 version = "0.1.0"
 authors = ["datzero9 <nguyenmanhdat2903@gmail.com>"]
 edition = "2018"

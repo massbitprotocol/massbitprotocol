@@ -1,6 +1,8 @@
 [workspace]
 members = [
-    "common",
     "indexer",
-    "plugin"
+    "diesel-derive-table",
+    "plugins-core",
+    "types",
+    "block"
 ]

@@ -168,7 +168,7 @@ impl Table {
                 }
             },
             None => {
-                // No table name attribute, so auto-generate it.
+                // No diesel-derive-table name attribute, so auto-generate it.
                 let snaked = ast.ident.as_ref().to_snake_case();
                 snaked.to_plural()
             }
@@ -207,7 +207,7 @@ impl Table {
                 if default_primary_key {
                     panic!("Tables must have an 'id' column or an explicitly specified primary key: #[primary_key(a)]");
                 } else {
-                    panic!("Table has primary key {} specified, but no such f")
+                    panic!("Table has primary key specified, but no such f")
                 }
             }
         }
