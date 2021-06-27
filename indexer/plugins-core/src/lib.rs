@@ -1,3 +1,4 @@
+use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use types::SubstrateBlock;
 

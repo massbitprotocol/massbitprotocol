@@ -4,8 +4,10 @@ extern crate diesel_derive_table;
 extern crate diesel;
 
 use diesel::pg::Pg;
+use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use libloading::Library;
+use libloading::Symbol;
 use plugins_core::{Function, InvocationError, PluginDeclaration};
 use std::{alloc::System, collections::HashMap, env, ffi::OsStr, io, path::PathBuf, rc::Rc};
 use types::SubstrateBlock;
@@ -15,7 +17,6 @@ static ALLOCATOR: System = System;
 
 fn main() {
     let block = SubstrateBlock { idx: 1 };
-
     let args = env::args().skip(1);
     let args = Args::parse(args).expect("Usage: app <plugin-path> <function> <args>...");
 
@@ -67,23 +68,19 @@ impl ExternalFunctions {
     }
 
     pub unsafe fn load<P: AsRef<OsStr>>(&mut self, library_path: P) -> io::Result<()> {
-        // load the library into memory
         let library = Rc::new(Library::new(library_path)?);
-
-        // get a pointer to the plugin_declaration symbol.
         let decl = library
             .get::<*mut PluginDeclaration>(b"plugin_declaration\0")?
             .read();
-
         let mut registrar = PluginRegistrar::new(Rc::clone(&library));
-
         (decl.register)(&mut registrar);
-
-        // add all loaded plugins to the functions map
+        let conn: Symbol<*mut Option<PgConnection>> = library.get(b"CONN\0").unwrap();
+        let database_url = "postgres://postgres:postgres@localhost".to_string();
+        let _conn = PgConnection::establish(&database_url)
+            .unwrap_or_else(|_| panic!("Error connecting to {}", database_url));
+        **conn = Some(_conn);
         self.functions.extend(registrar.functions);
-        // and make sure ExternalFunctions keeps a reference to the library
         self.libraries.push(library);
-
         Ok(())
     }
 }

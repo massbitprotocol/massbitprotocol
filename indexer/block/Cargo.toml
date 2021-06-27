@@ -13,3 +13,4 @@ diesel = { version = "1.4.0", features = ["postgres"] }
 types = { path = "../types"}
 plugins_core = { path = "../plugins-core" }
 diesel_derive_table = { path = "../diesel-derive-table" }
+lazy_static = "1.4.0"
