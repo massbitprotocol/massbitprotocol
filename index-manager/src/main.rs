@@ -15,6 +15,9 @@ use tokio::runtime::Runtime;
 use std::collections::HashMap;
 use std::fs::File;
 
+use slog::*;
+use anyhow::{anyhow};
+
 #[derive(Clone, Debug, Deserialize)]
 struct DeployParams {
     index_name: String,
@@ -40,35 +43,10 @@ struct DeployParams {
 
 #[tokio::main]
 async fn main() {
-    let mut handler = IoHandler::default();
-
-    // If we want to use tokio::spawn, need to grab the hackie code from the graph that resolve running tokio spawn with json_rpc_http_server
-    // Reason: https://stackoverflow.com/questions/61292425/how-to-run-an-asynchronous-task-from-a-non-main-thread-in-tokio
-    handler.add_method("index_deploy", |params: Params| {
-        thread::spawn(|| {
-            println!("Received an index request"); // Refactor to use logger
-            let params = params.parse().unwrap();
-
-            // Add param check
-
-            deploy_handler(params);
-        });
-        Ok(Value::String("hello".into()))
-    });
-
-    let server = ServerBuilder::new(handler)
-        .start_http(&"127.0.0.1:3030".parse().unwrap())
-        .expect("Unable to start RPC server");
+    let server = JsonRpcServer::serve(
+        "127.0.0.1:3030".to_string(),
+    );
     server.wait();
-
-
-    // TODO: Refactor with JsonRpcServer later
-    // let arc_self = Arc::new(JsonRpcServer {
-    //     http_addr,
-    // });
-    // JsonRpcServer::serve(
-    //     "127.0.0.1:3030".to_string(),
-    // );
 }
 
 fn deploy_handler(
@@ -79,17 +57,8 @@ fn deploy_handler(
     // Load manifest from IPFS
 
     // Read manifest
-    const YAML: &str = "
-        dataSources: []
-        schema:
-          file:
-            /: /ipfs/Qmschema
-        specVersion: 0.0.2
-       ";
-
-    // let manifest = resolve_manifest(YAML).await;
     // SubgraphManifest::resolve(id, &resolver, &LOGGER)
-    SubgraphManifest::load_file(params.config_url);
+    IndexDeployment::load_file(params.config_url);
 }
 
 // fn from_manifest(
@@ -118,67 +87,73 @@ fn deploy_handler(
 //     })
 // }
 
+//
+// Test
+//
 #[derive(Default)]
 struct TextResolver {
     texts: HashMap<String, String>,
 }
-
 impl TextResolver {
     fn add(&mut self, link: &str, text: &str) {
         self.texts.insert(link.to_owned(), text.to_owned());
     }
 }
-
 const GQL_SCHEMA: &str = "type Thing @entity { id: ID! }";
-
 const ABI: &str = "[{\"type\":\"function\", \"inputs\": [{\"name\": \"i\",\"type\": \"uint256\"}],\"name\":\"get\",\"outputs\": [{\"type\": \"address\",\"name\": \"o\"}]}]";
-
 const MAPPING: &str = "export function handleGet(call: getCall): void {}";
 // async fn resolve_manifest(text: &str) -> SubgraphManifest {
 async fn resolve_manifest(text: &str) {
     let mut resolver = TextResolver::default();
     // let id = DeploymentHash::new("Qmmanifest").unwrap();
-
     // resolver.add("a".as_str(), text);
     resolver.add("/ipfs/Qmschema", GQL_SCHEMA);
     resolver.add("/ipfs/Qmabi", ABI);
     resolver.add("/ipfs/Qmmapping", MAPPING);
-
-
     // SubgraphManifest::resolve(id, &resolver, &LOGGER)
     //     .await
     //     .expect("Parsing simple manifest works")
 }
 
-
-// TODO: Refactor with JsonRpcServer later
-// pub struct JsonRpcServer {
-//     http_addr: String,
-// }
 //
-// impl JsonRpcServer {
-//     fn serve(
-//         http_addr: String,
-//     ) -> Result<CustomServer, io::Error> {
-//         let server = ServerBuilder::new(handler)
-//             // .cors(DomainsValidation::AllowOnly(vec![AccessControlAllowOrigin::Null]))
-//             .start_http(&http_addr.parse().unwrap())
-//             .expect("Unable to start RPC server");
-//         server
-//     }
+// JSON RPC HTTP SERVER. TODO: migrate to a separate cargo
 //
-//     /// Handler for the `subgraph_deploy` endpoint.
-//     async fn deploy_handler(
-//         &self,
-//         // params: SubgraphDeployParams,
-//     ) -> Result<Value, jsonrpc_core::Error> {
-//         Ok(serde_json::to_value("A").expect("invalid deploy"))
-//     }
-// }
+pub struct JsonRpcServer {
+    http_addr: String,
+}
 
+impl JsonRpcServer {
+    fn serve(
+        http_addr: String,
+    ) -> jsonrpc_http_server::Server {
+        let mut handler = IoHandler::with_compatibility(Compatibility::Both);
+
+        // If we want to use tokio::spawn, need to grab the hackie code from the graph that resolve running tokio spawn with json_rpc_http_server
+        // Reason: https://stackoverflow.com/questions/61292425/how-to-run-an-asynchronous-task-from-a-non-main-thread-in-tokio
+        handler.add_method("index_deploy", |params: Params| {
+            thread::spawn(|| {
+                println!("Received an index request"); // Refactor to use slog logger
+                let params = params.parse().unwrap(); // Refactor to add param check
+                deploy_handler(params);
+            });
+            Ok(Value::String("hello".into()))
+        });
+
+        let server = ServerBuilder::new(handler)
+            // .cors(DomainsValidation::AllowOnly(vec![AccessControlAllowOrigin::Null]))
+            .start_http(&http_addr.parse().unwrap())
+            .expect("Unable to start RPC server");
+
+        server
+    }
+}
+
+//
+// Index Deployment
+//
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct BaseSubgraphManifest {
+pub struct BaseIndexDeployment {
     // pub id: DeploymentHash,
     pub spec_version: String,
     // #[serde(default)]
@@ -194,10 +169,8 @@ pub struct BaseSubgraphManifest {
     // pub chain: PhantomData<C>,
 }
 
-pub type SubgraphManifest = BaseSubgraphManifest;
-
-
-impl SubgraphManifest {
+pub type IndexDeployment = BaseIndexDeployment; // This is refactored from BaseSubgraphManifest. TODO: Check why this needs a base struct
+impl IndexDeployment {
     /// Entry point for resolving a subgraph definition.
     /// Right now the only supported links are of the form:
     /// `/ipfs/QmUmg7BZC1YP1ca66rRtWKxpXp77WgVHrnv263JtDuvs2k`
@@ -205,13 +178,14 @@ impl SubgraphManifest {
     pub fn resolve(
         // id: DeploymentHash,
         // resolver: &impl LinkResolver,
-        // logger: &Logger,
+        logger: &Logger,
     // ) -> Result<Self, SubgraphManifestResolveError> {
     ) {
         // let link = Link {
         //     link: id.to_string(),
         // };
         // info!(logger, "Resolve manifest"; "link" => &link.link);
+        let logger = logger.new(o!("component" => "BlockWriter"));
 
         // let file_bytes = resolver;
             // .cat(logger, &link)
@@ -253,22 +227,23 @@ impl SubgraphManifest {
     //         .map_err(SubgraphManifestResolveError::ResolveError)
     // }
 
-    // Hughie: New introduce
+    // Hughie: Lazily read config from local file
     fn load_file(
         config_url: String,
     ) {
         let f = File::open(config_url).unwrap();
         let data: serde_yaml::Value = serde_yaml::from_reader(f).unwrap();
+
         let schemaFile = data["schema"]["file"]
             .as_str()
-            .map(|s| s.to_string()).unwrap();
-            // .ok_or(anyhow!("Could not find key foo.bar in something.yaml"));
-        println!("Schema: {}",schemaFile);
+            .map(|s| s.to_string())
+            .ok_or(anyhow!("Could not find schema file"));
+        println!("Schema: {}",schemaFile.unwrap());
 
         let kind = data["dataSources"][0]["kind"]
             .as_str()
-            .map(|s| s.to_string()).unwrap();
-        // .ok_or(anyhow!("Could not find key foo.bar in something.yaml"));
-        println!("Kind: {}",kind);
+            .map(|s| s.to_string())
+            .ok_or(anyhow!("Could not find network kind"));
+        println!("Kind: {}",kind.unwrap());
     }
 }
