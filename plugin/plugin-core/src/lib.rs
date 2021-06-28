@@ -1,9 +1,17 @@
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
-use types::SubstrateBlock;
+use types::{SubstrateBlock, SubstrateEvent, SubstrateExtrinsic};
 
-pub trait Function {
+pub trait BlockHandler {
     fn handle_block(&self, block: &SubstrateBlock) -> Result<(), InvocationError>;
+}
+
+pub trait ExtrinsicHandler {
+    fn handle_extrinsic(&self, block: &SubstrateExtrinsic) -> Result<(), InvocationError>;
+}
+
+pub trait EventHandler {
+    fn handle_event(&self, block: &SubstrateEvent) -> Result<(), InvocationError>;
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -26,7 +34,9 @@ pub struct PluginDeclaration {
 }
 
 pub trait PluginRegistrar {
-    fn register_function(&mut self, name: &str, function: Box<dyn Function>);
+    fn register_block_handler(&mut self, name: &str, function: Box<dyn BlockHandler>);
+    fn register_extrinsic_handler(&mut self, name: &str, function: Box<dyn ExtrinsicHandler>);
+    fn register_event_handler(&mut self, name: &str, function: Box<dyn EventHandler>);
 }
 
 #[macro_export]

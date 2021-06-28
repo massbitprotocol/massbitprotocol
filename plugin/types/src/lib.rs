@@ -37,3 +37,11 @@
 pub struct SubstrateBlock {
     pub idx: i64,
 }
+
+pub struct SubstrateExtrinsic {
+    pub idx: i64,
+}
+
+pub struct SubstrateEvent {
+    pub idx: i64,
+}
