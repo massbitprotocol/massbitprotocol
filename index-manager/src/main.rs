@@ -26,21 +26,6 @@ struct DeployParams {
     // abi: String,
 }
 
-/// Runtime representation of a data source.
-// Note: Not great for memory usage that this needs to be `Clone`, considering how there may be tens
-// of thousands of data sources in memory at once.
-// #[derive(Clone, Debug)]
-// pub struct DataSource {
-//     pub kind: String,
-//     pub network: Option<String>,
-//     pub name: String,
-//     pub source: Source,
-//     pub mapping: Mapping,
-//     pub context: Arc<Option<DataSourceContext>>,
-//     pub creation_block: Option<BlockNumber>,
-//     pub contract_abi: Arc<MappingABI>,
-// }
-
 #[tokio::main]
 async fn main() {
     let server = JsonRpcServer::serve(
@@ -58,34 +43,8 @@ fn deploy_handler(
     }
 }
 
-// fn from_manifest(
-//     kind: String,
-//     network: Option<String>,
-//     name: String,
-//     source: Source,
-//     mapping: Mapping,
-//     context: Option<DataSourceContext>,
-// ) -> Result<Self, Error> {
-//     // Data sources in the manifest are created "before genesis" so they have no creation block.
-//     let creation_block = None;
-//     let contract_abi = mapping
-//         .find_abi(&source.abi)
-//         .with_context(|| format!("data source `{}`", name))?;
 //
-//     Ok(DataSource {
-//         kind,
-//         network,
-//         name,
-//         source,
-//         mapping,
-//         context: Arc::new(context),
-//         creation_block,
-//         contract_abi,
-//     })
-// }
-
-//
-// Test
+// Todo: clone the code + test fr ommanifest reader and (in-progress)
 //
 #[derive(Default)]
 struct TextResolver {
@@ -145,6 +104,7 @@ impl JsonRpcServer {
     }
 }
 
+
 //
 // Index Deployment
 //
@@ -167,6 +127,8 @@ pub struct BaseIndexDeployment {
 }
 
 pub type IndexDeployment = BaseIndexDeployment; // This is refactored from BaseSubgraphManifest. TODO: Check why this needs a base struct
+
+// TODO: using code from the graph (in-progress)
 impl IndexDeployment {
     /// Entry point for resolving a subgraph definition.
     /// Right now the only supported links are of the form:
@@ -235,12 +197,54 @@ impl IndexDeployment {
             .as_str()
             .map(|s| s.to_string())
             .ok_or(anyhow!("Could not find schema file"));
-        println!("Schema: {}",schemaFile.unwrap()); // Refactor to use slog logge
+        println!("Schema: {}",schemaFile.unwrap()); // Refactor to use slog logger
 
         let kind = data["dataSources"][0]["kind"]
             .as_str()
             .map(|s| s.to_string())
             .ok_or(anyhow!("Could not find network kind"));
-        println!("Kind: {}",kind.unwrap()); // Refactor to use slog logge
+        println!("Kind: {}",kind.unwrap()); // Refactor to use slog logger
     }
 }
+
+
+///// Runtime representation of a data source.
+// Note: Not great for memory usage that this needs to be `Clone`, considering how there may be tens
+// of thousands of data sources in memory at once.
+// #[derive(Clone, Debug)]
+// pub struct DataSource {
+//     pub kind: String,
+//     pub network: Option<String>,
+//     pub name: String,
+//     pub source: Source,
+//     pub mapping: Mapping,
+//     pub context: Arc<Option<DataSourceContext>>,
+//     pub creation_block: Option<BlockNumber>,
+//     pub contract_abi: Arc<MappingABI>,
+// }
+
+// fn from_manifest(
+//     kind: String,
+//     network: Option<String>,
+//     name: String,
+//     source: Source,
+//     mapping: Mapping,
+//     context: Option<DataSourceContext>,
+// ) -> Result<Self, Error> {
+//     // Data sources in the manifest are created "before genesis" so they have no creation block.
+//     let creation_block = None;
+//     let contract_abi = mapping
+//         .find_abi(&source.abi)
+//         .with_context(|| format!("data source `{}`", name))?;
+//
+//     Ok(DataSource {
+//         kind,
+//         network,
+//         name,
+//         source,
+//         mapping,
+//         context: Arc::new(context),
+//         creation_block,
+//         contract_abi,
+//     })
+// }
