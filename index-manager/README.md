@@ -65,7 +65,7 @@ Create new index (update on: 25-6-2021)
 Description: 
 - For every new request, indexer will start a new thread to index data.
 - params: 
-  - index_config_url: the location of (mapping, schema, config file) so the index manager can query.
+  - config_url: the location of (mapping, schema, config file) so the index manager can query.
 
 ```http request
 curl --location --request POST 'SERVER_ADDRESS:SERVER_PORT' \
