@@ -36,12 +36,12 @@ message GenericDataProto {
       Transaction = 2;
   }
 
-//  ChainType chain_type = 1;
+  ChainType chain_type = 1;
   string version = 2;
-//  DataType data_type = 3;
-//  string block_hash = 4;
-//  uint64 block_number = 5;
-//  bytes payload = 6;
+  DataType data_type = 3;
+  string block_hash = 4;
+  uint64 block_number = 5;
+  bytes payload = 6;
 }
 
 

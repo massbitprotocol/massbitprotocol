@@ -68,5 +68,6 @@ full_crypto = []
 tonic-build = "0.4"
 
 [[bin]] # Bin to run the HelloWorld gRPC server
-name = "helloworld-server"
-path = "src/server.rs"
+name = "massbit-indexer"
+path = "src/main.rs"
+

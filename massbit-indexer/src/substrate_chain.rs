@@ -6,28 +6,36 @@ use node_template_runtime::{Block, Header, SignedBlock};
 use std::sync::mpsc::channel;
 use substrate_api_client::Api;
 use substrate_api_client::rpc::json_req;
+use substrate_api_client::utils::FromHexString;
 use env_logger;
 use serde_json;
 use serde::{Serialize, Deserialize};
 use std::error::Error;
-use substrate_api_client::utils::FromHexString;
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use futures_util::TryFutureExt;
+use crate::stream_mod::GenericDataProto;
+use prost;
 
 const CHAIN_TYPE: ChainType = ChainType::Substrate;
 const VERSION:&str = "1";
 
-#[derive(Debug)]
+// Check https://github.com/tokio-rs/prost for enum converting in rust protobuf
+#[derive(Debug, prost::Enumeration)]
 enum ChainType{
-    Substrate,
-    Ethereum,
-    Solana,
+    Substrate = 0,
+    Ethereum = 1,
+    Solana = 2,
 }
 
-#[derive(Debug)]
+#[derive(Debug, prost::Enumeration)]
 enum DataType{
-    Block,
-    Event,
-    Transaction,
+    Block = 0,
+    Event = 1,
+    Transaction = 2,
 }
+
+
 #[derive(Debug)]
 struct GenericData{
     chain_type: ChainType,
@@ -49,8 +57,19 @@ fn create_generic_block_from_header(api:&Api<sr25519::Pair>, header:Header) -> R
     // Call RPC to get block
     let block = api.get_block::<Block>(Some(block_hash.unwrap())).unwrap().unwrap();
     Ok(_create_generic_block(hash,&block))
-
 }
+
+fn create_generic_data_proto_from_generic_data(generic_data: GenericData) -> GenericDataProto {
+    GenericDataProto{
+        version: generic_data.version,
+        block_hash: generic_data.block_hash,
+        block_number: generic_data.block_number,
+        chain_type: generic_data.chain_type as i32,
+        data_type: generic_data.data_type as i32,
+        payload: generic_data.payload,
+    }
+}
+
 
 fn _create_generic_block(   block_hash: String,
                             block:&Block) -> GenericData
@@ -70,7 +89,7 @@ fn _create_generic_block(   block_hash: String,
     generic_block
 }
 
-pub fn get_data(){
+pub async fn get_data(ls_generic_data: Arc<Mutex<Vec<GenericDataProto>>>){
 
     println!("start");
     env_logger::init();
@@ -104,8 +123,15 @@ pub fn get_data(){
             .map(|header| serde_json::from_str(&header).unwrap())
             .unwrap();
         println!("Got new header {:?}", head);
-        let generic_block = create_generic_block_from_header(&api, head);
-        println!("Got new header {:?}", generic_block);
+        let generic_block = create_generic_block_from_header(&api, head).unwrap();
+        println!("Got new block {:?}", &generic_block);
+        let generic_block_proto = create_generic_data_proto_from_generic_data(generic_block);
+        println!("convert to proto block {:?}", &generic_block_proto);
+        // Add to data list
+        {
+             let mut lock_ls_generic_data = ls_generic_data.lock().await;
+             lock_ls_generic_data.push(generic_block_proto);
+        };
     }
 }
 
