@@ -55,7 +55,7 @@ use routeguide::route_guide_client::RouteGuideClient;
 use routeguide::{Point, Rectangle, RouteNote};
 
 pub mod routeguide {
-    tonic::include_proto!("routeguide");
+    tonic::include_proto!("streamout");
 }
 
 async fn print_features(client: &mut RouteGuideClient<Channel>) -> Result<(), Box<dyn Error>> {
@@ -134,34 +134,26 @@ async fn run_route_chat(client: &mut RouteGuideClient<Channel>) -> Result<(), Bo
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut client = RouteGuideClient::connect("http://[::1]:10000").await?;
-
-    println!("*** SIMPLE RPC ***");
-    let response = client
-        .get_feature(Request::new(Point {
-            latitude: 409_146_138,
-            longitude: -746_188_906,
-        }))
-        .await?;
-    println!("RESPONSE = {:?}", response);
-
-    println!("\n*** SERVER STREAMING ***");
-    print_features(&mut client).await?;
-
-    println!("\n*** CLIENT STREAMING ***");
-    run_record_route(&mut client).await?;
-
-    println!("\n*** BIDIRECTIONAL STREAMING ***");
-    run_route_chat(&mut client).await?;
+    // let mut client = RouteGuideClient::connect("http://[::1]:10000").await?;
+    //
+    // println!("*** SIMPLE RPC ***");
+    // let response = client
+    //     .get_feature(Request::new(Point {
+    //         latitude: 409_146_138,
+    //         longitude: -746_188_906,
+    //     }))
+    //     .await?;
+    // println!("RESPONSE = {:?}", response);
+    //
+    // println!("\n*** SERVER STREAMING ***");
+    // print_features(&mut client).await?;
+    //
+    // println!("\n*** CLIENT STREAMING ***");
+    // run_record_route(&mut client).await?;
+    //
+    // println!("\n*** BIDIRECTIONAL STREAMING ***");
+    // run_route_chat(&mut client).await?;
 
     Ok(())
 }
 
-fn random_point(rng: &mut ThreadRng) -> Point {
-    let latitude = (rng.gen_range(0..180) - 90) * 10_000_000;
-    let longitude = (rng.gen_range(0..360) - 180) * 10_000_000;
-    Point {
-        latitude,
-        longitude,
-    }
-}

@@ -12,9 +12,9 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tokio::time::{sleep, Duration};
 
-use tonic::{transport::Server, Request, Response, Status};
+use tonic::{Request, Response, Status};
 use crate::stream_mod::{HelloReply, HelloRequest, GenericDataProto};
-use stream_mod::streamout_server::{Streamout, StreamoutServer};
+use stream_mod::streamout_server::{Streamout};
 
 
 #[derive(Debug, Default)]
@@ -38,17 +38,17 @@ impl Streamout for StreamService {
         Ok(Response::new(reply))
     }
 
-    type StreamBlockStream = ReceiverStream<Result<GenericDataProto, Status>>;
+    type ListBlocksStream = ReceiverStream<Result<GenericDataProto, Status>>;
 
-    async fn stream_blocks(
+    async fn list_blocks(
         &self,
         request: Request<HelloRequest>,
-    ) -> Result<Response<Self::ListFeaturesStream>, Status> {
+    ) -> Result<Response<Self::ListBlocksStream>, Status> {
         println!("ListFeatures = {:?}", request);
 
         let (tx, rx) = mpsc::channel(4);
 
-        let mut ls_generic_data = Arc::clone(&self.ls_generic_data);
+        let ls_generic_data = Arc::clone(&self.ls_generic_data);
 
         tokio::spawn(async move {
             // Todo: Need improve because of the locking time and pop effect.

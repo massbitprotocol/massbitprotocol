@@ -1,18 +1,5 @@
 syntax = "proto3";
 
-//option java_multiple_files = true;
-//option java_package = "io.grpc.examples.stream_out";
-//option java_outer_classname = "StreamOutProto";
-
-// struct GenericData{
-//    chain_type: ChainType,
-//    version: String,
-//    data_type: DataType,
-//    block_hash: String,
-//    block_number: u64,
-//    payload: Vec<u8>
-// }
-
 package streamout;
 
 // Interface exported by the server.
@@ -21,7 +8,7 @@ service Streamout {
   rpc SayHello(HelloRequest) returns (HelloReply);
 
   // A server-to-client streaming RPC.
-  rpc StreamBlocks(HelloRequest) returns (stream GenericDataProto);
+  rpc ListBlocks(HelloRequest) returns (stream GenericDataProto);
 }
 
 message GenericDataProto {

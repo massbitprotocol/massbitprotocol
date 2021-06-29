@@ -9,11 +9,9 @@ use substrate_api_client::rpc::json_req;
 use substrate_api_client::utils::FromHexString;
 use env_logger;
 use serde_json;
-use serde::{Serialize, Deserialize};
 use std::error::Error;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use futures_util::TryFutureExt;
 use crate::stream_mod::GenericDataProto;
 use prost;
 
@@ -21,6 +19,8 @@ const CHAIN_TYPE: ChainType = ChainType::Substrate;
 const VERSION:&str = "1";
 
 // Check https://github.com/tokio-rs/prost for enum converting in rust protobuf
+
+#[allow(dead_code)]
 #[derive(Debug, prost::Enumeration)]
 enum ChainType{
     Substrate = 0,
@@ -28,6 +28,7 @@ enum ChainType{
     Solana = 2,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, prost::Enumeration)]
 enum DataType{
     Block = 0,
