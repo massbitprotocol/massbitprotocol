@@ -1,4 +1,5 @@
 [workspace]
 members = [
     "chain-reader",
+    "indexer/index-manager",
 ]
