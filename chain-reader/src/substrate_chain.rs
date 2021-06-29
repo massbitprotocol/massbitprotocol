@@ -2,7 +2,8 @@ use clap::App;
 
 use sp_core::{sr25519, H256 as Hash};
 
-use node_template_runtime::{Block, Header, SignedBlock};
+use massbit_chain_substrate::data_type::{
+    SubstrateBlock as Block, SubstrateHeader as Header };
 use std::sync::mpsc::channel;
 use substrate_api_client::Api;
 use substrate_api_client::rpc::json_req;
@@ -21,24 +22,24 @@ const VERSION:&str = "1";
 // Check https://github.com/tokio-rs/prost for enum converting in rust protobuf
 
 #[allow(dead_code)]
-#[derive(Debug, prost::Enumeration)]
-enum ChainType{
+#[derive(Debug, PartialEq, Clone, prost::Enumeration)]
+pub enum ChainType{
     Substrate = 0,
     Ethereum = 1,
     Solana = 2,
 }
 
 #[allow(dead_code)]
-#[derive(Debug, prost::Enumeration)]
-enum DataType{
+#[derive(Debug, PartialEq, Clone, prost::Enumeration)]
+pub enum DataType{
     Block = 0,
     Event = 1,
     Transaction = 2,
 }
 
 
-#[derive(Debug)]
-struct GenericData{
+#[derive(Debug, Clone)]
+pub struct GenericData{
     chain_type: ChainType,
     version: String,
     data_type: DataType,
@@ -99,20 +100,11 @@ pub async fn get_data(ls_generic_data: Arc<Mutex<Vec<GenericDataProto>>>){
 
     let api = Api::<sr25519::Pair>::new(url).unwrap();
 
-    let head = api.get_finalized_head().unwrap().unwrap();
+    // let head = api.get_finalized_head().unwrap().unwrap();
+    //
+    // println!("Finalized Head:\n {} \n", head);
 
-    println!("Finalized Head:\n {} \n", head);
 
-    let h: Header = api.get_header(Some(head)).unwrap().unwrap();
-    println!("Finalized header:\n {:?} \n", h);
-
-    let b: SignedBlock = api.get_signed_block(Some(head)).unwrap().unwrap();
-    println!("Finalized signed block:\n {:?} \n", b);
-
-    println!(
-        "Latest Header: \n {:?} \n",
-        api.get_header::<Header>(None).unwrap()
-    );
 
     println!("Subscribing to finalized heads");
     let (sender, receiver) = channel();
