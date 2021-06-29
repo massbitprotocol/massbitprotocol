@@ -1,0 +1,76 @@
+[package]
+name = "massbit-indexer"
+version = "0.1.0"
+edition = "2018"
+authors = ["huy <anhhuy0501@gmail.com>"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+dotenv          = "0.15.0"
+env_logger      = { version = "0.7", optional = false }
+ws              = { version = "0.9.1", optional = true, features = ["ssl"] }
+hex             = { version = "0.4.2", default-features = false }
+log             = { version = "0.4", optional = true }
+serde           = { version = "1.0", optional = false }
+serde_json      = { version = "1.0", optional = false }
+thiserror       = { version = "1.0", optional =true }
+primitive-types = { version = "0.6.1", optional = true, features = ["codec"] }
+
+substrate-api-client = { version = "0.6.0",path = "../../substrate-api-client"}
+
+# For protobuf
+tonic = "0.4"
+prost = "0.7"
+futures-core = "0.3"
+futures-util = "0.3"
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "sync", "time"] }
+tokio-stream = "0.1"
+
+async-stream = "0.2"
+rand = "0.7"
+
+[dependencies.sp-core]
+git = "https://github.com/paritytech/substrate.git"
+branch = "master"
+package = "sp-core"
+default-features = false
+features = ["full_crypto"]
+
+[dependencies.sc-rpc-api]
+git = "https://github.com/paritytech/substrate.git"
+branch = "master"
+optional = true
+
+[dependencies.node-template-runtime]
+git = "https://github.com/scs/substrate-api-client-test-node"
+branch = "bump-to-polkadot-v0.9.2"
+
+#[dev-dependencies.keyring]
+#git = "https://github.com/paritytech/substrate.git"
+#branch = "master"
+#package = "sp-keyring"
+
+[dependencies.clap]
+version = "2.33"
+features = ["yaml"]
+
+[features]
+default = ["std"]
+std = [
+    "sp-core/std",
+]
+# need to add this for the app_crypto macro
+full_crypto = []
+
+[build-dependencies]
+tonic-build = "0.4"
+
+[[bin]] # Bin to run gRPC server
+name = "massbit-indexer"
+path = "src/main.rs"
+
+[[bin]] # Bin to run gRPC client
+name = "test_client"
+path = "src/test/client.rs"
