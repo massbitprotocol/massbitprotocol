@@ -58,17 +58,16 @@ fn handleCall(call: SubstrateCall) {
 
 ## API
 
-Method: index_deploy
+Method: index_deploy 
 
-Create new index (update on: 25-6-2021) 
+Updated on: 29-6-2021
 
 Description: 
-- For every new request, indexer will start a new thread to index data.
+- For every new request, the indexer will start a new thread to index data.
 - params: 
-  - config_url: the location of (mapping, schema, config file) so the index manager can query.
+  - Name of the index
+  - The URL where the user store the config (IPFS, S3, Local)
 
 ```http request
-curl --location --request POST 'SERVER_ADDRESS:SERVER_PORT' \
---header 'Content-Type: application/json' \
---data-raw '{"jsonrpc": "2.0", "method": "index_deploy", "id":123 }'
+curl --location --request POST 'localhost:3030' --header 'Content-Type: application/json' --data-raw '{"jsonrpc": "2.0", "method": "index_deploy", "params": ["index_name","yaml/project.yaml"], "id":1 }'
 ```
