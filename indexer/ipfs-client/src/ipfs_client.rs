@@ -1,4 +1,3 @@
-// use crate::prelude::CheapClone;
 use anyhow::Error;
 use bytes::Bytes;
 use futures03::{Stream, TryFutureExt};
@@ -7,7 +6,6 @@ use http::Uri;
 use reqwest::multipart;
 use serde::Deserialize;
 use std::{str::FromStr, sync::Arc};
-// use tokio_compat_02::FutureExt;
 use std::thread;
 use std::time::Duration;
 
@@ -35,15 +33,6 @@ pub struct IpfsClient {
     base: Arc<Uri>,
     client: Arc<reqwest::Client>,
 }
-
-// impl CheapClone for IpfsClient {
-//     fn cheap_clone(&self) -> Self {
-//         IpfsClient {
-//             base: self.base.cheap_clone(),
-//             client: self.client.cheap_clone(),
-//         }
-//     }
-// }
 
 impl IpfsClient {
     pub fn new(base: &str) -> Result<Self, Error> {
@@ -120,9 +109,7 @@ impl IpfsClient {
     }
 }
 
-
-// fn create_ipfs_clients(logger: &Logger, ipfs_addresses: &Vec<String>) -> Vec<IpfsClient> {
-async fn create_ipfs_clients(ipfs_addresses: &Vec<String>) -> Vec<IpfsClient> {
+pub async fn create_ipfs_clients(ipfs_addresses: &Vec<String>) -> Vec<IpfsClient> {
     // Parse the IPFS URL from the `--ipfs` command line argument
     let ipfs_addresses: Vec<_> = ipfs_addresses
         .iter()
@@ -138,62 +125,29 @@ async fn create_ipfs_clients(ipfs_addresses: &Vec<String>) -> Vec<IpfsClient> {
     ipfs_addresses
         .into_iter()
         .map(|ipfs_address| {
-            // info!(
-            //     logger,
-            //     "Trying IPFS node at: {}",
-            //     SafeDisplay(&ipfs_address)
-            // );
-            println!("Trying IPFS node at");
+            println!("Trying IPFS node");
 
             let ipfs_client = match IpfsClient::new(&ipfs_address) {
                 Ok(ipfs_client) => ipfs_client,
                 Err(e) => {
-                    // error!(
-                    //     logger,
-                    //     "Failed to create IPFS client for `{}`: {}",
-                    //     SafeDisplay(&ipfs_address),
-                    //     e
-                    // );
                     println!("Failed to create IPFS client");
                     panic!("Could not connect to IPFS");
                 }
             };
-            // Test the IPFS client by getting the version from the IPFS daemon
-            // let ipfs_test = ipfs_client.cheap_clone();
-            // let ipfs_ok_logger = logger.clone();
-            // let ipfs_err_logger = logger.clone();
-            let ipfs_address_for_ok = ipfs_address.clone();
-            let ipfs_address_for_err = ipfs_address.clone();
 
             let ipfs_test = ipfs_client.clone();
             tokio::spawn(async move {
                 ipfs_test
                     .test()
                     .map_err(move |e| {
-                        // error!(
-                        //     ipfs_err_logger,
-                        //     "Is there an IPFS node running at \"{}\"?",
-                        //     SafeDisplay(ipfs_address_for_err),
-                        // );
                         panic!("Failed to connect to IPFS: {}", e);
                     })
                     .map_ok(move |_| {
                         println!("Successfully connected to IPFS node")
-                        // info!(
-                        //     ipfs_ok_logger,
-                        //     "Successfully connected to IPFS node at: {}",
-                        //     SafeDisplay(ipfs_address_for_ok)
-                        // );
                     }).await;
             });
             thread::sleep(Duration::from_secs(3)); // Todo: check why ipfs is not waiting
             ipfs_client
         })
         .collect()
-}
-
-#[tokio::main]
-async fn main() {
-    let mut ipfs_addresses = vec!["0.0.0.0:5001".to_string()];
-    create_ipfs_clients(&ipfs_addresses).await;
 }
