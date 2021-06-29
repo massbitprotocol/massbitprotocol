@@ -5,7 +5,8 @@ use http::header::CONTENT_LENGTH;
 use http::Uri;
 use reqwest::multipart;
 use serde::Deserialize;
-use std::{str::FromStr, sync::Arc};
+use std::{str::FromStr, sync::Arc, thread};
+use std::time::Duration;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]
@@ -123,12 +124,11 @@ pub async fn create_ipfs_clients(ipfs_addresses: &Vec<String>) -> Vec<IpfsClient
     ipfs_addresses
         .into_iter()
         .map(|ipfs_address| {
-            println!("Trying IPFS node");
-
+            log::info!("[Ipfs Client] Try connecting to IPFS node");
             let ipfs_client = match IpfsClient::new(&ipfs_address) {
                 Ok(ipfs_client) => ipfs_client,
                 Err(e) => {
-                    println!("Failed to create IPFS client {}", e);
+                    log::error!("[Ipfs Client] Failed to create IPFS client");
                     panic!("Could not connect to IPFS");
                 }
             };
@@ -139,12 +139,13 @@ pub async fn create_ipfs_clients(ipfs_addresses: &Vec<String>) -> Vec<IpfsClient
                 ipfs_test
                     .test()
                     .map_err(move |e| {
-                        panic!("Failed to connect to IPFS: {}", e);
+                        panic!("[Ipfs Client] Failed to connect to IPFS: {}", e);
                     })
                     .map_ok(move |_| {
-                        println!("Successfully connected to IPFS node")
+                        log::info!("[Ipfs Client] Successfully connected to IPFS node");
                     }).await;
             });
+            thread::sleep(Duration::from_secs(2)); // Manually wait for tokio thread to finish. This shouldn't be hard-coded
             ipfs_client
         })
         .collect()

@@ -16,3 +16,5 @@ serde_yaml = "0.8"
 tokio = { version = "0.2.25", features = ["stream", "rt-threaded", "rt-util", "blocking", "time", "sync", "macros", "test-util", "net"] }
 tokio-stream = { version = "0.1.6", features = ["sync"] }
 tokio-retry = { git = "https://github.com/graphprotocol/rust-tokio-retry", branch = "update-to-tokio-02" }
+log = "0.4.0"
+env_logger = "0.8.4"
