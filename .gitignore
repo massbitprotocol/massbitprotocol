@@ -26,4 +26,4 @@ Cargo.lock
 __pycache__
 
 .vscode/
-massbit-indexer/data/
+chain-reader/data/
