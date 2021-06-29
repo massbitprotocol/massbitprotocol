@@ -115,11 +115,11 @@ pub async fn get_data(ls_generic_data: Arc<Mutex<Vec<GenericDataProto>>>){
             .recv()
             .map(|header| serde_json::from_str(&header).unwrap())
             .unwrap();
-        println!("Got new header {:?}", head);
+        // println!("Got new header {:?}", head);
         let generic_block = create_generic_block_from_header(&api, head).unwrap();
-        println!("Got new block {:?}", &generic_block);
+        println!("Got block number: {:?}, hash: {:?}", &generic_block.block_number,&generic_block.block_hash);
         let generic_block_proto = create_generic_data_proto_from_generic_data(generic_block);
-        println!("convert to proto block {:?}", &generic_block_proto);
+        //println!("convert to proto block {:?}", &generic_block_proto);
         // Add to data list
         {
              let mut lock_ls_generic_data = ls_generic_data.lock().await;

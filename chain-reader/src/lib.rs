@@ -13,7 +13,7 @@ use tokio_stream::wrappers::ReceiverStream;
 use tokio::time::{sleep, Duration};
 
 use tonic::{Request, Response, Status};
-use crate::stream_mod::{HelloReply, HelloRequest, GenericDataProto};
+use crate::stream_mod::{HelloReply, HelloRequest, GetBlocksRequest, GenericDataProto};
 use stream_mod::streamout_server::{Streamout};
 
 
@@ -42,7 +42,7 @@ impl Streamout for StreamService {
 
     async fn list_blocks(
         &self,
-        request: Request<HelloRequest>,
+        request: Request<GetBlocksRequest>,
     ) -> Result<Response<Self::ListBlocksStream>, Status> {
         println!("ListFeatures = {:?}", request);
 
@@ -58,7 +58,7 @@ impl Streamout for StreamService {
                     let mut lock_ls_generic_data = ls_generic_data.lock().await;
                     if !lock_ls_generic_data.is_empty() {
                         let generic_data = lock_ls_generic_data.pop().unwrap();
-                        println!("  => send {:?}", &generic_data);
+                        println!("  => send block: {:?}, hash: {:?}", &generic_data.block_number, &generic_data.block_hash);
                         tx.send(Ok(generic_data.clone())).await.unwrap();
                     }
                 }

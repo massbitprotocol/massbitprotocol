@@ -8,7 +8,7 @@ service Streamout {
   rpc SayHello(HelloRequest) returns (HelloReply);
 
   // A server-to-client streaming RPC.
-  rpc ListBlocks(HelloRequest) returns (stream GenericDataProto);
+  rpc ListBlocks(GetBlocksRequest) returns (stream GenericDataProto);
 }
 
 message GenericDataProto {
@@ -35,6 +35,12 @@ message GenericDataProto {
 message HelloRequest {
   // Request message contains the name to be greeted
   string name = 1;
+}
+
+message GetBlocksRequest {
+  // Request message contains the name to be greeted
+  uint64 start_block_number = 1;
+  uint64 end_block_number = 2;
 }
 
 message HelloReply {

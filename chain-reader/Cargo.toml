@@ -79,5 +79,5 @@ name = "chain-reader"
 path = "src/main.rs"
 
 [[bin]] # Bin to run gRPC client
-name = "test_client"
+name = "run_client"
 path = "src/test/client.rs"
