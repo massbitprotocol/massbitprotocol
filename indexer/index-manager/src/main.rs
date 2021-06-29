@@ -1,6 +1,6 @@
 // Massbit dependencies
-use json_rpc_server::json_rpc_server::JsonRpcServer;
-use ipfs_client::ipfs_client::create_ipfs_clients;
+use json_rpc_server::core::JsonRpcServer;
+use ipfs_client::core::create_ipfs_clients;
 
 #[tokio::main]
 async fn main() {
