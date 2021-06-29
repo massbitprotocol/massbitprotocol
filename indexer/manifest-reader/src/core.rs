@@ -1,6 +1,7 @@
 use thiserror::Error;
 use std::fs::File;
 use anyhow::anyhow;
+use log::info;
 
 #[derive(Error, Debug)]
 pub enum ManifestValidationError {
@@ -21,11 +22,11 @@ pub fn load_file(
         .as_str()
         .map(|s| s.to_string())
         .ok_or(anyhow!("Could not find schema file"));
-    println!("Schema: {}", schema.unwrap()); // Refactor to use slog logger
+    info!("Schema: {}", schema.unwrap());
 
     let kind = data["dataSources"][0]["kind"]
         .as_str()
         .map(|s| s.to_string())
         .ok_or(anyhow!("Could not find network kind"));
-    println!("Kind: {}", kind.unwrap()); // Refactor to use slog logger
+    info!("Kind: {}", kind.unwrap());
 }

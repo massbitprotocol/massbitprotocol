@@ -23,13 +23,14 @@ impl JsonRpcServer {
     pub fn serve(
         http_addr: String,
     ) -> jsonrpc_http_server::Server {
+
         let mut handler = IoHandler::with_compatibility(Compatibility::Both);
         // If we want to use tokio::spawn, need to grab the hackie code from the graph that resolve running tokio spawn with json_rpc_http_server
         // Reason: https://stackoverflow.com/questions/61292425/how-to-run-an-asynchronous-task-from-a-non-main-thread-in-tokio
         handler.add_method("index_deploy", |params: Params| {
             thread::spawn(|| {
                 let params: DeployParams = params.parse().unwrap(); // Refactor to add param check
-                println!("Received an index request from {}", params.index_name); // Refactor to use slog logger
+                log::info!("Received an index request from {}", params.index_name);
                 deploy_handler(params);
             });
             Ok(Value::String("Index deployed success".into()))
