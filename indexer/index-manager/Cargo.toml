@@ -17,3 +17,4 @@ jsonrpc-http-server = "15.0"
 # Massbit dependencies
 json-rpc-server = { path = "../json-rpc-server" }
 ipfs-client = { path = "../ipfs-client" }
+manifest-reader = { path = "../manifest-reader" }
