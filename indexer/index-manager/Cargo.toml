@@ -18,7 +18,7 @@ log = "0.4.0"
 env_logger = "0.8.4"
 chrono = "0.4"
 # Massbit dependencies
-json-rpc-server = { path = "../json-rpc-server" }
+index-manager-server = { path = "../index-manager-server" }
 ipfs-client = { path = "../../massbit-core/ipfs-client" }
 manifest-reader = { path = "../manifest-reader" }
 logger = { path = "../logger" }
