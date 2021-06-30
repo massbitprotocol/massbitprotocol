@@ -1,5 +1,5 @@
 // Massbit dependencies
-use json_rpc_server::core::JsonRpcServer;
+use index_manager_server::core::JsonRpcServer;
 use ipfs_client::core::create_ipfs_clients;
 use logger::core::init_logger;
 
