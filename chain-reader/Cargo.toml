@@ -11,14 +11,12 @@ authors = ["huy <anhhuy0501@gmail.com>"]
 dotenv          = "0.15.0"
 env_logger      = { version = "0.7", optional = false }
 ws              = { version = "0.9.1", optional = true, features = ["ssl"] }
-hex             = { version = "0.4.2", default-features = false }
+hex             = { version = "0.4.3", default-features = false }
 log             = { version = "0.4", optional = true }
 serde           = { version = "1.0", optional = false }
 serde_json      = { version = "1.0", optional = false }
 thiserror       = { version = "1.0", optional =true }
 primitive-types = { version = "0.6.1", optional = true, features = ["codec"] }
-
-substrate-api-client = { version = "0.6.0",path = "../../substrate-api-client"}
 
 # For protobuf
 tonic = "0.4"
@@ -30,6 +28,15 @@ tokio-stream = "0.1"
 
 async-stream = "0.2"
 rand = "0.7"
+
+massbit-chain-substrate = { path = "../massbit-core/chain/substrate" }
+
+[dependencies.substrate-api-client]
+git = "https://github.com/scs/substrate-api-client.git"
+branch = "master"
+package = "substrate-api-client"
+default-features = true
+
 
 [dependencies.sp-core]
 git = "https://github.com/paritytech/substrate.git"
@@ -68,9 +75,9 @@ full_crypto = []
 tonic-build = "0.4"
 
 [[bin]] # Bin to run gRPC server
-name = "massbit-indexer"
+name = "chain-reader"
 path = "src/main.rs"
 
 [[bin]] # Bin to run gRPC client
-name = "test_client"
+name = "run_client"
 path = "src/test/client.rs"

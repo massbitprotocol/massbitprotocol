@@ -2,18 +2,17 @@ use clap::App;
 
 use sp_core::{sr25519, H256 as Hash};
 
-use node_template_runtime::{Block, Header, SignedBlock};
+use massbit_chain_substrate::data_type::{
+    SubstrateBlock as Block, SubstrateHeader as Header };
 use std::sync::mpsc::channel;
 use substrate_api_client::Api;
 use substrate_api_client::rpc::json_req;
 use substrate_api_client::utils::FromHexString;
 use env_logger;
 use serde_json;
-use serde::{Serialize, Deserialize};
 use std::error::Error;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use futures_util::TryFutureExt;
 use crate::stream_mod::GenericDataProto;
 use prost;
 
@@ -21,23 +20,26 @@ const CHAIN_TYPE: ChainType = ChainType::Substrate;
 const VERSION:&str = "1";
 
 // Check https://github.com/tokio-rs/prost for enum converting in rust protobuf
-#[derive(Debug, prost::Enumeration)]
-enum ChainType{
+
+#[allow(dead_code)]
+#[derive(Debug, PartialEq, Clone, prost::Enumeration)]
+pub enum ChainType{
     Substrate = 0,
     Ethereum = 1,
     Solana = 2,
 }
 
-#[derive(Debug, prost::Enumeration)]
-enum DataType{
+#[allow(dead_code)]
+#[derive(Debug, PartialEq, Clone, prost::Enumeration)]
+pub enum DataType{
     Block = 0,
     Event = 1,
     Transaction = 2,
 }
 
 
-#[derive(Debug)]
-struct GenericData{
+#[derive(Debug, Clone)]
+pub struct GenericData{
     chain_type: ChainType,
     version: String,
     data_type: DataType,
@@ -98,20 +100,11 @@ pub async fn get_data(ls_generic_data: Arc<Mutex<Vec<GenericDataProto>>>){
 
     let api = Api::<sr25519::Pair>::new(url).unwrap();
 
-    let head = api.get_finalized_head().unwrap().unwrap();
+    // let head = api.get_finalized_head().unwrap().unwrap();
+    //
+    // println!("Finalized Head:\n {} \n", head);
 
-    println!("Finalized Head:\n {} \n", head);
 
-    let h: Header = api.get_header(Some(head)).unwrap().unwrap();
-    println!("Finalized header:\n {:?} \n", h);
-
-    let b: SignedBlock = api.get_signed_block(Some(head)).unwrap().unwrap();
-    println!("Finalized signed block:\n {:?} \n", b);
-
-    println!(
-        "Latest Header: \n {:?} \n",
-        api.get_header::<Header>(None).unwrap()
-    );
 
     println!("Subscribing to finalized heads");
     let (sender, receiver) = channel();
@@ -122,11 +115,11 @@ pub async fn get_data(ls_generic_data: Arc<Mutex<Vec<GenericDataProto>>>){
             .recv()
             .map(|header| serde_json::from_str(&header).unwrap())
             .unwrap();
-        println!("Got new header {:?}", head);
+        // println!("Got new header {:?}", head);
         let generic_block = create_generic_block_from_header(&api, head).unwrap();
-        println!("Got new block {:?}", &generic_block);
+        println!("Got block number: {:?}, hash: {:?}", &generic_block.block_number,&generic_block.block_hash);
         let generic_block_proto = create_generic_data_proto_from_generic_data(generic_block);
-        println!("convert to proto block {:?}", &generic_block_proto);
+        //println!("convert to proto block {:?}", &generic_block_proto);
         // Add to data list
         {
              let mut lock_ls_generic_data = ls_generic_data.lock().await;
