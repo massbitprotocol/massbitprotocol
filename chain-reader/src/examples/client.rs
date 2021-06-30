@@ -8,7 +8,7 @@ pub mod stream_mod {
 
 const URL: &str = "http://127.0.0.1:50051";
 
-async fn print_blocks(client: &mut StreamoutClient<Channel>) -> Result<(), Box<dyn Error>> {
+pub async fn print_blocks(client: &mut StreamoutClient<Channel>) -> Result<(), Box<dyn Error>> {
     // Not use start_block_number start_block_number yet
     let get_blocks_request = GetBlocksRequest{
         start_block_number: 0,

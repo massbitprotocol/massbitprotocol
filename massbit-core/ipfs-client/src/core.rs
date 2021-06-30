@@ -128,7 +128,7 @@ pub async fn create_ipfs_clients(ipfs_addresses: &Vec<String>) -> Vec<IpfsClient
             let ipfs_client = match IpfsClient::new(&ipfs_address) {
                 Ok(ipfs_client) => ipfs_client,
                 Err(e) => {
-                    log::error!("[Ipfs Client] Failed to create IPFS client");
+                    log::error!("[Ipfs Client] Failed to create IPFS client {}", e);
                     panic!("Could not connect to IPFS");
                 }
             };
