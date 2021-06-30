@@ -10,8 +10,8 @@ async fn main() {
     log::info!("[Indexer Manager] Application started");
 
     // Start IPFS Clients
-    let ipfs_addresses = vec!["0.0.0.0:5001".to_string()];
-    create_ipfs_clients(&ipfs_addresses).await;
+    // let ipfs_addresses = vec!["0.0.0.0:5001".to_string()];
+    // create_ipfs_clients(&ipfs_addresses).await;
 
     // Start JSON RPC Server
     let server = JsonRpcServer::serve(
