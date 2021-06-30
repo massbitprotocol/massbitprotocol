@@ -67,9 +67,6 @@ impl JsonRpcServer {
     ) -> jsonrpc_http_server::Server {
 
         let mut handler = IoHandler::with_compatibility(Compatibility::Both);
-        // If we want to use tokio::spawn, need to grab the hackie code from the graph that resolve running tokio spawn with json_rpc_http_server
-        // Reason: https://stackoverflow.com/questions/61292425/how-to-run-an-asynchronous-task-from-a-non-main-thread-in-tokio
-
         let (task_sender, task_receiver) =
             mpsc::channel::<Box<dyn std::future::Future<Output = ()> + Send + Unpin>>(100);
             tokio::spawn(task_receiver.for_each(|f| {
@@ -101,19 +98,11 @@ impl JsonRpcServer {
 async fn deploy_handler(
     params: DeployParams,
 ) -> Result<Value, jsonrpc_core::Error> {
-    let mut client = StreamoutClient::connect(URL).await.unwrap();
-
-    // Ping server
-    println!("*** SIMPLE RPC ***");
-    let response = client
-        .say_hello(Request::new(HelloRequest {
-            name: "new Client".to_string()
-        }))
-        .await.unwrap();
-    println!("RESPONSE = {:?}", response);
-    print_blocks(&mut client, params).await;
-
-    Ok(serde_json::to_value("Deployed Index Success").expect("invalid subgraph creation result"))
+    tokio::spawn(async move{
+        let mut client = StreamoutClient::connect(URL).await.unwrap();
+        print_blocks(&mut client, params).await;
+    });
+    Ok(serde_json::to_value("Deployed Index Success").expect("Unable to create Index"))
 }
 
 //
