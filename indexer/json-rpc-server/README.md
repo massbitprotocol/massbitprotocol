@@ -69,5 +69,5 @@ Description:
   - The URL where the user store the config (IPFS, S3, Local)
 
 ```http request
-curl --location --request POST 'localhost:3030' --header 'Content-Type: application/json' --data-raw '{"jsonrpc": "2.0", "method": "index_deploy", "params": ["index_name","yaml/project.yaml"], "id":1 }'
+curl --location --request POST 'localhost:3030' --header 'Content-Type: application/json' --data-raw '{"jsonrpc": "2.0", "method": "index_deploy", "params": ["index_name","../example/project.yaml"], "id":1 }'
 ```
