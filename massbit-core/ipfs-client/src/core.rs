@@ -134,18 +134,19 @@ pub async fn create_ipfs_clients(ipfs_addresses: &Vec<String>) -> Vec<IpfsClient
             };
 
             let ipfs_test = ipfs_client.clone();
-            #[allow(unused_must_use)]
-            tokio::spawn(async move {
-                ipfs_test
-                    .test()
-                    .map_err(move |e| {
-                        panic!("[Ipfs Client] Failed to connect to IPFS: {}", e);
-                    })
-                    .map_ok(move |_| {
-                        log::info!("[Ipfs Client] Successfully connected to IPFS node");
-                    }).await;
-            });
-            thread::sleep(Duration::from_secs(2)); // Manually wait for tokio thread to finish. This shouldn't be hard-coded
+            // Hughie: comment out the check for connection because there's an error with tokio spawm runtime
+            // We can use tokio02 spawn custom function to fix this problem
+            // #[allow(unused_must_use)]
+            // tokio::spawn(async move {
+            //     ipfs_test
+            //         .test()
+            //         .map_err(move |e| {
+            //             panic!("[Ipfs Client] Failed to connect to IPFS: {}", e);
+            //         })
+            //         .map_ok(move |_| {
+            //             log::info!("[Ipfs Client] Successfully connected to IPFS node");
+            //         }).await;
+            // });
             ipfs_client
         })
         .collect()
