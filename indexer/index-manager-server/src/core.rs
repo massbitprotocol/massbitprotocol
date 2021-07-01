@@ -81,7 +81,7 @@ async fn deploy_local_handler(
 ) -> Result<Value, jsonrpc_core::Error> {
     tokio::spawn(async move{
         let mut client = StreamoutClient::connect(URL).await.unwrap();
-        print_blocks(&mut client, params).await; // Start Chain Reader Client
+        loop_blocks(&mut client, params).await; // Start Chain Reader Client
     });
     Ok(serde_json::to_value("Deployed index from local success").expect("Unable to create Index"))
 }
@@ -91,7 +91,7 @@ async fn deploy_ipfs_handler(
 ) -> Result<Value, jsonrpc_core::Error> {
     tokio::spawn(async move{
         let mut client = StreamoutClient::connect(URL).await.unwrap();
-        print_blocks(&mut client, params).await; // Start Chain Reader Client
+        loop_blocks(&mut client, params).await; // Start Chain Reader Client
     });
     Ok(serde_json::to_value("Deployed index from ipfs success").expect("Unable to create Index"))
 }
@@ -110,7 +110,7 @@ pub mod stream_mod {
     tonic::include_proto!("streamout");
 }
 const URL: &str = "http://127.0.0.1:50051";
-pub async fn print_blocks(client: &mut StreamoutClient<Channel>, params: DeployParams) -> Result<(), Box<dyn Error>> {
+pub async fn loop_blocks(client: &mut StreamoutClient<Channel>, params: DeployParams) -> Result<(), Box<dyn Error>> {
     // Not use start_block_number start_block_number yet
     let get_blocks_request = GetBlocksRequest{
         start_block_number: 0,
@@ -126,7 +126,7 @@ pub async fn print_blocks(client: &mut StreamoutClient<Channel>, params: DeployP
     // The main loop, subscribing to Chain Reader Server to get new block
     while let Some(block) = stream.message().await? {
         let block = block as GenericDataProto;
-        println!("Recieved block = {:?}, hash = {:?} from {:?}",block.block_number, block.block_hash, params.index_name);
+        log::info!("Recieved block = {:?}, hash = {:?} from {:?}",block.block_number, block.block_hash, params.index_name);
         let library_path = PathBuf::from("./target/release/libblock.so".to_string());
         let mut plugins = PluginManager::new();
         unsafe {
@@ -136,7 +136,7 @@ pub async fn print_blocks(client: &mut StreamoutClient<Channel>, params: DeployP
         }
 
         let decode_block: SubstrateBlock = serde_json::from_slice(&block.payload).unwrap();
-        println!("decode_block: {:?}",decode_block);
+        log::info!("Decoding block: {:?}", decode_block);
         plugins.handle_block(&decode_block); // Block handling
     }
     Ok(())
