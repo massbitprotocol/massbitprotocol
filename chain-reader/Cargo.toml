@@ -9,6 +9,8 @@ authors = ["huy <anhhuy0501@gmail.com>"]
 [dependencies]
 
 dotenv          = "0.15.0"
+multiqueue      = "0.3.2"
+broadcaster     = "1.0.0"
 env_logger      = { version = "0.7", optional = false }
 ws              = { version = "0.9.1", optional = true, features = ["ssl"] }
 hex             = { version = "0.4.3", default-features = false }
@@ -79,5 +81,9 @@ name = "chain-reader"
 path = "src/main.rs"
 
 [[bin]] # Bin to run gRPC client
-name = "run_client"
+name = "run-client"
 path = "src/test/client.rs"
+
+[[bin]] # Bin to run test
+name = "test"
+path = "src/test/test.rs"

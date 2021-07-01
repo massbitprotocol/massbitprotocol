@@ -15,11 +15,15 @@ use tokio::time::{sleep, Duration};
 use tonic::{Request, Response, Status};
 use crate::stream_mod::{HelloReply, HelloRequest, GetBlocksRequest, GenericDataProto};
 use stream_mod::streamout_server::{Streamout};
+//use multiqueue;
+use broadcaster::BroadcastChannel;
+use futures_util::StreamExt;
 
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct StreamService {
-    pub ls_generic_data: Arc<Mutex<Vec<GenericDataProto>>>
+    //pub receiver : Arc<Mutex<multiqueue::BroadcastReceiver<GenericDataProto>>>,
+    pub chan : Arc<Mutex<BroadcastChannel<GenericDataProto>>>,
 }
 
 
@@ -48,21 +52,34 @@ impl Streamout for StreamService {
 
         let (tx, rx) = mpsc::channel(4);
 
-        let ls_generic_data = Arc::clone(&self.ls_generic_data);
+        //let ls_generic_data = Arc::clone(&self.ls_generic_data);
+        // let mut lock_receiver = self.receiver.lock().await;
+        // let recv = lock_receiver.add_stream();
+        println!("Wait chan lock");
+        let mut lock_chan = self.chan.lock().await;
+        println!("chan is locked");
+        let mut new_chain =  lock_chan.clone();
+        drop(lock_chan);
 
         tokio::spawn(async move {
             // Todo: Need improve because of the locking time and pop effect.
-            loop {
+            //for generic_data in lock_chan {
                 // lock data block
+            loop{
                 {
-                    let mut lock_ls_generic_data = ls_generic_data.lock().await;
-                    if !lock_ls_generic_data.is_empty() {
-                        let generic_data = lock_ls_generic_data.pop().unwrap();
-                        println!("  => send block: {:?}, hash: {:?}", &generic_data.block_number, &generic_data.block_hash);
-                        tx.send(Ok(generic_data.clone())).await.unwrap();
-                    }
+                    println!("Getting generic_data");
+                    //println!("Got generic data {:?}",new_chain.next().await);
+                    let generic_data = new_chain.next().await;
+                    //let mut lock_ls_generic_data = ls_generic_data.lock().await;
+                    //if !lock_ls_generic_data.is_empty() {
+
+                        //let generic_data = lock_ls_generic_data.pop().unwrap();
+                        //println!("  => send block: {:?}, hash: {:?}", &generic_data.block_number, &generic_data.block_hash);
+                        tx.send(Ok(generic_data.unwrap()/*.clone()*/)).await.unwrap();
+                    //}
                 }
-                sleep(Duration::from_millis(300)).await;
+                //println!("Wait for next data");
+                //sleep(Duration::from_millis(300)).await;
             }
         });
 
