@@ -18,9 +18,9 @@ async-std = "1.9.0"
 tokio = {version = "1.2.0", features = ["full"]} # Required by Tonic
 futures = { version = "0.3.13", features = ["compat"] }
 
-
 # Massbit dependencies
 manifest-reader = { path = "../manifest-reader" }
+tokio02-spawn = { path = "../../massbit-core/tokio02-spawn" }
 
 [build-dependencies] # Chain Reader Client
 tonic-build = "0.4"

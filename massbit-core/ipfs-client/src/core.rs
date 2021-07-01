@@ -1,12 +1,11 @@
 use anyhow::Error;
 use bytes::Bytes;
-use futures03::{Stream, TryFutureExt};
+use futures03::{Stream};
 use http::header::CONTENT_LENGTH;
 use http::Uri;
 use reqwest::multipart;
 use serde::Deserialize;
-use std::{str::FromStr, sync::Arc, thread};
-use std::time::Duration;
+use std::{str::FromStr, sync::Arc};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]
@@ -133,9 +132,10 @@ pub async fn create_ipfs_clients(ipfs_addresses: &Vec<String>) -> Vec<IpfsClient
                 }
             };
 
-            let ipfs_test = ipfs_client.clone();
+            // let ipfs_test = ipfs_client.clone();
             // Hughie: comment out the check for connection because there's an error with tokio spawm runtime
             // We can use tokio02 spawn custom function to fix this problem
+
             // #[allow(unused_must_use)]
             // tokio::spawn(async move {
             //     ipfs_test
