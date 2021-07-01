@@ -25,7 +25,7 @@ impl JsonRpcServer {
     pub fn serve(
         http_addr: String,
     ) -> jsonrpc_http_server::Server {
-
+        // Config Server to run with tokio02
         let mut handler = IoHandler::with_compatibility(Compatibility::Both);
         let (task_sender, task_receiver) =
             mpsc::channel::<Box<dyn std::future::Future<Output = ()> + Send + Unpin>>(100);
@@ -34,18 +34,35 @@ impl JsonRpcServer {
                 tokio::task::spawn_blocking(move || block_on(abort_on_panic(f)));
             }
         }));
+        let sender_local = task_sender.clone();
+        let sender_ipfs = task_sender.clone();
 
-        let sender = task_sender.clone();
-        handler.add_method("index_deploy", move|params: Params| {
+        //
+        // All Handlers
+        //
+        handler.add_method("index_deploy_local", move|params: Params| {
             Box::pin(tokio02_spawn(
-                sender.clone(),
+                sender_local.clone(),
                 async move {
                     let params = params.parse().unwrap();
-                    deploy_handler(params).await
+                    // Add function: call to local folder to get config (.yaml) / SO rust file
+                    deploy_local_handler(params).await
                 }.boxed(),
             )).compat()
         });
 
+        handler.add_method("index_deploy_ipfs", move|params: Params| {
+            Box::pin(tokio02_spawn(
+                sender_ipfs.clone(),
+                async move {
+                    let params = params.parse().unwrap();
+                    // Add function: call to IPFS to get config (.yaml) / SO rust file
+                    deploy_ipfs_handler(params).await
+                }.boxed(),
+            )).compat()
+        });
+
+        // Start the server
         let server = ServerBuilder::new(handler)
             .start_http(&http_addr.parse().unwrap())
             .expect("Unable to start RPC server");
@@ -53,14 +70,24 @@ impl JsonRpcServer {
     }
 }
 
-async fn deploy_handler(
+async fn deploy_local_handler(
     params: DeployParams,
 ) -> Result<Value, jsonrpc_core::Error> {
     tokio::spawn(async move{
         let mut client = StreamoutClient::connect(URL).await.unwrap();
         print_blocks(&mut client, params).await;
     });
-    Ok(serde_json::to_value("Deployed Index Success").expect("Unable to create Index"))
+    Ok(serde_json::to_value("Deployed index from local success").expect("Unable to create Index"))
+}
+
+async fn deploy_ipfs_handler(
+    params: DeployParams,
+) -> Result<Value, jsonrpc_core::Error> {
+    tokio::spawn(async move{
+        let mut client = StreamoutClient::connect(URL).await.unwrap();
+        print_blocks(&mut client, params).await;
+    });
+    Ok(serde_json::to_value("Deployed index from ipfs success").expect("Unable to create Index"))
 }
 
 //
