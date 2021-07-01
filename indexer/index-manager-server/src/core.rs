@@ -4,11 +4,14 @@ use futures::channel::{mpsc};
 use futures::executor::block_on;
 use futures::{StreamExt, TryFutureExt};
 use futures::future::FutureExt;
+use std::{path::PathBuf};
 
 // Massbit dependencies
 use manifest_reader::core::load_file;
 use tokio02_spawn::core::abort_on_panic;
 use tokio02_spawn::core::tokio02_spawn;
+use plugin::manager::PluginManager;
+use massbit_chain_substrate::data_type::SubstrateBlock;
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct DeployParams {
@@ -38,7 +41,7 @@ impl JsonRpcServer {
         let sender_ipfs = task_sender.clone();
 
         //
-        // All Handlers
+        // All Handlers Mapping
         //
         handler.add_method("index_deploy_local", move|params: Params| {
             Box::pin(tokio02_spawn(
@@ -70,12 +73,15 @@ impl JsonRpcServer {
     }
 }
 
+//
+// All Handlers
+//
 async fn deploy_local_handler(
     params: DeployParams,
 ) -> Result<Value, jsonrpc_core::Error> {
     tokio::spawn(async move{
         let mut client = StreamoutClient::connect(URL).await.unwrap();
-        print_blocks(&mut client, params).await;
+        print_blocks(&mut client, params).await; // Start Chain Reader Client
     });
     Ok(serde_json::to_value("Deployed index from local success").expect("Unable to create Index"))
 }
@@ -85,7 +91,7 @@ async fn deploy_ipfs_handler(
 ) -> Result<Value, jsonrpc_core::Error> {
     tokio::spawn(async move{
         let mut client = StreamoutClient::connect(URL).await.unwrap();
-        print_blocks(&mut client, params).await;
+        print_blocks(&mut client, params).await; // Start Chain Reader Client
     });
     Ok(serde_json::to_value("Deployed index from ipfs success").expect("Unable to create Index"))
 }
@@ -98,6 +104,8 @@ use tonic::{transport::{Server, Channel}, Request, Response, Status};
 use stream_mod::{GetBlocksRequest, GenericDataProto};
 use stream_mod::streamout_client::{StreamoutClient};
 use std::error::Error;
+use std::fs::File;
+
 pub mod stream_mod {
     tonic::include_proto!("streamout");
 }
@@ -113,9 +121,23 @@ pub async fn print_blocks(client: &mut StreamoutClient<Channel>, params: DeployP
         .await?
         .into_inner();
 
+    // Start Plugin Manager
+    println!("Start plugin manager");
+    // The main loop, subscribing to Chain Reader Server to get new block
     while let Some(block) = stream.message().await? {
         let block = block as GenericDataProto;
         println!("Recieved block = {:?}, hash = {:?} from {:?}",block.block_number, block.block_hash, params.index_name);
+        let library_path = PathBuf::from("./target/release/libblock.so".to_string());
+        let mut plugins = PluginManager::new();
+        unsafe {
+            plugins
+                .load(&library_path)
+                .expect("plugin loading failed");
+        }
+
+        let decode_block: SubstrateBlock = serde_json::from_slice(&block.payload).unwrap();
+        println!("decode_block: {:?}",decode_block);
+        plugins.handle_block(&decode_block); // Block handling
     }
     Ok(())
 }

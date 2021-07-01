@@ -21,6 +21,8 @@ futures = { version = "0.3.13", features = ["compat"] }
 # Massbit dependencies
 manifest-reader = { path = "../manifest-reader" }
 tokio02-spawn = { path = "../../massbit-core/tokio02-spawn" }
+massbit-chain-substrate = { path = "../../massbit-core/chain/substrate"}
+plugin = { path = "../../plugin/" }
 
 [build-dependencies] # Chain Reader Client
 tonic-build = "0.4"
