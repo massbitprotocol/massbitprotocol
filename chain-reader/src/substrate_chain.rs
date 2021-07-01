@@ -15,6 +15,9 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use crate::stream_mod::GenericDataProto;
 use prost;
+//use multiqueue;
+use broadcaster::BroadcastChannel;
+use futures_util::StreamExt;
 
 const CHAIN_TYPE: ChainType = ChainType::Substrate;
 const VERSION:&str = "1";
@@ -79,6 +82,7 @@ fn _create_generic_block(   block_hash: String,
     // Remove exstrinsics because cannot deserialize them. Maybe because of `Extrinsic: MaybeSerialize`
     // Todo: Deserialize exstrinsic
     let mut block = (*block).clone();
+    //println!("Block content: {:?}",block);
     block.extrinsics = Vec::new();
     let generic_block = GenericData{
         chain_type: CHAIN_TYPE,
@@ -88,10 +92,12 @@ fn _create_generic_block(   block_hash: String,
         block_number: block.header.number as u64,
         payload: serde_json::to_vec(&block).unwrap()
     };
+    // let decode_block: Block = serde_json::from_slice(&generic_block.payload).unwrap();
+    // println!("decode_block: {:?}",tmp);
     generic_block
 }
 
-pub async fn get_data(ls_generic_data: Arc<Mutex<Vec<GenericDataProto>>>){
+pub async fn get_data(mut chan: Arc<Mutex<BroadcastChannel<GenericDataProto>>>/*multiqueue::BroadcastSender<GenericDataProto>*/){
 
     println!("start");
     env_logger::init();
@@ -107,11 +113,11 @@ pub async fn get_data(ls_generic_data: Arc<Mutex<Vec<GenericDataProto>>>){
 
 
     println!("Subscribing to finalized heads");
-    let (sender, receiver) = channel();
-    api.subscribe_finalized_heads(sender).unwrap();
+    let (send, recv) = channel();
+    api.subscribe_finalized_heads(send).unwrap();
 
     loop{
-        let head: Header = receiver
+        let head: Header = recv
             .recv()
             .map(|header| serde_json::from_str(&header).unwrap())
             .unwrap();
@@ -121,10 +127,17 @@ pub async fn get_data(ls_generic_data: Arc<Mutex<Vec<GenericDataProto>>>){
         let generic_block_proto = create_generic_data_proto_from_generic_data(generic_block);
         //println!("convert to proto block {:?}", &generic_block_proto);
         // Add to data list
-        {
-             let mut lock_ls_generic_data = ls_generic_data.lock().await;
-             lock_ls_generic_data.push(generic_block_proto);
-        };
+        // {
+        //      let mut lock_ls_generic_data = ls_generic_data.lock().await;
+        //      lock_ls_generic_data.push(generic_block_proto);
+        // };
+        println!("Sending generic data");
+
+        let chan_lock = chan.lock().await;
+        chan_lock.send(&generic_block_proto).await;
+        drop(chan_lock)
+
+        //println!("Finish generic data {:?}",chan.next().await);
     }
 }
 
