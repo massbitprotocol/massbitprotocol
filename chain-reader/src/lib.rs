@@ -23,7 +23,7 @@ use tokio::sync::broadcast;
 
 #[derive(Debug)]
 pub struct StreamService {
-    pub chan : Arc<Mutex<broadcast::Sender<GenericDataProto>>>,
+    pub chan : broadcast::Sender<GenericDataProto>,
 }
 
 
@@ -54,16 +54,15 @@ impl Streamout for StreamService {
         let (tx, rx) = mpsc::channel(4);
 
         // Create new channel for connect between input and output stream
-        let mut lock_chan = self.chan.lock().await;
-        let mut new_chain =  lock_chan.clone();
-        drop(lock_chan);
+        let mut rx_chan =  self.chan.subscribe();
+
 
         tokio::spawn(async move {
             loop {
-                println!("Getting generic_data");
-                let generic_data = new_chain.next().await;
-                println!("Send generic_data to queue");
-                tx.send(Ok(generic_data.unwrap())).await.unwrap();
+                // Getting generic_data
+                let generic_data = rx_chan.recv().await.unwrap();
+                // Send generic_data to queue"
+                tx.send(Ok(generic_data)).await.unwrap();
             }
         });
 
