@@ -58,16 +58,32 @@ fn handleCall(call: SubstrateCall) {
 
 ## API
 
-Method: index_deploy 
+Method: index_deploy_local
 
-Updated on: 29-6-2021
+Updated on: 2-7-2021
 
 Description: 
 - For every new request, the indexer will start a new thread to index data.
 - params: 
   - Name of the index
-  - The URL where the user store the config (IPFS, S3, Local)
+  - The path to the local project.yaml
+  - The path to the local .SO mapping file
 
 ```http request
-curl --location --request POST 'localhost:3030' --header 'Content-Type: application/json' --data-raw '{"jsonrpc": "2.0", "method": "index_deploy", "params": ["index_name","../example/project.yaml"], "id":1 }'
+curl --location --request POST 'localhost:3030' --header 'Content-Type: application/json' --data-raw '{"jsonrpc": "2.0", "method": "index_deploy", "params": ["index_name","../example/project.yaml", "../example/libblock.so"], "id":1 }'
+```
+
+Method: index_deploy_ipfs
+
+Updated on: 2-7-2021
+
+Description:
+- For every new request, the indexer will start a new thread to index data.
+- params:
+  - Name of the index
+  - The IPFS Hash of the project.yaml
+  - The IPFS Hash of the .SO mapping file
+
+```http request
+curl --location --request POST 'localhost:3030' --header 'Content-Type: application/json' --data-raw '{"jsonrpc": "2.0", "method": "index_deploy", "params": ["index_name","hash_project_yaml", "hash_mapping_file"], "id":1 }'
 ```
