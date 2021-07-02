@@ -3,22 +3,14 @@ extern crate clap;
 
 pub mod substrate_chain;
 pub mod stream_mod {
-    tonic::include_proto!("streamout");
+    tonic::include_proto!("chaindata");
 }
 
-use std::sync::Arc;
-use tokio::sync::Mutex;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, broadcast};
 use tokio_stream::wrappers::ReceiverStream;
-use tokio::time::{sleep, Duration};
 
 use tonic::{Request, Response, Status};
-use crate::stream_mod::{HelloReply, HelloRequest, GetBlocksRequest, GenericDataProto};
-use stream_mod::streamout_server::{Streamout};
-//use multiqueue;
-// use broadcaster::BroadcastChannel;
-// use futures_util::StreamExt;
-use tokio::sync::broadcast;
+use crate::stream_mod::{HelloReply, HelloRequest, GetBlocksRequest, GenericDataProto, streamout_server::Streamout};
 
 
 #[derive(Debug)]

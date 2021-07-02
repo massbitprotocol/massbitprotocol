@@ -1,8 +1,9 @@
 use node_template_runtime;
-use node_template_runtime::Hash;
+use node_template_runtime::{Hash,};
 use sp_runtime::DispatchError;
 use support::weights::DispatchInfo;
 use codec::Decode;
+use serde_json;
 
 
 pub type SubstrateBlock = node_template_runtime::Block;
@@ -21,7 +22,13 @@ pub enum SystemEvent {
     ExtrinsicFailed(DispatchError, DispatchInfo),
 }
 
+trait FromPayload {
+    fn from_payload(payload : Vec<u8>) -> SubstrateBlock;
+}
 
-
-
-
+impl FromPayload for SubstrateBlock{
+    fn from_payload(payload : Vec<u8>) -> Self{
+        let decode_block : Self = serde_json::from_slice(&payload).unwrap();
+        decode_block
+    }
+}
