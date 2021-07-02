@@ -1,5 +1,5 @@
 [package]
-name = "massbit-indexer"
+name = "chain-reader"
 version = "0.1.0"
 edition = "2018"
 authors = ["huy <anhhuy0501@gmail.com>"]
@@ -11,6 +11,7 @@ authors = ["huy <anhhuy0501@gmail.com>"]
 dotenv          = "0.15.0"
 multiqueue      = "0.3.2"
 broadcaster     = "1.0.0"
+lazy_static     = "1.4.0"
 env_logger      = { version = "0.7", optional = false }
 ws              = { version = "0.9.1", optional = true, features = ["ssl"] }
 hex             = { version = "0.4.3", default-features = false }
@@ -78,12 +79,12 @@ tonic-build = "0.4"
 
 [[bin]] # Bin to run gRPC server
 name = "chain-reader"
-path = "src/main.rs"
+path = "src/chain-reader.rs"
 
 [[bin]] # Bin to run gRPC client
-name = "run-client"
-path = "src/test/client.rs"
+name = "client"
+path = "src/examples/client.rs"
 
-[[bin]] # Bin to run test
-name = "test"
-path = "src/test/test.rs"
+#[[bin]] # Bin to run examples
+#name = "examples"
+#path = "src/examples/examples.rs"
