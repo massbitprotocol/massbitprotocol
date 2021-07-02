@@ -102,42 +102,32 @@ pub async fn get_data(mut chan: Arc<Mutex<BroadcastChannel<GenericDataProto>>>/*
     println!("start");
     env_logger::init();
     let url = get_node_url_from_cli();
-
-
     let api = Api::<sr25519::Pair>::new(url).unwrap();
-
-    // let head = api.get_finalized_head().unwrap().unwrap();
-    //
-    // println!("Finalized Head:\n {} \n", head);
-
-
 
     println!("Subscribing to finalized heads");
     let (send, recv) = channel();
     api.subscribe_finalized_heads(send).unwrap();
 
+    let chan_lock = chan.lock().await;
+    let chan = chan_lock.clone();
+    drop(chan_lock);
+
+
     loop{
+        // Get new header
         let head: Header = recv
             .recv()
             .map(|header| serde_json::from_str(&header).unwrap())
             .unwrap();
-        // println!("Got new header {:?}", head);
+        // Call rpc to create block from header
         let generic_block = create_generic_block_from_header(&api, head).unwrap();
         println!("Got block number: {:?}, hash: {:?}", &generic_block.block_number,&generic_block.block_hash);
+        // Create proto block
         let generic_block_proto = create_generic_data_proto_from_generic_data(generic_block);
-        //println!("convert to proto block {:?}", &generic_block_proto);
-        // Add to data list
-        // {
-        //      let mut lock_ls_generic_data = ls_generic_data.lock().await;
-        //      lock_ls_generic_data.push(generic_block_proto);
-        // };
+
         println!("Sending generic data");
+        chan.send(&generic_block_proto).await;
 
-        let chan_lock = chan.lock().await;
-        chan_lock.send(&generic_block_proto).await;
-        drop(chan_lock)
-
-        //println!("Finish generic data {:?}",chan.next().await);
     }
 }
 
