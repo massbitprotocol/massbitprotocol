@@ -1,6 +1,5 @@
-use tokio_compat_02::FutureExt;
 // Massbit dependencies
-use index_manager_server::core::JsonRpcServer;
+use index_manager_server::types::JsonRpcServer;
 use ipfs_client::core::create_ipfs_clients;
 use logger::core::init_logger;
 
