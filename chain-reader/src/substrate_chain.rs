@@ -16,8 +16,10 @@ use tokio::sync::Mutex;
 use crate::stream_mod::GenericDataProto;
 use prost;
 //use multiqueue;
-use broadcaster::BroadcastChannel;
-use futures_util::StreamExt;
+// use broadcaster::BroadcastChannel;
+// use futures_util::StreamExt;
+use tokio::sync::broadcast;
+use std::thread::spawn;
 
 const CHAIN_TYPE: ChainType = ChainType::Substrate;
 const VERSION:&str = "1";
@@ -97,7 +99,7 @@ fn _create_generic_block(   block_hash: String,
     generic_block
 }
 
-pub async fn get_data(mut chan: Arc<Mutex<BroadcastChannel<GenericDataProto>>>/*multiqueue::BroadcastSender<GenericDataProto>*/){
+pub async fn get_data(chan: broadcast::Sender<GenericDataProto>){
 
     println!("start");
     env_logger::init();
@@ -108,10 +110,13 @@ pub async fn get_data(mut chan: Arc<Mutex<BroadcastChannel<GenericDataProto>>>/*
     let (send, recv) = channel();
     api.subscribe_finalized_heads(send).unwrap();
 
-    let chan_lock = chan.lock().await;
-    let chan = chan_lock.clone();
-    drop(chan_lock);
-
+    let mut rx = chan.subscribe();
+    // Todo: More clean solution for broadcast channel
+    tokio::spawn(async move {
+        loop{
+            rx.recv().await;
+        }
+    });
 
     loop{
         // Get new header
@@ -126,8 +131,7 @@ pub async fn get_data(mut chan: Arc<Mutex<BroadcastChannel<GenericDataProto>>>/*
         let generic_block_proto = create_generic_data_proto_from_generic_data(generic_block);
 
         println!("Sending generic data");
-        chan.send(&generic_block_proto).await;
-
+        chan.send(generic_block_proto);
     }
 }
 
