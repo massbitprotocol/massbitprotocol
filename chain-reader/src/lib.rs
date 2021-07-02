@@ -16,14 +16,14 @@ use tonic::{Request, Response, Status};
 use crate::stream_mod::{HelloReply, HelloRequest, GetBlocksRequest, GenericDataProto};
 use stream_mod::streamout_server::{Streamout};
 //use multiqueue;
-use broadcaster::BroadcastChannel;
-use futures_util::StreamExt;
+// use broadcaster::BroadcastChannel;
+// use futures_util::StreamExt;
+use tokio::sync::broadcast;
 
 
 #[derive(Debug)]
 pub struct StreamService {
-    //pub receiver : Arc<Mutex<multiqueue::BroadcastReceiver<GenericDataProto>>>,
-    pub chan : Arc<Mutex<BroadcastChannel<GenericDataProto>>>,
+    pub chan : Arc<Mutex<broadcast::Sender<GenericDataProto>>>,
 }
 
 
@@ -50,36 +50,20 @@ impl Streamout for StreamService {
     ) -> Result<Response<Self::ListBlocksStream>, Status> {
         println!("ListFeatures = {:?}", request);
 
+        // tx, rx for out stream gRPC
         let (tx, rx) = mpsc::channel(4);
 
-        //let ls_generic_data = Arc::clone(&self.ls_generic_data);
-        // let mut lock_receiver = self.receiver.lock().await;
-        // let recv = lock_receiver.add_stream();
-        println!("Wait chan lock");
+        // Create new channel for connect between input and output stream
         let mut lock_chan = self.chan.lock().await;
-        println!("chan is locked");
         let mut new_chain =  lock_chan.clone();
         drop(lock_chan);
 
         tokio::spawn(async move {
-            // Todo: Need improve because of the locking time and pop effect.
-            //for generic_data in lock_chan {
-                // lock data block
-            loop{
-                {
-                    println!("Getting generic_data");
-                    //println!("Got generic data {:?}",new_chain.next().await);
-                    let generic_data = new_chain.next().await;
-                    //let mut lock_ls_generic_data = ls_generic_data.lock().await;
-                    //if !lock_ls_generic_data.is_empty() {
-
-                        //let generic_data = lock_ls_generic_data.pop().unwrap();
-                        //println!("  => send block: {:?}, hash: {:?}", &generic_data.block_number, &generic_data.block_hash);
-                        tx.send(Ok(generic_data.unwrap()/*.clone()*/)).await.unwrap();
-                    //}
-                }
-                //println!("Wait for next data");
-                //sleep(Duration::from_millis(300)).await;
+            loop {
+                println!("Getting generic_data");
+                let generic_data = new_chain.next().await;
+                println!("Send generic_data to queue");
+                tx.send(Ok(generic_data.unwrap())).await.unwrap();
             }
         });
 
