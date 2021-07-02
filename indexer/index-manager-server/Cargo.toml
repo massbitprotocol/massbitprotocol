@@ -17,12 +17,15 @@ async-std = "1.9.0"
 #tokio = { version = "0.2.25", features = ["full"] } # Required by IPFS Client
 tokio = {version = "1.2.0", features = ["full"]} # Required by Tonic
 futures = { version = "0.3.13", features = ["compat"] }
+tokio-compat-02 = "0.2"
+serde_yaml = "0.8"
 
 # Massbit dependencies
 manifest-reader = { path = "../manifest-reader" }
 tokio02-spawn = { path = "../../massbit-core/tokio02-spawn" }
 massbit-chain-substrate = { path = "../../massbit-core/chain/substrate"}
 plugin = { path = "../../plugin/" }
+ipfs-client = { path = "../../massbit-core/ipfs-client" }
 
 [build-dependencies] # Chain Reader Client
 tonic-build = "0.4"

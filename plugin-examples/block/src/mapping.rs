@@ -14,6 +14,7 @@ impl BlockHandler for BlockIndexer {
         let connection = establish_connection();
         let number = substrate_block.header.number as i64;
         let new_block = NewBlock { number };
+        println!("Inserting to database..");
         let _ = diesel::insert_into(blocks::table)
             .values(&new_block)
             .execute(&connection);
