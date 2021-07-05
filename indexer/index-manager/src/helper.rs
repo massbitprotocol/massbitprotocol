@@ -52,7 +52,7 @@ pub async fn get_index_mapping_file(ipfs_mapping_hash: &String) -> String {
 }
 
 pub mod stream_mod {
-    tonic::include_proto!("streamout");
+    tonic::include_proto!("chaindata");
 }
 const URL: &str = "http://127.0.0.1:50051";
 pub async fn loop_blocks(params: DeployIpfsParams) -> Result<(), Box<dyn Error>> {
@@ -63,6 +63,7 @@ pub async fn loop_blocks(params: DeployIpfsParams) -> Result<(), Box<dyn Error>>
         start_block_number: 0,
         end_block_number: 1,
     };
+
     let mut stream = client
         .list_blocks(Request::new(get_blocks_request))
         .await?
