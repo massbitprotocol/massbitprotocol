@@ -1,2 +1,0 @@
-# Indexer
-The goal of Massbit Indexer is to bring scalability and interoperability to Indexers. In order to embrace the existing popular community and advanced technology, it will bring huge benefits by staying compatible with all the existing indexing mapping logics. And to achieve that, the easiest solution is to develop with some existing features from the-graph, as we respect the great work of the-graph very much.
