@@ -1,5 +1,5 @@
 // Massbit dependencies
-use index_manager_server::types::JsonRpcServer;
+use index_manager::types::IndexManager;
 use logger::core::init_logger;
 
 #[tokio::main]
@@ -8,8 +8,8 @@ async fn main() {
     init_logger();
     log::info!("[Indexer Manager] Application started");
 
-    // Start JSON RPC Server
-    let server = JsonRpcServer::serve(
+    // Start Index Manager Server
+    let server = IndexManager::serve(
         "127.0.0.1:3030".to_string(),
     );
     server.wait();

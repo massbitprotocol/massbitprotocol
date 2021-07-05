@@ -2,7 +2,7 @@
 use serde::{Deserialize};
 
 #[allow(dead_code)]
-pub struct JsonRpcServer {
+pub struct IndexManager {
     http_addr: String,
 }
 

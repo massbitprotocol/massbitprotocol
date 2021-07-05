@@ -12,14 +12,10 @@ use stream_mod::{GenericDataProto, GetBlocksRequest};
 use stream_mod::streamout_client::StreamoutClient;
 use crate::types::DeployIpfsParams;
 
-// Should be made into a struct, add just add the logic to ipfs_client struct
-pub async fn get_config(ipfs_config_hash: &String) -> serde_yaml::Mapping {
-    // Shouldn't be re-created
+pub async fn get_index_config(ipfs_config_hash: &String) -> serde_yaml::Mapping {
     let ipfs_addresses = vec!["0.0.0.0:5001".to_string()];
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await;
 
-    // yaml QmPxYkWaNa2wov6pRvRY7pL8Fk4a6zDtV9hbJKpmj61EEq
-    // so QmSQwVnx167vdvkvzstUmDXUC2SkB56KYP7W7cawKZ6Utf
     let file_bytes = ipfs_clients[0]
         .cat_all(ipfs_config_hash.to_string())
         .compat()
@@ -27,17 +23,13 @@ pub async fn get_config(ipfs_config_hash: &String) -> serde_yaml::Mapping {
         .unwrap()
         .to_vec();
 
-    let raw: serde_yaml::Mapping = serde_yaml::from_slice(&file_bytes).unwrap();
-    raw
+    serde_yaml::from_slice(&file_bytes).unwrap()
 }
 
-pub async fn get_mapping_file(ipfs_mapping_hash: &String) -> String {
-    // Shouldn't be re-created
+pub async fn get_index_mapping_file(ipfs_mapping_hash: &String) -> String {
     let ipfs_addresses = vec!["0.0.0.0:5001".to_string()];
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await;
 
-    // yaml QmPxYkWaNa2wov6pRvRY7pL8Fk4a6zDtV9hbJKpmj61EEq
-    // so QmSQwVnx167vdvkvzstUmDXUC2SkB56KYP7W7cawKZ6Utf
     let file_bytes = ipfs_clients[0]
         .cat_all(ipfs_mapping_hash.to_string())
         .compat()
@@ -46,8 +38,17 @@ pub async fn get_mapping_file(ipfs_mapping_hash: &String) -> String {
         .to_vec();
 
     let file_name = [ipfs_mapping_hash, ".so"].join("");
-    fs::write(&file_name, file_bytes); // Add logger and says that write file successfully
-    file_name
+    let res = fs::write(&file_name, file_bytes); // Add logger and says that write file successfully
+
+    match res {
+        Ok(ok) => {
+            log::info!("[Index Manager Helper] Write SO file to local storage successfully");
+            file_name
+        },
+        Err(err) => {
+            panic!("[Index Manager Helper] Could not write file to local storage {:#?}", err)
+        }
+    }
 }
 
 pub mod stream_mod {
@@ -67,12 +68,13 @@ pub async fn loop_blocks(params: DeployIpfsParams) -> Result<(), Box<dyn Error>>
         .await?
         .into_inner();
 
-    println!("Start plugin manager");
+    log::info!("[Index Manager Helper] Start plugin manager");
     // The main loop, subscribing to Chain Reader Server to get new block
-    let mapping_file_name = get_mapping_file(&params.ipfs_mapping_hash).await;
+    let mapping_file_name = get_index_mapping_file(&params.ipfs_mapping_hash).await;
+
     while let Some(block) = stream.message().await? {
         let block = block as GenericDataProto;
-        log::info!("Received block = {:?}, hash = {:?} from {:?}",block.block_number, block.block_hash, params.index_name);
+        log::info!("[Index Manager Helper] Received block = {:?}, hash = {:?} from {:?}",block.block_number, block.block_hash, params.index_name);
 
         let mapping_file_location = ["./", &mapping_file_name].join("");
         let library_path = PathBuf::from(mapping_file_location.to_string());
@@ -84,7 +86,7 @@ pub async fn loop_blocks(params: DeployIpfsParams) -> Result<(), Box<dyn Error>>
         }
 
         let decode_block: SubstrateBlock = serde_json::from_slice(&block.payload).unwrap();
-        log::info!("Decoding block: {:?}", decode_block);
+        log::debug!("Decoding block: {:?}", decode_block);
         plugins.handle_block(&decode_block); // Block handling
     }
     Ok(())
