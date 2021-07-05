@@ -3,22 +3,18 @@ use futures::channel::{mpsc};
 use futures::executor::block_on;
 use futures::{StreamExt, TryFutureExt};
 use futures::future::FutureExt;
-use std::{path::PathBuf};
 
 // Massbit dependencies
-use manifest_reader::core::load_file;
 use tokio02_spawn::core::abort_on_panic;
 use tokio02_spawn::core::tokio02_spawn;
-use plugin::manager::PluginManager;
-use massbit_chain_substrate::data_type::SubstrateBlock;
-use ipfs_client::core::{IpfsClient, create_ipfs_clients};
+use crate::helper::loop_blocks;
 use crate::types::{JsonRpcServer, DeployLocalParams, DeployIpfsParams};
 
 impl JsonRpcServer {
     pub fn serve(
         http_addr: String,
     ) -> jsonrpc_http_server::Server {
-        // Config Server to run with tokio02
+        // Use mpsc channel to spawn tokio 0.2 because json-rpc-http-server crate is not updated to tokio 0.2
         let mut handler = IoHandler::with_compatibility(Compatibility::Both);
         let (task_sender, task_receiver) =
             mpsc::channel::<Box<dyn std::future::Future<Output = ()> + Send + Unpin>>(100);
@@ -31,14 +27,13 @@ impl JsonRpcServer {
         let sender_ipfs = task_sender.clone();
 
         //
-        // All Handlers Mapping
+        // All Handlers
         //
         handler.add_method("index_deploy_local", move|params: Params| {
             Box::pin(tokio02_spawn(
                 sender_local.clone(),
                 async move {
                     let params = params.parse().unwrap();
-                    // Add function: call to local folder to get config (.yaml) / SO rust file
                     deploy_local_handler(params).await
                 }.boxed(),
             )).compat()
@@ -49,7 +44,6 @@ impl JsonRpcServer {
                 sender_ipfs.clone(),
                 async move {
                     let params = params.parse().unwrap();
-                    // Add function: call to IPFS to get config (.yaml) / SO rust file
                     deploy_ipfs_handler(params).await
                 }.boxed(),
             )).compat()
@@ -70,69 +64,16 @@ async fn deploy_local_handler(
     params: DeployLocalParams,
 ) -> Result<Value, jsonrpc_core::Error> {
     // tokio::spawn(async move{
-    //     let mut client = StreamoutClient::connect(URL).await.unwrap();
-    //     loop_blocks(&mut client, params).await; // Start Chain Reader Client
+    //     loop_blocks(params).await;// Start streaming and indexing blocks
     // });
-    Ok(serde_json::to_value("Deployed index from local success").expect("Unable to create Index"))
+    Ok(serde_json::to_value("Deploy index with local config success").expect("Unable to deploy new index"))
 }
 
 async fn deploy_ipfs_handler(
     params: DeployIpfsParams,
 ) -> Result<Value, jsonrpc_core::Error> {
-    // let config = get_config(&params.ipfs_config_hash).await;
-    // let mapping = get_mapping_file(&params.ipfs_mapping_hash).await;
-
     tokio::spawn(async move{
-        let mut client = StreamoutClient::connect(URL).await.unwrap();
-        loop_blocks(&mut client, params).await; // Start Chain Reader Client
+        loop_blocks(params).await; // Start streaming and indexing blocks
     });
-    Ok(serde_json::to_value("Deployed index from ipfs success").expect("Unable to create Index"))
-}
-
-//
-// Chain reader client. Migrate to a new cargo
-//
-#[allow(unused_imports)]
-use tonic::{transport::{Server, Channel}, Request, Response, Status};
-use stream_mod::{GetBlocksRequest, GenericDataProto};
-use stream_mod::streamout_client::{StreamoutClient};
-use std::error::Error;
-use std::fs::File;
-use crate::helper::{get_config, get_mapping_file};
-
-pub mod stream_mod {
-    tonic::include_proto!("streamout");
-}
-const URL: &str = "http://127.0.0.1:50051";
-pub async fn loop_blocks(client: &mut StreamoutClient<Channel>, params: DeployIpfsParams) -> Result<(), Box<dyn Error>> {
-    // Not use start_block_number start_block_number yet
-    let get_blocks_request = GetBlocksRequest{
-        start_block_number: 0,
-        end_block_number: 1,
-    };
-    let mut stream = client
-        .list_blocks(Request::new(get_blocks_request))
-        .await?
-        .into_inner();
-
-    println!("Start plugin manager");
-    // The main loop, subscribing to Chain Reader Server to get new block
-    while let Some(block) = stream.message().await? {
-        let block = block as GenericDataProto;
-        log::info!("Received block = {:?}, hash = {:?} from {:?}",block.block_number, block.block_hash, params.index_name);
-
-        // Refactor to read from examples folder and params
-        let library_path = PathBuf::from("./target/release/libblock.so".to_string());
-        let mut plugins = PluginManager::new();
-        unsafe {
-            plugins
-                .load(&library_path)
-                .expect("plugin loading failed");
-        }
-
-        let decode_block: SubstrateBlock = serde_json::from_slice(&block.payload).unwrap();
-        log::info!("Decoding block: {:?}", decode_block);
-        plugins.handle_block(&decode_block); // Block handling
-    }
-    Ok(())
+    Ok(serde_json::to_value("Deploy index with config from ipfs success").expect("Unable to deploy new index"))
 }

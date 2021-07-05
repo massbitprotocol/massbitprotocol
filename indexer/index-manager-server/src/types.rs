@@ -1,11 +1,9 @@
 // Massbit dependencies
-use ipfs_client::core::IpfsClient;
 use serde::{Deserialize};
 
 #[allow(dead_code)]
 pub struct JsonRpcServer {
     http_addr: String,
-    ipfs_client: Vec<IpfsClient>, // We need this to get user index config & mapping logic
 }
 
 #[derive(Clone, Debug, Deserialize)]
