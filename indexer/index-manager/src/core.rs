@@ -8,9 +8,9 @@ use futures::future::FutureExt;
 use tokio02_spawn::core::abort_on_panic;
 use tokio02_spawn::core::tokio02_spawn;
 use crate::helper::loop_blocks;
-use crate::types::{JsonRpcServer, DeployLocalParams, DeployIpfsParams};
+use crate::types::{IndexManager, DeployLocalParams, DeployIpfsParams};
 
-impl JsonRpcServer {
+impl IndexManager {
     pub fn serve(
         http_addr: String,
     ) -> jsonrpc_http_server::Server {

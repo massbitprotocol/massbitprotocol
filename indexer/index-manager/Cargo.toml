@@ -6,17 +6,26 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+jsonrpc-http-server = "15.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.40"
-#tokio = { version = "0.2.25", features = ["full"] } # Required by IPFS Client
-tokio = {version = "1.2.0", features = ["full"]} # Required by Tonic
-anyhow = "1.0"
-jsonrpc-http-server = "15.0"
 log = "0.4.0"
 env_logger = "0.8.4"
-chrono = "0.4"
+tonic = "0.4" # Chain Reader Client
+prost = "0.7" # Chain Reader Client
+async-std = "1.9.0"
+tokio = {version = "1.2.0", features = ["full"]} # Required by Tonic
+futures = { version = "0.3.13", features = ["compat"] }
+tokio-compat-02 = "0.2"
+serde_yaml = "0.8"
+anyhow = "1.0"
+
 # Massbit dependencies
-index-manager-server = { path = "../index-manager-server" }
-ipfs-client = { path = "../../massbit-core/ipfs-client" }
 manifest-reader = { path = "../manifest-reader" }
-logger = { path = "../logger" }
+tokio02-spawn = { path = "../../massbit-core/tokio02-spawn" }
+massbit-chain-substrate = { path = "../../massbit-core/chain/substrate"}
+plugin = { path = "../../plugin" }
+ipfs-client = { path = "../../massbit-core/ipfs-client" }
+
+[build-dependencies]
+tonic-build = "0.4" # Chain Reader Client
