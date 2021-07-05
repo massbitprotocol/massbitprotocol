@@ -11,10 +11,15 @@ And to achieve that, the easiest solution is to develop with some existing featu
   ```
 - Create the SO file by running 
   ```shell
+    cargo build --release
+  ```
+  
+- Run migration manually to create the database (this will be handled automatically by index-manager later)
+  ```shell
+    cd plugin-examples/block
     cargo install diesel_cli
     export DATABASE_URL="postgres://graph-node:let-me-in@localhost"
     diesel migration run
-    cargo build --release
   ```
 - Upload 
     - /target/release/libblock.so (built by the previous step) to http://0.0.0.0:5001/webui

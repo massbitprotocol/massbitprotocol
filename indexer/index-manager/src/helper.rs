@@ -41,7 +41,7 @@ pub async fn get_index_mapping_file(ipfs_mapping_hash: &String) -> String {
     let res = fs::write(&file_name, file_bytes); // Add logger and says that write file successfully
 
     match res {
-        Ok(ok) => {
+        Ok(_) => {
             log::info!("[Index Manager Helper] Write SO file to local storage successfully");
             file_name
         },

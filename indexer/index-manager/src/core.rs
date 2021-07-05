@@ -60,6 +60,7 @@ impl IndexManager {
 //
 // All Handlers
 //
+#[allow(unused_variables)]
 async fn deploy_local_handler(
     params: DeployLocalParams,
 ) -> Result<Value, jsonrpc_core::Error> {
@@ -72,6 +73,7 @@ async fn deploy_local_handler(
 async fn deploy_ipfs_handler(
     params: DeployIpfsParams,
 ) -> Result<Value, jsonrpc_core::Error> {
+    #[allow(unused_must_use)]
     tokio::spawn(async move{
         loop_blocks(params).await; // Start streaming and indexing blocks
     });
