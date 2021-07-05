@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package streamout;
+package chaindata;
 
 // Interface exported by the server.
 service Streamout {
@@ -12,17 +12,6 @@ service Streamout {
 }
 
 message GenericDataProto {
-  enum ChainType {
-      Substrate = 0;
-      Ethereum = 1;
-      Solana = 2;
-  }
-  enum DataType {
-      Block = 0;
-      Event = 1;
-      Transaction = 2;
-  }
-
   ChainType chain_type = 1;
   string version = 2;
   DataType data_type = 3;
@@ -46,4 +35,15 @@ message GetBlocksRequest {
 message HelloReply {
   // Reply contains the greeting message
   string message = 1;
+}
+
+enum ChainType {
+  Substrate = 0;
+  Ethereum = 1;
+  Solana = 2;
+}
+enum DataType {
+  Block = 0;
+  Event = 1;
+  Transaction = 2;
 }

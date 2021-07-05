@@ -1,11 +1,9 @@
 #[allow(unused_imports)]
 use tonic::{transport::{Server, Channel}, Request, Response, Status};
-use crate::stream_mod::{HelloReply, HelloRequest, GetBlocksRequest, GenericDataProto};
-use stream_mod::streamout_client::{StreamoutClient};
+use crate::stream_mod::{HelloRequest, GetBlocksRequest, GenericDataProto, streamout_client::StreamoutClient};
 use std::error::Error;
-
 pub mod stream_mod {
-    tonic::include_proto!("streamout");
+    tonic::include_proto!("chaindata");
 }
 
 const URL: &str = "http://127.0.0.1:50051";
@@ -43,7 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("RESPONSE = {:?}", response);
 
-    print_blocks(&mut client).await;
+    print_blocks(&mut client).await?;
 
     Ok(())
 }
