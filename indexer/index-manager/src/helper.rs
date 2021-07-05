@@ -11,6 +11,7 @@ use plugin::manager::PluginManager;
 use stream_mod::{GenericDataProto, GetBlocksRequest};
 use stream_mod::streamout_client::StreamoutClient;
 use crate::types::DeployIpfsParams;
+use diesel::{RunQueryDsl, PgConnection, Connection};
 
 pub async fn get_index_config(ipfs_config_hash: &String) -> serde_yaml::Mapping {
     let ipfs_addresses = vec!["0.0.0.0:5001".to_string()];
@@ -26,7 +27,7 @@ pub async fn get_index_config(ipfs_config_hash: &String) -> serde_yaml::Mapping 
     serde_yaml::from_slice(&file_bytes).unwrap()
 }
 
-pub async fn get_index_mapping_file(ipfs_mapping_hash: &String) -> String {
+pub async fn get_index_mapping_file_name(ipfs_mapping_hash: &String) -> String {
     let ipfs_addresses = vec!["0.0.0.0:5001".to_string()];
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await;
 
@@ -51,12 +52,30 @@ pub async fn get_index_mapping_file(ipfs_mapping_hash: &String) -> String {
     }
 }
 
+pub async fn get_raw_query_from_model_hash(ipfs_model_hash: &String) -> String {
+    log::info!("[Index Manager Helper] Downloading Raw Query from IPFS");
+    let ipfs_addresses = vec!["0.0.0.0:5001".to_string()];
+    let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await;
+
+    let file_bytes = ipfs_clients[0]
+        .cat_all(ipfs_model_hash.to_string())
+        .compat()
+        .await
+        .unwrap()
+        .to_vec();
+
+    let raw_query = std::str::from_utf8(&file_bytes).unwrap();
+    String::from(raw_query)
+}
+
 pub mod stream_mod {
     tonic::include_proto!("chaindata");
 }
 const URL: &str = "http://127.0.0.1:50051";
 pub async fn loop_blocks(params: DeployIpfsParams) -> Result<(), Box<dyn Error>> {
     let mut client = StreamoutClient::connect(URL).await.unwrap();
+    // Lazily config database connection string, not a good method because this will leak connection to indexer
+    let db_connection_string = "postgres://graph-node:let-me-in@localhost";
 
     // Not use start_block_number start_block_number yet
     let get_blocks_request = GetBlocksRequest{
@@ -70,9 +89,25 @@ pub async fn loop_blocks(params: DeployIpfsParams) -> Result<(), Box<dyn Error>>
         .into_inner();
 
     log::info!("[Index Manager Helper] Start plugin manager");
-    // The main loop, subscribing to Chain Reader Server to get new block
-    let mapping_file_name = get_index_mapping_file(&params.ipfs_mapping_hash).await;
 
+    // Get mapping file
+    let mapping_file_name = get_index_mapping_file_name(&params.ipfs_mapping_hash).await;
+
+    // Create model based on the user's raw query
+    let raw_query = get_raw_query_from_model_hash(&params.ipfs_model_hash).await;
+    let query = diesel::sql_query(raw_query);
+    let c = PgConnection::establish(db_connection_string).expect(&format!("Error connecting to {}", db_connection_string));
+    let result = query.execute(&c);
+    match result {
+        Ok(_) => {
+            log::info!("[Index Manager Helper] Table created successfully");
+        },
+        Err(_) => {
+            log::warn!("[Index Manager Helper] Table already exists");
+        }
+    }
+
+    // Getting data
     while let Some(block) = stream.message().await? {
         let block = block as GenericDataProto;
         log::info!("[Index Manager Helper] Received block = {:?}, hash = {:?} from {:?}",block.block_number, block.block_hash, params.index_name);
@@ -87,8 +122,9 @@ pub async fn loop_blocks(params: DeployIpfsParams) -> Result<(), Box<dyn Error>>
         }
 
         let decode_block: SubstrateBlock = serde_json::from_slice(&block.payload).unwrap();
-        log::debug!("Decoding block: {:?}", decode_block);
-        plugins.handle_block(&decode_block); // Block handling
+        log::info!("Decoding block: {:?}", decode_block);
+
+        plugins.handle_block(&String::from(db_connection_string), &decode_block); // Block handling
     }
     Ok(())
 }

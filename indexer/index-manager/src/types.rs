@@ -17,4 +17,5 @@ pub struct DeployIpfsParams {
     pub(crate) index_name: String,
     pub(crate) ipfs_config_hash: String,
     pub(crate) ipfs_mapping_hash: String,
+    pub(crate) ipfs_model_hash: String,
 }

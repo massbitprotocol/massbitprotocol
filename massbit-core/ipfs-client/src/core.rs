@@ -123,7 +123,7 @@ pub async fn create_ipfs_clients(ipfs_addresses: &Vec<String>) -> Vec<IpfsClient
     ipfs_addresses
         .into_iter()
         .map(|ipfs_address| {
-            log::info!("[Ipfs Client] Try connecting to IPFS node");
+            log::info!("[Ipfs Client] Connecting to IPFS node");
             let ipfs_client = match IpfsClient::new(&ipfs_address) {
                 Ok(ipfs_client) => ipfs_client,
                 Err(e) => {

@@ -32,17 +32,17 @@ impl PluginManager {
         Ok(())
     }
 
-    pub fn handle_block(&self, block: &SubstrateBlock) {
+    pub fn handle_block(&self, connection_string: &String, block: &SubstrateBlock) {
         for (_, handler) in &self.block_handlers {
-            let _ = handler.handle_block(block);
+            let _ = handler.handle_block(connection_string, block);
         }
     }
 
-    pub fn call(&self, function: &str, block: &SubstrateBlock) -> Result<(), InvocationError> {
+    pub fn call(&self, function: &str, connection_string: &String, block: &SubstrateBlock) -> Result<(), InvocationError> {
         self.block_handlers
             .get(function)
             .ok_or_else(|| format!("\"{}\" not found", function))?
-            .handle_block(block)
+            .handle_block(connection_string, block)
     }
 }
 
@@ -76,7 +76,7 @@ pub struct BlockHandlerProxy {
 }
 
 impl BlockHandler for BlockHandlerProxy {
-    fn handle_block(&self, block: &SubstrateBlock) -> Result<(), InvocationError> {
-        self.function.handle_block(block)
+    fn handle_block(&self, connection_string: &String, block: &SubstrateBlock) -> Result<(), InvocationError> {
+        self.function.handle_block(connection_string, block)
     }
 }

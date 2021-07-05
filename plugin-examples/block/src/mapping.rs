@@ -10,19 +10,19 @@ use std::env;
 pub struct BlockIndexer;
 
 impl BlockHandler for BlockIndexer {
-    fn handle_block(&self, substrate_block: &SubstrateBlock) -> Result<(), InvocationError> {
-        let connection = establish_connection();
+    fn handle_block(&self, connection_string: &String, substrate_block: &SubstrateBlock) -> Result<(), InvocationError> {
+        let connection = establish_connection(&connection_string);
         let number = substrate_block.header.number as i64;
         let new_block = NewBlock { number };
         println!("[Mapping] Inserting to database..");
-        let _ = diesel::insert_into(blocks::table)
+
+        let _ = diesel::insert_into(blocks::table) // Add random hash for the table
             .values(&new_block)
             .execute(&connection);
         Ok(())
     }
 }
 
-pub fn establish_connection() -> PgConnection {
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    PgConnection::establish(&database_url).expect(&format!("Error connecting to {}", database_url))
+pub fn establish_connection(connection_string: &String) -> PgConnection {
+    PgConnection::establish(connection_string).expect(&format!("Error connecting to {}", connection_string))
 }
