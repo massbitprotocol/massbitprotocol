@@ -8,6 +8,13 @@ And to achieve that, the easiest solution is to develop with some existing featu
   ```shell
     cd indexer 
     docker-compose up
+  
+    docker exec -it replace_with_ipfs_image_name /bin/sh
+    ipfs config --json API.HTTPHeaders.Access-Control-Allow-Origin '["http://0.0.0.0:5001", "http://127.0.0.1:5001", "https://webui.ipfs.io"]'
+    ipfs config --json API.HTTPHeaders.Access-Control-Allow-Methods '["PUT", "GET", "POST"]'
+    
+    // Press ctrl + c to stop the docker, then start it again so IPFS will apply CORS config
+    docker-compose up
   ```
 - Create the SO file by running 
   ```shell
