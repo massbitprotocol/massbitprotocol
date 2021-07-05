@@ -70,7 +70,7 @@ Description:
   - The path to the local .SO mapping file
 
 ```http request
-curl --location --request POST 'localhost:3030' --header 'Content-Type: application/json' --data-raw '{"jsonrpc": "2.0", "method": "index_deploy", "params": ["index_name","../example/project.yaml", "../example/libblock.so"], "id":1 }'
+curl --location --request POST 'localhost:3030' --header 'Content-Type: application/json' --data-raw '{"jsonrpc": "2.0", "method": "index_deploy_local", "params": ["index_name","../example/project.yaml", "../example/libblock.so"], "id":1 }'
 ```
 
 Method: index_deploy_ipfs
@@ -85,5 +85,5 @@ Description:
   - The IPFS Hash of the .SO mapping file
 
 ```http request
-curl --location --request POST 'localhost:3030' --header 'Content-Type: application/json' --data-raw '{"jsonrpc": "2.0", "method": "index_deploy", "params": ["index_name","hash_project_yaml", "hash_mapping_file"], "id":1 }'
+curl --location --request POST 'localhost:3030' --header 'Content-Type: application/json' --data-raw '{"jsonrpc": "2.0", "method": "index_deploy_ipfs", "params": ["index_name","hash_project_yaml", "hash_mapping_file"], "id":1 }'
 ```
