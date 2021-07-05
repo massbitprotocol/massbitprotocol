@@ -19,6 +19,7 @@ futures = { version = "0.3.13", features = ["compat"] }
 tokio-compat-02 = "0.2"
 serde_yaml = "0.8"
 anyhow = "1.0"
+diesel = { version = "1.4.0", features = ["postgres"] }
 
 # Massbit dependencies
 manifest-reader = { path = "../manifest-reader" }

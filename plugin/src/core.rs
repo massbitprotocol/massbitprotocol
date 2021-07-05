@@ -1,7 +1,7 @@
 use massbit_chain_substrate::data_type::SubstrateBlock;
 
 pub trait BlockHandler {
-    fn handle_block(&self, block: &SubstrateBlock) -> Result<(), InvocationError>;
+    fn handle_block(&self, connection_string: &String, block: &SubstrateBlock) -> Result<(), InvocationError>;
 }
 
 #[derive(Debug, Clone, PartialEq)]
