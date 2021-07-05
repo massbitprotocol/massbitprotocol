@@ -7,7 +7,7 @@ use substrate_api_client::{Api, rpc::json_req, utils::FromHexString};
 use env_logger;
 use serde_json;
 use std::error::Error;
-use crate::stream_mod::{GenericDataProto, ChainType, DataType};
+use crate::grpc_stream::stream_mod::{GenericDataProto, ChainType, DataType};
 
 use tokio::sync::broadcast;
 
