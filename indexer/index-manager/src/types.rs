@@ -7,17 +7,16 @@ pub struct IndexManager {
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct DeployLocalParams {
+pub struct DeployParams {
     pub(crate) index_name: String,
-    pub(crate) config_url: String,
-    pub(crate) mapping_url: String,
-    pub(crate) model_url: String,
+    pub(crate) config_path: String,
+    pub(crate) mapping_path: String,
+    pub(crate) model_path: String,
+    pub(crate) deploy_type: DeployType,
 }
 
 #[derive(Clone, Debug, Deserialize)]
-pub struct DeployIpfsParams {
-    pub(crate) index_name: String,
-    pub(crate) ipfs_config_hash: String,
-    pub(crate) ipfs_mapping_hash: String,
-    pub(crate) ipfs_model_hash: String,
+pub enum DeployType {
+    Local,
+    Ipfs,
 }
