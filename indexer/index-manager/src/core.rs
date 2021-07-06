@@ -7,8 +7,8 @@ use futures::future::FutureExt;
 // Massbit dependencies
 use tokio02_spawn::core::abort_on_panic;
 use tokio02_spawn::core::tokio02_spawn;
-use crate::helper::{loop_blocks, loop_blocks_local};
-use crate::types::{IndexManager, DeployLocalParams, DeployIpfsParams};
+use crate::helper::{loop_blocks};
+use crate::types::{IndexManager, DeployParams};
 
 impl IndexManager {
     pub fn serve(
@@ -23,28 +23,14 @@ impl IndexManager {
                 tokio::task::spawn_blocking(move || block_on(abort_on_panic(f)));
             }
         }));
-        let sender_local = task_sender.clone();
-        let sender_ipfs = task_sender.clone();
+        let sender = task_sender.clone();
 
-        //
-        // All Handlers
-        //
-        handler.add_method("index_deploy_local", move|params: Params| {
+        handler.add_method("index_deploy", move|params: Params| {
             Box::pin(tokio02_spawn(
-                sender_local.clone(),
+                sender.clone(),
                 async move {
                     let params = params.parse().unwrap();
-                    deploy_local_handler(params).await
-                }.boxed(),
-            )).compat()
-        });
-
-        handler.add_method("index_deploy_ipfs", move|params: Params| {
-            Box::pin(tokio02_spawn(
-                sender_ipfs.clone(),
-                async move {
-                    let params = params.parse().unwrap();
-                    deploy_ipfs_handler(params).await
+                    deploy_handler(params).await
                 }.boxed(),
             )).compat()
         });
@@ -57,26 +43,12 @@ impl IndexManager {
     }
 }
 
-//
-// All Handlers
-//
-#[allow(unused_variables)]
-async fn deploy_local_handler(
-    params: DeployLocalParams,
+async fn deploy_handler(
+    params: DeployParams,
 ) -> Result<Value, jsonrpc_core::Error> {
     #[allow(unused_must_use)]
     tokio::spawn(async move{
-        loop_blocks_local(params).await;// Start streaming and indexing blocks
+        loop_blocks(params).await;// Start streaming and indexing blocks
     });
-    Ok(serde_json::to_value("Deploy index with local config success").expect("Unable to deploy new index"))
-}
-
-async fn deploy_ipfs_handler(
-    params: DeployIpfsParams,
-) -> Result<Value, jsonrpc_core::Error> {
-    #[allow(unused_must_use)]
-    tokio::spawn(async move{
-        loop_blocks(params).await; // Start streaming and indexing blocks
-    });
-    Ok(serde_json::to_value("Deploy index with config from ipfs success").expect("Unable to deploy new index"))
+    Ok(serde_json::to_value("Deploy index success").expect("Unable to deploy new index"))
 }
