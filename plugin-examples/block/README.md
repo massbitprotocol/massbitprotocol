@@ -22,3 +22,17 @@ unsafe {
 }
 plugins.handle_block(&block);
 ```
+
+### Steps
+To build SO file and config, user need these files:
+
+- models.rs (created with diesel CLI)
+- schema.rs (created with diesel CLI)
+- up.sql (created with diesel CLI)
+- project.yaml
+- SO.file (created after run cargo build)
+
+Then user have to upload to Index Manager Server:
+- SO.file
+- project.yaml
+- up.sql
