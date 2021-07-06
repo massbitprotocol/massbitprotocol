@@ -7,7 +7,7 @@ use futures::future::FutureExt;
 // Massbit dependencies
 use tokio02_spawn::core::abort_on_panic;
 use tokio02_spawn::core::tokio02_spawn;
-use crate::helper::loop_blocks;
+use crate::helper::{loop_blocks, loop_blocks_local};
 use crate::types::{IndexManager, DeployLocalParams, DeployIpfsParams};
 
 impl IndexManager {
@@ -64,9 +64,9 @@ impl IndexManager {
 async fn deploy_local_handler(
     params: DeployLocalParams,
 ) -> Result<Value, jsonrpc_core::Error> {
-    // tokio::spawn(async move{
-    //     loop_blocks(params).await;// Start streaming and indexing blocks
-    // });
+    tokio::spawn(async move{
+        loop_blocks_local(params).await;// Start streaming and indexing blocks
+    });
     Ok(serde_json::to_value("Deploy index with local config success").expect("Unable to deploy new index"))
 }
 
