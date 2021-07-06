@@ -15,7 +15,7 @@ use stream_mod::streamout_client::StreamoutClient;
 use crate::types::{DeployIpfsParams, DeployLocalParams};
 use std::str::FromStr;
 use sp_runtime::Digest;
-
+use index_store::core::IndexStore;
 
 pub async fn get_index_config(ipfs_config_hash: &String) -> serde_yaml::Mapping {
     let ipfs_addresses = vec!["0.0.0.0:5001".to_string()];
@@ -128,7 +128,7 @@ pub async fn loop_blocks(params: DeployIpfsParams) -> Result<(), Box<dyn Error>>
         let decode_block: SubstrateBlock = serde_json::from_slice(&block.payload).unwrap();
         log::info!("Decoding block: {:?}", decode_block);
 
-        plugins.handle_block(&String::from(db_connection_string), &decode_block); // Block handling
+        // plugins.handle_block(&String::from(db_connection_string), &decode_block); // Block handling
     }
     Ok(())
 }
@@ -140,28 +140,8 @@ pub async fn loop_blocks(params: DeployIpfsParams) -> Result<(), Box<dyn Error>>
 
 
 
-
-
-
 pub async fn loop_blocks_local(params: DeployLocalParams) -> Result<(), Box<dyn Error>> {
-    let mut client = StreamoutClient::connect(URL).await.unwrap();
-    // Lazily config database connection string, not a good method because this will leak connection to indexer
-    let db_connection_string = "postgres://graph-node:let-me-in@localhost";
-
-    // Not use start_block_number start_block_number yet
-    let get_blocks_request = GetBlocksRequest{
-        start_block_number: 0,
-        end_block_number: 1,
-    };
-
-    let mut stream = client
-        .list_blocks(Request::new(get_blocks_request))
-        .await?
-        .into_inner();
-
     log::info!("[Index Manager Helper] Start plugin manager");
-
-
     let block: SubstrateBlock = Block {
         header: Header {
             parent_hash: Hash::from_str("0x5611f005b55ffb1711eaf3b2f5557c788aa2e3d61b1a833f310f9c7e12a914f7").unwrap(),
@@ -177,6 +157,10 @@ pub async fn loop_blocks_local(params: DeployLocalParams) -> Result<(), Box<dyn 
         extrinsics: [].to_vec()
     };
 
+    let store =  IndexStore {
+        connection_string: String::from("postgres://graph-node:let-me-in@localhost"),
+    };
+
     // Get mapping file
     let mapping_file_name = params.mapping_url;
 
@@ -188,6 +172,6 @@ pub async fn loop_blocks_local(params: DeployLocalParams) -> Result<(), Box<dyn 
             .expect("plugin loading failed");
     }
 
-    plugins.handle_block(&String::from(db_connection_string), &block);
+    plugins.handle_block(&store, &block);
     Ok(())
 }

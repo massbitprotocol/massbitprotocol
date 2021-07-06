@@ -8,8 +8,11 @@ edition = "2018"
 
 [dependencies]
 diesel = { version = "1.4.0", features = ["postgres"] }
+
+# Massbit Dependencies
 massbit-chain-substrate = { path = "../../massbit-core/chain/substrate"}
 plugin = { path = "../../plugin"}
+index-store = { path = "../../massbit-core/index-store"}
 
 [lib]
 crate-type = ["cdylib"]

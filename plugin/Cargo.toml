@@ -7,4 +7,7 @@ edition = "2018"
 
 [dependencies]
 libloading = "0.5.2"
-massbit-chain-substrate = { path = "../massbit-core/chain/substrate"}
+
+# Massbit Dependencies
+massbit-chain-substrate = { path = "../massbit-core/chain/substrate" }
+index-store = { path = "../massbit-core/index-store" }
