@@ -1,4 +1,4 @@
-use std::{path::PathBuf};
+use std::{path::PathBuf, env};
 use std::error::Error;
 use std::fs;
 use tokio_compat_02::FutureExt;
@@ -13,10 +13,12 @@ use stream_mod::{GenericDataProto, GetBlocksRequest};
 use stream_mod::streamout_client::StreamoutClient;
 use crate::types::{DeployParams, DeployType};
 use index_store::core::IndexStore;
+use std::fs::File;
+use std::io::{Read};
 
 pub async fn get_index_config(ipfs_config_hash: &String) -> serde_yaml::Mapping {
     let ipfs_addresses = vec!["0.0.0.0:5001".to_string()];
-    let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await; // Use lazy load
+    let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await; // Refactor to use lazy load
 
     let file_bytes = ipfs_clients[0]
         .cat_all(ipfs_config_hash.to_string())
@@ -30,7 +32,7 @@ pub async fn get_index_config(ipfs_config_hash: &String) -> serde_yaml::Mapping 
 
 pub async fn get_index_mapping_file_name(ipfs_mapping_hash: &String) -> String {
     let ipfs_addresses = vec!["0.0.0.0:5001".to_string()];
-    let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await; // Use lazy load
+    let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await; // Refactor to use lazy load
 
     let file_bytes = ipfs_clients[0]
         .cat_all(ipfs_mapping_hash.to_string())
@@ -74,10 +76,55 @@ pub mod stream_mod {
 }
 const URL: &str = "http://127.0.0.1:50051";
 pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
+    let db_connection_string = match env::var("DATABASE_URL") {
+        Ok(connection) => connection,
+        Err(_) => String::from("postgres://graph-node:let-me-in@localhost")
+    };
+    let store = IndexStore {
+        connection_string: db_connection_string,
+    }; // This store will be used by indexers to insert to database
+
+    // Chain Reader Client to subscribe and get latest block
+    let (so_file_path, raw_query) = match params.deploy_type {
+        DeployType::Local => {
+            // Get SO mapping file location
+            let mapping_file_name = params.mapping_path;
+            let so_file_path = PathBuf::from(mapping_file_name.to_string());
+
+            // Get raw query to create database
+            let mut raw_query = String::new();
+            let mut f = File::open(&params.model_path).expect("Unable to open file");
+            f.read_to_string(&mut raw_query).expect("Unable to read string");
+
+            (so_file_path, raw_query)
+        },
+        DeployType::Ipfs => {
+            // Get SO mapping file location
+            let mapping_file_name = get_index_mapping_file_name(&params.mapping_path).await;
+            let mapping_file_location = ["./", &mapping_file_name].join("");
+
+            // Get raw query to create database
+            let raw_query = get_raw_query_from_model_hash(&params.model_path).await;
+            let so_file_path = PathBuf::from(mapping_file_location.to_string());
+
+            (so_file_path, raw_query)
+        },
+    };
+
+    let query = diesel::sql_query(raw_query);
+    let c = PgConnection::establish(&store.connection_string).expect(&format!("Error connecting to {}", store.connection_string));
+    let result = query.execute(&c);
+    match result {
+        Ok(_) => {
+            log::info!("[Index Manager Helper] Table created successfully");
+        },
+        Err(e) => {
+            log::warn!("[Index Manager Helper] {}", e);
+        }
+    };
+
+    // Chain Reader Client Configuration to subscribe and get latest block from Chain Reader Server
     let mut client = StreamoutClient::connect(URL).await.unwrap();
-    // Lazily config database connection string, not a good method because this will leak connection to indexer
-    let db_connection_string = "postgres://graph-node:let-me-in@localhost";
-    // Not use start_block_number start_block_number yet
     let get_blocks_request = GetBlocksRequest{
         start_block_number: 0,
         end_block_number: 1,
@@ -87,40 +134,7 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
         .await?
         .into_inner();
 
-    let store =  IndexStore {
-        connection_string: String::from("postgres://graph-node:let-me-in@localhost"),
-    };
-
-    let library_path = match params.deploy_type {
-        DeployType::Local => {
-            let mapping_file_name = params.mapping_path; // Get mapping file
-            let library_path = PathBuf::from(mapping_file_name.to_string());
-            library_path
-        },
-        DeployType::Ipfs => {
-            let mapping_file_name = get_index_mapping_file_name(&params.mapping_path).await; // Get mapping file
-            let mapping_file_location = ["./", &mapping_file_name].join("");
-
-            let raw_query = get_raw_query_from_model_hash(&params.model_path).await; // Create model based on the user's raw query
-            let query = diesel::sql_query(raw_query);
-            let c = PgConnection::establish(db_connection_string).expect(&format!("Error connecting to {}", db_connection_string));
-            let result = query.execute(&c);
-
-            match result {
-                Ok(_) => {
-                    log::info!("[Index Manager Helper] Table created successfully");
-                },
-                Err(_) => {
-                    log::warn!("[Index Manager Helper] Table already exists");
-                }
-            };
-
-            let library_path = PathBuf::from(mapping_file_location.to_string());
-            library_path
-        },
-    };
-
-    // Getting data
+    // Subscribe new blocks
     while let Some(block) = stream.message().await? {
         let block = block as GenericDataProto;
         log::info!("[Index Manager Helper] Received block = {:?}, hash = {:?} from {:?}",block.block_number, block.block_hash, params.index_name);
@@ -130,7 +144,7 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
         let mut plugins = PluginManager::new();
         unsafe {
             plugins
-                .load(&library_path)
+                .load(&so_file_path)
                 .expect("plugin loading failed");
         }
 
