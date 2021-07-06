@@ -1,11 +1,9 @@
 [workspace]
 members = [
     "chain-reader",
+    "massbit-core/chain/substrate",
+    "massbit-core/store",
     "indexer/main",
-    "plugin-examples/block",
-    "mock",
-    "core/chain/substrate",
-]
-exclude = [
-    "code-compiler" # Ignore this python project because it contains Cargo.toml which is only used for populating new index
+    "plugin",
+    "plugin-test"
 ]

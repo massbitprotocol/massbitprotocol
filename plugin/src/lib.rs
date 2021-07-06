@@ -1,6 +1,8 @@
 pub mod core;
 pub mod manager;
 
+pub use manager::PluginManager;
+
 #[macro_export]
 macro_rules! export_plugin {
     ($register:expr) => {
