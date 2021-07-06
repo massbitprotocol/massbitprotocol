@@ -27,6 +27,7 @@ tokio02-spawn = { path = "../../massbit-core/tokio02-spawn" }
 massbit-chain-substrate = { path = "../../massbit-core/chain/substrate"}
 plugin = { path = "../../plugin" }
 ipfs-client = { path = "../../massbit-core/ipfs-client" }
+index-store = { path = "../../massbit-core/index-store" }
 
 [build-dependencies]
 tonic-build = "0.4" # Chain Reader Client

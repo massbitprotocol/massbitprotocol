@@ -1,7 +1,8 @@
 use massbit_chain_substrate::data_type::SubstrateBlock;
+use index_store::core::IndexStore;
 
 pub trait BlockHandler {
-    fn handle_block(&self, connection_string: &String, block: &SubstrateBlock) -> Result<(), InvocationError>;
+    fn handle_block(&self, store: &IndexStore, block: &SubstrateBlock) -> Result<(), InvocationError>;
 }
 
 #[derive(Debug, Clone, PartialEq)]

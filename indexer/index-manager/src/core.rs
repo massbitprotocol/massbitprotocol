@@ -64,6 +64,7 @@ impl IndexManager {
 async fn deploy_local_handler(
     params: DeployLocalParams,
 ) -> Result<Value, jsonrpc_core::Error> {
+    #[allow(unused_must_use)]
     tokio::spawn(async move{
         loop_blocks_local(params).await;// Start streaming and indexing blocks
     });
