@@ -1,9 +1,8 @@
-use crate::core::{
-    BlockHandler, InvocationError, PluginDeclaration, PluginRegistrar as PluginRegistrarTrait,
-};
+use crate::core::{BlockHandler, PluginDeclaration, PluginRegistrar as PluginRegistrarTrait};
 use libloading::Library;
 use massbit_chain_substrate::data_type::SubstrateBlock;
 use std::{alloc::System, collections::HashMap, ffi::OsStr, io, rc::Rc};
+use store::Store;
 
 #[global_allocator]
 static ALLOCATOR: System = System;
@@ -32,17 +31,16 @@ impl PluginManager {
         Ok(())
     }
 
-    pub fn handle_block(&self, block: &SubstrateBlock) {
-        for (_, handler) in &self.block_handlers {
-            let _ = handler.handle_block(block);
-        }
-    }
-
-    pub fn call(&self, function: &str, block: &SubstrateBlock) -> Result<(), InvocationError> {
+    pub fn handle_block(
+        &self,
+        block_handler: &str,
+        store: Box<dyn Store>,
+        block: &SubstrateBlock,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         self.block_handlers
-            .get(function)
-            .ok_or_else(|| format!("\"{}\" not found", function))?
-            .handle_block(block)
+            .get(block_handler)
+            .ok_or_else(|| format!("\"{}\" not found", block_handler))?
+            .handle_block(store, block)
     }
 }
 
@@ -76,7 +74,11 @@ pub struct BlockHandlerProxy {
 }
 
 impl BlockHandler for BlockHandlerProxy {
-    fn handle_block(&self, block: &SubstrateBlock) -> Result<(), InvocationError> {
-        self.function.handle_block(block)
+    fn handle_block(
+        &self,
+        store: Box<dyn Store>,
+        block: &SubstrateBlock,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.function.handle_block(store, block)
     }
 }

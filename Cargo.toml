@@ -2,6 +2,8 @@
 members = [
     "chain-reader",
     "massbit-core/chain/substrate",
+    "massbit-core/store",
     "indexer/main",
-    "plugin-examples/block",
+    "plugin",
+    "plugin-test"
 ]

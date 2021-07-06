@@ -1,21 +1,12 @@
 use massbit_chain_substrate::data_type::SubstrateBlock;
+use store::Store;
 
 pub trait BlockHandler {
-    fn handle_block(&self, block: &SubstrateBlock) -> Result<(), InvocationError>;
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum InvocationError {
-    InvalidArgumentCount { expected: usize, found: usize },
-    Other { msg: String },
-}
-
-impl<S: ToString> From<S> for InvocationError {
-    fn from(other: S) -> InvocationError {
-        InvocationError::Other {
-            msg: other.to_string(),
-        }
-    }
+    fn handle_block(
+        &self,
+        store: Box<dyn Store>,
+        block: &SubstrateBlock,
+    ) -> Result<(), Box<dyn std::error::Error>>;
 }
 
 #[derive(Copy, Clone)]
