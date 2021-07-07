@@ -135,6 +135,7 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
         .into_inner();
 
     // Subscribe new blocks
+    // NOTE: Sometimes API doesn't go pass this point. As a hack, we need to create two requests so it will pass.
     while let Some(block) = stream.message().await? {
         let block = block as GenericDataProto;
         log::info!("[Index Manager Helper] Received block = {:?}, hash = {:?} from {:?}",block.block_number, block.block_hash, params.index_name);
