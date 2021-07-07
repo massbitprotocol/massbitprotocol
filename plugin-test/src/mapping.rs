@@ -1,5 +1,5 @@
 use crate::models::BlockTs;
-use crate::STORE;
+
 use massbit_chain_substrate::data_type::SubstrateBlock;
 use plugin::core::BlockHandler;
 
@@ -12,12 +12,7 @@ impl BlockHandler for Indexer {
             block_hash: block.header.hash().to_string(),
             block_height: block.header.number as i64,
         };
-        unsafe {
-            STORE
-                .as_ref()
-                .unwrap()
-                .save("blocks".to_string(), block_ts.into());
-        }
+        block_ts.save();
         Ok(())
     }
 }

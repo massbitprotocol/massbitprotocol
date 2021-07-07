@@ -58,9 +58,7 @@ fn new_substrate_block() -> SubstrateBlock {
 struct MockStore {}
 
 impl Store for MockStore {
-    fn save(&self, _entity_name: String, _data: GenericMap) {
-        println!("{:?}", _data);
-    }
+    fn save(&self, _entity_name: String, _data: GenericMap) {}
 }
 
 impl MockStore {
