@@ -34,7 +34,7 @@ impl PluginManager {
     pub fn handle_block(
         &self,
         block_handler: &str,
-        store: Box<dyn Store>,
+        store: &mut dyn Store,
         block: &SubstrateBlock,
     ) -> Result<(), Box<dyn std::error::Error>> {
         self.block_handlers
@@ -76,7 +76,7 @@ pub struct BlockHandlerProxy {
 impl BlockHandler for BlockHandlerProxy {
     fn handle_block(
         &self,
-        store: Box<dyn Store>,
+        store: &mut dyn Store,
         block: &SubstrateBlock,
     ) -> Result<(), Box<dyn std::error::Error>> {
         self.function.handle_block(store, block)
