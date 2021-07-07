@@ -39,7 +39,7 @@ impl Streamout for StreamService {
         println!("ListFeatures = {:?}", request);
 
         // tx, rx for out stream gRPC
-        let (tx, rx) = mpsc::channel(4);
+        let (tx, rx) = mpsc::channel(1024);
 
         // Create new channel for connect between input and output stream
         let mut rx_chan =  self.chan.subscribe();

@@ -1,9 +1,14 @@
 use std::{path::PathBuf, env};
 use std::error::Error;
 use std::fs;
+use std::fs::File;
+use std::io::{Read};
 use tokio_compat_02::FutureExt;
 use tonic::{Request};
 use diesel::{RunQueryDsl, PgConnection, Connection};
+use diesel::result::DatabaseErrorInformation;
+use reqwest::Client;
+use serde_json::json;
 
 // Massbit dependencies
 use ipfs_client::core::create_ipfs_clients;
@@ -13,8 +18,6 @@ use stream_mod::{GenericDataProto, GetBlocksRequest};
 use stream_mod::streamout_client::StreamoutClient;
 use crate::types::{DeployParams, DeployType};
 use index_store::core::IndexStore;
-use std::fs::File;
-use std::io::{Read};
 
 pub async fn get_index_config(ipfs_config_hash: &String) -> serde_yaml::Mapping {
     let ipfs_addresses = vec!["0.0.0.0:5001".to_string()];
@@ -111,7 +114,8 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
         },
     };
 
-    let query = diesel::sql_query(raw_query);
+    // Run raw query migration to create new table
+    let query = diesel::sql_query(raw_query.clone());
     let c = PgConnection::establish(&store.connection_string).expect(&format!("Error connecting to {}", store.connection_string));
     let result = query.execute(&c);
     match result {
@@ -122,6 +126,22 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
             log::warn!("[Index Manager Helper] {}", e);
         }
     };
+
+    // Track the newly created table with hasura
+    let gist_body = json!({
+        "type": "track_table",
+        "args": {
+            "schema": "public",
+            "name": raw_query.table_name()
+        }
+    });
+    let request_url = "http://localhost:8080/v1/query";
+    #[allow(unused_variables)]
+    let response = Client::new()
+        .post(request_url)
+        .json(&gist_body)
+        .send().compat().await.unwrap();
+
 
     // Chain Reader Client Configuration to subscribe and get latest block from Chain Reader Server
     let mut client = StreamoutClient::connect(URL).await.unwrap();

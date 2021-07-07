@@ -20,6 +20,7 @@ tokio-compat-02 = "0.2"
 serde_yaml = "0.8"
 anyhow = "1.0"
 diesel = { version = "1.4.0", features = ["postgres"] }
+reqwest = "0.10.8"
 
 # Massbit dependencies
 manifest-reader = { path = "../manifest-reader" }
