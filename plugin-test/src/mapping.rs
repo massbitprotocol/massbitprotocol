@@ -10,14 +10,14 @@ pub struct Indexer;
 impl BlockHandler for Indexer {
     fn handle_block(
         &self,
-        store: Box<dyn Store>,
+        store: &mut dyn Store,
         block: &SubstrateBlock,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let block_ts = BlockTs {
             block_hash: block.header.hash().to_string(),
             block_height: block.header.number as i64,
         };
-        store.save(block_ts.into());
+        store.save("blocks".to_string(), block_ts.into());
         Ok(())
     }
 }

@@ -4,7 +4,7 @@ use store::Store;
 pub trait BlockHandler {
     fn handle_block(
         &self,
-        store: Box<dyn Store>,
+        store: &mut dyn Store,
         block: &SubstrateBlock,
     ) -> Result<(), Box<dyn std::error::Error>>;
 }

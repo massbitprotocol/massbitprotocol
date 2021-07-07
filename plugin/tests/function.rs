@@ -58,7 +58,7 @@ fn new_substrate_block() -> SubstrateBlock {
 struct MockStore {}
 
 impl Store for MockStore {
-    fn save(&self, entity: GenericMap) {}
+    fn save(&self, _entity_name: String, _data: GenericMap) {}
 }
 
 impl MockStore {
@@ -70,14 +70,14 @@ impl MockStore {
 #[test]
 fn test() {
     make_helpers();
-    let store = MockStore::new();
+    let mut store = MockStore::new();
     let block = new_substrate_block();
     unsafe {
         let mut plugins = PluginManager::new();
         plugins.load(LIBPATH).unwrap();
         assert_eq!(
             plugins
-                .handle_block("test", Box::new(store), &block)
+                .handle_block("test", &mut store as &mut dyn Store, &block)
                 .unwrap(),
             ()
         );
