@@ -18,13 +18,22 @@ impl PluginManager {
         PluginManager::default()
     }
 
-    pub unsafe fn load<P: AsRef<OsStr>>(&mut self, library_path: P) -> io::Result<()> {
+    pub unsafe fn load<P: AsRef<OsStr>>(
+        &mut self,
+        library_path: P,
+        store: &mut dyn Store,
+    ) -> io::Result<()> {
         let library = Rc::new(Library::new(library_path)?);
-        let decl = library
+
+        library
+            .get::<*mut Option<&mut dyn Store>>(b"STORE\0")?
+            .write(Some(store));
+
+        let plugin_decl = library
             .get::<*mut PluginDeclaration>(b"plugin_declaration\0")?
             .read();
         let mut registrar = PluginRegistrar::new(Rc::clone(&library));
-        (decl.register)(&mut registrar);
+        (plugin_decl.register)(&mut registrar);
 
         self.block_handlers.extend(registrar.block_handlers);
         self.libraries.push(library);
@@ -34,13 +43,12 @@ impl PluginManager {
     pub fn handle_block(
         &self,
         block_handler: &str,
-        store: &mut dyn Store,
         block: &SubstrateBlock,
     ) -> Result<(), Box<dyn std::error::Error>> {
         self.block_handlers
             .get(block_handler)
             .ok_or_else(|| format!("\"{}\" not found", block_handler))?
-            .handle_block(store, block)
+            .handle_block(block)
     }
 }
 
@@ -74,11 +82,7 @@ pub struct BlockHandlerProxy {
 }
 
 impl BlockHandler for BlockHandlerProxy {
-    fn handle_block(
-        &self,
-        store: &mut dyn Store,
-        block: &SubstrateBlock,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        self.function.handle_block(store, block)
+    fn handle_block(&self, block: &SubstrateBlock) -> Result<(), Box<dyn std::error::Error>> {
+        self.function.handle_block(block)
     }
 }

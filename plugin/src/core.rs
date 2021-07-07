@@ -1,12 +1,7 @@
 use massbit_chain_substrate::data_type::SubstrateBlock;
-use store::Store;
 
 pub trait BlockHandler {
-    fn handle_block(
-        &self,
-        store: &mut dyn Store,
-        block: &SubstrateBlock,
-    ) -> Result<(), Box<dyn std::error::Error>>;
+    fn handle_block(&self, block: &SubstrateBlock) -> Result<(), Box<dyn std::error::Error>>;
 }
 
 #[derive(Copy, Clone)]
