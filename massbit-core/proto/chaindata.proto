@@ -45,5 +45,5 @@ enum ChainType {
 enum DataType {
   Block = 0;
   Event = 1;
-  Transaction = 2;
+  Transaction = 2; // Alias name of Extrinsic in Substrate
 }

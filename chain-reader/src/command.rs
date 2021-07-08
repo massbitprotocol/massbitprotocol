@@ -21,7 +21,7 @@ lazy_static! {
 
 pub async fn run() -> Result<(), Box<dyn std::error::Error>>{
     // Broadcast Channel
-    let (chan, _) = broadcast::channel(16);
+    let (chan, _) = broadcast::channel(1024);
 
     // Spawm thread get_data
     let chain_types = CONFIG.chain_types.clone();

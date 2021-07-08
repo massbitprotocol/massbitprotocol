@@ -1,10 +1,18 @@
 #[allow(unused_imports)]
 use tonic::{transport::{Server, Channel}, Request, Response, Status};
-use crate::stream_mod::{HelloRequest, GetBlocksRequest, GenericDataProto, streamout_client::StreamoutClient};
+use crate::stream_mod::{HelloRequest, GetBlocksRequest, GenericDataProto, ChainType, DataType, streamout_client::StreamoutClient};
 use std::error::Error;
+use massbit_chain_substrate::data_type::{SubstrateBlock as Block, SubstrateHeader as Header, SubstrateUncheckedExtrinsic as Extrinsic, decode_transactions};
+use sp_core::{sr25519, H256 as Hash};
+use node_template_runtime::Event;
+use codec::{Decode, Encode};
 pub mod stream_mod {
     tonic::include_proto!("chaindata");
 }
+use massbit_chain_substrate::data_type::decode;
+
+
+type EventRecord = system::EventRecord<Event, Hash>;
 
 const URL: &str = "http://127.0.0.1:50051";
 
@@ -19,9 +27,30 @@ pub async fn print_blocks(client: &mut StreamoutClient<Channel>) -> Result<(), B
         .await?
         .into_inner();
 
-    while let Some(block) = stream.message().await? {
-        let block = block as GenericDataProto;
-        println!("Recieved block = {:?}, hash = {:?}",block.block_number, block.block_hash);
+
+    while let Some(data) = stream.message().await? {
+        let mut data = data as GenericDataProto;
+        println!("Recieved data block = {:?}, hash = {:?}, data type = {:?}",data.block_number, data.block_hash, DataType::from_i32(data.data_type).unwrap());
+        //println!("Detail data block: {:?}", data);
+
+        match DataType::from_i32(data.data_type) {
+            Some(DataType::Block) => {
+                let block: Block = decode(&mut data.payload).unwrap();
+                println!("Recieved BLOCK: {:?}", block.header.number);
+            },
+            Some(DataType::Event) => {
+                let event: EventRecord = decode(&mut data.payload).unwrap();
+                println!("Recieved EVENT: {:?}", event);
+            },
+            Some(DataType::Transaction) => {
+                let extrinsics: Vec<Extrinsic> = decode_transactions(&mut data.payload).unwrap();
+                println!("Recieved Extrinsic: {:?}", extrinsics);
+            },
+
+            _ => {
+                println!("Not support data type: {:?}", &data.data_type);
+            }
+        }
     }
 
     Ok(())
