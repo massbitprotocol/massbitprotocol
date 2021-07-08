@@ -24,7 +24,6 @@ anyhow = "1.0"
 manifest-reader = { path = "../manifest-reader" }
 tokio02-spawn = { path = "../../massbit-core/tokio02-spawn" }
 massbit-chain-substrate = { path = "../../massbit-core/chain/substrate"}
-plugin = { path = "../../plugin" }
 ipfs-client = { path = "../../massbit-core/ipfs-client" }
 
 [build-dependencies]
