@@ -20,7 +20,7 @@ impl BlockTs {
             STORE
                 .as_ref()
                 .unwrap()
-                .save("blocks".to_string(), self.clone().into());
+                .save("BlockTs".to_string(), self.clone().into());
         }
     }
 }

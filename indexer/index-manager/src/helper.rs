@@ -8,7 +8,6 @@ use tonic::Request;
 use crate::types::DeployIpfsParams;
 use ipfs_client::core::create_ipfs_clients;
 use massbit_chain_substrate::data_type::SubstrateBlock;
-use plugin::manager::PluginManager;
 use stream_mod::streamout_client::StreamoutClient;
 use stream_mod::{GenericDataProto, GetBlocksRequest};
 
