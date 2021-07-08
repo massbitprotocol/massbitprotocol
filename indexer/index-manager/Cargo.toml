@@ -22,12 +22,13 @@ anyhow = "1.0"
 diesel = { version = "1.4.0", features = ["postgres"] }
 
 # Massbit dependencies
+ipfs-client = { path = "../../core/ipfs-client" }
+
 manifest-reader = { path = "../manifest-reader" }
-tokio02-spawn = { path = "../../massbit-core/tokio02-spawn" }
-massbit-chain-substrate = { path = "../../massbit-core/chain/substrate"}
+tokio02-spawn = { path = "../../core/tokio02-spawn" }
+massbit-chain-substrate = { path = "../../core/chain/substrate"}
 plugin = { path = "../../plugin" }
-ipfs-client = { path = "../../massbit-core/ipfs-client" }
-index-store = { path = "../../massbit-core/index-store" }
+index-store = { path = "../../core/index-store" }
 
 [build-dependencies]
 tonic-build = "0.4" # Chain Reader Client
