@@ -9,14 +9,14 @@ use std::str::FromStr;
 use store::Store;
 use structmap::GenericMap;
 
-const LIBPATH: &'static str = "../target/debug/libplugin_test.dylib";
+const LIBPATH: &'static str = "../../target/debug/libtest_plugin.dylib";
 
 fn make_helpers() {
     static ONCE: ::std::sync::Once = ::std::sync::Once::new();
     ONCE.call_once(|| {
         let rustc = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
         let mut cmd = ::std::process::Command::new(rustc);
-        cmd.args(&["build", "--package", "plugin-test"]);
+        cmd.args(&["build", "--package", "test-plugin"]);
         assert!(cmd
             .status()
             .expect("could not compile the test helpers!")

@@ -8,8 +8,9 @@ use store::Store;
 #[no_mangle]
 pub static mut STORE: Option<&mut dyn Store> = None;
 
-plugin::export_plugin!(register);
-#[allow(dead_code)]
+#[allow(dead_code, improper_ctypes_definitions)]
 extern "C" fn register(registrar: &mut dyn PluginRegistrar) {
     registrar.register_block_handler("test", Box::new(mapping::Indexer));
 }
+
+plugin::export_plugin!(register);

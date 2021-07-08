@@ -4,6 +4,6 @@ members = [
     "massbit-core/chain/substrate",
     "massbit-core/store",
     "indexer/main",
-    "plugin",
-    "plugin-test"
+    "plugin/plugin",
+    "plugin/test-plugin"
 ]
