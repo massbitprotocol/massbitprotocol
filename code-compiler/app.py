@@ -55,15 +55,16 @@ def compile_handler():
     # Random hash should be used as folder name for each new deployment
     hash = random.getrandbits(128)
     hash = "%032x" % hash
+    generated_folder = "generated/" + hash
 
     # Create new folder
-    os.mkdir(hash)
-    os.mkdir(hash + "/src")
+    os.mkdir(generated_folder)
+    os.mkdir(generated_folder + "/src")
 
     # Populate with existing stub
-    populate_stub(hash, "Cargo.lock")
-    populate_stub(hash, "Cargo.toml")
-    populate_stub(hash, "src/lib.rs")
+    populate_stub(generated_folder, "Cargo.lock")
+    populate_stub(generated_folder, "Cargo.toml")
+    populate_stub(generated_folder, "src/lib.rs")
 
     # URL-decode the data
     mapping = urllib.parse.unquote_plus(data["mapping.rs"])
@@ -71,15 +72,14 @@ def compile_handler():
     schema = urllib.parse.unquote_plus(data["schema.rs"])
 
     # Save the formatted data from request to disk, ready for compiling
-    write_to_disk(hash + "/src/mapping.rs", mapping)
-    write_to_disk(hash + "/src/models.rs", models)
-    write_to_disk(hash + "/src/schema.rs", schema)
+    write_to_disk(generated_folder + "/src/mapping.rs", mapping)
+    write_to_disk(generated_folder + "/src/models.rs", models)
+    write_to_disk(generated_folder + "/src/schema.rs", schema)
 
     # Compile the newly created deployment
-    manifest_path = hash + "/Cargo.toml"
     print("Compiling...")
     try:
-        output = subprocess.check_output(["cargo build --release"], stderr=subprocess.STDOUT, shell=True, universal_newlines=True, cwd=hash)
+        output = subprocess.check_output(["cargo build --release"], stderr=subprocess.STDOUT, shell=True, universal_newlines=True, cwd=generated_folder)
     except subprocess.CalledProcessError as exc:
         print("Status : FAIL", exc.returncode, exc.output)
         return {
