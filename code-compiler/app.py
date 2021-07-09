@@ -41,6 +41,10 @@ def populate_stub(dst_dir, file_name):
     copyfile("./stub/" + file_name, dst_dir + "/" + file_name)
 
 class CargoBuild(threading.Thread):
+    """
+    CargoBuild is class that will run `cargo build --release` in a new thread, not blocking the main thread
+
+    """
     def __init__(self, generated_folder):
         self.stdout = None
         self.stderr = None
@@ -51,10 +55,10 @@ class CargoBuild(threading.Thread):
         try:
             output = subprocess.check_output(["cargo build --release"], stderr=subprocess.STDOUT, shell=True, universal_newlines=True, cwd=self.generated_folder)
         except subprocess.CalledProcessError as exc:
-            print("The result of compilation can be found in: " + self.generated_folder)
+            print("Compilation has failed. The result can be found in: " + self.generated_folder)
             write_to_disk(self.generated_folder + "/error.txt", exc.output)
         else:
-            print("The result of compilation can be found in: " + self.generated_folder)
+            print("Compilation was success. The result can be found in: " + self.generated_folder)
             write_to_disk(self.generated_folder + "/success.txt", output)
 
 @app.route("/compile", methods=['POST'])
