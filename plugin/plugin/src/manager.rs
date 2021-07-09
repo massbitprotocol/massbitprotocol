@@ -1,33 +1,32 @@
 use crate::core::{BlockHandler, PluginDeclaration, PluginRegistrar as PluginRegistrarTrait};
 use libloading::Library;
 use massbit_chain_substrate::data_type::SubstrateBlock;
-use std::{alloc::System, collections::HashMap, ffi::OsStr, io, rc::Rc};
+use std::{alloc::System, collections::HashMap, error::Error, ffi::OsStr, rc::Rc};
 use store::Store;
 
 #[global_allocator]
 static ALLOCATOR: System = System;
 
-#[derive(Default)]
-pub struct PluginManager {
-    block_handlers: HashMap<String, BlockHandlerProxy>,
+pub struct PluginManager<'a> {
+    store: &'a dyn Store,
     libraries: Vec<Rc<Library>>,
+    block_handlers: HashMap<String, BlockHandlerProxy>,
 }
 
-impl PluginManager {
-    pub fn new() -> PluginManager {
-        PluginManager::default()
+impl<'a> PluginManager<'a> {
+    pub fn new(store: &dyn Store) -> PluginManager {
+        PluginManager {
+            store,
+            libraries: vec![],
+            block_handlers: HashMap::default(),
+        }
     }
 
-    pub unsafe fn load<P: AsRef<OsStr>>(
-        &mut self,
-        library_path: P,
-        store: &mut dyn Store,
-    ) -> io::Result<()> {
+    pub unsafe fn load<P: AsRef<OsStr>>(&mut self, library_path: P) -> Result<(), Box<dyn Error>> {
         let library = Rc::new(Library::new(library_path)?);
-
         library
-            .get::<*mut Option<&mut dyn Store>>(b"STORE\0")?
-            .write(Some(store));
+            .get::<*mut Option<&dyn Store>>(b"STORE\0")?
+            .write(Some(self.store));
 
         let plugin_decl = library
             .get::<*mut PluginDeclaration>(b"plugin_declaration\0")?
@@ -44,7 +43,7 @@ impl PluginManager {
         &self,
         block_handler: &str,
         block: &SubstrateBlock,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<(), Box<dyn Error>> {
         self.block_handlers
             .get(block_handler)
             .ok_or_else(|| format!("\"{}\" not found", block_handler))?
