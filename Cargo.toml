@@ -6,3 +6,6 @@ members = [
     "mock",
     "core/chain/substrate",
 ]
+exclude = [
+    "code-compiler" # Ignore this python project because it contains Cargo.toml which is only used for populating new index
+]
