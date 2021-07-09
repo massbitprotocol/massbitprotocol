@@ -27,5 +27,6 @@ __pycache__
 
 .vscode/
 chain-reader/data/
+code-compiler/generated/
 
 *.so
