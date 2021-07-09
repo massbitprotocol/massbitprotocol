@@ -70,11 +70,11 @@ impl MockStore {
 #[test]
 fn test() {
     make_helpers();
-    let mut store = MockStore::new();
+    let store = MockStore::new();
     let block = new_substrate_block();
     unsafe {
-        let mut plugins = PluginManager::new();
-        plugins.load(LIBPATH, &mut store as &mut dyn Store).unwrap();
+        let mut plugins = PluginManager::new(&store);
+        plugins.load(LIBPATH).unwrap();
         assert_eq!(plugins.handle_block("test", &block).unwrap(), ());
     }
 }
