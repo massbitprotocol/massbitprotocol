@@ -6,7 +6,7 @@ use store::Store;
 
 #[doc(hidden)]
 #[no_mangle]
-pub static mut STORE: Option<&mut dyn Store> = None;
+pub static mut STORE: Option<&dyn Store> = None;
 
 #[allow(dead_code, improper_ctypes_definitions)]
 extern "C" fn register(registrar: &mut dyn PluginRegistrar) {
