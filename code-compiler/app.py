@@ -40,14 +40,6 @@ def populate_stub(dst_dir, file_name):
     """
     copyfile("./stub/" + file_name, dst_dir + "/" + file_name)
 
-def reader(pipe, queue):
-    try:
-        with pipe:
-            for line in iter(pipe.readline, b''):
-                queue.put((pipe, line))
-    finally:
-        queue.put(None)
-
 class CargoBuild(threading.Thread):
     def __init__(self, generated_folder):
         self.stdout = None
@@ -56,7 +48,6 @@ class CargoBuild(threading.Thread):
         threading.Thread.__init__(self)
 
     def run(self):
-
         try:
             output = subprocess.check_output(["cargo build --release"], stderr=subprocess.STDOUT, shell=True, universal_newlines=True, cwd=self.generated_folder)
         except subprocess.CalledProcessError as exc:
@@ -106,6 +97,38 @@ def compile_handler():
          "payload": hash,
     }, 200
 
+@app.route("/compile/status/<id>", methods=['GET'])
+@cross_origin()
+def compile_status_handler(id):
+    generated_folder = "generated/" + id  # Where we'll be looking for the compilation status
+    file = None
+    status = None
+    try:
+        file = open(generated_folder + "/success.txt")
+        status = "success"
+    except IOError:
+        print("Looking for success.txt file in " + generated_folder)
+
+    try:
+        file = open(generated_folder + "/error.txt")
+        status = "error"
+    except IOError:
+        print("Looking for error.txt file in " + generated_folder)
+
+    # If could not find success or error file, the compiling progress maybe is still in-progress
+    if not file:
+        return {
+            "status": "in-progress",
+            "payload": ""
+        }, 200
+
+    # Return compilation result to user
+    print("Found " + status + ".txt file in " + generated_folder)
+    payload = file.read()
+    return {
+        "status": status,
+        "payload": payload
+    }, 200
 
 @app.route('/', methods=['GET'])
 @cross_origin()
