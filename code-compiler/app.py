@@ -1,5 +1,5 @@
 from flask import Flask, request
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 from shutil import copyfile
 import urllib.parse
 import random
@@ -48,6 +48,7 @@ def reader(pipe, queue):
         queue.put(None)
 
 @app.route("/compile", methods=['POST'])
+@cross_origin()
 def compile_handler():
     # Get data
     data = request.json
@@ -94,6 +95,7 @@ def compile_handler():
         }, 200
 
 @app.route('/', methods=['GET'])
+@cross_origin()
 def index():
     return "Code compiler server is up & running", 200
 
@@ -101,6 +103,7 @@ def index():
 # Mock Endpoint #
 #################
 @app.route("/mock/compile", methods=['POST'])
+@cross_origin()
 def mock_compile_handler():
     return {
         "status": "success",
@@ -108,6 +111,7 @@ def mock_compile_handler():
     }, 200
 
 @app.route("/mock/compile/status/<id>", methods=['GET'])
+@cross_origin()
 def mock_compile_status_handler(id):
     return {
         "status": "success",
@@ -115,6 +119,7 @@ def mock_compile_status_handler(id):
     }, 200
 
 @app.route("/mock/deploy", methods=['POST'])
+@cross_origin()
 def mock_deploy_handler():
     return {
         "status": "success",
@@ -122,6 +127,7 @@ def mock_deploy_handler():
     }, 200
 
 @app.route("/mock/deploy/status/<id>", methods=['GET'])
+@cross_origin()
 def mock_deploy_status_handler(id):
     return {
         "status": "success",
@@ -130,6 +136,7 @@ def mock_deploy_status_handler(id):
 
 # The logic of this API should be written in index-manager and proxy through an API gateway for user's ease of access
 @app.route("/mock/indexer-list", methods=['GET'])
+@cross_origin()
 def mock_indexer_list_handler():
     return {
         "status": "success",
@@ -155,6 +162,7 @@ def mock_indexer_list_handler():
 
 # The logic of this API should be written in index-manager and proxy through an API gateway for user's ease of access
 @app.route("/mock/indexer-detail/<id>", methods=['GET'])
+@cross_origin()
 def mock_indexer_detail_handler(id):
     return {
         "status": "success",
