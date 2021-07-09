@@ -33,8 +33,14 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>>{
                 let chan_sender = chan.clone();
                 // Spawn task
                 tokio::spawn(async move {
-                    substrate_chain::get_data(chan_sender).await;
+                    substrate_chain::get_block_and_extrinsic(chan_sender).await;
                 });
+                let chan_sender = chan.clone();
+                // Spawn task
+                tokio::spawn(async move {
+                    substrate_chain::get_event(chan_sender).await;
+                });
+
             },
             ChainType::Ethereum => {
                 continue;

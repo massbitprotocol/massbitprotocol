@@ -101,7 +101,7 @@ fn _create_generic_event(event: &system::EventRecord<Event, Hash>) -> GenericDat
     generic_data
 }
 
-async fn get_event(chan: broadcast::Sender<GenericDataProto>) {
+pub async fn get_event(chan: broadcast::Sender<GenericDataProto>) {
 
     let url = get_node_url_from_cli();
     let api = Api::<sr25519::Pair>::new(url).unwrap();
@@ -110,6 +110,7 @@ async fn get_event(chan: broadcast::Sender<GenericDataProto>) {
     let (events_in, events_out) = channel();
     api.subscribe_events(events_in).unwrap();
 
+    fix_one_thread_not_receive(&chan);
     loop {
         let event_str = events_out.recv().unwrap();
 
@@ -130,7 +131,17 @@ async fn get_event(chan: broadcast::Sender<GenericDataProto>) {
     }
 }
 
-pub async fn get_data(chan: broadcast::Sender<GenericDataProto>) {
+fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>){
+    // Todo: More clean solution for broadcast channel
+    let mut rx = chan.subscribe();
+    tokio::spawn(async move {
+        loop {
+            rx.recv().await.unwrap();
+        }
+    });
+}
+
+pub async fn get_block_and_extrinsic(chan: broadcast::Sender<GenericDataProto>) {
 
     println!("start");
     env_logger::init();
@@ -141,19 +152,8 @@ pub async fn get_data(chan: broadcast::Sender<GenericDataProto>) {
     let (send, recv) = channel();
     api.subscribe_finalized_heads(send).unwrap();
 
-    let mut rx = chan.subscribe();
-    // Todo: More clean solution for broadcast channel
-    tokio::spawn(async move {
-        loop {
-            rx.recv().await.unwrap();
-        }
-    });
 
-    let clone_chan = chan.clone();
-    // Spam thread
-    tokio::spawn(async move {
-        get_event(clone_chan).await;
-    });
+    fix_one_thread_not_receive(&chan);
 
     loop {
         // Get new header
