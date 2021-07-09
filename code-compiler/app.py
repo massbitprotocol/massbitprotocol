@@ -5,6 +5,7 @@ import urllib.parse
 import random
 import os
 import subprocess
+import threading
 
 ################
 # Config Flask #
@@ -47,6 +48,24 @@ def reader(pipe, queue):
     finally:
         queue.put(None)
 
+class CargoBuild(threading.Thread):
+    def __init__(self, generated_folder):
+        self.stdout = None
+        self.stderr = None
+        self.generated_folder = generated_folder
+        threading.Thread.__init__(self)
+
+    def run(self):
+
+        try:
+            output = subprocess.check_output(["cargo build --release"], stderr=subprocess.STDOUT, shell=True, universal_newlines=True, cwd=self.generated_folder)
+        except subprocess.CalledProcessError as exc:
+            print("The result of compilation can be found in: " + self.generated_folder)
+            write_to_disk(self.generated_folder + "/error.txt", exc.output)
+        else:
+            print("The result of compilation can be found in: " + self.generated_folder)
+            write_to_disk(self.generated_folder + "/success.txt", output)
+
 @app.route("/compile", methods=['POST'])
 @cross_origin()
 def compile_handler():
@@ -78,21 +97,15 @@ def compile_handler():
     write_to_disk(generated_folder + "/src/schema.rs", schema)
 
     # Compile the newly created deployment
-    print("Compiling...")
-    try:
-        output = subprocess.check_output(["cargo build --release"], stderr=subprocess.STDOUT, shell=True, universal_newlines=True, cwd=generated_folder)
-    except subprocess.CalledProcessError as exc:
-        print("Status : FAIL", exc.returncode, exc.output)
-        return {
-            "status": "error",
-            "payload": urllib.parse.quote(exc.output),
-        }, 200
-    else:
-        print("Output: \n{}\n".format(output))
-        return {
-            "status": "success",
-            "payload": urllib.parse.quote(output),
-        }, 200
+    print("Compiling request: " + hash + ". This will take a while!")
+    cargo_build = CargoBuild(generated_folder)
+    cargo_build.start()
+
+    return {
+         "status": "success",
+         "payload": hash,
+    }, 200
+
 
 @app.route('/', methods=['GET'])
 @cross_origin()
