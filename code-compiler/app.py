@@ -85,11 +85,15 @@ def compile_handler():
     mapping = urllib.parse.unquote_plus(data["mapping.rs"])
     models = urllib.parse.unquote_plus(data["models.rs"])
     schema = urllib.parse.unquote_plus(data["schema.rs"])
+    project = urllib.parse.unquote_plus(data["project.yaml"])
+    up = urllib.parse.unquote_plus(data["up.sql"])
 
     # Save the formatted data from request to disk, ready for compiling
     write_to_disk(generated_folder + "/src/mapping.rs", mapping)
     write_to_disk(generated_folder + "/src/models.rs", models)
     write_to_disk(generated_folder + "/src/schema.rs", schema)
+    write_to_disk(generated_folder + "/src/project.yaml", project)
+    write_to_disk(generated_folder + "/src/up.sql", up)
 
     # Compile the newly created deployment
     print("Compiling request: " + hash + ". This will take a while!")
