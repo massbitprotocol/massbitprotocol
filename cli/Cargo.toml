@@ -1,0 +1,15 @@
+[package]
+name = "cli"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = "3.0.0-beta.2"
+Inflector = "0.11.4"
+anyhow = "1.0.41"
+graphql-parser = "0.3.0"
+tera = "1.12.0"
+serde = { version = "1.0", features = ["derive"] }
+lazy_static = "1.4.0"

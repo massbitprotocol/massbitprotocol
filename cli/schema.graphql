@@ -1,0 +1,4 @@
+type User @entity {
+    name: String,
+    email: String,
+}
