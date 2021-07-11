@@ -7,9 +7,10 @@ use store::Store;
 #[global_allocator]
 static ALLOCATOR: System = System;
 
+#[derive(Default)]
 pub struct PluginManager<'a> {
     store: &'a dyn Store,
-    libraries: Vec<Rc<Library>>,
+    libs: Vec<Rc<Library>>,
     block_handlers: HashMap<String, BlockHandlerProxy>,
 }
 
@@ -17,7 +18,7 @@ impl<'a> PluginManager<'a> {
     pub fn new(store: &dyn Store) -> PluginManager {
         PluginManager {
             store,
-            libraries: vec![],
+            libs: vec![],
             block_handlers: HashMap::default(),
         }
     }
@@ -35,7 +36,7 @@ impl<'a> PluginManager<'a> {
         (plugin_decl.register)(&mut registrar);
 
         self.block_handlers.extend(registrar.block_handlers);
-        self.libraries.push(library);
+        self.libs.push(library);
         Ok(())
     }
 
@@ -68,7 +69,7 @@ impl PluginRegistrar {
 impl PluginRegistrarTrait for PluginRegistrar {
     fn register_block_handler(&mut self, name: &str, function: Box<dyn BlockHandler>) {
         let proxy = BlockHandlerProxy {
-            function,
+            handler: function,
             _lib: Rc::clone(&self.lib),
         };
         self.block_handlers.insert(name.to_string(), proxy);
@@ -76,12 +77,12 @@ impl PluginRegistrarTrait for PluginRegistrar {
 }
 
 pub struct BlockHandlerProxy {
-    function: Box<dyn BlockHandler>,
+    handler: Box<dyn BlockHandler>,
     _lib: Rc<Library>,
 }
 
 impl BlockHandler for BlockHandlerProxy {
-    fn handle_block(&self, block: &SubstrateBlock) -> Result<(), Box<dyn std::error::Error>> {
-        self.function.handle_block(block)
+    fn handle_block(&self, block: &SubstrateBlock) -> Result<(), Box<dyn Error>> {
+        self.handler.handle_block(block)
     }
 }
