@@ -1,8 +1,8 @@
 [workspace]
 members = [
     "chain-reader",
-    "massbit-core/chain/substrate",
-    "massbit-core/store",
+    "core/chain/substrate",
+    "core/store",
     "indexer/main",
     "plugin/plugin",
     "plugin/test-plugin"
