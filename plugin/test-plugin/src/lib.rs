@@ -1,4 +1,3 @@
-mod mapping;
 mod models;
 
 use massbit_chain_substrate::data_type::SubstrateBlock;
