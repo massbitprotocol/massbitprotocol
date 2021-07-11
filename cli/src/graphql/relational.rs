@@ -73,6 +73,15 @@ impl Field {
         let field_type = FieldType::from_field_type(&field.field_type)?;
         Ok(Field { name, field_type })
     }
+
+    fn rust_type(&self) -> &str {
+        self.field_type.rust_type()
+    }
+
+    fn as_rust(&self, out: &mut String) -> fmt::Result {
+        write!(out, "pub {}: {}", self.name, self.rust_type())?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -82,9 +91,9 @@ pub struct Model {
 }
 
 impl Model {
-    pub fn new(defn: &s::ObjectType) -> Result<Model, Error> {
-        let name = (*defn.name).to_string();
-        let fields = defn
+    pub fn new(obj: &s::ObjectType) -> Result<Model, Error> {
+        let name = (*obj.name).to_string();
+        let fields = obj
             .fields
             .iter()
             .map(|field| Field::new(field))
@@ -93,10 +102,14 @@ impl Model {
         Ok(model)
     }
 
-    fn as_rust_struct(&self, out: &mut String, layout: &Layout) -> fmt::Result {
+    pub fn as_rust_struct(&self, out: &mut String) -> fmt::Result {
         writeln!(out, "pub struct {} {{", self.name)?;
-        for field in self.fields.iter() {}
-        writeln!(out)
+        for field in self.fields.iter() {
+            write!(out, "    ")?;
+            field.as_rust(out)?;
+            writeln!(out, ",")?;
+        }
+        write!(out, "}}")
     }
 }
 
@@ -116,7 +129,7 @@ impl Layout {
         let models = object_types
             .iter()
             .enumerate()
-            .map(|(i, obj_type)| Model::new(obj_type))
+            .map(|(_, obj_type)| Model::new(obj_type))
             .collect::<Result<Vec<_>, _>>()?;
 
         let models: HashMap<_, _> = models
@@ -128,14 +141,8 @@ impl Layout {
 
         Ok(Layout { models })
     }
-
-    pub fn as_rust_struct(&self) -> Result<String, Error> {
-        unimplemented!();
-    }
 }
 
-/// Return the enclosed named type for a field type, i.e., the type after
-/// stripping List and NonNull.
 fn named_type(field_type: &q::Type) -> &str {
     match field_type {
         q::Type::NamedType(name) => name.as_str(),
