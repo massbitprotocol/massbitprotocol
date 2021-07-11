@@ -20,6 +20,7 @@ tokio-compat-02 = "0.2"
 serde_yaml = "0.8"
 anyhow = "1.0"
 structmap = "0.1.5"
+diesel = { version = "1.4.0", features = ["postgres"] } # For MockStore, will be migrate
 
 # Massbit dependencies
 manifest-reader = { path = "../manifest-reader" }
@@ -28,6 +29,7 @@ massbit-chain-substrate = { path = "../../massbit-core/chain/substrate"}
 ipfs-client = { path = "../../massbit-core/ipfs-client" }
 plugin = { path = "../../plugin/plugin" }
 store = { path = "../../massbit-core/store" }
+index-store = { path = "../../massbit-core/index-store" }
 
 [build-dependencies]
 tonic-build = "0.4" # Chain Reader Client

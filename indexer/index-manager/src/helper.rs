@@ -11,12 +11,15 @@ use store::Store;
 use structmap::GenericMap;
 
 // Massbit dependencies
-use crate::types::DeployIpfsParams;
+use crate::types::{DeployIpfsParams, DeployLocalParams};
 use ipfs_client::core::create_ipfs_clients;
 use massbit_chain_substrate::data_type::SubstrateBlock;
 use stream_mod::streamout_client::StreamoutClient;
 use stream_mod::{GenericDataProto, GetBlocksRequest};
 use plugin::PluginManager;
+use structmap::value::Value;
+use std::ptr::null;
+use diesel::{PgConnection, Connection, RunQueryDsl};
 
 pub async fn get_index_config(ipfs_config_hash: &String) -> serde_yaml::Mapping {
     let ipfs_addresses = vec!["0.0.0.0:5001".to_string()];
@@ -96,11 +99,61 @@ fn new_substrate_block() -> SubstrateBlock {
     }
 }
 
+// #[derive(FromBTreeMap)]
+// struct TestStruct {
+//     name: String,
+//     value: i32,
+// }
+//
+// impl Default for TestStruct {
+//     fn default() -> Self {
+//         Self {
+//             name: String::new(),
+//             value: 0
+//         }
+//     }
+// }
+
 #[derive(Default)]
 struct MockStore {}
 
 impl Store for MockStore {
-    fn save(&self, _entity_name: String, _data: GenericMap) {}
+    fn save(&self, _entity_name: String, mut _data: GenericMap) {
+        let mut query = format!("INSERT INTO {} (", _entity_name);
+
+        // Compiling the attributes for the insert query
+        // Example: INSERT INTO BlockTs (block_hash,block_height)
+        for (k, _) in &_data {
+            query = format!("{}{},",query, k)
+        }
+        query = query[0..query.len() - 1].to_string(); // Remove the final `,`
+        query = format!("{})",query); // Close the list of attributes
+
+        // Compiling the values for the insert query
+        // Example: INSERT INTO BlockTs (block_hash,block_height) VALUES ('0x720c…6c50',610)
+        query = format!("{} VALUES (",query); // Add the first `(` for the list of attributes
+        for (k, v) in &_data {
+            match v.string() {
+                Some(r) => {
+                    query = format!("{}'{}',",query, r)
+                }
+                _ => {}
+            }
+            match v.i64() {
+                Some(r) => {
+                    query = format!("{}{},",query, r);
+                }
+                _ => {}
+            }
+        }
+        query = query[0..query.len() - 1].to_string(); // Remove the final `,`
+        query = format!("{})",query); // Close the list of attributes
+        println!("{}", query); // Inserting the values into the index table
+
+        let connection_string = "postgres://graph-node:let-me-in@localhost";
+        let c = PgConnection::establish(&connection_string).expect(&format!("Error connecting to {}", connection_string));
+        diesel::sql_query(query).execute(&c);
+    }
 }
 
 impl MockStore {
@@ -109,52 +162,19 @@ impl MockStore {
     }
 }
 
-pub async fn loop_blocks(params: DeployIpfsParams) -> Result<(), Box<dyn Error>> {
-    // let mut client = StreamoutClient::connect(URL).await.unwrap();
-    //
-    // // Not use start_block_number start_block_number yet
-    // let get_blocks_request = GetBlocksRequest {
-    //     start_block_number: 0,
-    //     end_block_number: 1,
-    // };
-    //
-    // let mut stream = client
-    //     .list_blocks(Request::new(get_blocks_request))
-    //     .await?
-    //     .into_inner();
-    //
-    // log::info!("[Index Manager Helper] Start plugin manager");
-    // // The main loop, subscribing to Chain Reader Server to get new block
-    let mapping_file_name = get_index_mapping_file(&params.ipfs_mapping_hash).await;
-    let mapping_file_location = ["./", &mapping_file_name].join("");
+pub async fn loop_blocks(params: DeployLocalParams) -> Result<(), Box<dyn Error>> {
+    let mapping_file_location = ["./target/release/libtest_plugin.so"].join("");
     let library_path = PathBuf::from(mapping_file_location.to_string());
 
+
     let store = MockStore::new();
-
-
     let block = new_substrate_block();
     unsafe {
         let mut plugins = PluginManager::new(&store);
         plugins.load(library_path).unwrap();
+        // plugins.handle_block("test", &block);
         assert_eq!(plugins.handle_block("test", &block).unwrap(), ());
     }
 
-    // while let Some(block) = stream.message().await? {
-        // let block = block as GenericDataProto;
-        // log::info!("[Index Manager Helper] Received block = {:?}, hash = {:?} from {:?}",block.block_number, block.block_hash, params.index_name);
-        //
-        // let mapping_file_location = ["./", &mapping_file_name].join("");
-        // let library_path = PathBuf::from(mapping_file_location.to_string());
-        // let mut plugins = PluginManager::new();
-        // unsafe {
-        //     plugins
-        //         .load(&library_path)
-        //         .expect("plugin loading failed");
-        // }
-        //
-        // let decode_block: SubstrateBlock = serde_json::from_slice(&block.payload).unwrap();
-        // log::debug!("Decoding block: {:?}", decode_block);
-        // plugins.handle_block(&decode_block); // Block handling
-    // }
     Ok(())
 }

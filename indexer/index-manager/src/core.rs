@@ -64,9 +64,9 @@ impl IndexManager {
 async fn deploy_local_handler(
     params: DeployLocalParams,
 ) -> Result<Value, jsonrpc_core::Error> {
-    // tokio::spawn(async move{
-    //     loop_blocks(params).await;// Start streaming and indexing blocks
-    // });
+    tokio::spawn(async move{
+        loop_blocks(params).await;// Start streaming and indexing blocks
+    });
     Ok(serde_json::to_value("Deploy index with local config success").expect("Unable to deploy new index"))
 }
 
@@ -74,8 +74,8 @@ async fn deploy_ipfs_handler(
     params: DeployIpfsParams,
 ) -> Result<Value, jsonrpc_core::Error> {
     #[allow(unused_must_use)]
-    tokio::spawn(async move{
-        loop_blocks(params).await; // Start streaming and indexing blocks
-    });
+    // tokio::spawn(async move{
+    //     loop_blocks(params).await; // Start streaming and indexing blocks
+    // });
     Ok(serde_json::to_value("Deploy index with config from ipfs success").expect("Unable to deploy new index"))
 }
