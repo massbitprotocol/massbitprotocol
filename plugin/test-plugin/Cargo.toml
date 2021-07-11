@@ -6,8 +6,8 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-massbit-chain-substrate = { path = "../../massbit-core/chain/substrate"}
-store = { path = "../../massbit-core/store"}
+massbit-chain-substrate = { path = "../../core/chain/substrate"}
+store = { path = "../../core/store"}
 plugin = { path = "../plugin"}
 structmap = "0.1.5"
 structmap-derive = "0.1.5"

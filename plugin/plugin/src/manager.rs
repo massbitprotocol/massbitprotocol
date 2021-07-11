@@ -7,7 +7,6 @@ use store::Store;
 #[global_allocator]
 static ALLOCATOR: System = System;
 
-#[derive(Default)]
 pub struct PluginManager<'a> {
     store: &'a dyn Store,
     libs: Vec<Rc<Library>>,
