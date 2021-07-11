@@ -1,17 +1,19 @@
 use clap::App;
 
+mod codegen;
 mod graphql;
-mod schema;
-mod utils;
 
 fn main() {
     let matches = App::new("massbit-cli")
         .version("1.0")
         .about("Massbit CLI")
-        .subcommand(App::new("schema").about("Generate Rust entity from GraphQL schema"))
+        .subcommand(
+            App::new("codegen").about("Generate Rust code & SQL migrations from GraphQL schema"),
+        )
         .get_matches();
 
-    if let Some(ref matches) = matches.subcommand_matches("schema") {
-        schema::execute(*matches).unwrap();
+    match matches.subcommand_name() {
+        Some("codegen") => codegen::run(&matches).unwrap(),
+        _ => println!("Some other subcommand was used"),
     }
 }

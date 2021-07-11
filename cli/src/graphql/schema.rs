@@ -9,7 +9,7 @@ pub struct Schema {
 impl Schema {
     pub fn parse(raw: &str) -> Result<Self, Error> {
         let document = graphql_parser::parse_schema(&raw)?.into_static();
-        let mut schema = Schema { document };
+        let schema = Schema { document };
         Ok(schema)
     }
 }
