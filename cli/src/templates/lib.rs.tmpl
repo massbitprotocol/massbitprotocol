@@ -1,0 +1,34 @@
+mod mapping;
+mod models;
+
+use massbit_chain_substrate::data_type::SubstrateBlock;
+use plugin::core::{BlockHandler as BlockHandlerTrait, PluginRegistrar};
+use store::Store;
+
+#[doc(hidden)]
+#[no_mangle]
+pub static mut STORE: Option<&dyn Store> = None;
+
+plugin::export_plugin!(register);
+
+#[allow(dead_code, improper_ctypes_definitions)]
+extern "C" fn register(registrar: &mut dyn PluginRegistrar) {
+    {%- for name, kind in handlers %}
+    {%- if kind == "substrate/BlockHandler" %}
+    registrar.register_block_handler("{{ name }}", Box::new(BlockHandler));
+    {%- endif -%}
+    {%- endfor %}
+}
+
+{%- for name, kind in handlers %}
+{% if kind == "substrate/BlockHandler" %}
+#[derive(Debug, Clone, PartialEq)]
+pub struct BlockHandler;
+
+impl BlockHandlerTrait for BlockHandler {
+    fn handle_block(&self, block: &SubstrateBlock) -> Result<(), Box<dyn std::error::Error>> {
+        mapping::handle_block(block)
+    }
+}
+{% endif %}
+{%- endfor -%}

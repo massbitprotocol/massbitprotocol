@@ -14,6 +14,6 @@ fn main() {
 
     match matches.subcommand_name() {
         Some("codegen") => codegen::run(&matches).unwrap(),
-        _ => println!("Some other subcommand was used"),
+        _ => eprintln!("Command not found"),
     }
 }
