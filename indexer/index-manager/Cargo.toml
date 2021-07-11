@@ -19,12 +19,25 @@ futures = { version = "0.3.13", features = ["compat"] }
 tokio-compat-02 = "0.2"
 serde_yaml = "0.8"
 anyhow = "1.0"
+structmap = "0.1.5"
 
 # Massbit dependencies
 manifest-reader = { path = "../manifest-reader" }
 tokio02-spawn = { path = "../../massbit-core/tokio02-spawn" }
 massbit-chain-substrate = { path = "../../massbit-core/chain/substrate"}
 ipfs-client = { path = "../../massbit-core/ipfs-client" }
+plugin = { path = "../../plugin/plugin" }
+store = { path = "../../massbit-core/store" }
 
 [build-dependencies]
 tonic-build = "0.4" # Chain Reader Client
+
+[dependencies.node-template-runtime]
+git = "https://github.com/scs/substrate-api-client-test-node"
+branch = "bump-to-polkadot-v0.9.2"
+
+[dependencies.sp-runtime]
+git = "https://github.com/paritytech/substrate.git"
+branch = "master"
+package = "sp-runtime"
+default-features=false
