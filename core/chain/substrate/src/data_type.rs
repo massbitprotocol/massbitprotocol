@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use codec::{Decode, Input, WrapperTypeDecode};
 
 
+//********************** SUBSTRATE ********************************
 // Main data type for substrate indexing
 pub type SubstrateBlock = node_template_runtime::Block;
 pub type SubstrateEventRecord = system::EventRecord<node_template_runtime::Event, node_template_runtime::Hash>;
@@ -14,6 +15,8 @@ pub type SubstrateUncheckedExtrinsic = node_template_runtime::UncheckedExtrinsic
 pub type SubstrateHeader = node_template_runtime::Header;
 pub type SubstrateCheckedExtrinsic = node_template_runtime::CheckedExtrinsic;
 pub type SubstrateSignedBlock = node_template_runtime::SignedBlock;
+
+
 
 pub fn decode<T>(payload: &mut Vec<u8>) -> Result<T, Box<dyn Error>>
     where T: Decode/* + Into<Vec<u8>>*/,
@@ -31,3 +34,11 @@ pub fn decode_transactions(payload: &mut  Vec<u8>) -> Result<Vec<SubstrateUnchec
         .collect())
 }
 
+//********************** SOLANA ********************************
+use solana_transaction_status;
+
+// EncodedConfirmedBlock is block with vec of EncodedTransactionWithStatusMeta.
+pub type SolanaBlock = solana_transaction_status::EncodedConfirmedBlock;
+pub type SolanaTransaction = solana_transaction_status::EncodedTransactionWithStatusMeta;
+// The most similar Event concept in Solana is log_messages in UiTransactionStatusMeta in EncodedTransactionWithStatusMeta
+pub type SolanaEvent = Option<Vec<String>>;

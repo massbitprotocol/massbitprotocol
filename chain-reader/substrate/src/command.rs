@@ -1,7 +1,7 @@
-use chain_reader::substrate_chain;
+use chain_reader_substrate::substrate_chain;
 use tonic::{transport::Server};
-use chain_reader::grpc_stream::stream_mod::{streamout_server::StreamoutServer, ChainType};
-use chain_reader::grpc_stream::StreamService;
+use chain_reader_substrate::grpc_stream::stream_mod::{streamout_server::StreamoutServer, ChainType};
+use chain_reader_substrate::grpc_stream::StreamService;
 use tokio::sync::broadcast;
 use lazy_static::lazy_static;
 
