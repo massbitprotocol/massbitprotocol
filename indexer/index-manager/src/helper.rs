@@ -99,21 +99,6 @@ fn new_substrate_block() -> SubstrateBlock {
     }
 }
 
-// #[derive(FromBTreeMap)]
-// struct TestStruct {
-//     name: String,
-//     value: i32,
-// }
-//
-// impl Default for TestStruct {
-//     fn default() -> Self {
-//         Self {
-//             name: String::new(),
-//             value: 0
-//         }
-//     }
-// }
-
 #[derive(Default)]
 struct MockStore {}
 
@@ -166,15 +151,12 @@ pub async fn loop_blocks(params: DeployLocalParams) -> Result<(), Box<dyn Error>
     let mapping_file_location = ["./target/release/libtest_plugin.so"].join("");
     let library_path = PathBuf::from(mapping_file_location.to_string());
 
-
     let store = MockStore::new();
     let block = new_substrate_block();
     unsafe {
         let mut plugins = PluginManager::new(&store);
         plugins.load(library_path).unwrap();
-        // plugins.handle_block("test", &block);
         assert_eq!(plugins.handle_block("test", &block).unwrap(), ());
     }
-
     Ok(())
 }
