@@ -6,6 +6,7 @@ pub struct IndexStore {
     pub connection_string: String,
 }
 
+// Refactor and use the logic from Mockstore here so we are not dependant on diesel https://github.com/massbitprotocol/massbitprotocol/pull/34/files#diff-cb28164240a17b00fd8ae0f15957d3159cad203dae86739b642a471c2d1931a0
 impl IndexStore {
     pub fn save<T, M>(&self, table: T, records: M)
         where
