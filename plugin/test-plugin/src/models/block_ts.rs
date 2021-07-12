@@ -4,7 +4,7 @@ use structmap_derive::{FromMap, ToMap};
 
 #[derive(Default, Clone, FromMap, ToMap)]
 pub struct BlockTs {
-    pub block_hash: String,
+    pub id: String,
     pub block_height: i64,
 }
 

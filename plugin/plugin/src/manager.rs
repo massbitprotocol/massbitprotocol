@@ -9,79 +9,94 @@ static ALLOCATOR: System = System;
 
 pub struct PluginManager<'a> {
     store: &'a dyn Store,
-    libs: Vec<Rc<Library>>,
-    block_handlers: HashMap<String, BlockHandlerProxy>,
+    plugins: Vec<Rc<Library>>,
+    substrate_block_handlers: HashMap<String, HashMap<String, SubstrateBlockHandlerProxy>>,
 }
 
 impl<'a> PluginManager<'a> {
     pub fn new(store: &dyn Store) -> PluginManager {
         PluginManager {
             store,
-            libs: vec![],
-            block_handlers: HashMap::default(),
+            plugins: vec![],
+            substrate_block_handlers: HashMap::default(),
         }
     }
 
-    pub unsafe fn load<P: AsRef<OsStr>>(&mut self, library_path: P) -> Result<(), Box<dyn Error>> {
-        let library = Rc::new(Library::new(library_path)?);
-        library
+    pub unsafe fn load<P: AsRef<OsStr>>(
+        &mut self,
+        plugin_id: &str,
+        plugin_path: P,
+    ) -> Result<(), Box<dyn Error>> {
+        let plugin = Rc::new(Library::new(plugin_path)?);
+        // inject store to plugin
+        plugin
             .get::<*mut Option<&dyn Store>>(b"STORE\0")?
             .write(Some(self.store));
 
-        let plugin_decl = library
+        let plugin_decl = plugin
             .get::<*mut PluginDeclaration>(b"plugin_declaration\0")?
             .read();
-        let mut registrar = PluginRegistrar::new(Rc::clone(&library));
+        let mut registrar = PluginRegistrar::new(Rc::clone(&plugin));
         (plugin_decl.register)(&mut registrar);
 
-        self.block_handlers.extend(registrar.block_handlers);
-        self.libs.push(library);
+        self.substrate_block_handlers
+            .entry(plugin_id.to_string())
+            .or_insert(HashMap::default())
+            .extend(registrar.substrate_block_handlers);
+        self.plugins.push(plugin);
+
         Ok(())
     }
 
-    pub fn handle_block(
+    pub fn handle_substrate_block(
         &self,
-        block_handler: &str,
+        plugin_id: &str,
+        handler: &str,
         block: &SubstrateBlock,
     ) -> Result<(), Box<dyn Error>> {
-        self.block_handlers
-            .get(block_handler)
-            .ok_or_else(|| format!("\"{}\" not found", block_handler))?
-            .handle_block(block)
+        self.substrate_block_handlers
+            .get(plugin_id)
+            .ok_or_else(|| format!("\"{}\" not found", plugin_id))?
+            .get(handler)
+            .ok_or_else(|| format!("\"{}\" not found", handler))?
+            .handle_substrate_block(block)
     }
 }
 
 struct PluginRegistrar {
     lib: Rc<Library>,
-    block_handlers: HashMap<String, BlockHandlerProxy>,
+    substrate_block_handlers: HashMap<String, SubstrateBlockHandlerProxy>,
 }
 
 impl PluginRegistrar {
     fn new(lib: Rc<Library>) -> PluginRegistrar {
         PluginRegistrar {
             lib,
-            block_handlers: HashMap::default(),
+            substrate_block_handlers: HashMap::default(),
         }
     }
 }
 
 impl PluginRegistrarTrait for PluginRegistrar {
-    fn register_block_handler(&mut self, name: &str, function: Box<dyn BlockHandler>) {
-        let proxy = BlockHandlerProxy {
-            handler: function,
+    fn register_block_handler(&mut self, name: &str, handler: Box<dyn BlockHandler>) {
+        let proxy = SubstrateBlockHandlerProxy {
+            handler,
             _lib: Rc::clone(&self.lib),
         };
-        self.block_handlers.insert(name.to_string(), proxy);
+        self.substrate_block_handlers
+            .insert(name.to_string(), proxy);
     }
 }
 
-pub struct BlockHandlerProxy {
+/// A proxy object which wraps a [`BlockHandler`] and makes sure it can't outlive
+/// the library it came from.
+pub struct SubstrateBlockHandlerProxy {
     handler: Box<dyn BlockHandler>,
     _lib: Rc<Library>,
 }
 
-impl BlockHandler for BlockHandlerProxy {
-    fn handle_block(&self, block: &SubstrateBlock) -> Result<(), Box<dyn Error>> {
-        self.handler.handle_block(block)
+impl BlockHandler for SubstrateBlockHandlerProxy {
+    fn handle_substrate_block(&self, block: &SubstrateBlock) -> Result<(), Box<dyn Error>> {
+        self.handler.handle_substrate_block(block)
     }
 }

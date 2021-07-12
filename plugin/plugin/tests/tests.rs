@@ -73,8 +73,14 @@ fn test() {
     let store = MockStore::new();
     let block = new_substrate_block();
     unsafe {
+        let plugin_id = "1";
         let mut plugins = PluginManager::new(&store);
-        plugins.load(LIBPATH).unwrap();
-        assert_eq!(plugins.handle_block("test", &block).unwrap(), ());
+        plugins.load(plugin_id, LIBPATH).unwrap();
+        assert_eq!(
+            plugins
+                .handle_substrate_block(plugin_id, "handleBlock", &block)
+                .unwrap(),
+            ()
+        );
     }
 }

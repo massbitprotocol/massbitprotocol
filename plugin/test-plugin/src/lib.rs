@@ -2,7 +2,8 @@ mod mapping;
 mod models;
 
 use massbit_chain_substrate::data_type::SubstrateBlock;
-use plugin::core::{BlockHandler, PluginRegistrar};
+use plugin::core::{BlockHandler as BlockHandlerTrait, PluginRegistrar};
+use std::error::Error;
 use store::Store;
 
 #[doc(hidden)]
@@ -13,14 +14,14 @@ plugin::export_plugin!(register);
 
 #[allow(dead_code, improper_ctypes_definitions)]
 extern "C" fn register(registrar: &mut dyn PluginRegistrar) {
-    registrar.register_block_handler("test", Box::new(Indexer));
+    registrar.register_block_handler("handleBlock", Box::new(BlockHandler));
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Indexer;
+pub struct BlockHandler;
 
-impl BlockHandler for Indexer {
-    fn handle_block(&self, block: &SubstrateBlock) -> Result<(), Box<dyn std::error::Error>> {
+impl BlockHandlerTrait for BlockHandler {
+    fn handle_substrate_block(&self, block: &SubstrateBlock) -> Result<(), Box<dyn Error>> {
         mapping::handle_block(block)
     }
 }
