@@ -122,18 +122,9 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
 
     // Run raw query migration to create new table
     let query = diesel::sql_query(raw_query.clone());
+    println!("Running: {} ...", raw_query);
     let c = PgConnection::establish(&store.connection_string).expect(&format!("Error connecting to {}", store.connection_string));
     let result = query.execute(&c);
-    let index_detail_table = raw_query.table_name();
-    match result {
-        Ok(_) => {
-            log::info!("[Index Manager Helper] Table {} created successfully", index_detail_table.unwrap());
-        },
-        Err(e) => {
-            log::warn!("[Index Manager Helper] {}", e);
-        }
-    };
-
     // Track all tables with hasura
     let gist_body = json!({
         "type": "track_table",
@@ -143,8 +134,7 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
         }
     });
     let request_url = "http://localhost:8080/v1/query";
-    #[allow(unused_variables)]
-        let response = Client::new()
+    let response = Client::new()
         .post(request_url)
         .json(&gist_body)
         .send().compat().await.unwrap();

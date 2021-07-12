@@ -1,4 +1,4 @@
-CREATE TABLE blocks (
-   id SERIAL PRIMARY KEY,
-   number BIGINT NOT NULL
+CREATE TABLE BlockTs (
+    block_hash varchar,
+    block_height bigint
 )
