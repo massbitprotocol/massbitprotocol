@@ -7,8 +7,8 @@ use futures::future::FutureExt;
 // Massbit dependencies
 use tokio02_spawn::core::abort_on_panic;
 use tokio02_spawn::core::tokio02_spawn;
-use crate::helper::{loop_blocks};
-use crate::types::{IndexManager, DeployParams};
+use crate::helper::{loop_blocks, list_handler_helper};
+use crate::types::{IndexManager, DeployParams, DetailParams};
 
 impl IndexManager {
     pub fn serve(
@@ -18,16 +18,37 @@ impl IndexManager {
         let mut handler = IoHandler::with_compatibility(Compatibility::Both);
         let (task_sender, task_receiver) =
             mpsc::channel::<Box<dyn std::future::Future<Output = ()> + Send + Unpin>>(100);
-            tokio::spawn(task_receiver.for_each(|f| {
+        tokio::spawn(task_receiver.for_each(|f| {
             async {
                 tokio::task::spawn_blocking(move || block_on(abort_on_panic(f)));
             }
         }));
-        let sender = task_sender.clone();
+        let sender_deploy = task_sender.clone();
+        let sender_list = task_sender.clone();
+        let sender_detail = task_sender.clone();
+
+        handler.add_method("index_list", move|params: Params| {
+            Box::pin(tokio02_spawn(
+                sender_list.clone(),
+                async move {
+                    list_handler().await
+                }.boxed(),
+            )).compat()
+        });
+
+        handler.add_method("index_detail", move|params: Params| {
+            Box::pin(tokio02_spawn(
+                sender_detail.clone(),
+                async move {
+                    let params = params.parse().unwrap();
+                    detail_handler(params).await
+                }.boxed(),
+            )).compat()
+        });
 
         handler.add_method("index_deploy", move|params: Params| {
             Box::pin(tokio02_spawn(
-                sender.clone(),
+                sender_deploy.clone(),
                 async move {
                     let params = params.parse().unwrap();
                     deploy_handler(params).await
@@ -47,8 +68,22 @@ async fn deploy_handler(
     params: DeployParams,
 ) -> Result<Value, jsonrpc_core::Error> {
     #[allow(unused_must_use)]
-    tokio::spawn(async move{
+        tokio::spawn(async move{
         loop_blocks(params).await;// Start streaming and indexing blocks
     });
     Ok(serde_json::to_value("Deploy index success").expect("Unable to deploy new index"))
+}
+
+async fn list_handler(
+) -> Result<Value, jsonrpc_core::Error> {
+    let indexers = list_handler_helper().await.unwrap();
+    Ok(serde_json::to_value(indexers).expect("Unable to get index list"))
+}
+
+async fn detail_handler(
+    params: DetailParams,
+) -> Result<Value, jsonrpc_core::Error> {
+    // Comment out until we have finished the plugin manager store v2
+    // let indexers = detail_handler_helper(params).await.unwrap();
+    Ok(serde_json::to_value("").expect("Unable to get index detail"))
 }
