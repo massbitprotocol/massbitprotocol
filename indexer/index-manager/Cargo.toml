@@ -49,3 +49,10 @@ git = "https://github.com/paritytech/substrate.git"
 branch = "master"
 package = "frame-system"
 optional = false
+
+[dependencies.sp-core]
+git = "https://github.com/paritytech/substrate.git"
+branch = "master"
+package = "sp-core"
+default-features = false
+features = ["full_crypto"]
