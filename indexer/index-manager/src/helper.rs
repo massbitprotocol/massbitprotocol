@@ -194,9 +194,13 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
     while let Some(block) = stream.message().await? {
         let block = block as GenericDataProto;
         log::info!("[Index Manager Helper] Received block = {:?}, hash = {:?} from {:?}",block.block_number, block.block_hash, params.index_name);
-
         log::info!("[Index Manager Helper] Start plugin manager");
 
+        unsafe {
+            let mut plugins = PluginManager::new(&store);
+            plugins.load(&so_file_path).unwrap();
+            assert_eq!(plugins.handle_block("test", &block).unwrap(), ());
+        }
         // We'll integrate with Plugin Manager v2 in the next PR
         // let mut plugins = PluginManager::new();
         // unsafe {
