@@ -11,16 +11,16 @@ use reqwest::Client;
 use serde_json::json;
 use postgres::{Connection as PostgreConnection, TlsMode};
 use serde::{Deserialize};
-use node_template_runtime::Block;
-use sp_runtime::traits::Extrinsic;
+use node_template_runtime::Event;
+use std::hash::Hash;
 
 // Massbit dependencies
 use ipfs_client::core::create_ipfs_clients;
-use massbit_chain_substrate::data_type::{SubstrateBlock, decode, decode_transactions};
 use plugin::manager::PluginManager;
 use stream_mod::{HelloRequest, GetBlocksRequest, GenericDataProto, ChainType, DataType, streamout_client::StreamoutClient};
 use crate::types::{DeployParams, DeployType, Indexer, DetailParams};
 use index_store::core::IndexStore;
+use massbit_chain_substrate::data_type::{SubstrateBlock as Block, SubstrateHeader as Header, SubstrateUncheckedExtrinsic as Extrinsic, decode_transactions, decode};
 
 pub async fn get_index_config(ipfs_config_hash: &String) -> serde_yaml::Mapping {
     let ipfs_addresses = vec!["0.0.0.0:5001".to_string()];
@@ -82,6 +82,7 @@ pub mod stream_mod {
 }
 const URL: &str = "http://127.0.0.1:50051";
 type EventRecord = system::EventRecord<Event, Hash>;
+
 pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
     let db_connection_string = match env::var("DATABASE_URL") {
         Ok(connection) => connection,
@@ -196,7 +197,7 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
 
     // Subscribe new blocks
     while let Some(data) = stream.message().await? {
-        let data = data as GenericDataProto;
+        let mut data = data as GenericDataProto;
         log::info!("[Index Manager Helper] Received block = {:?}, hash = {:?} from {:?}",data.block_number, data.block_hash, params.index_name);
 
         log::info!("[Index Manager Helper] Start plugin manager");
@@ -212,10 +213,11 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
                 let block: Block = decode(&mut data.payload).unwrap();
                 println!("Received BLOCK: {:?}", block.header.number);
             },
-            Some(DataType::Event) => {
-                let event: EventRecord = decode(&mut data.payload).unwrap();
-                println!("Received EVENT: {:?}", event);
-            },
+            // Some error with this type, comeback and implement this later
+            // Some(DataType::Event) => {
+            //     let event: EventRecord = decode(&mut data.payload).unwrap();
+            //     println!("Received EVENT: {:?}", event);
+            // },
             Some(DataType::Transaction) => {
                 let extrinsics: Vec<Extrinsic> = decode_transactions(&mut data.payload).unwrap();
                 println!("Received Extrinsic: {:?}", extrinsics);
