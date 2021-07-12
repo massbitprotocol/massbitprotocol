@@ -195,16 +195,19 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
     // Subscribe new blocks
     while let Some(block) = stream.message().await? {
         let block = block as GenericDataProto;
-        let decode_block: SubstrateBlock = serde_json::from_slice(&block.payload).unwrap();
+
         log::info!("[Index Manager Helper] Received block = {:?}, hash = {:?} from {:?}",block.block_number, block.block_hash, params.index_name);
-        log::info!("[Index Manager Helper] Decoding block: {:?}", decode_block);
+
         log::info!("[Index Manager Helper] Start plugin manager");
 
+        let mut plugins = PluginManager::new(&store);
         unsafe {
-            let mut plugins = PluginManager::new(&store);
             plugins.load(&so_file_path).unwrap();
-            assert_eq!(plugins.handle_block("test", &decode_block).unwrap(), ());
         }
+
+        let decode_block: SubstrateBlock = serde_json::from_slice(&block.payload).unwrap();
+        log::info!("[Index Manager Helper] Decoding block: {:?}", decode_block);
+        assert_eq!(plugins.handle_block("test", &decode_block).unwrap(), ());
     }
     Ok(())
 }
