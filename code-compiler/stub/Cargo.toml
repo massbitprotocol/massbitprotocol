@@ -10,6 +10,8 @@ diesel = { version = "1.4.0", features = ["postgres"] }
 plugin = { path = "../../../plugin/plugin" } # Todo copy these to our compiler repo
 massbit-chain-substrate = { path = "../../../core/chain/substrate"} # Todo copy these to our compiler repo
 index-store = { path = "../../../core/index-store"} # Todo copy these to our compiler repo
+structmap = "0.1.5"
+structmap-derive = "0.1.5"
 
 [lib]
 crate-type = ["cdylib"]
