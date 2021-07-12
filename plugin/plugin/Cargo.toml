@@ -8,7 +8,7 @@ edition = "2018"
 [dependencies]
 libloading = "0.5.2"
 massbit-chain-substrate = { path = "../../core/chain/substrate"}
-store = { path = "../../core/store"}
+index-store = { path = "../../core/index-store" }
 structmap = "0.1.5"
 
 [dependencies.node-template-runtime]

@@ -5,6 +5,11 @@ pub struct IndexStore {
     pub connection_string: String,
 }
 
+pub trait Store: Sync + Send {
+    fn save(&self, entity_name: String, data: GenericMap);
+}
+
+
 impl Store for IndexStore {
     fn save(&self, _entity_name: String, mut _data: GenericMap) {
         let mut query = format!("INSERT INTO {} (", _entity_name);

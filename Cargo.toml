@@ -2,7 +2,6 @@
 members = [
     "chain-reader",
     "core/chain/substrate",
-    "core/store",
     "indexer/main",
     "plugin/plugin",
     "plugin/test-plugin"

@@ -2,7 +2,7 @@ use crate::core::{BlockHandler, PluginDeclaration, PluginRegistrar as PluginRegi
 use libloading::Library;
 use massbit_chain_substrate::data_type::SubstrateBlock;
 use std::{alloc::System, collections::HashMap, error::Error, ffi::OsStr, rc::Rc};
-use store::Store;
+use index_store::core::Store;
 
 #[global_allocator]
 static ALLOCATOR: System = System;
