@@ -1,0 +1,4 @@
+**/generated/*
+**/venv
+**/__pycache__
+**/target/
