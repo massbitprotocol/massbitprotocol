@@ -6,3 +6,4 @@ members = [
     "plugin/plugin",
     "plugin/test-plugin"
 ]
+exclude = ["code-compiler/generated"]
