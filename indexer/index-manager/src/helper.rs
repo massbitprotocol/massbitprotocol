@@ -12,7 +12,7 @@ use serde_json::json;
 use postgres::{Connection as PostgreConnection, TlsMode};
 use serde::{Deserialize};
 use node_template_runtime::Event;
-use std::hash::Hash;
+use sp_core::{sr25519, H256 as Hash};
 
 // Massbit dependencies
 use ipfs_client::core::create_ipfs_clients;
@@ -21,6 +21,13 @@ use stream_mod::{HelloRequest, GetBlocksRequest, GenericDataProto, ChainType, Da
 use crate::types::{DeployParams, DeployType, Indexer, DetailParams};
 use index_store::core::IndexStore;
 use massbit_chain_substrate::data_type::{SubstrateBlock as Block, SubstrateHeader as Header, SubstrateUncheckedExtrinsic as Extrinsic, decode_transactions, decode, SubstrateBlock};
+
+// Configs
+pub mod stream_mod {
+    tonic::include_proto!("chaindata");
+}
+const URL: &str = "http://127.0.0.1:50051";
+type EventRecord = system::EventRecord<Event, Hash>;
 
 pub async fn get_index_config(ipfs_config_hash: &String) -> serde_yaml::Mapping {
     let ipfs_addresses = vec!["0.0.0.0:5001".to_string()];
@@ -76,12 +83,6 @@ pub async fn get_raw_query_from_model_hash(ipfs_model_hash: &String) -> String {
     let raw_query = std::str::from_utf8(&file_bytes).unwrap();
     String::from(raw_query)
 }
-
-pub mod stream_mod {
-    tonic::include_proto!("chaindata");
-}
-const URL: &str = "http://127.0.0.1:50051";
-type EventRecord = system::EventRecord<Event, Hash>;
 
 pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
     let db_connection_string = match env::var("DATABASE_URL") {
@@ -212,11 +213,10 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
                 println!("Received BLOCK: {:?}", block.header.number);
                 plugins.handle_block("test", &block);
             },
-            // Some error with this type, comeback and implement this later
-            // Some(DataType::Event) => {
-            //     let event: EventRecord = decode(&mut data.payload).unwrap();
-            //     println!("Received EVENT: {:?}", event);
-            // },
+            Some(DataType::Event) => {
+                let event: EventRecord = decode(&mut data.payload).unwrap();
+                println!("Received EVENT: {:?}", event);
+            },
             Some(DataType::Transaction) => {
                 let extrinsics: Vec<Extrinsic> = decode_transactions(&mut data.payload).unwrap();
                 println!("Received Extrinsic: {:?}", extrinsics);
@@ -226,10 +226,6 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
                 println!("Not support data type: {:?}", &data.data_type);
             }
         }
-
-        // let decode_block: SubstrateBlock = serde_json::from_slice(&block.payload).unwrap();
-        // log::info!("[Index Manager Helper] Decoding block: {:?}", decode_block);
-        // assert_eq!(plugins.handle_block("test", &decode_block).unwrap(), ());
     }
     Ok(())
 }
