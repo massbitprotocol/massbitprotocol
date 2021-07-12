@@ -1,5 +1,4 @@
-// Massbit dependencies
-use serde::{Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[allow(dead_code)]
 pub struct IndexManager {
@@ -19,4 +18,18 @@ pub struct DeployParams {
 pub enum DeployType {
     Local,
     Ipfs,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct Indexer {
+    pub id: String,
+    pub network: String,
+    pub name: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct DetailParams {
+    pub(crate) index_name: String,
+    pub(crate) ipfs_config_hash: String,
+    pub(crate) ipfs_mapping_hash: String,
 }
