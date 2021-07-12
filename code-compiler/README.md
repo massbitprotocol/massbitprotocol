@@ -2,7 +2,17 @@
 
 ## Types
 - Status: success / error / in-progress
+- Deploy status: success / error / build_error / build_in_progress
 - Index_status: syncing / synced
+
+## Setup
+```shell
+virtualenv -p python3 venv  # Create virtual environment
+source venv/bin/activate
+
+pip install -r requirements.txt  # Install deps 
+python app.py  # Run dev server
+```
 
 ## API
 Endpoint: /compile
@@ -62,8 +72,28 @@ Description:
 - Then, we'll take those hash and upload them to Indexer Manger Server (written in Rust) 
   - Ref: https://github.com/massbitprotocol/massbitprotocol/tree/main/indexer/index-manager
   - You can find the manual steps to upload to IPFS and calling a request to Index Manager here: https://www.loom.com/share/acf0bf94567148f98a0f1561c3fee4a9 
-  - You can find the detail about `/compile` api here: https://www.loom.com/share/367d790f5bce43d5aa41feb0fa588a6c 
-  
+  - You can find the detail about `/compile` api here: https://www.loom.com/share/367d790f5bce43d5aa41feb0fa588a6c
+
+- Detail steps: Get the status of a compilation request by ID, if compilation is fails or in progress, return
+status to user. If compilation is successful, grab those files to upload to IPFS, after that IPFS will return Hash of each
+then POST this hash to indexer server with payload:
+
+```json
+{
+	"jsonrpc": "2.0",
+	"method": "index_deploy",
+	"params": [
+		"52c2ca959d5fa9683c3d59ba874770f3",  // index name (compilation id)
+		"QmUUh7USh4eZHeUXgcPR8g1Z9mXG2wGe7tdHtyaZkYyDwr", // yaml hash
+		"QmS5L8Dr1mpVe8cQRSsjm6cKgUTPXKfSdQBQoZ8aDEfPau", // dynamic lib hash
+		"QmW57XXsAZZzP4fbVfnvc7gUgYFCwLshqv4a3Qug3bRoET", // model hash
+		"Ipfs"
+	],
+	"id": 1
+}
+```
+- Note: on Mac (darwin platform), `libblock` will be built as `.dylib` instead of `.so` extension.
+
 Detail:
 - The logic we'll be implementing
   - Look for a folder with the name that match the compilation_id
@@ -127,8 +157,18 @@ Endpoint: /mock/compile/status/{compilation_id}
 ```
 
 ---
-Endpoint: /mock/deploy
-- Should be the same as /mock/compile
+Endpoint: /mock/deploy/{compilation_id}
+- Method: POST
+- Description: Grab all files from compile step and upload to IPFS then get hash text to register with indexer service.
+- Payload:
+```json
+```
+- Result:
+```json
+{
+  "status": "success"
+}
+```
 
 ---
 Endpoint:  /mock/deploy/status/{deploy_id}
