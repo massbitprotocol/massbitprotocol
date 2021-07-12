@@ -86,7 +86,6 @@ def compile_handler():
     # URL-decode the data
     mapping = urllib.parse.unquote_plus(data["mapping.rs"])
     models = urllib.parse.unquote_plus(data["models.rs"])
-    schema = urllib.parse.unquote_plus(data["schema.rs"])
     project = urllib.parse.unquote_plus(data["project.yaml"])
     up = urllib.parse.unquote_plus(data["up.sql"])
     table = urllib.parse.unquote_plus(data["table"])
@@ -94,7 +93,6 @@ def compile_handler():
     # Save the formatted data from request to disk, ready for compiling
     write_to_disk(generated_folder + "/src/mapping.rs", mapping)
     write_to_disk(generated_folder + "/src/models.rs", models)
-    write_to_disk(generated_folder + "/src/schema.rs", schema)
     write_to_disk(generated_folder + "/src/project.yaml", project)
     write_to_disk(generated_folder + "/src/up.sql", up)
     write_to_disk(generated_folder + "/src/table.txt", table)
