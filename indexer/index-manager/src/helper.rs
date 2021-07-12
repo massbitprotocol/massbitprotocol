@@ -161,7 +161,9 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
 
     // Read project.yaml config and add indexer info into indexers table. Should refactor to handle file from IPFS
     let mut project_config_string = String::new();
-    let mut f = File::open(&params.config_path).expect("Unable to open file");
+    // let mut f = File::open(&params.config_path).expect("Unable to open file"); // Refactor: Config to download config file from IPFS instead of just reading from local
+    let mut f = File::open("./indexer/example/project.yaml").expect("Unable to open file"); // Hard code the path for testing purpose
+
     f.read_to_string(&mut project_config_string).expect("Unable to read string"); // Get raw query
     let project_config: serde_yaml::Value = serde_yaml::from_str(&project_config_string).unwrap();
     let network_name = project_config["dataSources"][0]["kind"].as_str().unwrap();
