@@ -46,7 +46,7 @@ impl FieldType {
         let name = named_type(field_type);
         match ValueType::from_str(name)? {
             ValueType::Boolean => Ok(FieldType::Boolean),
-            ValueType::Int => Ok(FieldType::Int),
+            ValueType::Int | ValueType::BigInt => Ok(FieldType::Int),
             ValueType::String => Ok(FieldType::String),
             _ => Err(anyhow!("Invalid field type")),
         }

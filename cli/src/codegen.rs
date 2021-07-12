@@ -2,6 +2,8 @@ use crate::graphql::relational::Layout;
 use crate::graphql::schema::Schema;
 
 use clap::ArgMatches;
+use inflector::cases::snakecase::to_snake_case;
+use inflector::Inflector;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::error::Error;
@@ -59,7 +61,7 @@ fn generate_plugin() -> Result<(), Box<dyn Error>> {
     for (_, handler) in handlers.iter().enumerate() {
         let name = handler["handler"].as_str().map(|s| s.to_string()).unwrap();
         let kind = handler["kind"].as_str().map(|s| s.to_string()).unwrap();
-        binding.handlers.insert(name, kind);
+        binding.handlers.insert(name.to_snake_case(), kind);
     }
 
     let mut tera = Tera::default();

@@ -4,6 +4,7 @@ mod models;
 use massbit_chain_substrate::data_type::SubstrateBlock;
 use plugin::core::{BlockHandler as BlockHandlerTrait, PluginRegistrar};
 use store::Store;
+use std::error::Error;
 
 #[doc(hidden)]
 #[no_mangle]
@@ -26,8 +27,8 @@ extern "C" fn register(registrar: &mut dyn PluginRegistrar) {
 pub struct BlockHandler;
 
 impl BlockHandlerTrait for BlockHandler {
-    fn handle_block(&self, block: &SubstrateBlock) -> Result<(), Box<dyn std::error::Error>> {
-        mapping::handle_block(block)
+    fn handle_block(&self, block: &SubstrateBlock) -> Result<(), Box<dyn Error>> {
+        mapping::{{ name }}(block)
     }
 }
 {% endif %}
