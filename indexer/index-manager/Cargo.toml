@@ -43,3 +43,9 @@ git = "https://github.com/paritytech/substrate.git"
 branch = "master"
 package = "sp-runtime"
 default-features=false
+
+[dependencies.system]
+git = "https://github.com/paritytech/substrate.git"
+branch = "master"
+package = "frame-system"
+optional = false
