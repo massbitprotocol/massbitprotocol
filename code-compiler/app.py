@@ -148,9 +148,9 @@ def deploy_handler():
     compilation_id = urllib.parse.unquote_plus(data["compilation_id"])
 
     # Get the files path from generated/hash folder
-    project = "./generated/" + compilation_id + "/src/project.yaml"
-    up = "./generated/" + compilation_id + "/src/up.sql"
-    so = "./generated/" + compilation_id + "/target/release/libblock.so"
+    project = os.path.join("./generated", compilation_id, "src/project.yaml")
+    up = os.path.join("./generated", compilation_id, "src/up.sql")
+    so = os.path.join("./generated", compilation_id, "target/release/libblock.so")
 
     # Uploading files to IPFS
     client = ipfshttpclient.connect()
