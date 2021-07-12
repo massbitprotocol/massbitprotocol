@@ -11,6 +11,7 @@ pub struct DeployParams {
     pub(crate) config_path: String,
     pub(crate) mapping_path: String,
     pub(crate) model_path: String,
+    pub(crate) table_name: String,
     pub(crate) deploy_type: DeployType,
 }
 

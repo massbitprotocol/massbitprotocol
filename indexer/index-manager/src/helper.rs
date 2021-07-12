@@ -27,6 +27,8 @@ pub mod stream_mod {
     tonic::include_proto!("chaindata");
 }
 const URL: &str = "http://127.0.0.1:50051";
+const CONNECTION_STRING: &'static str = "postgres://graph-node:let-me-in@localhost";
+const HASURA: &'static str = "http://localhost:8080/v1/query";
 type EventRecord = system::EventRecord<Event, Hash>;
 
 pub async fn get_index_config(ipfs_config_hash: &String) -> serde_yaml::Mapping {
@@ -43,7 +45,7 @@ pub async fn get_index_config(ipfs_config_hash: &String) -> serde_yaml::Mapping 
     serde_yaml::from_slice(&file_bytes).unwrap()
 }
 
-pub async fn get_index_mapping_file_name(ipfs_mapping_hash: &String) -> String {
+pub async fn get_mapping_file_from_ipfs(ipfs_mapping_hash: &String) -> String {
     let ipfs_addresses = vec!["0.0.0.0:5001".to_string()];
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await; // Refactor to use lazy load
 
@@ -68,7 +70,32 @@ pub async fn get_index_mapping_file_name(ipfs_mapping_hash: &String) -> String {
     }
 }
 
-pub async fn get_raw_query_from_model_hash(ipfs_model_hash: &String) -> String {
+pub async fn get_config_file_from_ipfs(ipfs_config_hash: &String) -> String {
+    let ipfs_addresses = vec!["0.0.0.0:5001".to_string()];
+    let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await; // Refactor to use lazy load
+
+    let file_bytes = ipfs_clients[0]
+        .cat_all(ipfs_config_hash.to_string())
+        .compat()
+        .await
+        .unwrap()
+        .to_vec();
+
+    let file_name = [ipfs_config_hash, ".yaml"].join("");
+    let res = fs::write(&file_name, file_bytes); // Add logger and says that write file successfully
+
+    match res {
+        Ok(_) => {
+            log::info!("[Index Manager Helper] Write project.yaml file to local storage successfully");
+            file_name
+        },
+        Err(err) => {
+            panic!("[Index Manager Helper] Could not write file to local storage {:#?}", err)
+        }
+    }
+}
+
+pub async fn get_raw_query_from_ipfs(ipfs_model_hash: &String) -> String {
     log::info!("[Index Manager Helper] Downloading Raw Query from IPFS");
     let ipfs_addresses = vec!["0.0.0.0:5001".to_string()];
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await;
@@ -84,66 +111,36 @@ pub async fn get_raw_query_from_model_hash(ipfs_model_hash: &String) -> String {
     String::from(raw_query)
 }
 
-pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
-    let db_connection_string = match env::var("DATABASE_URL") {
-        Ok(connection) => connection,
-        Err(_) => String::from("postgres://graph-node:let-me-in@localhost")
-    };
-    let store = IndexStore {
-        connection_string: db_connection_string,
-    }; // This store will be used by indexers to insert to database
+pub fn get_mapping_file_from_local(mapping_path: &String) -> PathBuf {
+    let so_file_path = PathBuf::from(mapping_path.to_string());
+    so_file_path
+}
 
-    // Chain Reader Client to subscribe and get latest block
-    let (so_file_path, raw_query) = match params.deploy_type {
-        DeployType::Local => {
-            // Get SO mapping file location
-            let mapping_file_name = params.mapping_path;
-            let so_file_path = PathBuf::from(mapping_file_name.to_string());
+pub fn get_config_file_from_local(config_path: &String) -> String {
+    let mut config_file = String::new();
+    let mut f = File::open(config_path).expect("Unable to open file");
+    f.read_to_string(&mut config_file).expect("Unable to read string");
+    config_file
+}
 
-            // Get raw query to create database
-            let mut raw_query = String::new();
-            let mut f = File::open(&params.model_path).expect("Unable to open file");
-            f.read_to_string(&mut raw_query).expect("Unable to read string");
+pub fn get_raw_query_from_local(model_path: &String) -> String {
+    let mut raw_query = String::new();
+    let mut f = File::open(model_path).expect("Unable to open file");
+    f.read_to_string(&mut raw_query).expect("Unable to read string");
+    raw_query
+}
 
-            (so_file_path, raw_query)
-        },
-        DeployType::Ipfs => {
-            // Get SO mapping file location
-            let mapping_file_name = get_index_mapping_file_name(&params.mapping_path).await;
-            let mapping_file_location = ["./", &mapping_file_name].join("");
-
-            // Get raw query to create database
-            let raw_query = get_raw_query_from_model_hash(&params.model_path).await;
-            let so_file_path = PathBuf::from(mapping_file_location.to_string());
-
-            (so_file_path, raw_query)
-        },
-    };
-
-    // Run raw query migration to create new table
+pub fn create_new_indexer_detail_table(connection: &PgConnection, raw_query: &String) {
     let query = diesel::sql_query(raw_query.clone());
-    println!("Running: {} ...", raw_query);
-    let c = PgConnection::establish(&store.connection_string).expect(&format!("Error connecting to {}", store.connection_string));
-    let result = query.execute(&c);
-    // Track all tables with hasura
-    let gist_body = json!({
-        "type": "track_table",
-        "args": {
-            "schema": "public",
-            "name": "",
-        }
-    });
-    let request_url = "http://localhost:8080/v1/query";
-    let response = Client::new()
-        .post(request_url)
-        .json(&gist_body)
-        .send().compat().await.unwrap();
+    println!("Running: {}", raw_query);
+    query.execute(connection);
+}
 
-    // Create indexers table so we can keep track of the indexers status. Refactor: This should be run by migration not by API.
-    let mut indexer_create_query = String::new();
+pub fn create_indexers_table_if_not_exists(connection: &PgConnection) {
+    let mut query = String::new();
     let mut f = File::open("./indexer/migration/indexers.sql").expect("Unable to open file");
-    f.read_to_string(&mut indexer_create_query).expect("Unable to read string"); // Get raw query
-    let result = diesel::sql_query(indexer_create_query).execute(&c);
+    f.read_to_string(&mut query).expect("Unable to read string"); // Get raw query
+    let result = diesel::sql_query(query).execute(connection);
     match result {
         Ok(_) => {
             log::info!("[Index Manager Helper] Init table Indexer");
@@ -152,20 +149,22 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
             log::warn!("[Index Manager Helper] {}", e);
         }
     };
+}
 
-    // Read project.yaml config and add indexer info into indexers table. Should refactor to handle file from IPFS
+pub fn read_config_file(config_file_path: &String) -> serde_yaml::Value{
     let mut project_config_string = String::new();
-    // let mut f = File::open(&params.config_path).expect("Unable to open file"); // Refactor: Config to download config file from IPFS instead of just reading from local
-    let mut f = File::open("./indexer/example/project.yaml").expect("Unable to open file"); // Hard code the path for testing purpose
-
+    let mut f = File::open(config_file_path).expect("Unable to open file"); // Refactor: Config to download config file from IPFS instead of just reading from local
     f.read_to_string(&mut project_config_string).expect("Unable to read string"); // Get raw query
     let project_config: serde_yaml::Value = serde_yaml::from_str(&project_config_string).unwrap();
-    let network_name = project_config["dataSources"][0]["kind"].as_str().unwrap();
-    let index_name = project_config["dataSources"][0]["name"].as_str().unwrap();
+    project_config
+}
 
-    // TODO: we need a way to get the newly created table name or just use graphql API
-    let add_new_indexer = format!("INSERT INTO indexers(id, name, network) VALUES ('{}','{}','{}');", params.index_name, index_name, network_name);
-    let result = diesel::sql_query(add_new_indexer).execute(&c);
+pub fn insert_new_indexer(connection: &PgConnection, id: &String, project_config: serde_yaml::Value) {
+    let network = project_config["dataSources"][0]["kind"].as_str().unwrap();
+    let name = project_config["dataSources"][0]["name"].as_str().unwrap();
+
+    let add_new_indexer = format!("INSERT INTO indexers(id, name, network) VALUES ('{}','{}','{}');", id, name, network);
+    let result = diesel::sql_query(add_new_indexer).execute(connection);
     match result {
         Ok(_) => {
             log::info!("[Index Manager Helper] New indexer created");
@@ -174,6 +173,64 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
             log::warn!("[Index Manager Helper] {}", e);
         }
     };
+}
+
+pub async fn track_hasura_table(table_name: &String) {
+    let gist_body = json!({
+        "type": "track_table",
+        "args": {
+            "schema": "public",
+            "name": table_name.to_lowercase(),
+        }
+    });
+    Client::new()
+        .post(HASURA)
+        .json(&gist_body)
+        .send().compat().await.unwrap();
+}
+
+pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
+    // Init Store
+    let db_connection_string = match env::var("DATABASE_URL") {
+        Ok(connection) => connection,
+        Err(_) => String::from("postgres://graph-node:let-me-in@localhost")
+    };
+    let store = IndexStore {
+        connection_string: db_connection_string,
+    };
+
+    // Get mapping file, raw query to create new table and project.yaml config
+    let (mapping_file_path, raw_query, config_file_path) = match params.deploy_type {
+        DeployType::Local => {
+            let raw_query = get_raw_query_from_local(&params.model_path);
+            let mapping_file_path = get_mapping_file_from_local(&params.mapping_path);
+            let config_file_path = get_config_file_from_local(&params.config_path);
+            (mapping_file_path, raw_query, config_file_path)
+        },
+        DeployType::Ipfs => {
+            let raw_query = get_raw_query_from_ipfs(&params.model_path).await;
+
+            let mapping_file_name = get_mapping_file_from_ipfs(&params.mapping_path).await;
+            let mapping_file_location = ["./", &mapping_file_name].join("");
+            let mapping_file_path = PathBuf::from(mapping_file_location.to_string());
+
+            let config_file_path = get_config_file_from_ipfs(&params.config_path).await;
+            (mapping_file_path, raw_query, config_file_path)
+        },
+    };
+
+    let connection = PgConnection::establish(CONNECTION_STRING).expect(&format!("Error connecting to {}", CONNECTION_STRING));
+    create_new_indexer_detail_table(&connection, &raw_query);
+
+    // Track the newly created table with hasura
+    track_hasura_table(&params.table_name).await;
+
+    // Create indexers table so we can keep track of the indexers status
+    create_indexers_table_if_not_exists(&connection);
+
+    // Read project.yaml config and add a new indexer row
+    let project_config = read_config_file(&config_file_path);
+    insert_new_indexer(&connection, &params.index_name, project_config);
 
     // Chain Reader Client Configuration to subscribe and get latest block from Chain Reader Server
     let mut client = StreamoutClient::connect(URL).await.unwrap();
@@ -193,8 +250,7 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
         log::info!("[Index Manager Helper] Received block = {:?}, hash = {:?} from {:?}",data.block_number, data.block_hash, params.index_name);
         let mut plugins = PluginManager::new(&store);
         unsafe {
-            // plugins.load(&so_file_path).unwrap();
-            plugins.load("./target/release/libtest_plugin.so").unwrap();
+            plugins.load(mapping_file_path.clone()).unwrap();
         }
 
         match DataType::from_i32(data.data_type) {
