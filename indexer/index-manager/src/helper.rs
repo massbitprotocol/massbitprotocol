@@ -193,25 +193,16 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
     // Subscribe new blocks
     while let Some(block) = stream.message().await? {
         let block = block as GenericDataProto;
+        let decode_block: SubstrateBlock = serde_json::from_slice(&block.payload).unwrap();
         log::info!("[Index Manager Helper] Received block = {:?}, hash = {:?} from {:?}",block.block_number, block.block_hash, params.index_name);
+        log::info!("[Index Manager Helper] Decoding block: {:?}", decode_block);
         log::info!("[Index Manager Helper] Start plugin manager");
 
         unsafe {
             let mut plugins = PluginManager::new(&store);
             plugins.load(&so_file_path).unwrap();
-            assert_eq!(plugins.handle_block("test", &block).unwrap(), ());
+            assert_eq!(plugins.handle_block("test", &decode_block).unwrap(), ());
         }
-        // We'll integrate with Plugin Manager v2 in the next PR
-        // let mut plugins = PluginManager::new();
-        // unsafe {
-        //     plugins
-        //         .load(&so_file_path)
-        //         .expect("plugin loading failed");
-        // }
-        //
-        // let decode_block: SubstrateBlock = serde_json::from_slice(&block.payload).unwrap();
-        // log::info!("Decoding block: {:?}", decode_block);
-        // plugins.handle_block(&store, &decode_block); // Call pre-defined handle_block function from plugin manager to start indexing data
     }
     Ok(())
 }

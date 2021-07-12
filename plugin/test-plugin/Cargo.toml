@@ -7,7 +7,7 @@ edition = "2018"
 
 [dependencies]
 massbit-chain-substrate = { path = "../../core/chain/substrate"}
-store = { path = "../../core/store"}
+index-store = { path = "../../core/index-store"}
 plugin = { path = "../plugin"}
 structmap = "0.1.5"
 structmap-derive = "0.1.5"
