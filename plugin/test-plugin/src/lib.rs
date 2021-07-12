@@ -3,7 +3,7 @@ mod models;
 
 use massbit_chain_substrate::data_type::SubstrateBlock;
 use plugin::core::{BlockHandler, PluginRegistrar};
-use store::Store;
+use index_store::core::Store;
 
 #[doc(hidden)]
 #[no_mangle]
