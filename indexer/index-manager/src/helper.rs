@@ -20,7 +20,7 @@ use plugin::manager::PluginManager;
 use stream_mod::{HelloRequest, GetBlocksRequest, GenericDataProto, ChainType, DataType, streamout_client::StreamoutClient};
 use crate::types::{DeployParams, DeployType, Indexer, DetailParams};
 use index_store::core::IndexStore;
-use massbit_chain_substrate::data_type::{SubstrateBlock as Block, SubstrateHeader as Header, SubstrateUncheckedExtrinsic as Extrinsic, decode_transactions, decode};
+use massbit_chain_substrate::data_type::{SubstrateBlock as Block, SubstrateHeader as Header, SubstrateUncheckedExtrinsic as Extrinsic, decode_transactions, decode, SubstrateBlock};
 
 pub async fn get_index_config(ipfs_config_hash: &String) -> serde_yaml::Mapping {
     let ipfs_addresses = vec!["0.0.0.0:5001".to_string()];
@@ -196,22 +196,21 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
         .into_inner();
 
     // Subscribe new blocks
+    log::info!("[Index Manager Helper] Start plugin manager");
     while let Some(data) = stream.message().await? {
         let mut data = data as GenericDataProto;
         log::info!("[Index Manager Helper] Received block = {:?}, hash = {:?} from {:?}",data.block_number, data.block_hash, params.index_name);
-
-        log::info!("[Index Manager Helper] Start plugin manager");
         let mut plugins = PluginManager::new(&store);
         unsafe {
             // plugins.load(&so_file_path).unwrap();
             plugins.load("./target/release/libtest_plugin.so").unwrap();
         }
 
-
         match DataType::from_i32(data.data_type) {
             Some(DataType::Block) => {
                 let block: Block = decode(&mut data.payload).unwrap();
                 println!("Received BLOCK: {:?}", block.header.number);
+                plugins.handle_block("test", &block);
             },
             // Some error with this type, comeback and implement this later
             // Some(DataType::Event) => {
