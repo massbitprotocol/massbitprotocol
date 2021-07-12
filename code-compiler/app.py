@@ -151,6 +151,7 @@ def deploy_handler():
     project = os.path.join("./generated", compilation_id, "src/project.yaml")
     up = os.path.join("./generated", compilation_id, "src/up.sql")
     so = os.path.join("./generated", compilation_id, "target/release/libblock.so")
+    table = os.path.join("./generated", compilation_id, "src/table.txt")
 
     # Uploading files to IPFS
     client = ipfshttpclient.connect()
@@ -159,10 +160,15 @@ def deploy_handler():
     up_res = client.add(up)
     so_res = client.add(so)
 
+    # Reading table name
+    f = open(table, "r")
+    table_name = f.read()
+
     # Uploading to IPFS result
     print("project.yaml: " + project_res['Hash'])
     print("up.sql: " + up_res['Hash'])
     print("libblock.so: " + so_res['Hash'])
+    print("table: " + so_res['Hash'])
 
     # Uploading IPFS files to Index Manager
     res = requests.post('http://127.0.0.1:3030',
@@ -174,6 +180,7 @@ def deploy_handler():
                           project_res['Hash'],
                           so_res['Hash'],
                           up_res['Hash'],
+                          table_name,
                           "Ipfs"
                        ],
                       'id': 1,
