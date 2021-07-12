@@ -1,0 +1,16 @@
+schema:
+  file: ./schema.graphql
+
+dataSources:
+  - kind: substrate
+    name: Index
+    network: https://data-seed-prebsc-1-s1.binance.org:8545/
+    mapping:
+      language: rust
+      handlers:
+        - handler: handleBlock
+          kind: substrate/BlockHandler
+        - handler: handleCall
+          kind: substrate/CallHandler
+        - handler: handleEvent
+          kind: substrate/EventHandler
