@@ -6,6 +6,8 @@ import random
 import os
 import subprocess
 import threading
+import ipfshttpclient
+import requests
 
 ################
 # Config Flask #
@@ -138,6 +140,50 @@ def compile_status_handler(id):
         "payload": payload
     }, 200
 
+@app.route("/deploy", methods=['POST'])
+@cross_origin()
+def deploy_handler():
+    # Get data
+    data = request.json
+    compilation_id = urllib.parse.unquote_plus(data["compilation_id"])
+
+    # Get the files path from generated/hash folder
+    project = "./generated/" + compilation_id + "/src/project.yaml"
+    up = "./generated/" + compilation_id + "/src/up.sql"
+    so = "./generated/" + compilation_id + "/target/release/libblock.so"
+
+    # Uploading files to IPFS
+    client = ipfshttpclient.connect()
+    print("Uploading files to IPFS...")
+    project_res = client.add(project)
+    up_res = client.add(up)
+    so_res = client.add(so)
+
+    # Uploading to IPFS result
+    print("project.yaml: " + project_res['Hash'])
+    print("up.sql: " + up_res['Hash'])
+    print("libblock.so: " + so_res['Hash'])
+
+    # Uploading IPFS files to Index Manager
+    res = requests.post('http://127.0.0.1:3030',
+                  json={
+                      'jsonrpc': '2.0',
+                      'method': 'index_deploy',
+                      'params': [
+                          "index_name",
+                          project_res['Hash'],
+                          so_res['Hash'],
+                          up_res['Hash'],
+                          "Ipfs"
+                       ],
+                      'id': 1,
+                  })
+    print(res.json())
+    return {
+         "status": "success",
+         "payload": "",
+    }, 200
+
 @app.route('/', methods=['GET'])
 @cross_origin()
 def index():
@@ -151,7 +197,7 @@ def index():
 def mock_compile_handler():
     return {
         "status": "success",
-        "payload": "dfd8648a4a0cfc56f99d435a0e6e48c3",
+        "payload": "mock_hash_success",
     }, 200
 
 @app.route("/mock/compile/status/<id>", methods=['GET'])
