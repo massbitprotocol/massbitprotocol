@@ -51,3 +51,20 @@ And to achieve that, the easiest solution is to develop with some existing featu
 ## Create new index with files from local 
 To be added
 
+## To start with docker
+- Run `docker build -f substrate-node/Dockerfile -t substrate-node .` to build substrate-node
+- Run `docker build -f chain-reader/Dockerfile -t chain-reader .` to build chain-reader
+- Run `docker build -f indexer/Dockerfile -t indexer .` to build indexer
+- Run `docker build -f code-compiler/Dockerfile -t code-compiler .` to build code-compiler
+- Run `docker-compose up` will start:
+  - IPFS
+  - Postgres
+  - Hasura
+  - Substrate Node
+  - Chain Reader
+  - Index Manager
+  - Code Compiler
+
+Note:
+- The 3 Rust services (substrate-node, chain-reader, indexer) we need to build them separately because their build time is long and we need wait-for-it.sh script implemented.
+- The code-compiler needs to know the context of massbitprotcol source folder so it can run the `cargo build` for the /compile api

@@ -12,4 +12,5 @@ RUN $HOME/.cargo/bin/rustup target add wasm32-unknown-unknown --toolchain stable
 
 RUN $HOME/.cargo/bin/rustup toolchain install nightly-2021-05-20
 RUN $HOME/.cargo/bin/rustup target add wasm32-unknown-unknown --toolchain nightly-2021-05-20
-RUN $HOME/.cargo/bin/cargo run -- --dev
+RUN $HOME/.cargo/bin/cargo build --release
+CMD ./target/release/node-template --dev

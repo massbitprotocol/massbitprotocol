@@ -30,16 +30,26 @@ services:
       HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
       HASURA_GRAPHQL_DEV_MODE: "true"
       HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup, http-log, webhook-log, websocket-log, query-log
+  
+  code-compiler:
+    image: code-compiler
+    
+  substrate-node:
+    image: substrate-node
+    ports:
+      - "9944:9944"
+    restart: always
+    
+  chain-reader:
+    image: chain-reader
+    command: bash -c "sleep 5; ./target/release/chain-reader"
+    depends_on:
+      - "substrate-node"
+    restart: always
 
-  # code-compiler:
-  #   build: code-compiler/.
+  indexer:
+    image: indexer
+    depends_on:
+      - "chain-reader"
+    restart: always
 
-  # substrate-api-client-test-node:
-  #   build: substrate-api-client-test-node/.
-
-  # chain-reader:
-  #   build: chain-reader/.
-
-  # Indexer-manager
-  # indexer:
-  #   build: indexer/.
