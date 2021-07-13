@@ -1,4 +1,4 @@
-
+/// Solana chain-reader test code
 use solana_client::{pubsub_client::PubsubClient, rpc_client::RpcClient, rpc_response::SlotInfo};
 use solana_transaction_status::{UiConfirmedBlock, EncodedConfirmedBlock};
 use codec::{Decode, Encode};
@@ -89,7 +89,7 @@ fn solana_slot_subscribe(websocket_url: &String) {
     }
 }
 
-fn get_block(client: &RpcClient, block_height: u64) -> Result<EncodedConfirmedBlock,Box<dyn Error>>{
+async fn get_block(client: Arc<RpcClient>, block_height: u64) -> Result<EncodedConfirmedBlock,Box<dyn Error>>{
 
     println!("Starting get Block {}",block_height);
     let now = Instant::now();
@@ -108,17 +108,20 @@ fn get_block(client: &RpcClient, block_height: u64) -> Result<EncodedConfirmedBl
 
 }
 
-fn get_blocks(client: &RpcClient, start_block: u64, end_block: u64) {
+async fn get_blocks(client: Arc<RpcClient>, start_block: u64, end_block: u64) {
     for block_height in start_block..end_block{
-        get_block(client,block_height);
+        let new_client = client.clone();
+            tokio::spawn(async move {
+            get_block(new_client,block_height).await;
+        });
     }
 }
 
-fn solana_finalized_block_subscribe(websocket_url: &String, json_rpc_url: &String) {
+async fn solana_finalized_block_subscribe(websocket_url: &String, json_rpc_url: &String) {
     let (mut subscription_client, receiver) =
         PubsubClient::slot_subscribe(&websocket_url).unwrap();
     let exit = Arc::new(AtomicBool::new(false));
-    let client = RpcClient::new(json_rpc_url.clone());
+    let client = Arc::new(RpcClient::new(json_rpc_url.clone()));
 
     let mut last_root: Option<u64> = None;
 
@@ -132,16 +135,17 @@ fn solana_finalized_block_subscribe(websocket_url: &String, json_rpc_url: &Strin
         match receiver.recv() {
             Ok(new_info) => {
                 // Root is finalized block in Solana
+                let root = new_info.root-100;
                 println!("Root: {:?}",new_info.root);
-                let root = client.get_block_height().unwrap();
-                println!("Highest Block height: {:?}",&root);
+                let block_height = client.get_block_height().unwrap();
+                println!("Highest Block height: {:?}",&block_height);
 
                 match last_root {
                     Some(value_last_root) => {
                         if root == last_root.unwrap() {
                             continue;
                         }
-                        get_blocks(&client,value_last_root, root);
+                        get_blocks(client.clone(),value_last_root, root).await;
                         last_root = Some(root);
                     },
                     _ => last_root = Some(root),
@@ -163,7 +167,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let websocket_url = "wss://api.mainnet-beta.solana.com".to_string();
 
     //solana_slot_subscribe(&websocket_url);
-    solana_finalized_block_subscribe(&websocket_url, &json_rpc_url);
+    solana_finalized_block_subscribe(&websocket_url, &json_rpc_url).await;
 
 
     let client = RpcClient::new(json_rpc_url);

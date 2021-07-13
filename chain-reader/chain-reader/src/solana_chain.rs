@@ -1,6 +1,6 @@
 use clap::App;
 use sp_core::{sr25519, H256 as Hash};
-use massbit_chain_substrate::data_type::{SubstrateBlock as Block,
+use chain_reader::data_type::{SubstrateBlock as Block,
                                          SubstrateHeader as Header,
                                          SubstrateEventRecord as EventRecord,
                                          SubstrateUncheckedExtrinsic as Extrinsic,
@@ -25,8 +25,9 @@ use system;
 use pallet_balances;
 
 // Check https://github.com/tokio-rs/prost for enum converting in rust protobuf
-const CHAIN_TYPE: ChainType = ChainType::Substrate;
+const CHAIN_TYPE: ChainType = ChainType::Solana;
 const VERSION:&str = "1";
+
 
 fn get_block_and_hash_from_header(api:&Api<sr25519::Pair>, header:Header) -> Result<(Block,String), Box<dyn Error>> {
     // Get block number
@@ -141,8 +142,7 @@ fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>){
     });
 }
 
-pub async fn get_block_and_extrinsic(chan: broadcast::Sender<GenericDataProto>) {
-
+pub async fn get_block(chan: broadcast::Sender<GenericDataProto>) {
     println!("start");
     env_logger::init();
     let url = get_node_url_from_cli();

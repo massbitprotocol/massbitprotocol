@@ -2,7 +2,8 @@ use tokio::sync::{mpsc, broadcast};
 use tokio_stream::wrappers::ReceiverStream;
 
 use tonic::{Request, Response, Status};
-use stream_mod::{HelloReply, HelloRequest, GetBlocksRequest, GenericDataProto, streamout_server::Streamout};
+use stream_mod::{ChainType, HelloReply, HelloRequest, GetBlocksRequest, GenericDataProto, streamout_server::Streamout};
+use std::collections::HashMap;
 
 
 pub mod stream_mod {
@@ -11,7 +12,7 @@ pub mod stream_mod {
 
 #[derive(Debug)]
 pub struct StreamService {
-    pub chan : broadcast::Sender<GenericDataProto>,
+    pub chans: HashMap<ChainType,broadcast::Sender<GenericDataProto>>,
 }
 
 
@@ -36,13 +37,14 @@ impl Streamout for StreamService {
         &self,
         request: Request<GetBlocksRequest>,
     ) -> Result<Response<Self::ListBlocksStream>, Status> {
-        println!("ListFeatures = {:?}", request);
+        println!("Request = {:?}", request);
+        let chain_type: ChainType = ChainType::from_i32(request.get_ref().chain_type).unwrap();
 
         // tx, rx for out stream gRPC
         let (tx, rx) = mpsc::channel(1024);
 
         // Create new channel for connect between input and output stream
-        let mut rx_chan =  self.chan.subscribe();
+        let mut rx_chan =  self.chans.get(&chain_type).unwrap().subscribe();
 
         tokio::spawn(async move {
             loop {

@@ -2,31 +2,31 @@
 use tonic::{transport::{Server, Channel}, Request, Response, Status};
 use crate::stream_mod::{HelloRequest, GetBlocksRequest, GenericDataProto, ChainType, DataType, streamout_client::StreamoutClient};
 use std::error::Error;
-use massbit_chain_substrate::data_type::{SubstrateBlock as Block, SubstrateHeader as Header, SubstrateUncheckedExtrinsic as Extrinsic, decode_transactions};
+use chain_reader::data_type::{SubstrateBlock as Block, SubstrateHeader as Header, SubstrateUncheckedExtrinsic as Extrinsic, decode_transactions};
 use sp_core::{sr25519, H256 as Hash};
 use node_template_runtime::Event;
 use codec::{Decode, Encode};
 pub mod stream_mod {
     tonic::include_proto!("chaindata");
 }
-use massbit_chain_substrate::data_type::decode;
+use chain_reader::data_type::decode;
 
 
 type EventRecord = system::EventRecord<Event, Hash>;
 
 const URL: &str = "http://127.0.0.1:50051";
 
-pub async fn print_blocks(client: &mut StreamoutClient<Channel>) -> Result<(), Box<dyn Error>> {
+pub async fn print_blocks(client: &mut StreamoutClient<Channel>, chain_type: ChainType) -> Result<(), Box<dyn Error>> {
     // Not use start_block_number start_block_number yet
     let get_blocks_request = GetBlocksRequest{
         start_block_number: 0,
         end_block_number: 1,
+        chain_type: chain_type as i32,
     };
     let mut stream = client
         .list_blocks(Request::new(get_blocks_request))
         .await?
         .into_inner();
-
 
     while let Some(data) = stream.message().await? {
         let mut data = data as GenericDataProto;
@@ -70,7 +70,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("RESPONSE = {:?}", response);
 
-    print_blocks(&mut client).await?;
+    let chain_type = ChainType::Substrate;
+    print_blocks(&mut client, chain_type).await?;
 
     Ok(())
 }

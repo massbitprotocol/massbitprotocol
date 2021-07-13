@@ -1,6 +1,6 @@
 use clap::App;
 use sp_core::{sr25519, H256 as Hash};
-use massbit_chain_substrate::data_type::{SubstrateBlock as Block,
+use chain_reader::data_type::{SubstrateBlock as Block,
                                          SubstrateHeader as Header,
                                          SubstrateEventRecord as EventRecord,
                                          SubstrateUncheckedExtrinsic as Extrinsic,
