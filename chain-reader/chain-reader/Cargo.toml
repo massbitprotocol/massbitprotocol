@@ -1,5 +1,5 @@
 [package]
-name = "chain-reader-substrate"
+name = "chain-reader"
 version = "0.1.0"
 edition = "2018"
 authors = ["huy <anhhuy0501@gmail.com>"]
