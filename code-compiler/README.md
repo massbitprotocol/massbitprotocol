@@ -5,22 +5,24 @@
 - Index_status: syncing / synced
 
 ## API
-Endpoint: /compile
+Endpoint: /code-compiler/compile
 - Method: POST
+  
 - Description: to make a new a request building a SO file, we need the URL encoded data of:
   - models.rs (created with diesel CLI)
   - schema.rs (created with diesel CLI)
   - up.sql (created with diesel CLI)
   - project.yaml
   - SO.file (created after run cargo build)
+  
 - Payload:
 ```json
 {
-    "mapping.rs": "use+super%3A%3Amodels%3A%3ANewBlock%3B%0D%0Ause+super%3A%3Aschema%3A%3Ablocks%3B%0D%0Ause+diesel%3A%3Apg%3A%3APgConnection%3B%0D%0Ause+diesel%3A%3Aprelude%3A%3A%2A%3B%0D%0Ause+massbit_chain_substrate%3A%3Adata_type%3A%3ASubstrateBlock%3B%0D%0Ause+plugin%3A%3Acore%3A%3A%7BBlockHandler%2C+InvocationError%7D%3B%0D%0Ause+std%3A%3Aenv%3B%0D%0Ause+index_store%3A%3Acore%3A%3AIndexStore%3B%0D%0A%0D%0A%23%5Bderive%28Debug%2C+Clone%2C+PartialEq%29%5D%0D%0Apub+struct+BlockIndexer%3B%0D%0A%0D%0Aimpl+BlockHandler+for+BlockIndexer+%7B%0D%0A++++fn+handle_block%28%26self%2C+store%3A+%26IndexStore%2C+substrate_block%3A+%26SubstrateBlock%29+-%3E+Result%3C%28%29%2C+InvocationError%3E+%7B%0D%0A++++++++println%21%28%22%5B.SO+File%5D+triggered%21%22%29%3B%0D%0A%0D%0A++++++++let+number+%3D+substrate_block.header.number+as+i64%3B%0D%0A++++++++let+new_block+%3D+NewBlock+%7B+number+%7D%3B%0D%0A%0D%0A++++++++store.save%28blocks%3A%3Atable%2C+new_block%29%3B%0D%0A++++++++Ok%28%28%29%29%0D%0A++++%7D%0D%0A%7D%0D%0A",
-    "models.rs": "use+super%3A%3Aschema%3A%3Ablocks%3B%0D%0Ause+diesel%3A%3A%7BPgConnection%2C+Connection%2C+RunQueryDsl%7D%3B%0D%0A%0D%0A%23%5Bderive%28Insertable%29%5D%0D%0A%23%5Btable_name+%3D+%22blocks%22%5D%0D%0Apub+struct+NewBlock+%7B%0D%0A++++pub+number%3A+i64%2C%0D%0A%7D",
-    "schema.rs": "table%21+%7B%0D%0A++++blocks+%28id%29+%7B%0D%0A++++++++id+-%3E+Int4%2C%0D%0A++++++++number+-%3E+Int8%2C%0D%0A++++%7D%0D%0A%7D%0D%0A",
-    "project.yaml": "schema%3A%0D%0A++file%3A+.%2Fschema.graphql%0D%0A%0D%0AdataSources%3A%0D%0A++-+kind%3A+substrate%0D%0A++++name%3A+Index%0D%0A++++network%3A+https%3A%2F%2Fdata-seed-prebsc-1-s1.binance.org%3A8545%2F%0D%0A++++mapping%3A%0D%0A++++++language%3A+rust%0D%0A++++++handlers%3A%0D%0A++++++++-+handler%3A+handleBlock%0D%0A++++++++++kind%3A+substrate%2FBlockHandler%0D%0A++++++++-+handler%3A+handleCall%0D%0A++++++++++kind%3A+substrate%2FCallHandler%0D%0A++++++++-+handler%3A+handleEvent%0D%0A++++++++++kind%3A+substrate%2FEventHandler",
-    "up.sql": "CREATE+TABLE+blocks+%28%0D%0A+++id+SERIAL+PRIMARY+KEY%2C%0D%0A+++number+BIGINT+NOT+NULL%0D%0A%29"
+  "mapping.rs": "use+crate%3A%3Amodels%3A%3ABlockTs%3B%0D%0Ause+massbit_chain_substrate%3A%3Adata_type%3A%3ASubstrateBlock%3B%0D%0A%0D%0Apub+fn+handle_block%28block%3A+%26SubstrateBlock%29+-%3E+Result%3C%28%29%2C+Box%3Cdyn+std%3A%3Aerror%3A%3AError%3E%3E+%7B%0D%0A++++let+block_ts+%3D+BlockTs+%7B%0D%0A++++++++block_hash%3A+block.header.hash%28%29.to_string%28%29%2C%0D%0A++++++++block_height%3A+block.header.number+as+i64%2C%0D%0A++++%7D%3B%0D%0A++++block_ts.save%28%29%3B%0D%0A++++Ok%28%28%29%29%0D%0A%7D",
+  "models.rs": "use+crate%3A%3ASTORE%3B%0D%0Ause+structmap%3A%3A%7BFromMap%2C+ToMap%7D%3B%0D%0Ause+structmap_derive%3A%3A%7BFromMap%2C+ToMap%7D%3B%0D%0A%0D%0A%23%5Bderive%28Default%2C+Clone%2C+FromMap%2C+ToMap%29%5D%0D%0Apub+struct+BlockTs+%7B%0D%0A++++pub+block_hash%3A+String%2C%0D%0A++++pub+block_height%3A+i64%2C%0D%0A%7D%0D%0A%0D%0Aimpl+Into%3Cstructmap%3A%3AGenericMap%3E+for+BlockTs+%7B%0D%0A++++fn+into%28self%29+-%3E+structmap%3A%3AGenericMap+%7B%0D%0A++++++++BlockTs%3A%3Ato_genericmap%28self.clone%28%29%29%0D%0A++++%7D%0D%0A%7D%0D%0A%0D%0Aimpl+BlockTs+%7B%0D%0A++++pub+fn+save%28%26self%29+%7B%0D%0A++++++++unsafe+%7B%0D%0A++++++++++++STORE%0D%0A++++++++++++++++.as_ref%28%29%0D%0A++++++++++++++++.unwrap%28%29%0D%0A++++++++++++++++.save%28%22BlockTs%22.to_string%28%29%2C+self.clone%28%29.into%28%29%29%3B%0D%0A++++++++%7D%0D%0A++++%7D%0D%0A%7D",
+  "project.yaml": "schema%3A%0D%0A++file%3A+.%2Fschema.graphql%0D%0A%0D%0AdataSources%3A%0D%0A++-+kind%3A+substrate%0D%0A++++name%3A+Index%0D%0A++++network%3A+https%3A%2F%2Fdata-seed-prebsc-1-s1.binance.org%3A8545%2F%0D%0A++++mapping%3A%0D%0A++++++language%3A+rust%0D%0A++++++handlers%3A%0D%0A++++++++-+handler%3A+handleBlock%0D%0A++++++++++kind%3A+substrate%2FBlockHandler%0D%0A++++++++-+handler%3A+handleCall%0D%0A++++++++++kind%3A+substrate%2FCallHandler%0D%0A++++++++-+handler%3A+handleEvent%0D%0A++++++++++kind%3A+substrate%2FEventHandler",
+  "up.sql": "CREATE+TABLE+BlockTs+%28%0D%0A++++block_hash+varchar%2C%0D%0A++++block_height+bigint%0D%0A%29",
+  "table": "BlockTs"
 }
 ```
 
@@ -33,13 +35,13 @@ Endpoint: /compile
 ```
 
 ---
-Endpoint: /compile/status/{compilation_id}
+Endpoint: /code-compiler/compile/status/{compilation_id}
 
-Method: GET
+- Method: GET
 
-Description: Get the status of a compilation request by ID
+- Description: Get the status of a compilation request by ID
 
-Result:
+- Result:
 ```json
 {
     "status": "success",
@@ -48,42 +50,72 @@ Result:
 ```
 
 ---
-Endpoint: /deploy/{compilation_id}
+Endpoint: /code-compiler/deploy/{compilation_id}
 
-Method: POST
+- Method: POST
 
-Context: 
-- First the user call the `/compile` API, a new thread will be created and start compiling the user's code (Rust).
-- Then the user will call `/compile/status/{compilation_id}` to check the compiling status with a small interval (if a websocket can be implemented here, it would be great).
+- Context: 
+  - First the user call the `/compile` API, a new thread will be created and start compiling the user's code (Rust).
+  - Then the user will call `/compile/status/{compilation_id}` to check the compiling status with a small interval (if a websocket can be implemented here, it would be great).
+
+- Description:
+  - Compilation_id is the result from calling the endpoint `/compile`
+    - This API `/deploy/{compilation_id}` will get the generated code, then upload them to IPFS. IPFS will then return some hash indicating the location of the files.
+    - Then, we'll take those hash and upload them to Indexer Manger Server (written in Rust)
+  - Ref: https://github.com/massbitprotocol/massbitprotocol/tree/main/indexer/index-manager
+      - You can find the manual steps to upload to IPFS and calling a request to Index Manager here: https://www.loom.com/share/acf0bf94567148f98a0f1561c3fee4a9 
+      - You can find the detail about `/compile` api here: https://www.loom.com/share/367d790f5bce43d5aa41feb0fa588a6c
+
+- Payload:
+```json
+{
+  "compilation_id": "ad9d2a02ca227bc4932bee6c5aeb1480"
+}
+```
+- Result:
+```json
+{
+  "status": "success",
+  "payload": ""
+}
+```
+
+
+---
+Endpoint: /index-manager
+
+Method: POST (JSON RPC HTTP)
 
 Description:
-- Compilation_id is the result from calling the endpoint `/compile`
-- This API `/deploy/{compilation_id}` will get the generated code, then upload them to IPFS. IPFS will then return some hash indicating the location of the files.
-- Then, we'll take those hash and upload them to Indexer Manger Server (written in Rust) 
-  - Ref: https://github.com/massbitprotocol/massbitprotocol/tree/main/indexer/index-manager
-  - You can find the manual steps to upload to IPFS and calling a request to Index Manager here: https://www.loom.com/share/acf0bf94567148f98a0f1561c3fee4a9 
-  - You can find the detail about `/compile` api here: https://www.loom.com/share/367d790f5bce43d5aa41feb0fa588a6c 
-  
-Detail:
-- The logic we'll be implementing
-  - Look for a folder with the name that match the compilation_id
-  - If found the folder, upload these 3 files to IPFS
-    - `project.yaml` in the /generated/{compilation_id}/src/project.yaml
-    - `libblock.so` in the /generated/{compilation_id}/target/release/libblock.so
-    - `up.sql`  in the /generated/{compilation_id}/src/up.sql (we don't have schema.graphql yet, so we'll upload up.sql instead)
-  - Write an API to call to Index Manager (was implemented with Json-rpc-http server Rust) 
-    - With the hash of the 3 files (from the above step)   
-    - Name of the index should be {compilation_id}
-  - Use `docker-compose up` to get IPFS local up and running https://github.com/massbitprotocol/massbitprotocol/blob/main/indexer/docker-compose.yml
+- Payload:
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "index_list",
+  "params": [],
+  "id": 1
+}
+```
+- Result:
+```json
+{
+  "jsonrpc": "2.0",
+  "result": [
+    {
+      "id": "index_name",
+      "name": "Index",
+      "network": "substrate"
+    }
+  ],
+  "id": 1
+}
+```
 
-- After you're done:
-  - Create a new PR to `master` and we'll be reviewing the code.
-  - Add document about the new implemented API in this README.md
-  - Unit Test is a plus.
-  - Record the whole flow that you have implemented with Loom is a plus.
-  - Note: 
-    - Rust Environment needs to be setup for the `\compile` endpoint & Indexer Manager Server to work. It's a plus if you can set up Rust. If not, please create some mock data in the generated folder as described above.
-    - If there's error when compiling Rust, try replacing the Cargo.lock in the main folder with this https://filebin.net/9sk9j4osd0bzbqcw/Cargo.lock
+
+
+
+
+
 
 ## Mock API
 
