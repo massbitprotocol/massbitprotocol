@@ -1,5 +1,12 @@
 version: '3'
 services:
+  # For Indexer Manager, we query user's config from IPFS by hash
+  ipfs:
+    image: ipfs/go-ipfs:v0.4.23
+    ports:
+      - '5001:5001'
+
+  # For Index Manager, we have a database that stores index deployment
   postgres:
     image: postgres
     ports:
@@ -9,10 +16,10 @@ services:
       POSTGRES_USER: graph-node
       POSTGRES_PASSWORD: let-me-in
       POSTGRES_DB: graph-node
-    volumes:
-      - ./data/postgres:/var/lib/postgresql/data
+
+  # Index Manager will call api to hasura to track it's newly created database & table
   graphql-engine:
-    image: hasura/graphql-engine:v1.3.3
+    image: hasura/graphql-engine:v2.0.1
     ports:
       - "8080:8080"
     depends_on:
@@ -23,3 +30,16 @@ services:
       HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
       HASURA_GRAPHQL_DEV_MODE: "true"
       HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup, http-log, webhook-log, websocket-log, query-log
+
+  # code-compiler:
+  #   build: code-compiler/.
+
+  # substrate-api-client-test-node:
+  #   build: substrate-api-client-test-node/.
+
+  # chain-reader:
+  #   build: chain-reader/.
+
+  # Indexer-manager
+  # indexer:
+  #   build: indexer/.
