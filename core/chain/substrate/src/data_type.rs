@@ -2,14 +2,44 @@ use node_template_runtime;
 use std::error::Error;
 use sp_runtime::traits::SignedExtension;
 use serde::{Deserialize, Serialize};
-use codec::{Decode, Input, WrapperTypeDecode};
+use codec::{Encode, Decode, Input, WrapperTypeDecode};
+
 
 
 //********************** SUBSTRATE ********************************
 // Main data type for substrate indexing
-pub type SubstrateBlock = node_template_runtime::Block;
-pub type SubstrateEventRecord = system::EventRecord<node_template_runtime::Event, node_template_runtime::Hash>;
-pub type SubstrateUncheckedExtrinsic = node_template_runtime::UncheckedExtrinsic;
+pub type SubstrateBlock = ExtBlock;
+pub type SubstrateUncheckedExtrinsic = ExtExtrinsic;
+pub type SubstrateEventRecord = ExtEvent;
+
+type Number = u64;
+type Date = u16;
+type Event = system::EventRecord<node_template_runtime::Event, node_template_runtime::Hash>;
+type Extrinsic = node_template_runtime::UncheckedExtrinsic;
+
+#[derive(PartialEq, Eq, Clone, Encode, Decode, Debug)]
+struct ExtBlock {
+    version: String,
+    timestamp: Date,
+    block: node_template_runtime::Block,
+    events: Event,
+}
+
+
+struct ExtExtrinsic {
+    block_number: Number,
+    extrinsic: Extrinsic,
+    block: Box<ExtBlock>,
+    events: Event,
+    success: bool,
+}
+
+struct ExtEvent {
+    block_number: Number,
+    event: Event,
+    extrinsic: Option<Box<ExtExtrinsic>>,
+    block: Box<SubstrateBlock>,
+}
 
 // Not use for indexing yet
 pub type SubstrateHeader = node_template_runtime::Header;
