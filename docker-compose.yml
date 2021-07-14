@@ -1,11 +1,11 @@
 version: '3'
 services:
 #  # For Indexer Manager, we query user's config from IPFS by hash
-#  ipfs:
-#    image: ipfs/go-ipfs:v0.4.23
-#    ports:
-#      - '5001:5001'
-#
+  ipfs:
+    image: ipfs/go-ipfs:v0.4.23
+    ports:
+      - '5001:5001'
+
   # For Index Manager, we have a database that stores index deployment
   postgres:
     image: postgres
@@ -35,6 +35,11 @@ services:
     ports:
       - "5000:5000"
     image: code-compiler
+    environment:
+      # Pointing to our IPFS container
+      IPFS_URL: /dns/ipfs/tcp/5001/http
+      # Pointing to our Index Manager container
+      INDEX_MANAGER_URL: http://indexer:3030
     
   substrate-node:
     image: substrate-node
