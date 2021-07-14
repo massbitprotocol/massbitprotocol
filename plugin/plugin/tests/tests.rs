@@ -1,12 +1,12 @@
 extern crate plugin;
 
+use index_store::core::Store;
 use massbit_chain_substrate::data_type::SubstrateBlock;
 use node_template_runtime;
 use node_template_runtime::{DigestItem, Hash, Header};
 use plugin::PluginManager;
 use sp_runtime::Digest;
 use std::str::FromStr;
-use store::Store;
 use structmap::GenericMap;
 
 const LIBPATH: &'static str = "../../target/debug/libtest_plugin.dylib";
@@ -74,7 +74,7 @@ fn test() {
     let block = new_substrate_block();
     unsafe {
         let mut plugins = PluginManager::new(&store);
-        plugins.load(LIBPATH).unwrap();
-        assert_eq!(plugins.handle_block("test", &block).unwrap(), ());
+        plugins.load("1234", LIBPATH).unwrap();
+        assert_eq!(plugins.handle_substrate_block("1234", &block).unwrap(), ());
     }
 }
