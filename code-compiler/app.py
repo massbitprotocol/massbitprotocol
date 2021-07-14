@@ -55,7 +55,9 @@ class CargoBuild(threading.Thread):
 
     def run(self):
         try:
-            output = subprocess.check_output(["cargo build --release"], stderr=subprocess.STDOUT, shell=True, universal_newlines=True, cwd=self.generated_folder)
+            # output = subprocess.check_output(["cargo build --release"], stderr=subprocess.STDOUT, shell=True, universal_newlines=True, cwd=self.generated_folder)
+            # Docker don't know about cargo path so we need $HOME
+            output = subprocess.check_output(["$HOME/.cargo/bin/rustup --release"], stderr=subprocess.STDOUT, shell=True, universal_newlines=True, cwd=self.generated_folder)
         except subprocess.CalledProcessError as exc:
             print("Compilation has failed. The result can be found in: " + self.generated_folder)
             write_to_disk(self.generated_folder + "/error.txt", exc.output)
@@ -171,7 +173,7 @@ def deploy_handler():
     print("table: " + so_res['Hash'])
 
     # Uploading IPFS files to Index Manager
-    res = requests.post('http://127.0.0.1:3030',
+    res = requests.post('http://0.0.0.0:3030',
                   json={
                       'jsonrpc': '2.0',
                       'method': 'index_deploy',
