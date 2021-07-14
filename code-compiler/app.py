@@ -55,7 +55,9 @@ class CargoBuild(threading.Thread):
 
     def run(self):
         try:
-            output = subprocess.check_output(["cargo build --release"], stderr=subprocess.STDOUT, shell=True, universal_newlines=True, cwd=self.generated_folder)
+            # output = subprocess.check_output(["cargo build --release"], stderr=subprocess.STDOUT, shell=True, universal_newlines=True, cwd=self.generated_folder)
+            # Docker don't know about cargo path so we need $HOME
+            output = subprocess.check_output(["$HOME/.cargo/bin/cargo build --release"], stderr=subprocess.STDOUT, shell=True, universal_newlines=True, cwd=self.generated_folder)
         except subprocess.CalledProcessError as exc:
             print("Compilation has failed. The result can be found in: " + self.generated_folder)
             write_to_disk(self.generated_folder + "/error.txt", exc.output)
@@ -154,7 +156,11 @@ def deploy_handler():
     table = os.path.join("./generated", compilation_id, "src/table.txt")
 
     # Uploading files to IPFS
-    client = ipfshttpclient.connect()
+    if os.environ.get('IPFS_URL'):
+        client = ipfshttpclient.connect(os.environ.get('IPFS_URL'))  # Connect with IPFS container name
+    else:
+        client = ipfshttpclient.connect()
+
     print("Uploading files to IPFS...")
     project_res = client.add(project)
     up_res = client.add(up)
@@ -171,7 +177,11 @@ def deploy_handler():
     print("table: " + so_res['Hash'])
 
     # Uploading IPFS files to Index Manager
-    res = requests.post('http://127.0.0.1:3030',
+    if os.environ.get('INDEX_MANAGER_URL'):
+        index_manager_url = os.environ.get('INDEX_MANAGER_URL')  # Connection to indexer
+    else:
+        index_manager_url = 'http://0.0.0.0:3030'
+    res = requests.post(index_manager_url,
                   json={
                       'jsonrpc': '2.0',
                       'method': 'index_deploy',
@@ -279,4 +289,4 @@ def mock_indexer_detail_handler(id):
 
 if __name__ == '__main__':
     # start server
-    app.run(debug=True)
+    app.run(host="0.0.0.0", debug=True)

@@ -48,6 +48,23 @@ And to achieve that, the easiest solution is to develop with some existing featu
   ```
 - After that, there will be the indexed data in the Postgres database.
 
-## Create new index with files from local 
-To be added
+## Update build-and-upload.sh script to build and deploy to DockerHub so we can save time on compiling 
+- 
 
+## To start with docker
+- Run `docker build --tag sprise/substrate-node:0.1 -f substrate-node/Dockerfile -t substrate-node .` to build substrate-node
+- Run `docker build --tag sprise/chain-reader:0.1 -f chain-reader/Dockerfile -t chain-reader .` to build chain-reader
+- Run `docker build --tag sprise/indexer:0.1 -f indexer/Dockerfile -t indexer .` to build indexer
+- Run `docker build --tag sprise/code-compiler:0.1 -f code-compiler/Dockerfile -t code-compiler .` to build code-compiler
+- Run `docker-compose up` will start:
+  - IPFS
+  - Postgres
+  - Hasura
+  - Substrate Node
+  - Chain Reader
+  - Index Manager
+  - Code Compiler
+
+Note:
+- The 3 Rust services (substrate-node, chain-reader, indexer) we need to build them separately because their build time is long and we need wait-for-it.sh script implemented.
+- The code-compiler needs to know the context of massbitprotcol source folder so it can run the `cargo build` for the /compile api
