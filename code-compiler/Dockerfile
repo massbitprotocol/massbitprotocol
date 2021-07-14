@@ -1,6 +1,7 @@
 # Docker file for building code-compiler
 FROM ubuntu:18.04
 
+EXPOSE 5000
 RUN apt update
 RUN apt install -y git
 

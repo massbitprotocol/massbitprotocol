@@ -279,4 +279,4 @@ def mock_indexer_detail_handler(id):
 
 if __name__ == '__main__':
     # start server
-    app.run(debug=True)
+    app.run(host="0.0.0.0", debug=True)

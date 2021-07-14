@@ -1,11 +1,11 @@
 version: '3'
 services:
-  # For Indexer Manager, we query user's config from IPFS by hash
-  ipfs:
-    image: ipfs/go-ipfs:v0.4.23
-    ports:
-      - '5001:5001'
-
+#  # For Indexer Manager, we query user's config from IPFS by hash
+#  ipfs:
+#    image: ipfs/go-ipfs:v0.4.23
+#    ports:
+#      - '5001:5001'
+#
   # For Index Manager, we have a database that stores index deployment
   postgres:
     image: postgres
@@ -17,30 +17,32 @@ services:
       POSTGRES_PASSWORD: let-me-in
       POSTGRES_DB: graph-node
 
-  # Index Manager will call api to hasura to track it's newly created database & table
-  hasura:
-    image: hasura/graphql-engine:v2.0.1
-    ports:
-      - "8080:8080"
-    depends_on:
-      - "postgres"
-    restart: always
-    environment:
-      HASURA_GRAPHQL_DATABASE_URL: postgresql://graph-node:let-me-in@postgres:5432/graph-node
-      HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
-      HASURA_GRAPHQL_DEV_MODE: "true"
-      HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup, http-log, webhook-log, websocket-log, query-log
+#  # Index Manager will call api to hasura to track it's newly created database & table
+#  hasura:
+#    image: hasura/graphql-engine:v2.0.1
+#    ports:
+#      - "8080:8080"
+#    depends_on:
+#      - "postgres"
+#    restart: always
+#    environment:
+#      HASURA_GRAPHQL_DATABASE_URL: postgresql://graph-node:let-me-in@postgres:5432/graph-node
+#      HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
+#      HASURA_GRAPHQL_DEV_MODE: "true"
+#      HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup, http-log, webhook-log, websocket-log, query-log
   
-  # code-compiler:
-  #   image: code-compiler
-    
-  substrate-node:
-    image: substrate-node
+  code-compiler:
     ports:
-      - "9944:9944"
-    restart: always
-    command: bash -c "./target/release/node-template --dev --ws-external"
+      - "5000:5000"
+    image: code-compiler
     
+#  substrate-node:
+#    image: substrate-node
+#    ports:
+#      - "9944:9944"
+#    restart: always
+#    command: bash -c "./target/release/node-template --dev --ws-external"
+#
   chain-reader:
     image: chain-reader
     command: bash -c "sleep 5; ./target/release/chain-reader"
@@ -53,6 +55,8 @@ services:
 
   indexer:
     image: indexer
+    ports:
+      - "3030:3030"
     depends_on:
       - "chain-reader"
     restart: always

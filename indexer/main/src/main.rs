@@ -10,7 +10,7 @@ async fn main() {
 
     // Start Index Manager Server
     let server = IndexManager::serve(
-        "127.0.0.1:3030".to_string(),
+        "0.0.0.0:3030".to_string(),
     );
     server.wait();
 }
