@@ -32,12 +32,13 @@ lazy_static! {
     static ref CHAIN_READER_URL: String = env::var("CHAIN_READER_URL").unwrap_or(String::from("http://127.0.0.1:50051"));
     static ref HASURA_URL: String = env::var("HASURA_URL").unwrap_or(String::from("http://localhost:8080/v1/query"));
     static ref DATABASE_CONNECTION_STRING: String = env::var("DATABASE_CONNECTION_STRING").unwrap_or(String::from("postgres://graph-node:let-me-in@localhost"));
+    static ref IPFS_ADDRESS: String = env::var("IPFS_ADDRESS").unwrap_or(String::from("0.0.0.0:5001"));
 }
 
 type EventRecord = system::EventRecord<Event, Hash>;
 
 pub async fn get_index_config(ipfs_config_hash: &String) -> serde_yaml::Mapping {
-    let ipfs_addresses = vec!["0.0.0.0:5001".to_string()];
+    let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await; // Refactor to use lazy load
 
     let file_bytes = ipfs_clients[0]
@@ -51,7 +52,7 @@ pub async fn get_index_config(ipfs_config_hash: &String) -> serde_yaml::Mapping 
 }
 
 pub async fn get_mapping_file_from_ipfs(ipfs_mapping_hash: &String) -> String {
-    let ipfs_addresses = vec!["0.0.0.0:5001".to_string()];
+    let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await; // Refactor to use lazy load
 
     let file_bytes = ipfs_clients[0]
@@ -76,7 +77,7 @@ pub async fn get_mapping_file_from_ipfs(ipfs_mapping_hash: &String) -> String {
 }
 
 pub async fn get_config_file_from_ipfs(ipfs_config_hash: &String) -> String {
-    let ipfs_addresses = vec!["0.0.0.0:5001".to_string()];
+    let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await; // Refactor to use lazy load
 
     let file_bytes = ipfs_clients[0]
@@ -102,7 +103,7 @@ pub async fn get_config_file_from_ipfs(ipfs_config_hash: &String) -> String {
 
 pub async fn get_raw_query_from_ipfs(ipfs_model_hash: &String) -> String {
     log::info!("[Index Manager Helper] Downloading Raw Query from IPFS");
-    let ipfs_addresses = vec!["0.0.0.0:5001".to_string()];
+    let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await;
 
     let file_bytes = ipfs_clients[0]
@@ -279,7 +280,7 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
 // Return indexer list
 pub async fn list_handler_helper() -> Result<Vec<Indexer>, Box<dyn Error>> {
     let mut client =
-        PostgreConnection::connect("postgresql://graph-node:let-me-in@localhost:5432/graph-node", TlsMode::None).unwrap();
+        PostgreConnection::connect(DATABASE_CONNECTION_STRING.clone(), TlsMode::None).unwrap();
 
     // TODO check for deploy success or not
     // TODO: add check if table does not exists
