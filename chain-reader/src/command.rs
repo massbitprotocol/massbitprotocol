@@ -14,7 +14,7 @@ lazy_static! {
     // Load default config
     static ref CONFIG: Config = Config{
         chain_types: vec![ChainType::Substrate, ChainType::Ethereum, ChainType::Solana],
-        url: "127.0.0.1:50051".to_string(),
+        url: "0.0.0.0:50051".to_string(),
     };
 }
 

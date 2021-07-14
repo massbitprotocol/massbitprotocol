@@ -34,8 +34,8 @@ services:
   code-compiler:
     ports:
       - "5000:5000"
-#    image: code-compiler
-    image: sprise/code-compiler # Use prebuilt image to save compilation time 
+    image: code-compiler
+#    image: sprise/code-compiler # Use prebuilt image to save compilation time
     environment:
       # Pointing to our IPFS container
       IPFS_URL: /dns/ipfs/tcp/5001/http
@@ -43,17 +43,19 @@ services:
       INDEX_MANAGER_URL: http://indexer:3030
     
   substrate-node:
-#    image: substrate-node
-    image: sprise/substrate-node # Use prebuilt image to save compilation time
+    image: substrate-node
+#    image: sprise/substrate-node # Use prebuilt image to save compilation time
     ports:
       - "9944:9944"
     restart: always
     command: bash -c "./target/release/node-template --dev --ws-external"
 
   chain-reader:
-#    image: chain-reader
-    image: sprise/chain-reader # Use prebuilt image to save compilation time
+    image: chain-reader
+#    image: sprise/chain-reader # Use prebuilt image to save compilation time
     command: bash -c "sleep 5; ./target/release/chain-reader"
+    ports:
+      - "50051:50051"
     depends_on:
       - "substrate-node"
     restart: always
@@ -62,8 +64,8 @@ services:
       NODE_SERVER: ws://substrate-node
 
   indexer:
-#    image: indexer
-    image: sprise/indexer # Use prebuilt image to save compilation time
+    image: indexer
+#    image: sprise/indexer # Use prebuilt image to save compilation time
     ports:
       - "3030:3030"
     depends_on:

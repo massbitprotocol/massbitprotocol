@@ -14,4 +14,6 @@ WORKDIR "massbitprotocol"
 RUN $HOME/.cargo/bin/rustup toolchain install nightly-2021-05-20
 RUN $HOME/.cargo/bin/rustup target add wasm32-unknown-unknown --toolchain nightly-2021-05-20
 RUN $HOME/.cargo/bin/cargo build --release
+
+EXPOSE 50051
 CMD ./target/release/chain-reader
