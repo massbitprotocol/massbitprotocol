@@ -13,14 +13,9 @@ RUN $HOME/.cargo/bin/rustup target add wasm32-unknown-unknown --toolchain stable
 RUN $HOME/.cargo/bin/rustup toolchain install nightly-2021-05-20
 RUN $HOME/.cargo/bin/rustup target add wasm32-unknown-unknown --toolchain nightly-2021-05-20
 
-# Building substrate-node
-RUN git clone https://github.com/scs/substrate-api-client-test-node
-WORKDIR "substrate-api-client-test-node"
-RUN rm -f rust-toolchain
-RUN $HOME/.cargo/bin/cargo build --release
-
 # Docker file for building code-compiler
 WORKDIR "massbitprotocol/code-compiler"  
+RUN ls -ll
 RUN ls
 RUN apt install -y python3
 RUN apt install -y python3-pip
@@ -29,10 +24,16 @@ RUN pip3 install -U flask-cors
 RUN pip3 install -U ipfshttpclient
 
 # Building chain-reader & index-manager
-WORKDIR "massbitprotocol" 
+WORKDIR "massbitprotocol"
+RUN ls -ll
 RUN $HOME/.cargo/bin/cargo build --release
 
 # Script to run all the services
 WORKDIR "massbitprotocol" 
 RUN ls -ll
+
+WORKDIR "/" 
+RUN ls -ll
+
+
 CMD ./wrapper_script.sh

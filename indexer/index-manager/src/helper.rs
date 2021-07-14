@@ -13,6 +13,7 @@ use postgres::{Connection as PostgreConnection, TlsMode};
 use serde::{Deserialize};
 use node_template_runtime::Event;
 use sp_core::{sr25519, H256 as Hash};
+use lazy_static::lazy_static;
 
 // Massbit dependencies
 use ipfs_client::core::create_ipfs_clients;
@@ -26,9 +27,13 @@ use massbit_chain_substrate::data_type::{SubstrateBlock as Block, SubstrateHeade
 pub mod stream_mod {
     tonic::include_proto!("chaindata");
 }
-const URL: &str = "http://127.0.0.1:50051";
-const CONNECTION_STRING: &'static str = "postgres://graph-node:let-me-in@localhost";
-const HASURA: &'static str = "http://localhost:8080/v1/query";
+
+lazy_static! {
+    static ref CHAIN_READER_URL: String = env::var("CHAIN_READER_URL").unwrap_or(String::from("http://127.0.0.1:50051"));
+    static ref HASURA_URL: String = env::var("HASURA_URL").unwrap_or(String::from("http://localhost:8080/v1/query"));
+    static ref DATABASE_CONNECTION_STRING: String = env::var("DATABASE_CONNECTION_STRING").unwrap_or(String::from("postgres://graph-node:let-me-in@localhost"));
+}
+
 type EventRecord = system::EventRecord<Event, Hash>;
 
 pub async fn get_index_config(ipfs_config_hash: &String) -> serde_yaml::Mapping {
@@ -184,19 +189,14 @@ pub async fn track_hasura_table(table_name: &String) {
         }
     });
     Client::new()
-        .post(HASURA)
+        .post(&*HASURA_URL)
         .json(&gist_body)
         .send().compat().await.unwrap();
 }
 
 pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
-    // Init Store
-    let db_connection_string = match env::var("DATABASE_URL") {
-        Ok(connection) => connection,
-        Err(_) => String::from("postgres://graph-node:let-me-in@localhost")
-    };
     let store = IndexStore {
-        connection_string: db_connection_string,
+        connection_string: DATABASE_CONNECTION_STRING.to_string(),
     };
 
     // Get mapping file, raw query to create new table and project.yaml config
@@ -219,7 +219,7 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
         },
     };
 
-    let connection = PgConnection::establish(CONNECTION_STRING).expect(&format!("Error connecting to {}", CONNECTION_STRING));
+    let connection = PgConnection::establish(&DATABASE_CONNECTION_STRING).expect(&format!("Error connecting to {}", *DATABASE_CONNECTION_STRING));
     create_new_indexer_detail_table(&connection, &raw_query);
 
     // Track the newly created table with hasura
@@ -233,7 +233,7 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
     insert_new_indexer(&connection, &params.index_name, project_config);
 
     // Chain Reader Client Configuration to subscribe and get latest block from Chain Reader Server
-    let mut client = StreamoutClient::connect(URL).await.unwrap();
+    let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await.unwrap();
     let get_blocks_request = GetBlocksRequest{
         start_block_number: 0,
         end_block_number: 1,

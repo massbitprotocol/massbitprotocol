@@ -18,7 +18,7 @@ services:
       POSTGRES_DB: graph-node
 
   # Index Manager will call api to hasura to track it's newly created database & table
-  graphql-engine:
+  hasura:
     image: hasura/graphql-engine:v2.0.1
     ports:
       - "8080:8080"
@@ -34,22 +34,32 @@ services:
   # code-compiler:
   #   image: code-compiler
     
-  # substrate-node:
-  #   image: substrate-node
-  #   ports:
-  #     - "9944:9944"
-  #   restart: always
-  #   command: bash -c "./target/release/node-template --dev --ws-external"
+  substrate-node:
+    image: substrate-node
+    ports:
+      - "9944:9944"
+    restart: always
+    command: bash -c "./target/release/node-template --dev --ws-external"
     
-  # chain-reader:
-  #   image: chain-reader
-  #   command: bash -c "sleep 5; ./target/release/chain-reader"
-  #   depends_on:
-  #     - "substrate-node"
-  #   restart: always
+  chain-reader:
+    image: chain-reader
+    command: bash -c "sleep 5; ./target/release/chain-reader"
+    depends_on:
+      - "substrate-node"
+    restart: always
+    environment:
+      # Pointing to our substrate container
+      NODE_SERVER: ws://substrate-node
 
-  # indexer:
-  #   image: indexer
-  #   depends_on:
-  #     - "chain-reader"
-  #   restart: always
+  indexer:
+    image: indexer
+    depends_on:
+      - "chain-reader"
+    restart: always
+    environment:
+      # Pointing to our chain-reader container
+      CHAIN_READER_URL: http://chain-reader:50051
+      # Pointing to our hasura container
+      HASURA_URL: http://hasura:8080/v1/query
+      # Pointing to our postgres container (the last param is the postgres container name)
+      DATABASE_CONNECTION_STRING: postgres://graph-node:let-me-in@postgres
