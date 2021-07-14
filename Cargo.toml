@@ -1,11 +1,11 @@
 [workspace]
 members = [
     "chain-reader/chain-reader",
-    "indexer/main",
     "mock",
     "core/chain/substrate",
     "indexer/main",
     "plugin/plugin",
-    "plugin/test-plugin"
+    "plugin/test-plugin",
+    "core/chain/solana",
 ]
 exclude = ["code-compiler/generated"]

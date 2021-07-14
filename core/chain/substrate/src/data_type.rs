@@ -19,7 +19,7 @@ pub type SubstrateSignedBlock = node_template_runtime::SignedBlock;
 
 
 pub fn decode<T>(payload: &mut Vec<u8>) -> Result<T, Box<dyn Error>>
-    where T: Decode/* + Into<Vec<u8>>*/,
+    where T: Decode,
 {
     Ok(Decode::decode(&mut payload.as_slice()).unwrap())
 }
@@ -34,11 +34,4 @@ pub fn decode_transactions(payload: &mut  Vec<u8>) -> Result<Vec<SubstrateUnchec
         .collect())
 }
 
-//********************** SOLANA ********************************
-use solana_transaction_status;
 
-// EncodedConfirmedBlock is block with vec of EncodedTransactionWithStatusMeta.
-pub type SolanaBlock = solana_transaction_status::EncodedConfirmedBlock;
-pub type SolanaTransaction = solana_transaction_status::EncodedTransactionWithStatusMeta;
-// The most similar Event concept in Solana is log_messages in UiTransactionStatusMeta in EncodedTransactionWithStatusMeta
-pub type SolanaEvent = Option<Vec<String>>;

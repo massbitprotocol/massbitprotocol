@@ -162,7 +162,7 @@ async fn solana_finalized_block_subscribe(websocket_url: &String, json_rpc_url: 
 
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     let json_rpc_url = "https://api.mainnet-beta.solana.com".to_string();
     let websocket_url = "wss://api.mainnet-beta.solana.com".to_string();
 
