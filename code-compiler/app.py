@@ -57,7 +57,7 @@ class CargoBuild(threading.Thread):
         try:
             # output = subprocess.check_output(["cargo build --release"], stderr=subprocess.STDOUT, shell=True, universal_newlines=True, cwd=self.generated_folder)
             # Docker don't know about cargo path so we need $HOME
-            output = subprocess.check_output(["$HOME/.cargo/bin/cargo build", "--release"], stderr=subprocess.STDOUT, shell=True, universal_newlines=True, cwd=self.generated_folder)
+            output = subprocess.check_output(["$HOME/.cargo/bin/cargo build --release"], stderr=subprocess.STDOUT, shell=True, universal_newlines=True, cwd=self.generated_folder)
         except subprocess.CalledProcessError as exc:
             print("Compilation has failed. The result can be found in: " + self.generated_folder)
             write_to_disk(self.generated_folder + "/error.txt", exc.output)
