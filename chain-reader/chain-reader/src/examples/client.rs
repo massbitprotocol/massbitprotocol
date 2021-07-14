@@ -14,7 +14,9 @@ use codec::{Decode, Encode};
 pub mod stream_mod {
     tonic::include_proto!("chaindata");
 }
-use massbit_chain_substrate::data_type::decode;
+use massbit_chain_substrate::data_type::{
+    decode, get_extrinsics_from_block
+};
 use std::sync::Arc;
 
 
@@ -48,11 +50,11 @@ pub async fn print_blocks(mut client: StreamoutClient<Channel>, chain_type: Chai
                 match DataType::from_i32(data.data_type) {
                     Some(DataType::Block) => {
                         let block: SubstrateBlock = decode(&mut data.payload).unwrap();
-                        println!("Recieved BLOCK: {:?}", block.header.number);
-                    },
-                    Some(DataType::Event) => {
-                        let event: EventRecord = decode(&mut data.payload).unwrap();
-                        println!("Recieved EVENT: {:?}", event);
+                        println!("Recieved BLOCK: {:?}", &block.block.header.number);
+                        let extrinsics = get_extrinsics_from_block(&block);
+                        for extrinsic in extrinsics {
+                            println!("Recieved EXTRINSIC: {:?}", extrinsic);
+                        }
                     },
                     Some(DataType::Transaction) => {
                         let extrinsics: Vec<SubstrateUncheckedExtrinsic> = decode_transactions(&mut data.payload).unwrap();
@@ -95,10 +97,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Waiting for chain-reader");
 
-    tokio::spawn(async move {
-        let mut client = StreamoutClient::connect(URL).await.unwrap();
-        print_blocks(client, ChainType::Solana).await;
-    });
+    // tokio::spawn(async move {
+    //     let mut client = StreamoutClient::connect(URL).await.unwrap();
+    //     print_blocks(client, ChainType::Solana).await;
+    // });
 
     let mut client = StreamoutClient::connect(URL).await.unwrap();
     print_blocks(client, ChainType::Substrate).await;

@@ -24,6 +24,7 @@ use node_template_runtime::Event;
 use system;
 use pallet_balances;
 use std::env;
+use node_template_runtime::Block as OrgBlock;
 
 // Check https://github.com/tokio-rs/prost for enum converting in rust protobuf
 const CHAIN_TYPE: ChainType = ChainType::Substrate;
@@ -38,41 +39,50 @@ fn get_block_and_hash_from_header(api:&Api<sr25519::Pair>, header:Header) -> Res
     let block_hash = Hash::from_hex(hash.clone());
 
     // Call RPC to get block
-    let block = api.get_block::<Block>(Some(block_hash.unwrap())).unwrap().unwrap();
-    Ok((block, hash))
-}
-
-fn _create_generic_extrinsic(   block_hash: String,
-                            block:&Block) -> GenericDataProto
-{
-    let block = (*block).clone();
-    //println!("**Block content: {:#?}",&block);
-
-    let mut extrinsics: Vec<Vec<u8>> = Vec::new();
-
-    for extrinsic in block.extrinsics.clone(){
-        extrinsics.push(extrinsic.encode());
-
-    }
-    let payload = extrinsics.encode();
-
-    let generic_data = GenericDataProto{
-        chain_type: CHAIN_TYPE as i32,
+    let block = api.get_block::<OrgBlock>(Some(block_hash.unwrap())).unwrap().unwrap();
+    let ext_block = Block {
         version: VERSION.to_string(),
-        data_type: DataType::Transaction as i32,
-        block_hash,
-        block_number: block.header.number as u64,
-        payload,
+        // Todo: get correct timestamp from the Set_Timestamp extrinsic
+        // https://github.com/paritytech/substrate/issues/2811
+        timestamp: 0,
+        block,
+        // Todo: get events of the block and add here
+        events: Vec::new(),
     };
-    // For decode:
-    let encode_extrinsics: Vec<Vec<u8>> =  Decode::decode(&mut generic_data.payload.as_slice()).unwrap();
-    for encode_extrinsic in encode_extrinsics{
-        let decode_extrinsic: Extrinsic = Decode::decode(&mut encode_extrinsic.as_slice()).unwrap();
-        println!("decode_extrinsic: {:?}", decode_extrinsic);
-    }
-
-    generic_data
+    Ok((ext_block, hash))
 }
+
+// fn _create_generic_extrinsic(   block_hash: String,
+//                             block:&Block) -> GenericDataProto
+// {
+//     let block = (*block).block.clone();
+//     //println!("**Block content: {:#?}",&block);
+//
+//     let mut extrinsics: Vec<Vec<u8>> = Vec::new();
+//
+//     for extrinsic in block.extrinsics.clone(){
+//         extrinsics.push(extrinsic.encode());
+//
+//     }
+//     let payload = extrinsics.encode();
+//
+//     let generic_data = GenericDataProto{
+//         chain_type: CHAIN_TYPE as i32,
+//         version: VERSION.to_string(),
+//         data_type: DataType::Transaction as i32,
+//         block_hash,
+//         block_number: block.header.number as u64,
+//         payload,
+//     };
+//     // For decode:
+//     let encode_extrinsics: Vec<Vec<u8>> =  Decode::decode(&mut generic_data.payload.as_slice()).unwrap();
+//     for encode_extrinsic in encode_extrinsics{
+//         let decode_extrinsic: Extrinsic = Decode::decode(&mut encode_extrinsic.as_slice()).unwrap();
+//         println!("decode_extrinsic: {:?}", decode_extrinsic);
+//     }
+//
+//     generic_data
+// }
 fn _create_generic_block(   block_hash: String,
                             block:&Block) -> GenericDataProto
 {
@@ -83,13 +93,13 @@ fn _create_generic_block(   block_hash: String,
         version: VERSION.to_string(),
         data_type: DataType::Block as i32,
         block_hash: block_hash,
-        block_number: block.header.number as u64,
+        block_number: block.block.header.number as u64,
         payload: block.encode(),
     };
     generic_data
 }
 
-fn _create_generic_event(event: &system::EventRecord<Event, Hash>) -> GenericDataProto
+fn _create_generic_event(event: &EventRecord) -> GenericDataProto
 {
     let generic_data = GenericDataProto{
         chain_type: CHAIN_TYPE as i32,
@@ -122,7 +132,17 @@ pub async fn loop_get_event(chan: broadcast::Sender<GenericDataProto>) {
         match _events {
             Ok(evts) => {
                 for evt in &evts {
-                    let generic_data_proto = _create_generic_event(evt);
+                    let ext_event = EventRecord {
+                        // Todo: Need find the block number and add here
+                        // block_number: 0,
+                        // Todo: Need find extrinsic and add here
+                        // extrinsic: None,
+                        // Todo: Need find the block add add here
+                        // block: Box<ExtBlock>,
+                        event: evt.clone(),
+                        // Todo: Need find the success add add here
+                    };
+                    let generic_data_proto = _create_generic_event(&ext_event);
                     println!("Sending SUBSTRATE event as generic data: {:?}",generic_data_proto);
                     chan.send(generic_data_proto).unwrap();
                 }
@@ -170,10 +190,10 @@ pub async fn loop_get_block_and_extrinsic(chan: broadcast::Sender<GenericDataPro
         //println!("Sending SUBSTRATE block as generic data {:?}", &generic_block);
         chan.send(generic_block).unwrap();
 
-        // Send array of extrinsics
-        let generic_extrinsics = _create_generic_extrinsic(hash, &block);
-        println!("Sending SUBSTRATE extrinsics as generic data {:?}", &generic_extrinsics);
-        chan.send(generic_extrinsics).unwrap();
+        // // Send array of extrinsics
+        // let generic_extrinsics = _create_generic_extrinsic(hash, &block);
+        // println!("Sending SUBSTRATE extrinsics as generic data {:?}", &generic_extrinsics);
+        // chan.send(generic_extrinsics).unwrap();
     }
 }
 
