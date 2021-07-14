@@ -1,27 +1,33 @@
-use std::{path::PathBuf, env};
+use diesel::result::DatabaseErrorInformation;
+use diesel::{Connection, PgConnection, QueryResult, Queryable, RunQueryDsl};
+use lazy_static::lazy_static;
+use node_template_runtime::Event;
+use postgres::{Connection as PostgreConnection, TlsMode};
+use reqwest::Client;
+use serde::Deserialize;
+use serde_json::json;
+use sp_core::{sr25519, H256 as Hash};
 use std::error::Error;
 use std::fs;
 use std::fs::File;
-use std::io::{Read};
+use std::io::Read;
+use std::{env, path::PathBuf};
 use tokio_compat_02::FutureExt;
-use tonic::{Request};
-use diesel::{RunQueryDsl, PgConnection, Connection, Queryable, QueryResult};
-use diesel::result::DatabaseErrorInformation;
-use reqwest::Client;
-use serde_json::json;
-use postgres::{Connection as PostgreConnection, TlsMode};
-use serde::{Deserialize};
-use node_template_runtime::Event;
-use sp_core::{sr25519, H256 as Hash};
-use lazy_static::lazy_static;
+use tonic::Request;
 
 // Massbit dependencies
-use ipfs_client::core::create_ipfs_clients;
-use plugin::manager::PluginManager;
-use stream_mod::{HelloRequest, GetBlocksRequest, GenericDataProto, ChainType, DataType, streamout_client::StreamoutClient};
-use crate::types::{DeployParams, DeployType, Indexer, DetailParams};
+use crate::types::{DeployParams, DeployType, DetailParams, Indexer};
 use index_store::core::IndexStore;
-use massbit_chain_substrate::data_type::{SubstrateBlock as Block, SubstrateHeader as Header, SubstrateUncheckedExtrinsic as Extrinsic, decode_transactions, decode, SubstrateBlock};
+use ipfs_client::core::create_ipfs_clients;
+use massbit_chain_substrate::data_type::{
+    decode, decode_transactions, SubstrateBlock as Block, SubstrateBlock,
+    SubstrateHeader as Header, SubstrateUncheckedExtrinsic as Extrinsic,
+};
+use plugin::manager::PluginManager;
+use stream_mod::{
+    streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
+    HelloRequest,
+};
 
 // Configs
 pub mod stream_mod {
@@ -29,10 +35,14 @@ pub mod stream_mod {
 }
 
 lazy_static! {
-    static ref CHAIN_READER_URL: String = env::var("CHAIN_READER_URL").unwrap_or(String::from("http://127.0.0.1:50051"));
-    static ref HASURA_URL: String = env::var("HASURA_URL").unwrap_or(String::from("http://localhost:8080/v1/query"));
-    static ref DATABASE_CONNECTION_STRING: String = env::var("DATABASE_CONNECTION_STRING").unwrap_or(String::from("postgres://graph-node:let-me-in@localhost"));
-    static ref IPFS_ADDRESS: String = env::var("IPFS_ADDRESS").unwrap_or(String::from("0.0.0.0:5001"));
+    static ref CHAIN_READER_URL: String =
+        env::var("CHAIN_READER_URL").unwrap_or(String::from("http://127.0.0.1:50051"));
+    static ref HASURA_URL: String =
+        env::var("HASURA_URL").unwrap_or(String::from("http://localhost:8080/v1/query"));
+    static ref DATABASE_CONNECTION_STRING: String = env::var("DATABASE_CONNECTION_STRING")
+        .unwrap_or(String::from("postgres://graph-node:let-me-in@localhost"));
+    static ref IPFS_ADDRESS: String =
+        env::var("IPFS_ADDRESS").unwrap_or(String::from("0.0.0.0:5001"));
 }
 
 type EventRecord = system::EventRecord<Event, Hash>;
@@ -69,9 +79,12 @@ pub async fn get_mapping_file_from_ipfs(ipfs_mapping_hash: &String) -> String {
         Ok(_) => {
             log::info!("[Index Manager Helper] Write SO file to local storage successfully");
             file_name
-        },
+        }
         Err(err) => {
-            panic!("[Index Manager Helper] Could not write file to local storage {:#?}", err)
+            panic!(
+                "[Index Manager Helper] Could not write file to local storage {:#?}",
+                err
+            )
         }
     }
 }
@@ -92,11 +105,16 @@ pub async fn get_config_file_from_ipfs(ipfs_config_hash: &String) -> String {
 
     match res {
         Ok(_) => {
-            log::info!("[Index Manager Helper] Write project.yaml file to local storage successfully");
+            log::info!(
+                "[Index Manager Helper] Write project.yaml file to local storage successfully"
+            );
             file_name
-        },
+        }
         Err(err) => {
-            panic!("[Index Manager Helper] Could not write file to local storage {:#?}", err)
+            panic!(
+                "[Index Manager Helper] Could not write file to local storage {:#?}",
+                err
+            )
         }
     }
 }
@@ -125,14 +143,16 @@ pub fn get_mapping_file_from_local(mapping_path: &String) -> PathBuf {
 pub fn get_config_file_from_local(config_path: &String) -> String {
     let mut config_file = String::new();
     let mut f = File::open(config_path).expect("Unable to open file");
-    f.read_to_string(&mut config_file).expect("Unable to read string");
+    f.read_to_string(&mut config_file)
+        .expect("Unable to read string");
     config_file
 }
 
 pub fn get_raw_query_from_local(model_path: &String) -> String {
     let mut raw_query = String::new();
     let mut f = File::open(model_path).expect("Unable to open file");
-    f.read_to_string(&mut raw_query).expect("Unable to read string");
+    f.read_to_string(&mut raw_query)
+        .expect("Unable to read string");
     raw_query
 }
 
@@ -150,31 +170,39 @@ pub fn create_indexers_table_if_not_exists(connection: &PgConnection) {
     match result {
         Ok(_) => {
             log::info!("[Index Manager Helper] Init table Indexer");
-        },
+        }
         Err(e) => {
             log::warn!("[Index Manager Helper] {}", e);
         }
     };
 }
 
-pub fn read_config_file(config_file_path: &String) -> serde_yaml::Value{
+pub fn read_config_file(config_file_path: &String) -> serde_yaml::Value {
     let mut project_config_string = String::new();
     let mut f = File::open(config_file_path).expect("Unable to open file"); // Refactor: Config to download config file from IPFS instead of just reading from local
-    f.read_to_string(&mut project_config_string).expect("Unable to read string"); // Get raw query
+    f.read_to_string(&mut project_config_string)
+        .expect("Unable to read string"); // Get raw query
     let project_config: serde_yaml::Value = serde_yaml::from_str(&project_config_string).unwrap();
     project_config
 }
 
-pub fn insert_new_indexer(connection: &PgConnection, id: &String, project_config: serde_yaml::Value) {
+pub fn insert_new_indexer(
+    connection: &PgConnection,
+    id: &String,
+    project_config: serde_yaml::Value,
+) {
     let network = project_config["dataSources"][0]["kind"].as_str().unwrap();
     let name = project_config["dataSources"][0]["name"].as_str().unwrap();
 
-    let add_new_indexer = format!("INSERT INTO indexers(id, name, network) VALUES ('{}','{}','{}');", id, name, network);
+    let add_new_indexer = format!(
+        "INSERT INTO indexers(id, name, network) VALUES ('{}','{}','{}');",
+        id, name, network
+    );
     let result = diesel::sql_query(add_new_indexer).execute(connection);
     match result {
         Ok(_) => {
             log::info!("[Index Manager Helper] New indexer created");
-        },
+        }
         Err(e) => {
             log::warn!("[Index Manager Helper] {}", e);
         }
@@ -192,7 +220,10 @@ pub async fn track_hasura_table(table_name: &String) {
     Client::new()
         .post(&*HASURA_URL)
         .json(&gist_body)
-        .send().compat().await.unwrap();
+        .send()
+        .compat()
+        .await
+        .unwrap();
 }
 
 pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
@@ -207,7 +238,7 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
             let mapping_file_path = get_mapping_file_from_local(&params.mapping_path);
             let config_file_path = get_config_file_from_local(&params.config_path);
             (mapping_file_path, raw_query, config_file_path)
-        },
+        }
         DeployType::Ipfs => {
             let raw_query = get_raw_query_from_ipfs(&params.model_path).await;
 
@@ -217,10 +248,13 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
 
             let config_file_path = get_config_file_from_ipfs(&params.config_path).await;
             (mapping_file_path, raw_query, config_file_path)
-        },
+        }
     };
 
-    let connection = PgConnection::establish(&DATABASE_CONNECTION_STRING).expect(&format!("Error connecting to {}", *DATABASE_CONNECTION_STRING));
+    let connection = PgConnection::establish(&DATABASE_CONNECTION_STRING).expect(&format!(
+        "Error connecting to {}",
+        *DATABASE_CONNECTION_STRING
+    ));
     create_new_indexer_detail_table(&connection, &raw_query);
 
     // Track the newly created table with hasura
@@ -234,8 +268,10 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
     insert_new_indexer(&connection, &params.index_name, project_config);
 
     // Chain Reader Client Configuration to subscribe and get latest block from Chain Reader Server
-    let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await.unwrap();
-    let get_blocks_request = GetBlocksRequest{
+    let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone())
+        .await
+        .unwrap();
+    let get_blocks_request = GetBlocksRequest {
         start_block_number: 0,
         end_block_number: 1,
     };
@@ -248,7 +284,12 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
     log::info!("[Index Manager Helper] Start plugin manager");
     while let Some(data) = stream.message().await? {
         let mut data = data as GenericDataProto;
-        log::info!("[Index Manager Helper] Received block = {:?}, hash = {:?} from {:?}",data.block_number, data.block_hash, params.index_name);
+        log::info!(
+            "[Index Manager Helper] Received block = {:?}, hash = {:?} from {:?}",
+            data.block_number,
+            data.block_hash,
+            params.index_name
+        );
         let mut plugins = PluginManager::new(&store);
         unsafe {
             plugins.load(mapping_file_path.clone()).unwrap();
@@ -258,16 +299,16 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
             Some(DataType::Block) => {
                 let block: Block = decode(&mut data.payload).unwrap();
                 println!("Received BLOCK: {:?}", block.header.number);
-                plugins.handle_block("test", &block);
-            },
+                plugins.handle_substrate_block("test", &block);
+            }
             Some(DataType::Event) => {
                 let event: EventRecord = decode(&mut data.payload).unwrap();
                 println!("Received EVENT: {:?}", event);
-            },
+            }
             Some(DataType::Transaction) => {
                 let extrinsics: Vec<Extrinsic> = decode_transactions(&mut data.payload).unwrap();
                 println!("Received Extrinsic: {:?}", extrinsics);
-            },
+            }
 
             _ => {
                 println!("Not support data type: {:?}", &data.data_type);
@@ -285,7 +326,10 @@ pub async fn list_handler_helper() -> Result<Vec<Indexer>, Box<dyn Error>> {
     // TODO check for deploy success or not
     // TODO: add check if table does not exists
     let mut indexers: Vec<Indexer> = Vec::new();
-    for row in &client.query("SELECT id, network, name FROM indexers", &[]).unwrap() {
+    for row in &client
+        .query("SELECT id, network, name FROM indexers", &[])
+        .unwrap()
+    {
         let indexer = Indexer {
             id: row.get(0),
             network: row.get(1),
