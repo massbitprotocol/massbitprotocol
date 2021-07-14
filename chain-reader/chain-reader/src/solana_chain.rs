@@ -1,136 +1,27 @@
-use clap::App;
-use sp_core::{sr25519, H256 as Hash};
-use chain_reader::data_type::{SubstrateBlock as Block,
-                                         SubstrateHeader as Header,
-                                         SubstrateEventRecord as EventRecord,
-                                         SubstrateUncheckedExtrinsic as Extrinsic,
-};
-use std::sync::mpsc::channel;
-use substrate_api_client::{Api, rpc::json_req, utils::FromHexString};
-use env_logger;
-use serde_json;
-use std::error::Error;
-use crate::grpc_stream::stream_mod::{GenericDataProto, ChainType, DataType};
-use pallet_timestamp::Call as TimestampCall;
-use pallet_balances::Call as BalancesCall;
+// use chain_reader::CONFIG;
 use tokio::sync::broadcast;
+use crate::{grpc_stream::stream_mod::{GenericDataProto, ChainType, DataType}, CONFIG};
 
-#[cfg(feature = "std")]
-use node_template_runtime::{Call, AccountId};
+use solana_client::{pubsub_client::PubsubClient, rpc_client::RpcClient, rpc_response::SlotInfo};
+use solana_transaction_status::{UiConfirmedBlock, EncodedConfirmedBlock};
 use codec::{Decode, Encode};
-use substrate_api_client::Metadata;
-use std::convert::TryFrom;
-use node_template_runtime::Event;
-use system;
-use pallet_balances;
+//use serde::Serialize;
+use serde_json::{Serializer, Deserializer};
+use serde::Serialize;
+use std::{
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    time::{Instant}
+};
+use std::error::Error;
+use massbit_chain_solana::data_type::{SolanaBlock as Block};
 
 // Check https://github.com/tokio-rs/prost for enum converting in rust protobuf
 const CHAIN_TYPE: ChainType = ChainType::Solana;
-const VERSION:&str = "1";
-
-
-fn get_block_and_hash_from_header(api:&Api<sr25519::Pair>, header:Header) -> Result<(Block,String), Box<dyn Error>> {
-    // Get block number
-    let block_number = header.number;
-    // Get Call rpc to block hash
-    let hash = api.get_request(json_req::chain_get_block_hash(Some(block_number)).to_string())?;
-    let hash = hash.unwrap();
-    let block_hash = Hash::from_hex(hash.clone());
-
-    // Call RPC to get block
-    let block = api.get_block::<Block>(Some(block_hash.unwrap())).unwrap().unwrap();
-    Ok((block, hash))
-}
-
-fn _create_generic_extrinsic(   block_hash: String,
-                                block:&Block) -> GenericDataProto
-{
-    let block = (*block).clone();
-    //println!("**Block content: {:#?}",&block);
-
-    let mut extrinsics: Vec<Vec<u8>> = Vec::new();
-
-    for extrinsic in block.extrinsics.clone(){
-        extrinsics.push(extrinsic.encode());
-
-    }
-    let payload = extrinsics.encode();
-
-    let generic_data = GenericDataProto{
-        chain_type: CHAIN_TYPE as i32,
-        version: VERSION.to_string(),
-        data_type: DataType::Transaction as i32,
-        block_hash,
-        block_number: block.header.number as u64,
-        payload,
-    };
-    // For decode:
-    let encode_extrinsics: Vec<Vec<u8>> =  Decode::decode(&mut generic_data.payload.as_slice()).unwrap();
-    for encode_extrinsic in encode_extrinsics{
-        let decode_extrinsic: Extrinsic = Decode::decode(&mut encode_extrinsic.as_slice()).unwrap();
-        println!("decode_extrinsic: {:?}", decode_extrinsic);
-    }
-
-    generic_data
-}
-fn _create_generic_block(   block_hash: String,
-                            block:&Block) -> GenericDataProto
-{
-    let block = (*block).clone();
-
-    let generic_data = GenericDataProto{
-        chain_type: CHAIN_TYPE as i32,
-        version: VERSION.to_string(),
-        data_type: DataType::Block as i32,
-        block_hash: block_hash,
-        block_number: block.header.number as u64,
-        payload: block.encode(),
-    };
-    generic_data
-}
-
-fn _create_generic_event(event: &system::EventRecord<Event, Hash>) -> GenericDataProto
-{
-    let generic_data = GenericDataProto{
-        chain_type: CHAIN_TYPE as i32,
-        version: VERSION.to_string(),
-        data_type: DataType::Event as i32,
-        block_hash: "unknown".to_string(),
-        block_number: 0 as u64,
-        payload: event.encode(),
-    };
-    generic_data
-}
-
-pub async fn get_event(chan: broadcast::Sender<GenericDataProto>) {
-
-    let url = get_node_url_from_cli();
-    let api = Api::<sr25519::Pair>::new(url).unwrap();
-
-    println!("Subscribe to events");
-    let (events_in, events_out) = channel();
-    api.subscribe_events(events_in).unwrap();
-
-    fix_one_thread_not_receive(&chan);
-    loop {
-        let event_str = events_out.recv().unwrap();
-
-        let _unhex = Vec::from_hex(event_str).unwrap();
-        let mut _er_enc = _unhex.as_slice();
-        let _events = Vec::<system::EventRecord<Event, Hash>>::decode(&mut _er_enc);
-
-        match _events {
-            Ok(evts) => {
-                for evt in &evts {
-                    let generic_data_proto = _create_generic_event(evt);
-                    println!("Sending event as generic data: {:?}",generic_data_proto);
-                    chan.send(generic_data_proto).unwrap();
-                }
-            }
-            Err(_) => println!("couldn't decode event record list"),
-        }
-    }
-}
+const VERSION:&str = "1.6.16";
+const BLOCK_AVAILABLE_MARGIN: u64 = 100;
 
 fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>){
     // Todo: More clean solution for broadcast channel
@@ -142,47 +33,127 @@ fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>){
     });
 }
 
-pub async fn get_block(chan: broadcast::Sender<GenericDataProto>) {
+pub async fn loop_get_block(chan: broadcast::Sender<GenericDataProto>) {
     println!("start");
-    env_logger::init();
-    let url = get_node_url_from_cli();
-    let api = Api::<sr25519::Pair>::new(url).unwrap();
+    let config = CONFIG.chains.get(&CHAIN_TYPE).unwrap();
+    let json_rpc_url = config.url.clone();
+    let websocket_url = config.ws.clone();
 
-    println!("Subscribing to finalized heads");
-    let (send, recv) = channel();
-    api.subscribe_finalized_heads(send).unwrap();
+    let (mut subscription_client, receiver) =
+        PubsubClient::slot_subscribe(&websocket_url).unwrap();
+    let exit = Arc::new(AtomicBool::new(false));
+    let client = Arc::new(RpcClient::new(json_rpc_url.clone()));
 
-
+    let mut last_root: Option<u64> = None;
     fix_one_thread_not_receive(&chan);
-
     loop {
-        // Get new header
-        let head: Header = recv
-            .recv()
-            .map(|header| serde_json::from_str(&header).unwrap())
-            .unwrap();
-        // Call rpc to create block from header
-        let (block, hash) = get_block_and_hash_from_header(&api, head).unwrap();
-        let generic_block = _create_generic_block(hash.clone(), &block);
-        // Send block
-        println!("Got block number: {:?}, hash: {:?}", &generic_block.block_number, &generic_block.block_hash);
-        //println!("Sending block as generic data {:?}", &generic_block);
-        chan.send(generic_block).unwrap();
+        if exit.load(Ordering::Relaxed) {
+            eprintln!("{}","exit".to_string());
+            subscription_client.shutdown().unwrap();
+            break;
+        }
 
-        // Send array of extrinsics
-        let generic_extrinsics = _create_generic_extrinsic(hash, &block);
-        println!("Sending extrinsics as generic data {:?}", &generic_extrinsics);
-        chan.send(generic_extrinsics).unwrap();
+        match receiver.recv() {
+            Ok(new_info) => {
+                // Root is finalized block in Solana
+                let root = new_info.root-BLOCK_AVAILABLE_MARGIN;
+                println!("Root: {:?}",new_info.root);
+                let block_height = client.get_block_height().unwrap();
+                println!("Highest Block height: {:?}",&block_height);
+
+                match last_root {
+                    Some(value_last_root) => {
+                        if root == last_root.unwrap() {
+                            continue;
+                        }
+
+                        //get_blocks(client.clone(), &chan, value_last_root, root);
+                        for block_height in value_last_root..root{
+                            let new_client = client.clone();
+                            //tokio::spawn(async move {
+                            let block = get_block(new_client,block_height);
+                            match block {
+                                Ok(block) => {
+                                    let generic_data_proto = _create_generic_block(block.blockhash.clone(),block_height, &block);
+                                    println!("Sending SOLANA as generic data: {:?}", &generic_data_proto.block_number);
+                                    //println!("Sending SOLANA as generic data");
+                                    chan.send(generic_data_proto).unwrap();
+                                },
+                                // Cannot get the block, pass
+                                Err(_) => continue,
+                            }
+
+                            //});
+                        }
+                        last_root = Some(root);
+                    },
+                    _ => last_root = Some(root),
+                };
+                println!("Got Block: {:?}", &last_root.unwrap());
+            }
+            Err(err) => {
+                eprintln!("disconnected: {}", err);
+                break;
+            }
+        }
     }
 }
 
-pub fn get_node_url_from_cli() -> String {
-    let yml = load_yaml!("cli.yml");
-    let matches = App::from_yaml(yml).get_matches();
+// async fn solana_finalized_block_subscribe(websocket_url: &String, json_rpc_url: &String) {
+//
+// }
 
-    let node_ip = matches.value_of("node-server").unwrap_or("ws://127.0.0.1");
-    let node_port = matches.value_of("node-port").unwrap_or("9944");
-    let url = format!("{}:{}", node_ip, node_port);
-    println!("Interacting with node on {}\n", url);
-    url
+fn _create_generic_block(   block_hash: String,
+                            block_number: u64,
+                            block:&Block) -> GenericDataProto
+{
+
+    let generic_data = GenericDataProto{
+        chain_type: CHAIN_TYPE as i32,
+        version: VERSION.to_string(),
+        data_type: DataType::Block as i32,
+        block_hash,
+        block_number,
+        payload: serde_json::to_vec(block).unwrap(),
+    };
+    generic_data
+}
+
+fn get_blocks(client: Arc<RpcClient>, chan: &broadcast::Sender<GenericDataProto> , start_block: u64, end_block: u64) {
+    for block_height in start_block..end_block{
+        let new_client = client.clone();
+        //tokio::spawn(async move {
+        let block = get_block(new_client,block_height);
+        match block {
+            Ok(block) => {
+                let generic_data_proto = _create_generic_block(block.blockhash.clone(),block_height, &block);
+                //println!("Sending SOLANA as generic data: {:?}", &generic_data_proto.block_number);
+                println!("Sending SOLANA as generic data");
+                chan.send(generic_data_proto).unwrap();
+            },
+            // Cannot get the block, pass
+            Err(_) => continue,
+        }
+
+        //});
+    }
+}
+
+fn get_block(client: Arc<RpcClient>, block_height: u64) -> Result<EncodedConfirmedBlock,Box<dyn Error>>{
+
+    println!("Starting get Block {}",block_height);
+    let now = Instant::now();
+    let block = client.get_block(block_height);
+    let elapsed = now.elapsed();
+    match block{
+        Ok(block) => {
+            println!("Finished get Block: {:?}, time: {:?}, hash: {}", block_height, elapsed, &block.blockhash);
+            Ok(block)
+        },
+        _ => {
+            println!("Cannot get: {:?}", &block);
+            Err(format!("Error cannot get block").into())
+        },
+    }
+
 }

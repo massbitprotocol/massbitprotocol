@@ -1,6 +1,6 @@
 use clap::App;
 use sp_core::{sr25519, H256 as Hash};
-use chain_reader::data_type::{SubstrateBlock as Block,
+use massbit_chain_substrate::data_type::{SubstrateBlock as Block,
                                          SubstrateHeader as Header,
                                          SubstrateEventRecord as EventRecord,
                                          SubstrateUncheckedExtrinsic as Extrinsic,
@@ -101,7 +101,7 @@ fn _create_generic_event(event: &system::EventRecord<Event, Hash>) -> GenericDat
     generic_data
 }
 
-pub async fn get_event(chan: broadcast::Sender<GenericDataProto>) {
+pub async fn loop_get_event(chan: broadcast::Sender<GenericDataProto>) {
 
     let url = get_node_url_from_cli();
     let api = Api::<sr25519::Pair>::new(url).unwrap();
@@ -122,7 +122,7 @@ pub async fn get_event(chan: broadcast::Sender<GenericDataProto>) {
             Ok(evts) => {
                 for evt in &evts {
                     let generic_data_proto = _create_generic_event(evt);
-                    println!("Sending event as generic data: {:?}",generic_data_proto);
+                    println!("Sending SUBSTRATE event as generic data: {:?}",generic_data_proto);
                     chan.send(generic_data_proto).unwrap();
                 }
             }
@@ -141,7 +141,7 @@ fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>){
     });
 }
 
-pub async fn get_block_and_extrinsic(chan: broadcast::Sender<GenericDataProto>) {
+pub async fn loop_get_block_and_extrinsic(chan: broadcast::Sender<GenericDataProto>) {
 
     println!("start");
     env_logger::init();
@@ -166,12 +166,12 @@ pub async fn get_block_and_extrinsic(chan: broadcast::Sender<GenericDataProto>) 
         let generic_block = _create_generic_block(hash.clone(), &block);
         // Send block
         println!("Got block number: {:?}, hash: {:?}", &generic_block.block_number, &generic_block.block_hash);
-        //println!("Sending block as generic data {:?}", &generic_block);
+        //println!("Sending SUBSTRATE block as generic data {:?}", &generic_block);
         chan.send(generic_block).unwrap();
 
         // Send array of extrinsics
         let generic_extrinsics = _create_generic_extrinsic(hash, &block);
-        println!("Sending extrinsics as generic data {:?}", &generic_extrinsics);
+        println!("Sending SUBSTRATE extrinsics as generic data {:?}", &generic_extrinsics);
         chan.send(generic_extrinsics).unwrap();
     }
 }

@@ -1,48 +1,35 @@
-use chain_reader_substrate::substrate_chain;
+use crate::substrate_chain;
+use crate::solana_chain;
 use tonic::{transport::Server};
-use chain_reader_substrate::grpc_stream::stream_mod::{streamout_server::StreamoutServer, ChainType};
-use chain_reader_substrate::grpc_stream::StreamService;
+use crate::{grpc_stream::stream_mod::{streamout_server::StreamoutServer, GenericDataProto, ChainType, DataType}, CONFIG};
+use crate::grpc_stream::{StreamService};
 use tokio::sync::broadcast;
-use lazy_static::lazy_static;
 use std::collections::HashMap;
-use solana_chain;
 
-struct Config {
-    chains: HashMap<ChainType,Vec<ChainConfig>>,
+
+#[derive(Clone,Debug)]
+pub struct Config {
+    pub chains: HashMap<ChainType,ChainConfig>,
+    pub url: String,
 }
 
-struct ChainConfig{
-    url: String,
-    ws: String,
-}
-
-
-
-lazy_static! {
-    // Load default config
-    static ref CONFIG: Config = Config{
-        chains: [
-            (ChainType::Substrate,ChainConfig{
-                url: "127.0.0.1:50051".to_string(),
-                ws: "127.0.0.1:50051".to_string(),
-            }),
-            (ChainType::Solana,ChainConfig{
-                url: "https://api.mainnet-beta.solana.com".to_string(),
-                ws: "wss://api.mainnet-beta.solana.com".to_string(),
-            }),
-        ].inter().cloned().collect()
-    };
+#[derive(Clone,Debug)]
+pub struct ChainConfig{
+    pub url: String,
+    pub ws: String,
 }
 
 
-pub async fn run() -> Result<(), Box<dyn std::error::Error>>{
+
+
+pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>>{
     // Broadcast Channel
     //let (chan, _) = broadcast::channel(1024);
     let mut chans = HashMap::new();
 
     // Spawm thread get_data
 
-    for chain_type in CONFIG.chains.keys{
+    for chain_type in CONFIG.chains.keys(){
         let (chan, _) = broadcast::channel(1024);
         // Clone broadcast channel
         let chan_sender = chan.clone();
@@ -52,12 +39,12 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>>{
             ChainType::Substrate => {
                 // Spawn task
                 tokio::spawn(async move {
-                    substrate_chain::get_block_and_extrinsic(chan_sender).await;
+                    substrate_chain::loop_get_block_and_extrinsic(chan_sender).await;
                 });
                 let chan_sender = chan.clone();
                 // Spawn task
                 tokio::spawn(async move {
-                    substrate_chain::get_event(chan_sender).await;
+                    substrate_chain::loop_get_event(chan_sender).await;
                 });
                 // add chan to chans
                 chans.insert(ChainType::Substrate,chan);
@@ -65,12 +52,10 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>>{
             ChainType::Solana => {
                 // Spawn task
                 tokio::spawn(async move {
-                    solana_chain::get_block(chan_sender).await;
+                    solana_chain::loop_get_block(chan_sender).await;
                 });
                 // add chan to chans
-                chans.insert(ChainType::Substrate,chan);
-
-                continue;
+                chans.insert(ChainType::Solana,chan);
             },
             ChainType::Ethereum => {
                 continue;
