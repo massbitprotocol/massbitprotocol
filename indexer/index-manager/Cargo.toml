@@ -22,7 +22,10 @@ anyhow = "1.0"
 diesel = { version = "1.4.0", features = ["postgres"] }
 reqwest = "0.10.8"
 postgres = "0.15"
+<<<<<<< HEAD
 lazy_static = "1.2.0"
+=======
+>>>>>>> main
 
 # Massbit dependencies
 ipfs-client = { path = "../../core/ipfs-client" }

@@ -13,7 +13,10 @@ use postgres::{Connection as PostgreConnection, TlsMode};
 use serde::{Deserialize};
 use node_template_runtime::Event;
 use sp_core::{sr25519, H256 as Hash};
+<<<<<<< HEAD
 use lazy_static::lazy_static;
+=======
+>>>>>>> main
 
 // Massbit dependencies
 use ipfs_client::core::create_ipfs_clients;
@@ -27,6 +30,7 @@ use massbit_chain_substrate::data_type::{SubstrateBlock as Block, SubstrateHeade
 pub mod stream_mod {
     tonic::include_proto!("chaindata");
 }
+<<<<<<< HEAD
 
 lazy_static! {
     static ref CHAIN_READER_URL: String = env::var("CHAIN_READER_URL").unwrap_or(String::from("http://127.0.0.1:50051"));
@@ -39,6 +43,15 @@ type EventRecord = system::EventRecord<Event, Hash>;
 
 pub async fn get_index_config(ipfs_config_hash: &String) -> serde_yaml::Mapping {
     let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
+=======
+const URL: &str = "http://127.0.0.1:50051";
+const CONNECTION_STRING: &'static str = "postgres://graph-node:let-me-in@localhost";
+const HASURA: &'static str = "http://localhost:8080/v1/query";
+type EventRecord = system::EventRecord<Event, Hash>;
+
+pub async fn get_index_config(ipfs_config_hash: &String) -> serde_yaml::Mapping {
+    let ipfs_addresses = vec!["0.0.0.0:5001".to_string()];
+>>>>>>> main
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await; // Refactor to use lazy load
 
     let file_bytes = ipfs_clients[0]
@@ -52,7 +65,11 @@ pub async fn get_index_config(ipfs_config_hash: &String) -> serde_yaml::Mapping 
 }
 
 pub async fn get_mapping_file_from_ipfs(ipfs_mapping_hash: &String) -> String {
+<<<<<<< HEAD
     let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
+=======
+    let ipfs_addresses = vec!["0.0.0.0:5001".to_string()];
+>>>>>>> main
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await; // Refactor to use lazy load
 
     let file_bytes = ipfs_clients[0]
@@ -77,7 +94,11 @@ pub async fn get_mapping_file_from_ipfs(ipfs_mapping_hash: &String) -> String {
 }
 
 pub async fn get_config_file_from_ipfs(ipfs_config_hash: &String) -> String {
+<<<<<<< HEAD
     let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
+=======
+    let ipfs_addresses = vec!["0.0.0.0:5001".to_string()];
+>>>>>>> main
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await; // Refactor to use lazy load
 
     let file_bytes = ipfs_clients[0]
@@ -103,7 +124,11 @@ pub async fn get_config_file_from_ipfs(ipfs_config_hash: &String) -> String {
 
 pub async fn get_raw_query_from_ipfs(ipfs_model_hash: &String) -> String {
     log::info!("[Index Manager Helper] Downloading Raw Query from IPFS");
+<<<<<<< HEAD
     let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
+=======
+    let ipfs_addresses = vec!["0.0.0.0:5001".to_string()];
+>>>>>>> main
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await;
 
     let file_bytes = ipfs_clients[0]
@@ -190,14 +215,28 @@ pub async fn track_hasura_table(table_name: &String) {
         }
     });
     Client::new()
+<<<<<<< HEAD
         .post(&*HASURA_URL)
+=======
+        .post(HASURA)
+>>>>>>> main
         .json(&gist_body)
         .send().compat().await.unwrap();
 }
 
 pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
+<<<<<<< HEAD
     let store = IndexStore {
         connection_string: DATABASE_CONNECTION_STRING.to_string(),
+=======
+    // Init Store
+    let db_connection_string = match env::var("DATABASE_URL") {
+        Ok(connection) => connection,
+        Err(_) => String::from("postgres://graph-node:let-me-in@localhost")
+    };
+    let store = IndexStore {
+        connection_string: db_connection_string,
+>>>>>>> main
     };
 
     // Get mapping file, raw query to create new table and project.yaml config
@@ -220,7 +259,11 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
         },
     };
 
+<<<<<<< HEAD
     let connection = PgConnection::establish(&DATABASE_CONNECTION_STRING).expect(&format!("Error connecting to {}", *DATABASE_CONNECTION_STRING));
+=======
+    let connection = PgConnection::establish(CONNECTION_STRING).expect(&format!("Error connecting to {}", CONNECTION_STRING));
+>>>>>>> main
     create_new_indexer_detail_table(&connection, &raw_query);
 
     // Track the newly created table with hasura
@@ -234,7 +277,11 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
     insert_new_indexer(&connection, &params.index_name, project_config);
 
     // Chain Reader Client Configuration to subscribe and get latest block from Chain Reader Server
+<<<<<<< HEAD
     let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await.unwrap();
+=======
+    let mut client = StreamoutClient::connect(URL).await.unwrap();
+>>>>>>> main
     let get_blocks_request = GetBlocksRequest{
         start_block_number: 0,
         end_block_number: 1,
@@ -280,10 +327,15 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
 // Return indexer list
 pub async fn list_handler_helper() -> Result<Vec<Indexer>, Box<dyn Error>> {
     let mut client =
+<<<<<<< HEAD
         PostgreConnection::connect(DATABASE_CONNECTION_STRING.clone(), TlsMode::None).unwrap();
 
     // TODO check for deploy success or not
     // TODO: add check if table does not exists
+=======
+        PostgreConnection::connect("postgresql://graph-node:let-me-in@localhost:5432/graph-node", TlsMode::None).unwrap();
+
+>>>>>>> main
     let mut indexers: Vec<Indexer> = Vec::new();
     for row in &client.query("SELECT id, network, name FROM indexers", &[]).unwrap() {
         let indexer = Indexer {
