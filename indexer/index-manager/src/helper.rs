@@ -281,6 +281,8 @@ pub async fn list_handler_helper() -> Result<Vec<Indexer>, Box<dyn Error>> {
     let mut client =
         PostgreConnection::connect("postgresql://graph-node:let-me-in@localhost:5432/graph-node", TlsMode::None).unwrap();
 
+    // TODO check for deploy success or not
+    // TODO: add check if table does not exists
     let mut indexers: Vec<Indexer> = Vec::new();
     for row in &client.query("SELECT id, network, name FROM indexers", &[]).unwrap() {
         let indexer = Indexer {
