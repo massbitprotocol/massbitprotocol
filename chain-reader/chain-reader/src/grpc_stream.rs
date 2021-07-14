@@ -13,6 +13,9 @@ pub mod stream_mod {
 #[derive(Debug)]
 pub struct StreamService {
     pub chans: HashMap<ChainType,broadcast::Sender<GenericDataProto>>,
+    //pub solana_chan: broadcast::Sender<GenericDataProto>,
+
+
 }
 
 
