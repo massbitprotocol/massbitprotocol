@@ -30,4 +30,4 @@ chain-reader/data/
 
 *.so
 
-/generated
+/code-compiler/generated
