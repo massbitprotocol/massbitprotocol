@@ -315,11 +315,9 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
                         plugins.handle_substrate_block("1234", &block);
                     },
                     Some(DataType::Event) => {
-                        let events: Vec<SubstrateEventRecord> = decode(&mut data.payload).unwrap();
-                        for event in events {
-                            println!("Received Event: {:?}", event);
-                            plugins.handle_substrate_event("1234", &event);
-                        }
+                        let event: SubstrateEventRecord = decode(&mut data.payload).unwrap();
+                        println!("Received Event: {:?}", event);
+                        plugins.handle_substrate_event("1234", &event);
                     },
                     // Some(DataType::Transaction) => {}
                     _ => {

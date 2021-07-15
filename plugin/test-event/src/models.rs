@@ -20,7 +20,7 @@ impl EventTs {
             STORE
                 .as_ref()
                 .unwrap()
-                .save("ExtrinsicTs".to_string(), self.clone().into());
+                .save("EventTs".to_string(), self.clone().into());
         }
     }
 }
