@@ -5,8 +5,9 @@ members = [
     "core/chain/substrate",
     "indexer/main",
     "plugin/plugin",
-    "plugin/test-plugin",
+    "plugin/test-plugin", # Should be rename to test-substrate-block
     "plugin/test-extrinsic",
+    "plugin/test-event",
     "core/chain/solana",
 ]
 exclude = ["code-compiler/generated"]

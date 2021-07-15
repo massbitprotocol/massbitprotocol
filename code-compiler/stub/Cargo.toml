@@ -12,6 +12,7 @@ massbit-chain-substrate = { path = "../../../core/chain/substrate"} # Todo copy 
 index-store = { path = "../../../core/index-store"} # Todo copy these to our compiler repo
 structmap = "0.1.5"
 structmap-derive = "0.1.5"
+chrono = "0.4.19"
 
 [lib]
 crate-type = ["cdylib"]

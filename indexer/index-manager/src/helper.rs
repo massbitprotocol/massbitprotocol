@@ -289,12 +289,13 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
     log::info!("[Index Manager Helper] Start plugin manager");
     while let Some(data) = stream.message().await? {
         let mut data = data as GenericDataProto;
-        log::info!(
-            "[Index Manager Helper] Received block = {:?}, hash = {:?} from {:?}",
-            data.block_number,
-            data.block_hash,
-            params.index_name
-        );
+        log::info!("[Index Manager Helper] Received chain: {:?}, data block = {:?}, hash = {:?}, data type = {:?}",
+                 ChainType::from_i32(data.chain_type).unwrap(),
+                 data.block_number,
+                 data.block_hash,
+                 DataType::from_i32(data.data_type).unwrap());
+
+
         let mut plugins = PluginManager::new(&store);
         unsafe {
             plugins.load("1234", mapping_file_path.clone()).unwrap();
@@ -305,19 +306,21 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
                 match DataType::from_i32(data.data_type) {
                     Some(DataType::Block) => {
                         let block: SubstrateBlock = decode(&mut data.payload).unwrap();
-                        println!("Received BLOCK: {:?}", &block.block.header.number);
+                        // println!("Received BLOCK: {:?}", &block.block.header.number);
                         let extrinsics = get_extrinsics_from_block(&block);
                         for extrinsic in extrinsics {
-                            println!("Received EXTRINSIC: {:?}", extrinsic);
+                            // println!("Received EXTRINSIC: {:?}", extrinsic);
                             plugins.handle_substrate_extrinsic("1234", &extrinsic);
                         }
                         plugins.handle_substrate_block("1234", &block);
-                    }
+                    },
                     Some(DataType::Event) => {
-                        let event: Vec<SubstrateEventRecord> = decode(&mut data.payload).unwrap();
-                        plugins.handle_substrate_event("1234", &block);
-                        println!("Received Event: {:?}", event);
-                    }
+                        let events: Vec<SubstrateEventRecord> = decode(&mut data.payload).unwrap();
+                        for event in events {
+                            println!("Received Event: {:?}", event);
+                            plugins.handle_substrate_event("1234", &event);
+                        }
+                    },
                     // Some(DataType::Transaction) => {}
                     _ => {
                         println!("Not support data type: {:?}", &data.data_type);
