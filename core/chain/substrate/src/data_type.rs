@@ -55,21 +55,21 @@ pub trait ExtrinsicTrait {
     fn get_hash(&self) -> Hash;
 }
 
-impl ExtrinsicTrait for ExtExtrinsic {
-    fn is_signed(&self) -> bool {
-        self.extrinsic.is_signed();
-    }
-    fn get_hash(&self) -> Hash {
-        self.extrinsic.get_hash();
-    }
-}
+// impl ExtrinsicTrait for ExtExtrinsic {
+//     fn is_signed(&self) -> bool {
+//         self.extrinsic.is_signed();
+//     }
+//     fn get_hash(&self) -> Hash {
+//         self.extrinsic.get_hash();
+//     }
+// }
 
 pub fn get_extrinsics_from_block (block: &ExtBlock) -> Vec<ExtExtrinsic> {
 
     let iter = block.block.extrinsics.iter();
     let extrinsics = iter
         .map(|extrinsic|{
-            let hash = extrinsic.get_hash();
+            //let hash = extrinsic.get_hash();
             ExtExtrinsic {
                 block_number: block.block.header.number,
                 extrinsic: (*extrinsic).clone(),

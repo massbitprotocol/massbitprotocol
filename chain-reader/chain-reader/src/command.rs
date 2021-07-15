@@ -5,7 +5,7 @@ use crate::{grpc_stream::stream_mod::{streamout_server::StreamoutServer, Generic
 use crate::grpc_stream::{StreamService};
 use tokio::sync::broadcast;
 use std::collections::HashMap;
-
+use lazy_static::lazy_static;
 
 #[derive(Clone,Debug)]
 pub struct Config {
@@ -20,21 +20,7 @@ pub struct ChainConfig{
 }
 
 
-lazy_static! {
-    // Load default config
-    static ref CONFIG: Config = Config{
-        chains: [
-            (ChainType::Substrate,ChainConfig{
-                url: "0.0.0.0:50051".to_string(),
-                ws: "0.0.0.0:50051".to_string(),
-            }),
-            (ChainType::Solana,ChainConfig{
-                url: "https://api.mainnet-beta.solana.com".to_string(),
-                ws: "wss://api.mainnet-beta.solana.com".to_string(),
-            }),
-        ].inter().cloned().collect()
-    };
-}
+
 
 
 pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>>{
