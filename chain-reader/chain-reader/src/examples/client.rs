@@ -2,8 +2,7 @@
 use tonic::{transport::{Server, Channel}, Request, Response, Status};
 use crate::stream_mod::{HelloRequest, GetBlocksRequest, GenericDataProto, ChainType, DataType, streamout_client::StreamoutClient};
 use std::error::Error;
-use massbit_chain_substrate::data_type::{
-    SubstrateBlock, SubstrateHeader, SubstrateUncheckedExtrinsic, decode_transactions};
+use massbit_chain_substrate::data_type::{SubstrateBlock, SubstrateHeader, SubstrateUncheckedExtrinsic, decode_transactions, SubstrateEventRecord};
 use massbit_chain_solana::data_type::{
     SolanaBlock, decode as solana_decode
     };
@@ -38,7 +37,7 @@ pub async fn print_blocks(mut client: StreamoutClient<Channel>, chain_type: Chai
 
     while let Some(data) = stream.message().await? {
         let mut data = data as GenericDataProto;
-        println!("Recieved chain: {:?}, data block = {:?}, hash = {:?}, data type = {:?}",
+        println!("Received chain: {:?}, data block = {:?}, hash = {:?}, data type = {:?}",
                  ChainType::from_i32(data.chain_type).unwrap(),
                  data.block_number,
                  data.block_hash,
@@ -56,9 +55,9 @@ pub async fn print_blocks(mut client: StreamoutClient<Channel>, chain_type: Chai
                             println!("Recieved EXTRINSIC: {:?}", extrinsic);
                         }
                     },
-                    Some(DataType::Transaction) => {
-                        let extrinsics: Vec<SubstrateUncheckedExtrinsic> = decode_transactions(&mut data.payload).unwrap();
-                        println!("Recieved Extrinsic: {:?}", extrinsics);
+                    Some(DataType::Event) => {
+                        let event: Vec<SubstrateEventRecord> = decode(&mut data.payload).unwrap();
+                        println!("Recieved Event: {:?}", event);
                     },
 
                     _ => {
@@ -97,10 +96,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Waiting for chain-reader");
 
-    // tokio::spawn(async move {
-    //     let mut client = StreamoutClient::connect(URL).await.unwrap();
-    //     print_blocks(client, ChainType::Solana).await;
-    // });
+    tokio::spawn(async move {
+        let mut client = StreamoutClient::connect(URL).await.unwrap();
+        print_blocks(client, ChainType::Solana).await;
+    });
 
     let mut client = StreamoutClient::connect(URL).await.unwrap();
     print_blocks(client, ChainType::Substrate).await;
