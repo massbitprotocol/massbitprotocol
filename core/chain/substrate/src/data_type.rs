@@ -30,11 +30,11 @@ pub struct ExtBlock {
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, Debug)]
 pub struct ExtExtrinsic {
-    block_number: Number,
-    extrinsic: Extrinsic,
-    block: ExtBlock,
-    events: Vec<ExtEvent>,
-    success: bool,
+    pub block_number: Number,
+    pub extrinsic: Extrinsic,
+    pub block: ExtBlock,
+    pub events: Vec<ExtEvent>,
+    pub success: bool,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, Debug)]
