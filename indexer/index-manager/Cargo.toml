@@ -29,6 +29,7 @@ ipfs-client = { path = "../../core/ipfs-client" }
 manifest-reader = { path = "../manifest-reader" }
 tokio02-spawn = { path = "../../core/tokio02-spawn" }
 massbit-chain-substrate = { path = "../../core/chain/substrate"}
+#massbit-chain-solana = { path = "../../core/chain/solana" }
 index-store = { path = "../../core/index-store" }
 plugin = { path = "../../plugin/plugin" }
 

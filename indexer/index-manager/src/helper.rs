@@ -19,9 +19,12 @@ use tonic::Request;
 use crate::types::{DeployParams, DeployType, DetailParams, Indexer};
 use index_store::core::IndexStore;
 use ipfs_client::core::create_ipfs_clients;
-use massbit_chain_substrate::data_type::{decode, decode_transactions, SubstrateBlock as Block, SubstrateBlock, SubstrateHeader as Header, SubstrateUncheckedExtrinsic as Extrinsic, get_extrinsics_from_block};
+use massbit_chain_substrate::data_type::{decode, decode_transactions, SubstrateBlock as Block, SubstrateBlock, SubstrateHeader as Header, SubstrateUncheckedExtrinsic as Extrinsic, get_extrinsics_from_block, SubstrateEventRecord};
 use plugin::manager::PluginManager;
 use stream_mod::{HelloRequest, GetBlocksRequest, GenericDataProto, ChainType, DataType, streamout_client::StreamoutClient};
+// use massbit_chain_solana::data_type::{
+//     SolanaBlock, decode as solana_decode
+// };
 
 // Configs
 pub mod stream_mod {
@@ -39,7 +42,7 @@ lazy_static! {
         env::var("IPFS_ADDRESS").unwrap_or(String::from("0.0.0.0:5001"));
 }
 
-type EventRecord = system::EventRecord<Event, Hash>;
+// type EventRecord = system::EventRecord<Event, Hash>;
 
 pub async fn get_index_config(ipfs_config_hash: &String) -> serde_yaml::Mapping {
     let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
@@ -297,30 +300,44 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
             plugins.load("1234", mapping_file_path.clone()).unwrap();
         }
 
-        match DataType::from_i32(data.data_type) {
-            Some(DataType::Block) => {
-                // let block: Block = decode(&mut data.payload).unwrap();
-                // println!("Received BLOCK: {:?}", block.block.header.number);
-                // plugins.handle_substrate_block("test", &block);
-
-                let block: SubstrateBlock = decode(&mut data.payload).unwrap();
-                println!("Received BLOCK: {:?}", &block.block.header.number);
-                let extrinsics = get_extrinsics_from_block(&block);
-                for extrinsic in extrinsics {
-                    println!("Received EXTRINSIC: {:?}", extrinsic);
+        match chain_type {
+            ChainType::Substrate => {
+                match DataType::from_i32(data.data_type) {
+                    Some(DataType::Block) => {
+                        let block: SubstrateBlock = decode(&mut data.payload).unwrap();
+                        println!("Received BLOCK: {:?}", &block.block.header.number);
+                        let extrinsics = get_extrinsics_from_block(&block);
+                        for extrinsic in extrinsics {
+                            println!("Received EXTRINSIC: {:?}", extrinsic);
+                            plugins.handle_substrate_extrinsic("1234", &extrinsic);
+                        }
+                        plugins.handle_substrate_block("1234", &block);
+                    }
+                    Some(DataType::Event) => {
+                        let event: Vec<SubstrateEventRecord> = decode(&mut data.payload).unwrap();
+                        println!("Recieved Event: {:?}", event);
+                    }
+                    // Some(DataType::Transaction) => {}
+                    _ => {
+                        println!("Not support data type: {:?}", &data.data_type);
+                    }
                 }
             }
-            Some(DataType::Event) => {
-                let event: EventRecord = decode(&mut data.payload).unwrap();
-                println!("Received EVENT: {:?}", event);
-            }
-            Some(DataType::Transaction) => {
-                let extrinsics: Vec<Extrinsic> = decode_transactions(&mut data.payload).unwrap();
-                println!("Received Extrinsic: {:?}", extrinsics);
-            }
-
+            ChainType::Solana => {
+                // match DataType::from_i32(data.data_type) {
+                //     Some(DataType::Block) => {
+                //         //println!("Recieved data: {:?}", data);
+                //         let block: SolanaBlock = solana_decode(&mut data.payload).unwrap();
+                //         println!("Recieved BLOCK with block height: {:?}, hash: {:?}", &block.block_height.unwrap(), &block.blockhash);
+                //
+                //     },
+                //     _ => {
+                //         println!("Not support type in Solana");
+                //     }
+                // }
+            },
             _ => {
-                println!("Not support data type: {:?}", &data.data_type);
+                println!("Not support this package chain-type");
             }
         }
     }

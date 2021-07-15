@@ -4,9 +4,7 @@ use crate::core::{
 };
 use index_store::core::Store;
 use libloading::Library;
-use massbit_chain_substrate::data_type::{
-    SubstrateBlock, SubstrateCheckedExtrinsic, SubstrateEventRecord,
-};
+use massbit_chain_substrate::data_type::{SubstrateBlock, SubstrateCheckedExtrinsic, SubstrateEventRecord, SubstrateUncheckedExtrinsic};
 use std::{alloc::System, collections::HashMap, error::Error, ffi::OsStr, rc::Rc};
 
 #[global_allocator]
@@ -77,7 +75,7 @@ impl<'a> PluginManager<'a> {
     pub fn handle_substrate_extrinsic(
         &self,
         plugin_id: &str,
-        extrinsic: &SubstrateCheckedExtrinsic,
+        extrinsic: &SubstrateUncheckedExtrinsic,
     ) -> Result<(), Box<dyn Error>> {
         self.substrate_extrinsic_handlers
             .get(plugin_id)
@@ -168,7 +166,8 @@ pub struct SubstrateExtrinsicHandlerProxy {
 impl SubstrateExtrinsicHandler for SubstrateExtrinsicHandlerProxy {
     fn handle_extrinsic(
         &self,
-        extrinsic: &SubstrateCheckedExtrinsic,
+        // extrinsic: &SubstrateCheckedExtrinsic,
+        extrinsic: &SubstrateUncheckedExtrinsic,
     ) -> Result<(), Box<dyn Error>> {
         self.handler.handle_extrinsic(extrinsic)
     }

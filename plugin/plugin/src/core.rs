@@ -1,6 +1,4 @@
-use massbit_chain_substrate::data_type::{
-    SubstrateBlock, SubstrateCheckedExtrinsic, SubstrateEventRecord,
-};
+use massbit_chain_substrate::data_type::{SubstrateBlock, SubstrateCheckedExtrinsic, SubstrateEventRecord, SubstrateUncheckedExtrinsic};
 use std::error::Error;
 
 pub trait SubstrateBlockHandler {
@@ -8,7 +6,8 @@ pub trait SubstrateBlockHandler {
 }
 
 pub trait SubstrateExtrinsicHandler {
-    fn handle_extrinsic(&self, extrinsic: &SubstrateCheckedExtrinsic)
+    // fn handle_extrinsic(&self, extrinsic: &SubstrateCheckedExtrinsic)
+    fn handle_extrinsic(&self, extrinsic: &SubstrateUncheckedExtrinsic)
         -> Result<(), Box<dyn Error>>;
 }
 
