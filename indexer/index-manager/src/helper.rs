@@ -183,7 +183,7 @@ pub fn read_config_file(config_file_path: &String) -> serde_yaml::Value {
 pub fn insert_new_indexer(
     connection: &PgConnection,
     id: &String,
-    project_config: serde_yaml::Value,
+    project_config: &serde_yaml::Value,
 ) {
     let network = project_config["dataSources"][0]["kind"].as_str().unwrap();
     let name = project_config["dataSources"][0]["name"].as_str().unwrap();
@@ -259,13 +259,16 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
 
     // Read project.yaml config and add a new indexer row
     let project_config = read_config_file(&config_file_path);
-    insert_new_indexer(&connection, &params.index_name, project_config);
+    insert_new_indexer(&connection, &params.index_name, &project_config);
+
+    // Use correct chain type based on config
+    let chain_type = match project_config["dataSources"][0]["kind"].as_str().unwrap() {
+        "substrate" => ChainType::Substrate,
+        "solana" => ChainType::Solana,
+        _ => ChainType::Substrate, // If not provided, assume it's substrate network
+    };
 
     // Chain Reader Client Configuration to subscribe and get latest block from Chain Reader Server
-
-    // Hard code chain type for now:
-    let chain_type = ChainType::Substrate; // Todo: read from project.yaml config
-
     let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone())
         .await
         .unwrap();

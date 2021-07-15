@@ -42,8 +42,6 @@ pub async fn print_blocks(mut client: StreamoutClient<Channel>, chain_type: Chai
                  data.block_number,
                  data.block_hash,
                  DataType::from_i32(data.data_type).unwrap());
-        //println!("Detail data block: {:?}", data);
-
         match chain_type {
             ChainType::Substrate => {
                 match DataType::from_i32(data.data_type) {
@@ -81,11 +79,7 @@ pub async fn print_blocks(mut client: StreamoutClient<Channel>, chain_type: Chai
             _ => {
                 println!("Not support this package chain-type");
             }
-
-
-
         }
-
     }
 
     Ok(())
