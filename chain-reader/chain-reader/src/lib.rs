@@ -23,7 +23,7 @@ lazy_static! {
                 ws: "wss://api.mainnet-beta.solana.com".to_string(),
             }),
         ].iter().cloned().collect(),
-        url: "127.0.0.1:50051".to_string(),
+        url: "0.0.0.0:50051".to_string(),
     };
 }
 
