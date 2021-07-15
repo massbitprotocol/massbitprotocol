@@ -19,15 +19,9 @@ use tonic::Request;
 use crate::types::{DeployParams, DeployType, DetailParams, Indexer};
 use index_store::core::IndexStore;
 use ipfs_client::core::create_ipfs_clients;
-use massbit_chain_substrate::data_type::{
-    decode, decode_transactions, SubstrateBlock as Block, SubstrateBlock,
-    SubstrateHeader as Header, SubstrateUncheckedExtrinsic as Extrinsic,
-};
+use massbit_chain_substrate::data_type::{decode, decode_transactions, SubstrateBlock as Block, SubstrateBlock, SubstrateHeader as Header, SubstrateUncheckedExtrinsic as Extrinsic, get_extrinsics_from_block};
 use plugin::manager::PluginManager;
-use stream_mod::{
-    streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
-    HelloRequest,
-};
+use stream_mod::{HelloRequest, GetBlocksRequest, GenericDataProto, ChainType, DataType, streamout_client::StreamoutClient};
 
 // Configs
 pub mod stream_mod {
@@ -268,12 +262,17 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
     insert_new_indexer(&connection, &params.index_name, project_config);
 
     // Chain Reader Client Configuration to subscribe and get latest block from Chain Reader Server
+
+    // Hard code chain type for now:
+    let chain_type = ChainType::Substrate; // Todo: read from project.yaml config
+
     let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone())
         .await
         .unwrap();
     let get_blocks_request = GetBlocksRequest {
         start_block_number: 0,
         end_block_number: 1,
+        chain_type: chain_type as i32,
     };
     let mut stream = client
         .list_blocks(Request::new(get_blocks_request))
@@ -292,14 +291,21 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
         );
         let mut plugins = PluginManager::new(&store);
         unsafe {
-            plugins.load(mapping_file_path.clone()).unwrap();
+            plugins.load("1234", mapping_file_path.clone()).unwrap();
         }
 
         match DataType::from_i32(data.data_type) {
             Some(DataType::Block) => {
-                let block: Block = decode(&mut data.payload).unwrap();
-                println!("Received BLOCK: {:?}", block.header.number);
-                plugins.handle_substrate_block("test", &block);
+                // let block: Block = decode(&mut data.payload).unwrap();
+                // println!("Received BLOCK: {:?}", block.block.header.number);
+                // plugins.handle_substrate_block("test", &block);
+
+                let block: SubstrateBlock = decode(&mut data.payload).unwrap();
+                println!("Received BLOCK: {:?}", &block.block.header.number);
+                let extrinsics = get_extrinsics_from_block(&block);
+                for extrinsic in extrinsics {
+                    println!("Received EXTRINSIC: {:?}", extrinsic);
+                }
             }
             Some(DataType::Event) => {
                 let event: EventRecord = decode(&mut data.payload).unwrap();
