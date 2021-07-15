@@ -17,6 +17,7 @@ plugin::export_plugin!(register);
 extern "C" fn register(registrar: &mut dyn PluginRegistrar) {
     registrar.register_substrate_event_handler(Box::new(SubstrateEventHandler));
     registrar.register_substrate_extrinsic_handler(Box::new(SubstrateExtrinsicHandler));
+    registrar.register_substrate_block_handler(Box::new(SubstrateBlockHandler));
 }
 
 // Event Handler
