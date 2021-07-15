@@ -84,3 +84,10 @@ services:
     depends_on: # Dashboard App will call to indexer to get indexer detail & code-compiler to compile and deploy new index
       - "indexer"
       - "code-compiler"
+    environment:
+      # Pointing to our code-compiler container
+      VUE_APP_CODE_COMPILER_UR: http://code-compiler:5000
+      # Pointing to our index-manager container
+      VUE_APP_INDEX_MANAGER_URL: http://indexer:3030
+      # Pointing to our hasura container
+      VUE_APP_HASURA_URL: http://hasura:8080/console
