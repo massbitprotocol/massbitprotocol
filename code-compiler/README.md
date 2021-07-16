@@ -5,15 +5,16 @@
 - Index_status: syncing / synced
 
 ## API
-Endpoint: /code-compiler/compile
+Endpoint: /compile
 - Method: POST
-  
+- Updated on: 16/7/2021
 - Description: to make a new a request building a SO file, we need the URL encoded data of:
-  - models.rs (created with diesel CLI)
-  - schema.rs (created with diesel CLI)
-  - up.sql (created with diesel CLI)
+  - mapping.rs 
+  - models.rs
   - project.yaml
-  - SO.file (created after run cargo build)
+  - up.sql
+  - table
+  - network_type: solana / substrate
   
 - Payload:
 ```json
@@ -22,7 +23,8 @@ Endpoint: /code-compiler/compile
   "models.rs": "use+crate%3A%3ASTORE%3B%0D%0Ause+structmap%3A%3A%7BFromMap%2C+ToMap%7D%3B%0D%0Ause+structmap_derive%3A%3A%7BFromMap%2C+ToMap%7D%3B%0D%0A%0D%0A%23%5Bderive%28Default%2C+Clone%2C+FromMap%2C+ToMap%29%5D%0D%0Apub+struct+BlockTs+%7B%0D%0A++++pub+block_hash%3A+String%2C%0D%0A++++pub+block_height%3A+i64%2C%0D%0A%7D%0D%0A%0D%0Aimpl+Into%3Cstructmap%3A%3AGenericMap%3E+for+BlockTs+%7B%0D%0A++++fn+into%28self%29+-%3E+structmap%3A%3AGenericMap+%7B%0D%0A++++++++BlockTs%3A%3Ato_genericmap%28self.clone%28%29%29%0D%0A++++%7D%0D%0A%7D%0D%0A%0D%0Aimpl+BlockTs+%7B%0D%0A++++pub+fn+save%28%26self%29+%7B%0D%0A++++++++unsafe+%7B%0D%0A++++++++++++STORE%0D%0A++++++++++++++++.as_ref%28%29%0D%0A++++++++++++++++.unwrap%28%29%0D%0A++++++++++++++++.save%28%22BlockTs%22.to_string%28%29%2C+self.clone%28%29.into%28%29%29%3B%0D%0A++++++++%7D%0D%0A++++%7D%0D%0A%7D",
   "project.yaml": "schema%3A%0D%0A++file%3A+.%2Fschema.graphql%0D%0A%0D%0AdataSources%3A%0D%0A++-+kind%3A+substrate%0D%0A++++name%3A+Index%0D%0A++++network%3A+https%3A%2F%2Fdata-seed-prebsc-1-s1.binance.org%3A8545%2F%0D%0A++++mapping%3A%0D%0A++++++language%3A+rust%0D%0A++++++handlers%3A%0D%0A++++++++-+handler%3A+handleBlock%0D%0A++++++++++kind%3A+substrate%2FBlockHandler%0D%0A++++++++-+handler%3A+handleCall%0D%0A++++++++++kind%3A+substrate%2FCallHandler%0D%0A++++++++-+handler%3A+handleEvent%0D%0A++++++++++kind%3A+substrate%2FEventHandler",
   "up.sql": "CREATE+TABLE+BlockTs+%28%0D%0A++++block_hash+varchar%2C%0D%0A++++block_height+bigint%0D%0A%29",
-  "table": "BlockTs"
+  "table": "BlockTs",
+  "network_type": "substrate"
 }
 ```
 
@@ -35,7 +37,7 @@ Endpoint: /code-compiler/compile
 ```
 
 ---
-Endpoint: /code-compiler/compile/status/{compilation_id}
+Endpoint: /compile/status/{compilation_id}
 
 - Method: GET
 
@@ -50,7 +52,7 @@ Endpoint: /code-compiler/compile/status/{compilation_id}
 ```
 
 ---
-Endpoint: /code-compiler/deploy/{compilation_id}
+Endpoint: /deploy/{compilation_id}
 
 - Method: POST
 
@@ -79,7 +81,6 @@ Endpoint: /code-compiler/deploy/{compilation_id}
   "payload": ""
 }
 ```
-
 
 ---
 Endpoint: /index-manager
@@ -113,11 +114,9 @@ Description:
 
 
 
-
-
-
-
+##
 ## Mock API
+##
 
 ---
 Endpoint: /mock/compile
