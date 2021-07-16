@@ -6,6 +6,7 @@ members = [
     "indexer/main",
     "plugin/plugin",
     "plugin/test-block",
+    "plugin/test-solana-block",
     "plugin/test-extrinsic",
     "plugin/test-event",
     "core/chain/solana",
