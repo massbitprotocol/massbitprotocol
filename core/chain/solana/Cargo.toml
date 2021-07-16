@@ -8,18 +8,19 @@ edition = "2018"
 [dependencies]
 serde_json = "1.0.64"
 serde = "1.0.126"
+solana-sdk = "1.7.4"
 
 ############# Solana
 [dependencies.solana-client]
 package = "solana-client"
-#git = "https://github.com/massbitprotocol/solana.git"
-path = "../../../../../solana/solana_offical/solana/client"
+git = "https://github.com/massbitprotocol/solana.git"
+#path = "../../../../../solana/solana_offical/solana/client"
 #/home/huy/work/block_chain/solana/solana_offical/solana/client
 #branch = "master"
 
 [dependencies.solana-transaction-status]
 package = "solana-transaction-status"
-#git = "https://github.com/massbitprotocol/solana.git"
-path = "../../../../../solana/solana_offical/solana/transaction-status"
+git = "https://github.com/massbitprotocol/solana.git"
+#path = "../../../../../solana/solana_offical/solana/transaction-status"
 
 ############# End solana

@@ -12,7 +12,7 @@ pub type SubstrateUncheckedExtrinsic = ExtExtrinsic;
 pub type SubstrateEventRecord = ExtEvent;
 
 type Number = u32;
-type Date = u16;
+type Date = i64;
 type Event = system::EventRecord<node_template_runtime::Event, node_template_runtime::Hash>;
 type Extrinsic = node_template_runtime::UncheckedExtrinsic;
 type Block = node_template_runtime::Block;
