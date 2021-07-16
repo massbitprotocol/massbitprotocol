@@ -134,7 +134,7 @@ impl<'a> PluginManager<'a> {
             .handle_transaction(transaction)
     }
 
-    pub fn handle_solana_event(
+    pub fn handle_solana_log_messages(
         &self,
         plugin_id: &str,
         event: &SolanaLogMessages,
