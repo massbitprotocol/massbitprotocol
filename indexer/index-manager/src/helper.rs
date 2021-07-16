@@ -329,7 +329,7 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
                         let encoded_block: SolanaEncodedBlock = solana_decode(&mut data.payload).unwrap();
                         let block = convert_solana_encoded_block_to_solana_block(encoded_block); // Decoding
                         println!("Received SOLANA BLOCK with block height: {:?}, hash: {:?}", &block.block.block_height.unwrap(), &block.block.transactions);
-                        // plugins.handle_solana_block("1234", &block);
+                        plugins.handle_solana_block("1234", &block);
                         for origin_transaction in block.clone().block.transactions {
                             let log_messages = origin_transaction.clone().meta.unwrap().log_messages.clone();
                             let transaction = SolanaTransaction {

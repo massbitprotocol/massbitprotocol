@@ -46,7 +46,7 @@ fn decode_encoded_block (encoded_block: EncodedBlock) -> Block {
             let meta = &transaction.meta.as_ref().unwrap();
             // Todo: Why cannot decode many transaction?
             let decode_transaction = transaction.transaction.decode();
-            println!("*** Decode transaction: {:?}",decode_transaction);
+            // println!("*** Decode transaction: {:?}",decode_transaction);
             match decode_transaction {
                 Some(decode_transaction) => {
                     Some(solana_transaction_status::TransactionWithStatusMeta {
