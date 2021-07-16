@@ -131,6 +131,7 @@ pub async fn loop_get_event(chan: broadcast::Sender<GenericDataProto>) {
 
         match _events {
             Ok(evts) => {
+                println!("{:?}", evts);
                 for evt in &evts {
                     let ext_event = EventRecord {
                         // Todo: Need find the block number and add here

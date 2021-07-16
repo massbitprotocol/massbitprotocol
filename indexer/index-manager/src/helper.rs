@@ -19,15 +19,12 @@ use tonic::Request;
 use crate::types::{DeployParams, DeployType, DetailParams, Indexer};
 use index_store::core::IndexStore;
 use ipfs_client::core::create_ipfs_clients;
-use massbit_chain_substrate::data_type::{
-    decode, decode_transactions, SubstrateBlock as Block, SubstrateBlock,
-    SubstrateHeader as Header, SubstrateUncheckedExtrinsic as Extrinsic,
-};
+use massbit_chain_substrate::data_type::{decode, decode_transactions, SubstrateBlock as Block, SubstrateBlock, SubstrateHeader as Header, SubstrateUncheckedExtrinsic as Extrinsic, get_extrinsics_from_block, SubstrateEventRecord};
 use plugin::manager::PluginManager;
-use stream_mod::{
-    streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
-    HelloRequest,
-};
+use stream_mod::{HelloRequest, GetBlocksRequest, GenericDataProto, ChainType, DataType, streamout_client::StreamoutClient};
+// use massbit_chain_solana::data_type::{
+//     SolanaBlock, decode as solana_decode
+// };
 
 // Configs
 pub mod stream_mod {
@@ -45,7 +42,7 @@ lazy_static! {
         env::var("IPFS_ADDRESS").unwrap_or(String::from("0.0.0.0:5001"));
 }
 
-type EventRecord = system::EventRecord<Event, Hash>;
+// type EventRecord = system::EventRecord<Event, Hash>;
 
 pub async fn get_index_config(ipfs_config_hash: &String) -> serde_yaml::Mapping {
     let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
@@ -189,7 +186,7 @@ pub fn read_config_file(config_file_path: &String) -> serde_yaml::Value {
 pub fn insert_new_indexer(
     connection: &PgConnection,
     id: &String,
-    project_config: serde_yaml::Value,
+    project_config: &serde_yaml::Value,
 ) {
     let network = project_config["dataSources"][0]["kind"].as_str().unwrap();
     let name = project_config["dataSources"][0]["name"].as_str().unwrap();
@@ -265,7 +262,14 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
 
     // Read project.yaml config and add a new indexer row
     let project_config = read_config_file(&config_file_path);
-    insert_new_indexer(&connection, &params.index_name, project_config);
+    insert_new_indexer(&connection, &params.index_name, &project_config);
+
+    // Use correct chain type based on config
+    let chain_type = match project_config["dataSources"][0]["kind"].as_str().unwrap() {
+        "substrate" => ChainType::Substrate,
+        "solana" => ChainType::Solana,
+        _ => ChainType::Substrate, // If not provided, assume it's substrate network
+    };
 
     // Chain Reader Client Configuration to subscribe and get latest block from Chain Reader Server
     let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone())
@@ -274,6 +278,7 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
     let get_blocks_request = GetBlocksRequest {
         start_block_number: 0,
         end_block_number: 1,
+        chain_type: chain_type as i32,
     };
     let mut stream = client
         .list_blocks(Request::new(get_blocks_request))
@@ -284,34 +289,57 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
     log::info!("[Index Manager Helper] Start plugin manager");
     while let Some(data) = stream.message().await? {
         let mut data = data as GenericDataProto;
-        log::info!(
-            "[Index Manager Helper] Received block = {:?}, hash = {:?} from {:?}",
-            data.block_number,
-            data.block_hash,
-            params.index_name
-        );
+        log::info!("[Index Manager Helper] Received chain: {:?}, data block = {:?}, hash = {:?}, data type = {:?}",
+                 ChainType::from_i32(data.chain_type).unwrap(),
+                 data.block_number,
+                 data.block_hash,
+                 DataType::from_i32(data.data_type).unwrap());
+
+
         let mut plugins = PluginManager::new(&store);
         unsafe {
-            plugins.load(mapping_file_path.clone()).unwrap();
+            plugins.load("1234", mapping_file_path.clone()).unwrap();
         }
 
-        match DataType::from_i32(data.data_type) {
-            Some(DataType::Block) => {
-                let block: Block = decode(&mut data.payload).unwrap();
-                println!("Received BLOCK: {:?}", block.header.number);
-                plugins.handle_substrate_block("test", &block);
+        match chain_type {
+            ChainType::Substrate => {
+                match DataType::from_i32(data.data_type) {
+                    Some(DataType::Block) => {
+                        let block: SubstrateBlock = decode(&mut data.payload).unwrap();
+                        // println!("Received BLOCK: {:?}", &block.block.header.number);
+                        let extrinsics = get_extrinsics_from_block(&block);
+                        for extrinsic in extrinsics {
+                            // println!("Received EXTRINSIC: {:?}", extrinsic);
+                            plugins.handle_substrate_extrinsic("1234", &extrinsic);
+                        }
+                        plugins.handle_substrate_block("1234", &block);
+                    },
+                    Some(DataType::Event) => {
+                        let event: SubstrateEventRecord = decode(&mut data.payload).unwrap();
+                        println!("Received Event: {:?}", event);
+                        plugins.handle_substrate_event("1234", &event);
+                    },
+                    // Some(DataType::Transaction) => {}
+                    _ => {
+                        println!("Not support data type: {:?}", &data.data_type);
+                    }
+                }
             }
-            Some(DataType::Event) => {
-                let event: EventRecord = decode(&mut data.payload).unwrap();
-                println!("Received EVENT: {:?}", event);
-            }
-            Some(DataType::Transaction) => {
-                let extrinsics: Vec<Extrinsic> = decode_transactions(&mut data.payload).unwrap();
-                println!("Received Extrinsic: {:?}", extrinsics);
-            }
-
+            ChainType::Solana => {
+                // match DataType::from_i32(data.data_type) {
+                //     Some(DataType::Block) => {
+                //         //println!("Recieved data: {:?}", data);
+                //         let block: SolanaBlock = solana_decode(&mut data.payload).unwrap();
+                //         println!("Recieved BLOCK with block height: {:?}, hash: {:?}", &block.block_height.unwrap(), &block.blockhash);
+                //
+                //     },
+                //     _ => {
+                //         println!("Not support type in Solana");
+                //     }
+                // }
+            },
             _ => {
-                println!("Not support data type: {:?}", &data.data_type);
+                println!("Not support this package chain-type");
             }
         }
     }
@@ -320,12 +348,18 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
 
 // Return indexer list
 pub async fn list_handler_helper() -> Result<Vec<Indexer>, Box<dyn Error>> {
+    // Create indexers table if it doesn't exists. We should do this with migration at the start.
+    let connection = PgConnection::establish(&DATABASE_CONNECTION_STRING).expect(&format!(
+        "Error connecting to {}",
+        *DATABASE_CONNECTION_STRING
+    ));
+    create_indexers_table_if_not_exists(&connection);
+
+    // User postgre lib for easy query
     let mut client =
         PostgreConnection::connect(DATABASE_CONNECTION_STRING.clone(), TlsMode::None).unwrap();
-
-    // TODO check for deploy success or not
-    // TODO: add check if table does not exists
     let mut indexers: Vec<Indexer> = Vec::new();
+
     for row in &client
         .query("SELECT id, network, name FROM indexers", &[])
         .unwrap()
@@ -337,5 +371,6 @@ pub async fn list_handler_helper() -> Result<Vec<Indexer>, Box<dyn Error>> {
         };
         indexers.push(indexer);
     }
+
     Ok((indexers))
 }

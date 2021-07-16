@@ -29,3 +29,5 @@ __pycache__
 chain-reader/data/
 
 *.so
+
+/code-compiler/generated
