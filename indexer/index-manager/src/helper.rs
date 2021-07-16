@@ -348,12 +348,18 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
 
 // Return indexer list
 pub async fn list_handler_helper() -> Result<Vec<Indexer>, Box<dyn Error>> {
+    // Create indexers table if it doesn't exists. We should do this with migration at the start.
+    let connection = PgConnection::establish(&DATABASE_CONNECTION_STRING).expect(&format!(
+        "Error connecting to {}",
+        *DATABASE_CONNECTION_STRING
+    ));
+    create_indexers_table_if_not_exists(&connection);
+
+    // User postgre lib for easy query
     let mut client =
         PostgreConnection::connect(DATABASE_CONNECTION_STRING.clone(), TlsMode::None).unwrap();
-
-    // TODO check for deploy success or not
-    // TODO: add check if table does not exists
     let mut indexers: Vec<Indexer> = Vec::new();
+
     for row in &client
         .query("SELECT id, network, name FROM indexers", &[])
         .unwrap()
@@ -365,5 +371,6 @@ pub async fn list_handler_helper() -> Result<Vec<Indexer>, Box<dyn Error>> {
         };
         indexers.push(indexer);
     }
+
     Ok((indexers))
 }
