@@ -8,6 +8,7 @@ edition = "2018"
 [dependencies]
 serde_json = "1.0.64"
 serde = "1.0.126"
+solana-sdk = "1.7.4"
 
 ############# Solana
 [dependencies.solana-client]
