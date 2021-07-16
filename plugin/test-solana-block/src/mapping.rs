@@ -2,7 +2,7 @@ use crate::models::BlockSolanaTs;
 use massbit_chain_solana::data_type::{
     SolanaBlock,
     SolanaTransaction,
-    SolanaEvent,
+    SolanaLogMessages
 };
 
 pub fn handle_block(block: &SolanaBlock) -> Result<(), Box<dyn std::error::Error>> {
@@ -14,6 +14,6 @@ pub fn handle_transaction(transaction: &SolanaTransaction) -> Result<(), Box<dyn
     Ok(())
 }
 
-pub fn handle_event(event: &SolanaEvent) -> Result<(), Box<dyn std::error::Error>> {
+pub fn handle_log_messages(event: &SolanaLogMessages) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }

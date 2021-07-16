@@ -5,13 +5,13 @@ use index_store::core::Store;
 use massbit_chain_solana::data_type::{
     SolanaBlock,
     SolanaTransaction,
-    SolanaEvent,
+    SolanaLogMessages,
 };
 use plugin::core::{
     PluginRegistrar,
     SolanaBlockHandler as SolanaBlockHandlerTrait,
     SolanaTransactionHandler as SolanaTransactionHandlerTrait,
-    SolanaEventHandler as SolanaEventHandlerTrait
+    SolanaLogMessagesHandler as SolanaLogMessagesHandlerTrait
 };
 
 #[doc(hidden)]
@@ -24,15 +24,15 @@ plugin::export_plugin!(register);
 extern "C" fn register(registrar: &mut dyn PluginRegistrar) {
     registrar.register_solana_block_handler(Box::new(SolanaBlockHandler));
     registrar.register_solana_transaction_handler(Box::new(SolanaTransactionHandler));
-    registrar.register_solana_event_handler(Box::new(SolanaEventHandler));
+    registrar.register_solana_event_handler(Box::new(SolanaLogMessagesHandler));
 }
 
 // Event Handler
 #[derive(Debug, Clone, PartialEq)]
-pub struct SolanaEventHandler;
-impl SolanaEventHandlerTrait for SolanaEventHandler {
-    fn handle_event(&self, event: &SolanaEvent) -> Result<(), Box<dyn std::error::Error>> {
-        mapping::handle_event(event)
+pub struct SolanaLogMessagesHandler;
+impl SolanaLogMessagesHandlerTrait for SolanaLogMessagesHandler {
+    fn handle_log_messages(&self, event: &SolanaLogMessages) -> Result<(), Box<dyn std::error::Error>> {
+        mapping::handle_log_messages(event)
     }
 }
 
