@@ -3,9 +3,7 @@ use tonic::{transport::{Server, Channel}, Request, Response, Status};
 use crate::stream_mod::{HelloRequest, GetBlocksRequest, GenericDataProto, ChainType, DataType, streamout_client::StreamoutClient};
 use std::error::Error;
 use massbit_chain_substrate::data_type::{SubstrateBlock, SubstrateHeader, SubstrateUncheckedExtrinsic, decode_transactions, SubstrateEventRecord};
-use massbit_chain_solana::data_type::{
-    SolanaBlock, decode as solana_decode
-    };
+use massbit_chain_solana::data_type::{SolanaBlock, decode as solana_decode, SolanaEncodedBlock, convert_solana_encoded_block_to_solana_block, SolanaTransaction, SolanaLogMessages};
 
 use sp_core::{sr25519, H256 as Hash};
 use node_template_runtime::Event;
@@ -69,12 +67,37 @@ pub async fn print_blocks(mut client: StreamoutClient<Channel>, chain_type: Chai
                 match DataType::from_i32(data.data_type) {
                     Some(DataType::Block) => {
                         //println!("Recieved data: {:?}", data);
-                        let block: SolanaBlock = solana_decode(&mut data.payload).unwrap();
-                        println!("Recieved BLOCK with block height: {:?}, hash: {:?}", &block.block_height.unwrap(), &block.blockhash);
+                        let encoded_block: SolanaEncodedBlock = solana_decode(&mut data.payload).unwrap();
+                        //println!("Recieved SOLANA Encode BLOCK with block height: {:?}, hash: {:?}", &encoded_block.block.block_height.unwrap(), &encoded_block.block.transactions);
+                        // Decode
+                        let block = convert_solana_encoded_block_to_solana_block(encoded_block);
+                        //println!("Recieved SOLANA BLOCK with block height: {:?}, hash: {:?}", &block.block.block_height.unwrap(), &block.block.blockhash);
+                        println!("Recieved SOLANA BLOCK with block height: {:?}, hash: {:?}", &block.block.block_height.unwrap(), &block.block.transactions);
+                        //println!("Recieved SOLANA BLOCK with block height: {:?}, hash: {:#?}", &block.block.block_height.unwrap(), &block);
+                        for origin_transaction in block.clone().block.transactions {
+                            let log_messages = origin_transaction.clone().meta.unwrap().log_messages.clone();
+                            let transaction = SolanaTransaction {
+                                block_number: ((&block).block.block_height.unwrap() as u32),
+                                transaction: origin_transaction.clone(),
+                                block: block.clone(),
+                                log_messages: log_messages.clone(),
+                                success: false
+                            };
+                            println!("Recieved SOLANA TRANSACTION with Block number: {:?}, trainsation: {:?}", &transaction.block_number, &transaction.transaction);
+
+                            let log_messages = SolanaLogMessages {
+                                block_number: ((&block).block.block_height.unwrap() as u32),
+                                log_messages: log_messages.clone(),
+                                transaction: transaction.clone(),
+                                block: block.clone()
+                            };
+                            println!("Recieved SOLANA LOG_MESSAGES with Block number: {:?}, log_messages: {:?}", &transaction.block_number, &transaction.log_messages);
+
+                        }
 
                     },
                     _ => {
-                        println!("Not support type in Solana");
+                        println!("Not support this type in Solana");
                     }
                 }
             },

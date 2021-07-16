@@ -3,7 +3,7 @@ use crate::{grpc_stream::stream_mod::{GenericDataProto, ChainType, DataType}, CO
 
 use solana_client::{pubsub_client::PubsubClient, rpc_client::RpcClient, rpc_response::SlotInfo};
 use solana_transaction_status::{UiConfirmedBlock, EncodedConfirmedBlock};
-use codec::{Decode, Encode};
+// use codec::{Decode, Encode};
 //use serde::Serialize;
 use serde_json::{Serializer, Deserializer};
 use serde::Serialize;
@@ -15,7 +15,13 @@ use std::{
     time::{Instant}
 };
 use std::error::Error;
-use massbit_chain_solana::data_type::{SolanaBlock as Block};
+use massbit_chain_solana::data_type::{  SolanaEncodedBlock as Block,
+                                        SolanaTransaction as Transaction,
+                                        SolanaLogMessages as LogMessages,
+                                        get_list_log_messages_from_encoded_block,
+                                        };
+
+
 
 // Check https://github.com/tokio-rs/prost for enum converting in rust protobuf
 const CHAIN_TYPE: ChainType = ChainType::Solana;
@@ -66,14 +72,13 @@ pub async fn loop_get_block(chan: broadcast::Sender<GenericDataProto>) {
                             continue;
                         }
 
-                        //get_blocks(client.clone(), &chan, value_last_root, root);
                         for block_height in value_last_root..root{
                             let new_client = client.clone();
                             //tokio::spawn(async move {
                             let block = get_block(new_client,block_height);
                             match block {
                                 Ok(block) => {
-                                    let generic_data_proto = _create_generic_block(block.blockhash.clone(),block_height, &block);
+                                    let generic_data_proto = _create_generic_block(block.block.blockhash.clone(),block_height, &block);
                                     println!("Sending SOLANA as generic data: {:?}", &generic_data_proto.block_number);
                                     //println!("Sending SOLANA as generic data");
                                     chan.send(generic_data_proto).unwrap();
@@ -98,9 +103,6 @@ pub async fn loop_get_block(chan: broadcast::Sender<GenericDataProto>) {
     }
 }
 
-// async fn solana_finalized_block_subscribe(websocket_url: &String, json_rpc_url: &String) {
-//
-// }
 
 fn _create_generic_block(   block_hash: String,
                             block_number: u64,
@@ -125,7 +127,7 @@ fn get_blocks(client: Arc<RpcClient>, chan: &broadcast::Sender<GenericDataProto>
         let block = get_block(new_client,block_height);
         match block {
             Ok(block) => {
-                let generic_data_proto = _create_generic_block(block.blockhash.clone(),block_height, &block);
+                let generic_data_proto = _create_generic_block(block.block.blockhash.clone(),block_height, &block);
                 //println!("Sending SOLANA as generic data: {:?}", &generic_data_proto.block_number);
                 println!("Sending SOLANA as generic data");
                 chan.send(generic_data_proto).unwrap();
@@ -138,7 +140,7 @@ fn get_blocks(client: Arc<RpcClient>, chan: &broadcast::Sender<GenericDataProto>
     }
 }
 
-fn get_block(client: Arc<RpcClient>, block_height: u64) -> Result<EncodedConfirmedBlock,Box<dyn Error>>{
+fn get_block(client: Arc<RpcClient>, block_height: u64) -> Result<Block,Box<dyn Error>>{
 
     println!("Starting get Block {}",block_height);
     let now = Instant::now();
@@ -146,8 +148,16 @@ fn get_block(client: Arc<RpcClient>, block_height: u64) -> Result<EncodedConfirm
     let elapsed = now.elapsed();
     match block{
         Ok(block) => {
+            let timestamp = (&block).block_time.unwrap();
+            let list_log_messages = get_list_log_messages_from_encoded_block(&block);
             println!("Finished get Block: {:?}, time: {:?}, hash: {}", block_height, elapsed, &block.blockhash);
-            Ok(block)
+            let ext_block = Block {
+                version: VERSION.to_string(),
+                block,
+                timestamp,
+                list_log_messages,
+            };
+            Ok(ext_block)
         },
         _ => {
             println!("Cannot get: {:?}", &block);
