@@ -66,14 +66,12 @@ pub async fn print_blocks(mut client: StreamoutClient<Channel>, chain_type: Chai
             ChainType::Solana => {
                 match DataType::from_i32(data.data_type) {
                     Some(DataType::Block) => {
-                        //println!("Recieved data: {:?}", data);
                         let encoded_block: SolanaEncodedBlock = solana_decode(&mut data.payload).unwrap();
-                        //println!("Recieved SOLANA Encode BLOCK with block height: {:?}, hash: {:?}", &encoded_block.block.block_height.unwrap(), &encoded_block.block.transactions);
                         // Decode
                         let block = convert_solana_encoded_block_to_solana_block(encoded_block);
-                        //println!("Recieved SOLANA BLOCK with block height: {:?}, hash: {:?}", &block.block.block_height.unwrap(), &block.block.blockhash);
+
                         println!("Recieved SOLANA BLOCK with block height: {:?}, hash: {:?}", &block.block.block_height.unwrap(), &block.block.transactions);
-                        //println!("Recieved SOLANA BLOCK with block height: {:?}, hash: {:#?}", &block.block.block_height.unwrap(), &block);
+
                         for origin_transaction in block.clone().block.transactions {
                             let log_messages = origin_transaction.clone().meta.unwrap().log_messages.clone();
                             let transaction = SolanaTransaction {

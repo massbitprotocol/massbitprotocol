@@ -2,7 +2,7 @@ use tokio::sync::broadcast;
 use crate::{grpc_stream::stream_mod::{GenericDataProto, ChainType, DataType}, CONFIG};
 
 use solana_client::{pubsub_client::PubsubClient, rpc_client::RpcClient, rpc_response::SlotInfo};
-use solana_transaction_status::{UiConfirmedBlock, EncodedConfirmedBlock};
+use solana_transaction_status::{UiConfirmedBlock, EncodedConfirmedBlock, UiTransactionEncoding};
 // use codec::{Decode, Encode};
 //use serde::Serialize;
 use serde_json::{Serializer, Deserializer};
@@ -27,6 +27,7 @@ use massbit_chain_solana::data_type::{  SolanaEncodedBlock as Block,
 const CHAIN_TYPE: ChainType = ChainType::Solana;
 const VERSION:&str = "1.6.16";
 const BLOCK_AVAILABLE_MARGIN: u64 = 100;
+const RPC_BLOCK_ENCODING: UiTransactionEncoding = UiTransactionEncoding::Base64;
 
 fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>){
     // Todo: More clean solution for broadcast channel
@@ -43,9 +44,10 @@ pub async fn loop_get_block(chan: broadcast::Sender<GenericDataProto>) {
     let config = CONFIG.chains.get(&CHAIN_TYPE).unwrap();
     let json_rpc_url = config.url.clone();
     let websocket_url = config.ws.clone();
-
+    println!("Init Solana client");
     let (mut subscription_client, receiver) =
         PubsubClient::slot_subscribe(&websocket_url).unwrap();
+    println!("Finished init Solana client");
     let exit = Arc::new(AtomicBool::new(false));
     let client = Arc::new(RpcClient::new(json_rpc_url.clone()));
 
@@ -144,7 +146,7 @@ fn get_block(client: Arc<RpcClient>, block_height: u64) -> Result<Block,Box<dyn 
 
     println!("Starting get Block {}",block_height);
     let now = Instant::now();
-    let block = client.get_block(block_height);
+    let block = client.get_block_with_encoding(block_height, RPC_BLOCK_ENCODING);
     let elapsed = now.elapsed();
     match block{
         Ok(block) => {
