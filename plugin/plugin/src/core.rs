@@ -1,6 +1,6 @@
 use massbit_chain_solana::data_type::{SolanaBlock, SolanaEvent, SolanaTransaction};
 use massbit_chain_substrate::data_type::{
-    SubstrateBlock, SubstrateCheckedExtrinsic, SubstrateEventRecord,SubstrateUncheckedExtrinsic
+    SubstrateBlock, SubstrateEventRecord, SubstrateExtrinsic,
 };
 
 use std::error::Error;
@@ -10,8 +10,7 @@ pub trait SubstrateBlockHandler {
 }
 
 pub trait SubstrateExtrinsicHandler {
-    fn handle_extrinsic(&self, extrinsic: &SubstrateUncheckedExtrinsic)
-        -> Result<(), Box<dyn Error>>;
+    fn handle_extrinsic(&self, extrinsic: &SubstrateExtrinsic) -> Result<(), Box<dyn Error>>;
 }
 
 pub trait SubstrateEventHandler {

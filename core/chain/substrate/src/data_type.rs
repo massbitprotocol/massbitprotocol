@@ -1,14 +1,13 @@
+use codec::{Decode, Encode, Input, WrapperTypeDecode};
 use node_template_runtime;
-use std::error::Error;
-use sp_runtime::traits::{SignedExtension, Extrinsic as _};
 use serde::{Deserialize, Serialize};
-use codec::{Encode, Decode, Input, WrapperTypeDecode};
-
+use sp_runtime::traits::{Extrinsic as _, SignedExtension};
+use std::error::Error;
 
 //********************** SUBSTRATE ********************************
 // Main data type for substrate indexing
 pub type SubstrateBlock = ExtBlock;
-pub type SubstrateUncheckedExtrinsic = ExtExtrinsic;
+pub type SubstrateExtrinsic = ExtExtrinsic;
 pub type SubstrateEventRecord = ExtEvent;
 
 type Number = u32;
@@ -64,11 +63,10 @@ pub trait ExtrinsicTrait {
 //     }
 // }
 
-pub fn get_extrinsics_from_block (block: &ExtBlock) -> Vec<ExtExtrinsic> {
-
+pub fn get_extrinsics_from_block(block: &ExtBlock) -> Vec<ExtExtrinsic> {
     let iter = block.block.extrinsics.iter();
     let extrinsics = iter
-        .map(|extrinsic|{
+        .map(|extrinsic| {
             //let hash = extrinsic.get_hash();
             ExtExtrinsic {
                 block_number: block.block.header.number,
@@ -85,14 +83,16 @@ pub fn get_extrinsics_from_block (block: &ExtBlock) -> Vec<ExtExtrinsic> {
     extrinsics
 }
 
-
 pub fn decode<T>(payload: &mut Vec<u8>) -> Result<T, Box<dyn Error>>
-    where T: Decode,
+where
+    T: Decode,
 {
     Ok(Decode::decode(&mut payload.as_slice()).unwrap())
 }
 
-pub fn decode_transactions(payload: &mut  Vec<u8>) -> Result<Vec<SubstrateUncheckedExtrinsic>, Box<dyn Error>>{
+pub fn decode_transactions(
+    payload: &mut Vec<u8>,
+) -> Result<Vec<SubstrateExtrinsic>, Box<dyn Error>> {
     let mut transactions: Vec<Vec<u8>> = Decode::decode(&mut payload.as_slice()).unwrap();
     println!("transactions: {:?}", transactions);
 
@@ -101,5 +101,3 @@ pub fn decode_transactions(payload: &mut  Vec<u8>) -> Result<Vec<SubstrateUnchec
         .map(|encode| Decode::decode(&mut encode.as_slice()).unwrap())
         .collect())
 }
-
-
