@@ -202,7 +202,8 @@ def deploy_handler():
     f = open(up, "r")
     up = f.read()
     pattern = "(.*TABLE\s+)(.*)(\s+\(.*)"
-    if match := re.search(pattern, up, re.IGNORECASE):
+    match = re.search(pattern, up, re.IGNORECASE)
+    if match:
         table_name = match.group(2)
     print("Table name :", table_name)
 
