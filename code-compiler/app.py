@@ -8,6 +8,7 @@ import subprocess
 import threading
 import ipfshttpclient
 import requests
+import re
 
 ################
 # Config Flask #
@@ -104,7 +105,7 @@ def compile_handler():
     models = urllib.parse.unquote_plus(data["models.rs"])
     project = urllib.parse.unquote_plus(data["project.yaml"])
     up = urllib.parse.unquote_plus(data["up.sql"])
-    table = urllib.parse.unquote_plus(data["table"])
+    table = urllib.parse.unquote_plus(data["table"])  # Should refactor this to index_name in the future
     network_type = urllib.parse.unquote_plus(data["network_type"])
 
     # Populate data based on network type so we can run compile with enough data
@@ -122,7 +123,7 @@ def compile_handler():
     write_to_disk(generated_folder + "/src/models.rs", models)
     write_to_disk(generated_folder + "/src/project.yaml", project)
     write_to_disk(generated_folder + "/src/up.sql", up)
-    write_to_disk(generated_folder + "/src/table.txt", table)
+    write_to_disk(generated_folder + "/src/table.txt", table)  # Should refactor this to index_name in the future
 
     # Compile the newly created deployment
     print("Compiling request: " + hash + ". This will take a while!")
@@ -180,7 +181,7 @@ def deploy_handler():
     project = os.path.join("./generated", compilation_id, "src/project.yaml")
     up = os.path.join("./generated", compilation_id, "src/up.sql")
     so = os.path.join("./generated", compilation_id, "target/release/libblock.so")
-    table = os.path.join("./generated", compilation_id, "src/table.txt")
+    index_name = os.path.join("./generated", compilation_id, "src/table.txt")
 
     # Uploading files to IPFS
     if os.environ.get('IPFS_URL'):
@@ -193,15 +194,23 @@ def deploy_handler():
     up_res = client.add(up)
     so_res = client.add(so)
 
-    # Reading table name
-    f = open(table, "r")
-    table_name = f.read()
+    # Reading indexer name from table.txt file, should refactor to index.txt later
+    f = open(index_name, "r")
+    index_name = f.read()
+
+    # Read table_name from SQL query
+    f = open(up, "r")
+    up = f.read()
+    pattern = "(.*TABLE\s+)(.*)(\s+\(.*)"
+    if match := re.search(pattern, up, re.IGNORECASE):
+        table_name = match.group(2)
+    print("Table name :", table_name)
 
     # Uploading to IPFS result
     print("project.yaml: " + project_res['Hash'])
     print("up.sql: " + up_res['Hash'])
     print("libblock.so: " + so_res['Hash'])
-    print("table & indexer_name: " + table_name)
+    print("Indexer name: " + index_name)
 
     # Uploading IPFS files to Index Manager
     if os.environ.get('INDEX_MANAGER_URL'):
@@ -213,7 +222,7 @@ def deploy_handler():
                             'jsonrpc': '2.0',
                             'method': 'index_deploy',
                             'params': [
-                                table_name,
+                                index_name,
                                 project_res['Hash'],
                                 so_res['Hash'],
                                 up_res['Hash'],
