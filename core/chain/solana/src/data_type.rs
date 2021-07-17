@@ -45,10 +45,10 @@ fn decode_encoded_block (encoded_block: EncodedBlock) -> Block {
         transactions: encoded_block.transactions.iter().filter_map(|transaction| {
             let meta = &transaction.meta.as_ref().unwrap();
             // Todo: Why cannot decode many transaction?
-            let decode_transaction = transaction.transaction.decode();
-            // println!("*** Decode transaction: {:?}",decode_transaction);
-            match decode_transaction {
-                Some(decode_transaction) => {
+            let decoded_transaction = transaction.transaction.decode();
+            //println!("*** Decode transaction: {:?}",decoded_transaction);
+            match decoded_transaction {
+                Some(decoded_transaction) => {
                     Some(solana_transaction_status::TransactionWithStatusMeta {
                         meta: Some(TransactionStatusMeta {
                             status: meta.status.clone(),
@@ -63,7 +63,7 @@ fn decode_encoded_block (encoded_block: EncodedBlock) -> Block {
                             pre_token_balances: None,
                             // EndTodo
                         }),
-                        transaction: decode_transaction,
+                        transaction: decoded_transaction,
                     })
                 },
                 None => None,
@@ -85,9 +85,6 @@ pub fn convert_solana_encoded_block_to_solana_block (encoded_block: SolanaEncode
         list_log_messages: encoded_block.list_log_messages,
     }
 }
-
-
-
 
 // Similar to
 // https://github.com/subquery/subql/blob/93afc96d7ee0ff56d4dd62d8a145088f5bb5e3ec/packages/types/src/interfaces.ts#L18
