@@ -164,7 +164,7 @@ pub fn create_indexers_table_if_not_exists(connection: &PgConnection) {
     let result = diesel::sql_query(query).execute(connection);
     match result {
         Ok(_) => {
-            log::info!("[Index Manager Helper] Init table Indexer");
+            // log::info!("[Index Manager Helper] Init table Indexer");
         }
         Err(e) => {
             log::warn!("[Index Manager Helper] {}", e);
