@@ -1,36 +1,38 @@
+use crate::grpc_stream::stream_mod::{ChainType, DataType, GenericDataProto};
 use clap::App;
-use sp_core::{sr25519, H256 as Hash};
-use massbit_chain_substrate::data_type::{SubstrateBlock as Block,
-                                         SubstrateHeader as Header,
-                                         SubstrateEventRecord as EventRecord,
-                                         SubstrateUncheckedExtrinsic as Extrinsic,
-                                        };
-use std::sync::mpsc::channel;
-use substrate_api_client::{Api, rpc::json_req, utils::FromHexString};
 use env_logger;
-use serde_json;
-use std::error::Error;
-use crate::grpc_stream::stream_mod::{GenericDataProto, ChainType, DataType};
-use pallet_timestamp::Call as TimestampCall;
+use massbit_chain_substrate::data_type::{
+    SubstrateBlock as Block, SubstrateEventRecord as EventRecord, SubstrateExtrinsic as Extrinsic,
+    SubstrateHeader as Header,
+};
 use pallet_balances::Call as BalancesCall;
+use pallet_timestamp::Call as TimestampCall;
+use serde_json;
+use sp_core::{sr25519, H256 as Hash};
+use std::error::Error;
+use std::sync::mpsc::channel;
+use substrate_api_client::{rpc::json_req, utils::FromHexString, Api};
 use tokio::sync::broadcast;
 
-#[cfg(feature = "std")]
-use node_template_runtime::{Call, AccountId};
 use codec::{Decode, Encode};
-use substrate_api_client::Metadata;
-use std::convert::TryFrom;
-use node_template_runtime::Event;
-use system;
-use pallet_balances;
-use std::env;
 use node_template_runtime::Block as OrgBlock;
+use node_template_runtime::Event;
+#[cfg(feature = "std")]
+use node_template_runtime::{AccountId, Call};
+use pallet_balances;
+use std::convert::TryFrom;
+use std::env;
+use substrate_api_client::Metadata;
+use system;
 
 // Check https://github.com/tokio-rs/prost for enum converting in rust protobuf
 const CHAIN_TYPE: ChainType = ChainType::Substrate;
-const VERSION:&str = "1";
+const VERSION: &str = "1";
 
-fn get_block_and_hash_from_header(api:&Api<sr25519::Pair>, header:Header) -> Result<(Block,String), Box<dyn Error>> {
+fn get_block_and_hash_from_header(
+    api: &Api<sr25519::Pair>,
+    header: Header,
+) -> Result<(Block, String), Box<dyn Error>> {
     // Get block number
     let block_number = header.number;
     // Get Call rpc to block hash
@@ -39,7 +41,10 @@ fn get_block_and_hash_from_header(api:&Api<sr25519::Pair>, header:Header) -> Res
     let block_hash = Hash::from_hex(hash.clone());
 
     // Call RPC to get block
-    let block = api.get_block::<OrgBlock>(Some(block_hash.unwrap())).unwrap().unwrap();
+    let block = api
+        .get_block::<OrgBlock>(Some(block_hash.unwrap()))
+        .unwrap()
+        .unwrap();
     let ext_block = Block {
         version: VERSION.to_string(),
         // Todo: get correct timestamp from the Set_Timestamp extrinsic
@@ -83,12 +88,10 @@ fn get_block_and_hash_from_header(api:&Api<sr25519::Pair>, header:Header) -> Res
 //
 //     generic_data
 // }
-fn _create_generic_block(   block_hash: String,
-                            block:&Block) -> GenericDataProto
-{
+fn _create_generic_block(block_hash: String, block: &Block) -> GenericDataProto {
     let block = (*block).clone();
 
-    let generic_data = GenericDataProto{
+    let generic_data = GenericDataProto {
         chain_type: CHAIN_TYPE as i32,
         version: VERSION.to_string(),
         data_type: DataType::Block as i32,
@@ -99,9 +102,8 @@ fn _create_generic_block(   block_hash: String,
     generic_data
 }
 
-fn _create_generic_event(event: &EventRecord) -> GenericDataProto
-{
-    let generic_data = GenericDataProto{
+fn _create_generic_event(event: &EventRecord) -> GenericDataProto {
+    let generic_data = GenericDataProto {
         chain_type: CHAIN_TYPE as i32,
         version: VERSION.to_string(),
         data_type: DataType::Event as i32,
@@ -113,7 +115,6 @@ fn _create_generic_event(event: &EventRecord) -> GenericDataProto
 }
 
 pub async fn loop_get_event(chan: broadcast::Sender<GenericDataProto>) {
-
     let url = get_node_url_from_cli();
     let api = Api::<sr25519::Pair>::new(url).unwrap();
 
@@ -144,7 +145,10 @@ pub async fn loop_get_event(chan: broadcast::Sender<GenericDataProto>) {
                         // Todo: Need find the success add add here
                     };
                     let generic_data_proto = _create_generic_event(&ext_event);
-                    println!("Sending SUBSTRATE event as generic data: {:?}",generic_data_proto);
+                    println!(
+                        "Sending SUBSTRATE event as generic data: {:?}",
+                        generic_data_proto
+                    );
                     chan.send(generic_data_proto).unwrap();
                 }
             }
@@ -153,7 +157,7 @@ pub async fn loop_get_event(chan: broadcast::Sender<GenericDataProto>) {
     }
 }
 
-fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>){
+fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>) {
     // Todo: More clean solution for broadcast channel
     let mut rx = chan.subscribe();
     tokio::spawn(async move {
@@ -164,7 +168,6 @@ fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>){
 }
 
 pub async fn loop_get_block_and_extrinsic(chan: broadcast::Sender<GenericDataProto>) {
-
     println!("start");
     env_logger::init();
     let url = get_node_url_from_cli();
@@ -173,7 +176,6 @@ pub async fn loop_get_block_and_extrinsic(chan: broadcast::Sender<GenericDataPro
     println!("Subscribing to finalized heads");
     let (send, recv) = channel();
     api.subscribe_finalized_heads(send).unwrap();
-
 
     fix_one_thread_not_receive(&chan);
 
@@ -187,7 +189,10 @@ pub async fn loop_get_block_and_extrinsic(chan: broadcast::Sender<GenericDataPro
         let (block, hash) = get_block_and_hash_from_header(&api, head).unwrap();
         let generic_block = _create_generic_block(hash.clone(), &block);
         // Send block
-        println!("Got block number: {:?}, hash: {:?}", &generic_block.block_number, &generic_block.block_hash);
+        println!(
+            "Got block number: {:?}, hash: {:?}",
+            &generic_block.block_number, &generic_block.block_hash
+        );
         //println!("Sending SUBSTRATE block as generic data {:?}", &generic_block);
         chan.send(generic_block).unwrap();
 
@@ -204,7 +209,7 @@ pub fn get_node_url_from_cli() -> String {
 
     let node_server = match env::var("NODE_SERVER") {
         Ok(connection) => connection, // Configuration from docker-compose environment
-        Err(_) => String::from("ws://127.0.0.1")
+        Err(_) => String::from("ws://127.0.0.1"),
     };
     let node_ip = matches.value_of("node-server").unwrap_or(&node_server);
     let node_port = matches.value_of("node-port").unwrap_or("9944");

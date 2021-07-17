@@ -7,7 +7,7 @@ use index_store::core::Store;
 use libloading::Library;
 use massbit_chain_solana::data_type::{SolanaBlock, SolanaEvent, SolanaTransaction};
 use massbit_chain_substrate::data_type::{
-    SubstrateBlock, SubstrateCheckedExtrinsic, SubstrateEventRecord, SubstrateUncheckedExtrinsic
+    SubstrateBlock, SubstrateEventRecord, SubstrateExtrinsic,
 };
 use std::{alloc::System, collections::HashMap, error::Error, ffi::OsStr, rc::Rc};
 
@@ -93,7 +93,7 @@ impl<'a> PluginManager<'a> {
     pub fn handle_substrate_extrinsic(
         &self,
         plugin_id: &str,
-        extrinsic: &SubstrateUncheckedExtrinsic,
+        extrinsic: &SubstrateExtrinsic,
     ) -> Result<(), Box<dyn Error>> {
         self.substrate_extrinsic_handlers
             .get(plugin_id)
@@ -250,11 +250,7 @@ pub struct SubstrateExtrinsicHandlerProxy {
 }
 
 impl SubstrateExtrinsicHandler for SubstrateExtrinsicHandlerProxy {
-    fn handle_extrinsic(
-        &self,
-        // extrinsic: &SubstrateCheckedExtrinsic,
-        extrinsic: &SubstrateUncheckedExtrinsic,
-    ) -> Result<(), Box<dyn Error>> {
+    fn handle_extrinsic(&self, extrinsic: &SubstrateExtrinsic) -> Result<(), Box<dyn Error>> {
         self.handler.handle_extrinsic(extrinsic)
     }
 }

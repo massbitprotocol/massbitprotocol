@@ -5,9 +5,7 @@ members = [
     "core/chain/substrate",
     "indexer/main",
     "plugin/plugin",
-    "plugin/test-block",
-    "plugin/test-extrinsic",
-    "plugin/test-event",
+    "plugin/test-plugin",
     "core/chain/solana",
 ]
 exclude = ["code-compiler/generated"]

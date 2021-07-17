@@ -8,6 +8,7 @@ edition = "2018"
 [dependencies]
 libloading = "0.5.2"
 massbit-chain-substrate = { path = "../../core/chain/substrate"}
+massbit-chain-solana = { path = "../../core/chain/solana"}
 index-store = { path = "../../core/index-store" }
 structmap = "0.1.5"
 

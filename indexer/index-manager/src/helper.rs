@@ -19,9 +19,16 @@ use tonic::Request;
 use crate::types::{DeployParams, DeployType, DetailParams, Indexer};
 use index_store::core::IndexStore;
 use ipfs_client::core::create_ipfs_clients;
-use massbit_chain_substrate::data_type::{decode, decode_transactions, SubstrateBlock as Block, SubstrateBlock, SubstrateHeader as Header, SubstrateUncheckedExtrinsic as Extrinsic, get_extrinsics_from_block, SubstrateEventRecord};
+use massbit_chain_substrate::data_type::{
+    decode, decode_transactions, get_extrinsics_from_block, SubstrateBlock as Block,
+    SubstrateBlock, SubstrateEventRecord, SubstrateExtrinsic as Extrinsic,
+    SubstrateHeader as Header,
+};
 use plugin::manager::PluginManager;
-use stream_mod::{HelloRequest, GetBlocksRequest, GenericDataProto, ChainType, DataType, streamout_client::StreamoutClient};
+use stream_mod::{
+    streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
+    HelloRequest,
+};
 // use massbit_chain_solana::data_type::{
 //     SolanaBlock, decode as solana_decode
 // };
@@ -295,7 +302,6 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
                  data.block_hash,
                  DataType::from_i32(data.data_type).unwrap());
 
-
         let mut plugins = PluginManager::new(&store);
         unsafe {
             plugins.load("1234", mapping_file_path.clone()).unwrap();
@@ -313,12 +319,12 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
                             plugins.handle_substrate_extrinsic("1234", &extrinsic);
                         }
                         plugins.handle_substrate_block("1234", &block);
-                    },
+                    }
                     Some(DataType::Event) => {
                         let event: SubstrateEventRecord = decode(&mut data.payload).unwrap();
                         println!("Received Event: {:?}", event);
                         plugins.handle_substrate_event("1234", &event);
-                    },
+                    }
                     // Some(DataType::Transaction) => {}
                     _ => {
                         println!("Not support data type: {:?}", &data.data_type);
@@ -337,7 +343,7 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
                 //         println!("Not support type in Solana");
                 //     }
                 // }
-            },
+            }
             _ => {
                 println!("Not support this package chain-type");
             }
