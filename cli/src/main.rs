@@ -1,4 +1,4 @@
-use clap::App;
+use clap::{App, Arg};
 
 mod codegen;
 mod graphql;
@@ -8,12 +8,37 @@ fn main() {
         .version("1.0")
         .about("Massbit CLI")
         .subcommand(
-            App::new("codegen").about("Generate Rust code & SQL migrations from GraphQL schema"),
+            App::new("codegen")
+                .about("Generate Rust code & SQL migrations from GraphQL schema")
+                .arg(
+                    Arg::new("config")
+                        .about("project yaml file path")
+                        .takes_value(true)
+                        .short('c')
+                        .long("config"),
+                )
+                .arg(
+                    Arg::new("schema")
+                        .about("graphql schema file path")
+                        .takes_value(true)
+                        .short('s'),
+                )
+                .arg(
+                    Arg::new("model")
+                        .about("codegen rust model path")
+                        .takes_value(true)
+                        .short('m'),
+                )
+                .arg(
+                    Arg::new("lib")
+                        .about("codegen lib rust path")
+                        .takes_value(true)
+                        .short('l'),
+                ),
         )
         .get_matches();
 
-    match matches.subcommand_name() {
-        Some("codegen") => codegen::run(&matches).unwrap(),
-        _ => eprintln!("Command not found"),
+    if let Some(ref matches) = matches.subcommand_matches("codegen") {
+        codegen::run(matches).unwrap();
     }
 }

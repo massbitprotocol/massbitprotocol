@@ -11,9 +11,14 @@ use std::fs;
 use std::fs::File;
 use tera::{Context, Tera};
 
-pub fn run(_matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
-    generate_rust_entity()?;
-    generate_plugin()?;
+pub fn run(matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
+    let schema_path = matches.value_of("schema").unwrap_or("schema.graphql");
+    let model_path = matches.value_of("model").unwrap_or("src/models.rs");
+    generate_rust_entity(schema_path, model_path)?;
+
+    let config_path = matches.value_of("config").unwrap_or("project.yaml");
+    let lib_path = matches.value_of("lib").unwrap_or("src/lib.rs");
+    generate_plugin(config_path, lib_path)?;
     Ok(())
 }
 
@@ -22,8 +27,8 @@ pub struct EntityBinding {
     pub entities: HashMap<String, String>,
 }
 
-fn generate_rust_entity() -> Result<(), Box<dyn Error>> {
-    let raw_schema = fs::read_to_string("schema.graphql")?;
+fn generate_rust_entity(schema_path: &str, model_path: &str) -> Result<(), Box<dyn Error>> {
+    let raw_schema = fs::read_to_string(schema_path)?;
     let schema = Schema::parse(&raw_schema)?;
     let layout = Layout::new(&schema)?;
 
@@ -39,35 +44,43 @@ fn generate_rust_entity() -> Result<(), Box<dyn Error>> {
     let mut tera = Tera::default();
     tera.add_raw_template("models", include_str!("templates/models.rs.tmpl"))?;
     let data = tera.render("models", &Context::from_serialize(binding)?)?;
-    fs::write("src/models.rs", data)?;
+    fs::write(model_path, data)?;
 
     Ok(())
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Default)]
 pub struct HandlerBinding {
-    pub handlers: HashMap<String, String>,
+    pub handlers: Vec<Handler>,
 }
 
-fn generate_plugin() -> Result<(), Box<dyn Error>> {
-    let f = File::open("project.yaml")?;
+#[derive(Serialize, Default)]
+pub struct Handler {
+    pub name: String,
+    pub kind: String,
+}
+
+fn generate_plugin(config_path: &str, lib_path: &str) -> Result<(), Box<dyn Error>> {
+    let f = File::open(config_path)?;
     let manifest: serde_yaml::Value = serde_yaml::from_reader(f)?;
-    let handlers = manifest["dataSources"][0]["mapping"]["handlers"]
-        .as_sequence()
-        .unwrap();
-    let mut binding = HandlerBinding {
-        handlers: HashMap::new(),
-    };
-    for (_, handler) in handlers.iter().enumerate() {
-        let name = handler["handler"].as_str().map(|s| s.to_string()).unwrap();
-        let kind = handler["kind"].as_str().map(|s| s.to_string()).unwrap();
-        binding.handlers.insert(name.to_snake_case(), kind);
+    let mut binding = HandlerBinding::default();
+    let data_sources = manifest["dataSources"].as_sequence().unwrap();
+    for (_, ds) in data_sources.iter().enumerate() {
+        let handlers = ds["mapping"]["handlers"].as_sequence().unwrap();
+        for (_, handler) in handlers.iter().enumerate() {
+            let name = handler["handler"].as_str().map(|s| s.to_string()).unwrap();
+            let kind = handler["kind"].as_str().map(|s| s.to_string()).unwrap();
+            binding.handlers.push(Handler {
+                name: name.to_snake_case(),
+                kind,
+            })
+        }
     }
 
     let mut tera = Tera::default();
     tera.add_raw_template("plugin", include_str!("templates/lib.rs.tmpl"))?;
     let data = tera.render("plugin", &Context::from_serialize(binding)?)?;
-    fs::write("src/lib.rs", data)?;
+    fs::write(lib_path, data)?;
 
     Ok(())
 }
