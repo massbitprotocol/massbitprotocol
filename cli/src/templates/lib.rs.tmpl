@@ -1,5 +1,5 @@
 mod mapping;
-mod models;
+mod model;
 
 use massbit_chain_substrate::data_type as types;
 use plugin::core::{self, PluginRegistrar};
@@ -17,17 +17,13 @@ extern "C" fn register(registrar: &mut dyn PluginRegistrar) {
     {%- for handler in handlers %}
     {%- if handler.kind == "substrate/BlockHandler" %}
     registrar.register_substrate_block_handler("{{ handler.name }}", Box::new(SubstrateBlockHandler));
-    {%- endif -%}
-    {%- if handler.kind == "substrate/ExtrinsicHandler" %}
+    {%- elif handler.kind == "substrate/ExtrinsicHandler" %}
     registrar.register_substrate_extrinsic_handler("{{ handler.name }}", Box::new(SubstrateExtrinsicHandler));
-    {%- endif -%}
-    {%- if handler.kind == "substrate/EventHandler" %}
+    {%- elif handler.kind == "substrate/EventHandler" %}
     registrar.register_substrate_event_handler("{{ handler.name }}", Box::new(SubstrateEventHandler));
-    {%- endif -%}
-    {%- if handler.kind == "solana/BlockHandler" %}
+    {%- elif handler.kind == "solana/BlockHandler" %}
     registrar.register_solana_block_handler("{{ handler.name }}", Box::new(SolanaBlockHandler));
-    {%- endif -%}
-    {%- if handler.kind == "solana/TransactionHandler" %}
+    {%- elif handler.kind == "solana/TransactionHandler" %}
     registrar.register_solana_transaction_handler("{{ handler.name }}", Box::new(SolanaTransactionHandler));
     {%- endif -%}
     {%- endfor %}
