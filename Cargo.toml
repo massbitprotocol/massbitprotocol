@@ -10,6 +10,7 @@ members = [
     "plugin/test-event",
     "plugin/test-solana-block",
     "plugin/test-solana-transaction",
+    "plugin/test-solana-log-messages",
     "core/chain/solana",
 ]
 exclude = ["code-compiler/generated"]

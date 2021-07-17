@@ -121,7 +121,5 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut client = StreamoutClient::connect(URL).await.unwrap();
     print_blocks(client, ChainType::Substrate).await;
 
-
-
     Ok(())
 }
