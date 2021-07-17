@@ -1,8 +1,8 @@
 mod mapping;
 mod models;
 
-use massbit_chain_substrate::data_type::SubstrateBlock;
-use plugin::core::{BlockHandler as BlockHandlerTrait, PluginRegistrar};
+use massbit_chain_substrate::data_type as types;
+use plugin::core::{self, PluginRegistrar};
 use store::Store;
 use std::error::Error;
 
@@ -14,22 +14,69 @@ plugin::export_plugin!(register);
 
 #[allow(dead_code, improper_ctypes_definitions)]
 extern "C" fn register(registrar: &mut dyn PluginRegistrar) {
-    {%- for name, kind in handlers %}
-    {%- if kind == "substrate/BlockHandler" %}
-    registrar.register_block_handler("{{ name }}", Box::new(BlockHandler));
+    {%- for handler in handlers %}
+    {%- if handler.kind == "substrate/BlockHandler" %}
+    registrar.register_substrate_block_handler("{{ handler.name }}", Box::new(SubstrateBlockHandler));
+    {%- endif -%}
+    {%- if handler.kind == "substrate/ExtrinsicHandler" %}
+    registrar.register_substrate_extrinsic_handler("{{ handler.name }}", Box::new(SubstrateExtrinsicHandler));
+    {%- endif -%}
+    {%- if handler.kind == "substrate/EventHandler" %}
+    registrar.register_substrate_event_handler("{{ handler.name }}", Box::new(SubstrateEventHandler));
+    {%- endif -%}
+    {%- if handler.kind == "solana/BlockHandler" %}
+    registrar.register_solana_block_handler("{{ handler.name }}", Box::new(SolanaBlockHandler));
+    {%- endif -%}
+    {%- if handler.kind == "solana/TransactionHandler" %}
+    registrar.register_solana_transaction_handler("{{ handler.name }}", Box::new(SolanaTransactionHandler));
     {%- endif -%}
     {%- endfor %}
 }
-
-{%- for name, kind in handlers %}
-{% if kind == "substrate/BlockHandler" %}
+{% for handler in handlers -%}
+{%- if handler.kind == "substrate/BlockHandler" %}
 #[derive(Debug, Clone, PartialEq)]
-pub struct BlockHandler;
+pub struct SubstrateBlockHandler;
 
-impl BlockHandlerTrait for BlockHandler {
-    fn handle_block(&self, block: &SubstrateBlock) -> Result<(), Box<dyn Error>> {
-        mapping::{{ name }}(block)
+impl core::SubstrateBlockHandler for SubstrateBlockHandler {
+    fn handle_block(&self, block: &types::SubstrateBlock) -> Result<(), Box<dyn Error>> {
+        mapping::{{ handler.name }}(block)
     }
 }
-{% endif %}
+{% elif handler.kind == "substrate/ExtrinsicHandler" %}
+#[derive(Debug, Clone, PartialEq)]
+pub struct SubstrateExtrinsicHandler;
+
+impl core::SubstrateExtrinsicHandler for SubstrateExtrinsicHandler {
+    fn handle_extrinsic(&self, extrinsic: &types::SubstrateExtrinsic) -> Result<(), Box<dyn Error>> {
+        mapping::{{ handler.name }}(extrinsic)
+    }
+}
+{% elif handler.kind == "substrate/EventHandler" %}
+#[derive(Debug, Clone, PartialEq)]
+pub struct SubstrateEventHandler;
+
+impl core::SubstrateEventHandler for SubstrateEventHandler {
+    fn handle_event(&self, event: &types::SubstrateEventRecord) -> Result<(), Box<dyn Error>> {
+        mapping::{{ handler.name }}(event)
+    }
+}
+{% elif handler.kind == "solana/BlockHandler" %}
+#[derive(Debug, Clone, PartialEq)]
+pub struct SolanaBlockHandler;
+
+impl core::SolanaBlockHandler for SolanaBlockHandler {
+    fn handle_block(&self, block: &types::SolanaBlock) -> Result<(), Box<dyn Error>> {
+        mapping::{{ handler.name }}(block)
+    }
+}
+{% elif handler.kind == "solana/TransactionHandler" %}
+#[derive(Debug, Clone, PartialEq)]
+pub struct SolanaTransactionHandler;
+
+impl core::SolanaTransactionHandler for SolanaTransactionHandler {
+    fn handle_transaction(&self, transaction: &types::SolanaTransaction) -> Result<(), Box<dyn Error>> {
+        mapping::{{ handler.name }}(transaction)
+    }
+}
+{%- endif -%}
 {%- endfor -%}
