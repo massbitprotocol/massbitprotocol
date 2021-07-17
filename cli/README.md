@@ -2,7 +2,7 @@
 
 ## Usage
 ```shell
-cargo run -- codegen --schema schema.graphql --config project.yaml --model src/model.rs --lib src/lib.rs
+cargo run -- codegen --schema schema.graphql --config project.yaml --ouput src 
 ```
 
 ## Input templates

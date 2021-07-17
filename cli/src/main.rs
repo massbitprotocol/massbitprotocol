@@ -24,16 +24,10 @@ fn main() {
                         .short('s'),
                 )
                 .arg(
-                    Arg::new("model")
-                        .about("codegen rust model path")
+                    Arg::new("output")
+                        .about("codegen output directory")
                         .takes_value(true)
-                        .short('m'),
-                )
-                .arg(
-                    Arg::new("lib")
-                        .about("codegen lib rust path")
-                        .takes_value(true)
-                        .short('l'),
+                        .short('o'),
                 ),
         )
         .get_matches();
