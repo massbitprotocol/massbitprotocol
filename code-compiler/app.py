@@ -201,7 +201,7 @@ def deploy_handler():
     print("project.yaml: " + project_res['Hash'])
     print("up.sql: " + up_res['Hash'])
     print("libblock.so: " + so_res['Hash'])
-    print("table: " + so_res['Hash'])
+    print("table & indexer_name: " + table_name)
 
     # Uploading IPFS files to Index Manager
     if os.environ.get('INDEX_MANAGER_URL'):
@@ -213,7 +213,7 @@ def deploy_handler():
                             'jsonrpc': '2.0',
                             'method': 'index_deploy',
                             'params': [
-                                "index_name",
+                                table_name,
                                 project_res['Hash'],
                                 so_res['Hash'],
                                 up_res['Hash'],
