@@ -10,7 +10,6 @@ import ipfshttpclient
 import requests
 import re
 from distutils.dir_util import copy_tree
-import urllib.request as urllib
 
 ################
 # Config Flask #
