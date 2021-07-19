@@ -10,5 +10,8 @@ members = [
     "plugin/test-solana-log-messages",
     "plugin/test-plugin",
     "core/chain/solana",
+    "store/postgres"
 ]
 exclude = ["code-compiler/generated"]
+[patch.crates-io]
+graphql-parser = {git="https://github.com/graphql-rust/graphql-parser", rev="45167b53e9533c331298683577ba8df7e43480ac"}
