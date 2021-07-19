@@ -1,8 +1,6 @@
 use node_template_runtime;
 use std::error::Error;
-use sp_runtime::traits::{SignedExtension, Extrinsic as _};
-use serde::{Deserialize, Serialize};
-use codec::{Encode, Decode, Input, WrapperTypeDecode};
+use codec::{Encode, Decode};
 
 
 //********************** SUBSTRATE ********************************
@@ -93,7 +91,7 @@ pub fn decode<T>(payload: &mut Vec<u8>) -> Result<T, Box<dyn Error>>
 }
 
 pub fn decode_transactions(payload: &mut  Vec<u8>) -> Result<Vec<SubstrateUncheckedExtrinsic>, Box<dyn Error>>{
-    let mut transactions: Vec<Vec<u8>> = Decode::decode(&mut payload.as_slice()).unwrap();
+    let transactions: Vec<Vec<u8>> = Decode::decode(&mut payload.as_slice()).unwrap();
     println!("transactions: {:?}", transactions);
 
     Ok(transactions
