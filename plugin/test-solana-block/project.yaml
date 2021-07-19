@@ -1,0 +1,7 @@
+schema:
+  file: ./schema.graphql
+
+dataSources:
+  - kind: solana
+    name: Index
+    network: https://data-seed-prebsc-1-s1.binance.org:8545/

@@ -5,6 +5,9 @@ members = [
     "core/chain/substrate",
     "indexer/main",
     "plugin/plugin",
+    "plugin/test-solana-block",
+    "plugin/test-solana-transaction",
+    "plugin/test-solana-log-messages",
     "plugin/test-plugin",
     "core/chain/solana",
 ]

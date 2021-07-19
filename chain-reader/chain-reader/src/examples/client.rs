@@ -59,7 +59,7 @@ pub async fn print_blocks(
                 match DataType::from_i32(data.data_type) {
                     Some(DataType::Block) => {
                         let block: SubstrateBlock = decode(&mut data.payload).unwrap();
-                        println!("Recieved BLOCK: {:?}", &block.block.header.number);
+                        println!("Received BLOCK: {:?}", &block.block.header.number);
                         let extrinsics = get_extrinsics_from_block(&block);
                         for extrinsic in extrinsics {
                             //println!("Recieved EXTRINSIC: {:?}", extrinsic);
@@ -69,8 +69,8 @@ pub async fn print_blocks(
                     }
                     Some(DataType::Event) => {
                         let event: Vec<SubstrateEventRecord> = decode(&mut data.payload).unwrap();
-                        println!("Recieved Event: {:?}", event);
-                    }
+                        println!("Received Event: {:?}", event);
+                    },
 
                     _ => {
                         println!("Not support data type: {:?}", &data.data_type);
