@@ -23,7 +23,7 @@ use plugin::manager::PluginManager;
 use stream_mod::{HelloRequest, GetBlocksRequest, GenericDataProto, ChainType, DataType, streamout_client::StreamoutClient};
 
 // Refactor to new files for substrate / solana
-use massbit_chain_substrate::data_type::{decode, decode_transactions, SubstrateBlock as Block, SubstrateBlock, SubstrateHeader as Header, SubstrateExtrinsic as Extrinsic, get_extrinsics_from_block, SubstrateEventRecord};
+use massbit_chain_substrate::data_type::{decode, decode_transactions, SubstrateBlock as Block, SubstrateBlock, SubstrateHeader as Header, SubstrateUncheckedExtrinsic as Extrinsic, get_extrinsics_from_block, SubstrateEventRecord};
 use massbit_chain_solana::data_type::{SolanaBlock, decode as solana_decode, SolanaEncodedBlock, convert_solana_encoded_block_to_solana_block, SolanaTransaction, SolanaLogMessages};
 use std::rc::Rc;
 

@@ -31,3 +31,5 @@ chain-reader/data/
 *.so
 
 /code-compiler/generated
+
+*.zip

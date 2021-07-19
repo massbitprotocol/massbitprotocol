@@ -28,15 +28,15 @@ services:
       HASURA_GRAPHQL_DEV_MODE: "true"
       HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup, http-log, webhook-log, websocket-log, query-log
   
-  code-compiler:
-    ports:
-      - "5000:5000"
-    image: sprise/code-compiler:0.1
-    environment:
-      # Pointing to our IPFS container
-      IPFS_URL: /dns/ipfs/tcp/5001/http
-      # Pointing to our Index Manager container
-      INDEX_MANAGER_URL: http://indexer:3030
+#  code-compiler:
+#    ports:
+#      - "5000:5000"
+#    image: sprise/code-compiler:0.1
+#    environment:
+#      # Pointing to our IPFS container
+#      IPFS_URL: /dns/ipfs/tcp/5001/http
+#      # Pointing to our Index Manager container
+#      INDEX_MANAGER_URL: http://indexer:3030
 
   substrate-node:
     image: sprise/substrate-node:0.1
@@ -80,4 +80,4 @@ services:
       - "8088:8088"
     depends_on: # Dashboard App will call to indexer to get indexer detail & code-compiler to compile and deploy new index
       - "indexer"
-      - "code-compiler"
+#      - "code-compiler"
