@@ -8,8 +8,6 @@ use massbit_chain_substrate::data_type::{SubstrateBlock as Block,
 use std::sync::mpsc::channel;
 use substrate_api_client::{Api, rpc::json_req, utils::FromHexString};
 use env_logger;
-use pallet_balances::Call as BalancesCall;
-use pallet_timestamp::Call as TimestampCall;
 use serde_json;
 use std::error::Error;
 use tokio::sync::broadcast;
@@ -18,8 +16,8 @@ use tokio::sync::broadcast;
 use codec::{Decode, Encode};
 use node_template_runtime::Event;
 use std::env;
-use substrate_api_client::Metadata;
 use system;
+use node_template_runtime::Block as OrgBlock;
 
 // Check https://github.com/tokio-rs/prost for enum converting in rust protobuf
 const CHAIN_TYPE: ChainType = ChainType::Substrate;

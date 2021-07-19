@@ -28,7 +28,7 @@ fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>){
     let mut rx = chan.subscribe();
     tokio::spawn(async move {
         loop {
-            rx.recv().await.unwrap();
+            let _ = rx.recv().await;
         }
     });
 }
