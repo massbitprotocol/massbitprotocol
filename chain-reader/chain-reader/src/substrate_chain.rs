@@ -1,29 +1,23 @@
 use crate::grpc_stream::stream_mod::{ChainType, DataType, GenericDataProto};
 use clap::App;
-use env_logger;
-use massbit_chain_substrate::data_type::{
-    SubstrateBlock as Block, SubstrateEventRecord as EventRecord, SubstrateExtrinsic as Extrinsic,
-    SubstrateHeader as Header,
-};
-use pallet_balances::Call as BalancesCall;
-use pallet_timestamp::Call as TimestampCall;
-use serde_json;
 use sp_core::{sr25519, H256 as Hash};
-use std::error::Error;
+use massbit_chain_substrate::data_type::{SubstrateBlock as Block,
+                                         SubstrateHeader as Header,
+                                         SubstrateEventRecord as EventRecord,
+                                        };
 use std::sync::mpsc::channel;
-use substrate_api_client::{rpc::json_req, utils::FromHexString, Api};
+use substrate_api_client::{Api, rpc::json_req, utils::FromHexString};
+use env_logger;
+use serde_json;
+use std::error::Error;
 use tokio::sync::broadcast;
 
-use codec::{Decode, Encode};
-use node_template_runtime::Block as OrgBlock;
-use node_template_runtime::Event;
 #[cfg(feature = "std")]
-use node_template_runtime::{AccountId, Call};
-use pallet_balances;
-use std::convert::TryFrom;
+use codec::{Decode, Encode};
+use node_template_runtime::Event;
 use std::env;
-use substrate_api_client::Metadata;
 use system;
+use node_template_runtime::Block as OrgBlock;
 
 // Check https://github.com/tokio-rs/prost for enum converting in rust protobuf
 const CHAIN_TYPE: ChainType = ChainType::Substrate;

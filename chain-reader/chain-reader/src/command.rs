@@ -1,11 +1,11 @@
 use crate::substrate_chain;
 use crate::solana_chain;
 use tonic::{transport::Server};
-use crate::{grpc_stream::stream_mod::{streamout_server::StreamoutServer, GenericDataProto, ChainType, DataType}, CONFIG};
+use crate::{grpc_stream::stream_mod::{streamout_server::StreamoutServer, ChainType}, CONFIG};
 use crate::grpc_stream::{StreamService};
 use tokio::sync::broadcast;
 use std::collections::HashMap;
-use lazy_static::lazy_static;
+
 
 #[derive(Clone,Debug)]
 pub struct Config {

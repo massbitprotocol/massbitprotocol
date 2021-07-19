@@ -57,6 +57,14 @@ impl Streamout for StreamService {
                 tx.send(Ok(generic_data)).await.unwrap();
             }
         });
+        // tokio::spawn(async move {
+        //     loop {
+        //         match rx_chan.try_recv() {
+        //             Ok(generic_data) =>  tx.send(Ok(generic_data)).await.unwrap(),
+        //             Err(_) => sleep(Duration::from_millis(200)).await,
+        //         }
+        //     }
+        // });
 
         Ok(Response::new(ReceiverStream::new(rx)))
     }

@@ -1,7 +1,5 @@
-use codec::{Decode, Encode, Input, WrapperTypeDecode};
+use codec::{Decode, Encode};
 use node_template_runtime;
-use serde::{Deserialize, Serialize};
-use sp_runtime::traits::{Extrinsic as _, SignedExtension};
 use std::error::Error;
 
 type Number = u32;
@@ -84,10 +82,8 @@ where
     Ok(Decode::decode(&mut payload.as_slice()).unwrap())
 }
 
-pub fn decode_transactions(
-    payload: &mut Vec<u8>,
-) -> Result<Vec<SubstrateExtrinsic>, Box<dyn Error>> {
-    let mut transactions: Vec<Vec<u8>> = Decode::decode(&mut payload.as_slice()).unwrap();
+pub fn decode_transactions(payload: &mut  Vec<u8>) -> Result<Vec<SubstrateExtrinsic>, Box<dyn Error>>{
+    let transactions: Vec<Vec<u8>> = Decode::decode(&mut payload.as_slice()).unwrap();
     println!("transactions: {:?}", transactions);
 
     Ok(transactions
