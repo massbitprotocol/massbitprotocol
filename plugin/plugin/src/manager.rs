@@ -1,13 +1,13 @@
 use crate::core::{
     PluginDeclaration, PluginRegistrar as PluginRegistrarTrait, SolanaBlockHandler,
-    SolanaEventHandler, SolanaTransactionHandler, SubstrateBlockHandler, SubstrateEventHandler,
+    SolanaLogMessagesHandler, SolanaTransactionHandler, SubstrateBlockHandler, SubstrateEventHandler,
     SubstrateExtrinsicHandler,
 };
 use index_store::core::Store;
 use libloading::Library;
-use massbit_chain_solana::data_type::{SolanaBlock, SolanaEvent, SolanaTransaction};
+use massbit_chain_solana::data_type::{SolanaBlock, SolanaLogMessages, SolanaTransaction};
 use massbit_chain_substrate::data_type::{
-    SubstrateBlock, SubstrateCheckedExtrinsic, SubstrateEventRecord, SubstrateUncheckedExtrinsic
+    SubstrateBlock, SubstrateEventRecord, SubstrateExtrinsic,
 };
 use std::{alloc::System, collections::HashMap, error::Error, ffi::OsStr, rc::Rc};
 
@@ -22,7 +22,7 @@ pub struct PluginManager<'a> {
     pub substrate_event_handlers: HashMap<String, SubstrateEventHandlerProxy>,
     pub solana_block_handlers: HashMap<String, SolanaBlockHandlerProxy>,
     pub solana_transaction_handlers: HashMap<String, SolanaTransactionHandlerProxy>,
-    pub solana_event_handlers: HashMap<String, SolanaEventHandlerProxy>,
+    pub solana_event_handlers: HashMap<String, SolanaLogMessagesHandlerProxy>,
 }
 
 impl<'a> PluginManager<'a> {
@@ -71,8 +71,6 @@ impl<'a> PluginManager<'a> {
             .extend(registrar.solana_block_handlers);
         self.solana_transaction_handlers
             .extend(registrar.solana_transaction_handlers);
-        self.solana_event_handlers
-            .extend(registrar.solana_event_handlers);
 
         self.libs.push(lib);
 
@@ -93,7 +91,7 @@ impl<'a> PluginManager<'a> {
     pub fn handle_substrate_extrinsic(
         &self,
         plugin_id: &str,
-        extrinsic: &SubstrateUncheckedExtrinsic,
+        extrinsic: &SubstrateExtrinsic,
     ) -> Result<(), Box<dyn Error>> {
         self.substrate_extrinsic_handlers
             .get(plugin_id)
@@ -134,15 +132,15 @@ impl<'a> PluginManager<'a> {
             .handle_transaction(transaction)
     }
 
-    pub fn handle_solana_event(
+    pub fn handle_solana_log_messages(
         &self,
         plugin_id: &str,
-        event: &SolanaEvent,
+        event: &SolanaLogMessages,
     ) -> Result<(), Box<dyn Error>> {
         self.solana_event_handlers
             .get(plugin_id)
             .ok_or_else(|| format!("\"{}\" not found", plugin_id))?
-            .handle_event(event)
+            .handle_log_messages(event)
     }
 }
 
@@ -154,7 +152,7 @@ struct PluginRegistrar {
     substrate_event_handlers: HashMap<String, SubstrateEventHandlerProxy>,
     solana_block_handlers: HashMap<String, SolanaBlockHandlerProxy>,
     solana_transaction_handlers: HashMap<String, SolanaTransactionHandlerProxy>,
-    solana_event_handlers: HashMap<String, SolanaEventHandlerProxy>,
+    solana_event_handlers: HashMap<String, SolanaLogMessagesHandlerProxy>,
 }
 
 impl PluginRegistrar {
@@ -221,8 +219,8 @@ impl PluginRegistrarTrait for PluginRegistrar {
             .insert(self.plugin_id.clone(), proxy);
     }
 
-    fn register_solana_event_handler(&mut self, handler: Box<dyn SolanaEventHandler>) {
-        let proxy = SolanaEventHandlerProxy {
+    fn register_solana_event_handler(&mut self, handler: Box<dyn SolanaLogMessagesHandler>) {
+        let proxy = SolanaLogMessagesHandlerProxy {
             handler,
             _lib: Rc::clone(&self.lib),
         };
@@ -250,11 +248,7 @@ pub struct SubstrateExtrinsicHandlerProxy {
 }
 
 impl SubstrateExtrinsicHandler for SubstrateExtrinsicHandlerProxy {
-    fn handle_extrinsic(
-        &self,
-        // extrinsic: &SubstrateCheckedExtrinsic,
-        extrinsic: &SubstrateUncheckedExtrinsic,
-    ) -> Result<(), Box<dyn Error>> {
+    fn handle_extrinsic(&self, extrinsic: &SubstrateExtrinsic) -> Result<(), Box<dyn Error>> {
         self.handler.handle_extrinsic(extrinsic)
     }
 }
@@ -292,13 +286,13 @@ impl SolanaTransactionHandler for SolanaTransactionHandlerProxy {
     }
 }
 
-pub struct SolanaEventHandlerProxy {
-    handler: Box<dyn SolanaEventHandler>,
+pub struct SolanaLogMessagesHandlerProxy {
+    handler: Box<dyn SolanaLogMessagesHandler>,
     _lib: Rc<Library>,
 }
 
-impl SolanaEventHandler for SolanaEventHandlerProxy {
-    fn handle_event(&self, event: &SolanaEvent) -> Result<(), Box<dyn Error>> {
-        self.handler.handle_event(event)
+impl SolanaLogMessagesHandler for SolanaLogMessagesHandlerProxy {
+    fn handle_log_messages(&self, event: &SolanaLogMessages) -> Result<(), Box<dyn Error>> {
+        self.handler.handle_log_messages(event)
     }
 }

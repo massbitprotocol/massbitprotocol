@@ -10,12 +10,7 @@ RUN apt-get update
 RUN apt-get install -y libssl-dev libudev-dev pkg-config zlib1g-dev llvm clang make
 RUN $HOME/.cargo/bin/rustup target add wasm32-unknown-unknown --toolchain stable
 
-# Use this when we have fixed importing solana error
-#COPY ./ massbitprotocol
-
-# We need to import solana like this because of some error with Cargo dependencies
-COPY ./massbitprotocol/ massbitprotocol
-COPY ./solana/ solana
+COPY ./ massbitprotocol
 WORKDIR "massbitprotocol" 
 
 RUN $HOME/.cargo/bin/rustup toolchain install nightly-2021-05-20

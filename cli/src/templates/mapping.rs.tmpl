@@ -1,0 +1,31 @@
+use crate::models::*;
+use massbit_chain_substrate::data_type as types;
+use std::error::Error;
+{% for handler in handlers -%}
+{%- if handler.kind == "substrate/BlockHandler" %}
+#[derive(Debug, Clone, PartialEq)]
+pub fn {{handler.name}}(block: &types::SubstrateBlock) -> Result<(), Box<dyn Error>> {
+    unimplemented!();
+}
+{% elif handler.kind == "substrate/ExtrinsicHandler" %}
+#[derive(Debug, Clone, PartialEq)]
+pub fn {{handler.name}}(extrinsic: &types::SubstrateExtrinsic) -> Result<(), Box<dyn Error>> {
+    unimplemented!();
+}
+{% elif handler.kind == "substrate/EventHandler" %}
+#[derive(Debug, Clone, PartialEq)]
+pub fn {{handler.name}}(event: &types::SubstrateEventRecord) -> Result<(), Box<dyn Error>> {
+    unimplemented!();
+}
+{% elif handler.kind == "solana/BlockHandler" %}
+#[derive(Debug, Clone, PartialEq)]
+pub fn {{handler.name}}(block: &types::SolanaBlock) -> Result<(), Box<dyn Error>> {
+    unimplemented!();
+}
+{% elif handler.kind == "solana/TransactionHandler" %}
+#[derive(Debug, Clone, PartialEq)]
+pub fn {{handler.name}}(transaction: &types::SolanaTransaction) -> Result<(), Box<dyn Error>> {
+    unimplemented!();
+}
+{%- endif -%}
+{%- endfor -%}

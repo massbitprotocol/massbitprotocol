@@ -1,3 +1,16 @@
+use crate::stream_mod::{
+    streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
+    HelloRequest,
+};
+use massbit_chain_solana::data_type::{
+    convert_solana_encoded_block_to_solana_block, decode as solana_decode, SolanaBlock,
+    SolanaEncodedBlock, SolanaLogMessages, SolanaTransaction,
+};
+use massbit_chain_substrate::data_type::{
+    decode_transactions, SubstrateBlock, SubstrateEventRecord, SubstrateHeader,
+    SubstrateUncheckedExtrinsic,
+};
+use std::error::Error;
 #[allow(unused_imports)]
 use tonic::{transport::{Server, Channel}, Request, Response, Status};
 use crate::stream_mod::{GetBlocksRequest, GenericDataProto, ChainType, DataType, streamout_client::StreamoutClient};
@@ -20,7 +33,7 @@ const URL: &str = "http://127.0.0.1:50051";
 
 pub async fn print_blocks(mut client: StreamoutClient<Channel>, chain_type: ChainType) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     // Not use start_block_number start_block_number yet
-    let get_blocks_request = GetBlocksRequest{
+    let get_blocks_request = GetBlocksRequest {
         start_block_number: 0,
         end_block_number: 1,
         chain_type: chain_type as i32,
@@ -32,28 +45,30 @@ pub async fn print_blocks(mut client: StreamoutClient<Channel>, chain_type: Chai
 
     while let Some(data) = stream.message().await? {
         let mut data = data as GenericDataProto;
-        println!("Received chain: {:?}, data block = {:?}, hash = {:?}, data type = {:?}",
-                 ChainType::from_i32(data.chain_type).unwrap(),
-                 data.block_number,
-                 data.block_hash,
-                 DataType::from_i32(data.data_type).unwrap());
+        println!(
+            "Received chain: {:?}, data block = {:?}, hash = {:?}, data type = {:?}",
+            ChainType::from_i32(data.chain_type).unwrap(),
+            data.block_number,
+            data.block_hash,
+            DataType::from_i32(data.data_type).unwrap()
+        );
         match chain_type {
             ChainType::Substrate => {
                 let now = Instant::now();
                 match DataType::from_i32(data.data_type) {
                     Some(DataType::Block) => {
                         let block: SubstrateBlock = decode(&mut data.payload).unwrap();
-                        println!("Recieved BLOCK: {:?}", &block.block.header.number);
+                        println!("Received BLOCK: {:?}", &block.block.header.number);
                         let extrinsics = get_extrinsics_from_block(&block);
                         for extrinsic in extrinsics {
                             //println!("Recieved EXTRINSIC: {:?}", extrinsic);
                             let string_extrinsic = format!("Recieved EXTRINSIC:{:?}", extrinsic);
                             println!("{}", string_extrinsic);
                         }
-                    },
+                    }
                     Some(DataType::Event) => {
                         let event: Vec<SubstrateEventRecord> = decode(&mut data.payload).unwrap();
-                        println!("Recieved Event: {:?}", event);
+                        println!("Received Event: {:?}", event);
                     },
 
                     _ => {
@@ -131,8 +146,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
 
     let client = StreamoutClient::connect(URL).await.unwrap();
     print_blocks(client, ChainType::Substrate).await?;
-
-
 
     Ok(())
 }
