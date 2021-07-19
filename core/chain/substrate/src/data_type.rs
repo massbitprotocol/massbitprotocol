@@ -1,15 +1,8 @@
+use codec::{Decode, Encode, Input, WrapperTypeDecode};
 use node_template_runtime;
-use std::error::Error;
-use sp_runtime::traits::{SignedExtension, Extrinsic as _};
 use serde::{Deserialize, Serialize};
-use codec::{Encode, Decode, Input, WrapperTypeDecode};
-
-
-//********************** SUBSTRATE ********************************
-// Main data type for substrate indexing
-pub type SubstrateBlock = ExtBlock;
-pub type SubstrateUncheckedExtrinsic = ExtExtrinsic;
-pub type SubstrateEventRecord = ExtEvent;
+use sp_runtime::traits::{Extrinsic as _, SignedExtension};
+use std::error::Error;
 
 type Number = u32;
 type Date = i64;
@@ -21,7 +14,7 @@ type Hash = node_template_runtime::Hash;
 // Similar to
 // https://github.com/subquery/subql/blob/93afc96d7ee0ff56d4dd62d8a145088f5bb5e3ec/packages/types/src/interfaces.ts#L18
 #[derive(PartialEq, Eq, Clone, Encode, Decode, Debug)]
-pub struct ExtBlock {
+pub struct SubstrateBlock {
     pub version: String,
     pub timestamp: Date,
     pub block: Block,
@@ -29,16 +22,16 @@ pub struct ExtBlock {
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, Debug)]
-pub struct ExtExtrinsic {
+pub struct SubstrateExtrinsic {
     pub block_number: Number,
     pub extrinsic: Extrinsic,
-    pub block: ExtBlock,
-    pub events: Vec<ExtEvent>,
+    pub block: SubstrateBlock,
+    pub events: Vec<SubstrateEventRecord>,
     pub success: bool,
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, Debug)]
-pub struct ExtEvent {
+pub struct SubstrateEventRecord {
     //block_number: Number,
     pub event: Event,
     //extrinsic: Option<Box<ExtExtrinsic>>,
@@ -64,13 +57,12 @@ pub trait ExtrinsicTrait {
 //     }
 // }
 
-pub fn get_extrinsics_from_block (block: &ExtBlock) -> Vec<ExtExtrinsic> {
-
+pub fn get_extrinsics_from_block(block: &SubstrateBlock) -> Vec<SubstrateExtrinsic> {
     let iter = block.block.extrinsics.iter();
     let extrinsics = iter
-        .map(|extrinsic|{
+        .map(|extrinsic| {
             //let hash = extrinsic.get_hash();
-            ExtExtrinsic {
+            SubstrateExtrinsic {
                 block_number: block.block.header.number,
                 extrinsic: (*extrinsic).clone(),
                 block: block.clone(),
@@ -85,14 +77,16 @@ pub fn get_extrinsics_from_block (block: &ExtBlock) -> Vec<ExtExtrinsic> {
     extrinsics
 }
 
-
 pub fn decode<T>(payload: &mut Vec<u8>) -> Result<T, Box<dyn Error>>
-    where T: Decode,
+where
+    T: Decode,
 {
     Ok(Decode::decode(&mut payload.as_slice()).unwrap())
 }
 
-pub fn decode_transactions(payload: &mut  Vec<u8>) -> Result<Vec<SubstrateUncheckedExtrinsic>, Box<dyn Error>>{
+pub fn decode_transactions(
+    payload: &mut Vec<u8>,
+) -> Result<Vec<SubstrateExtrinsic>, Box<dyn Error>> {
     let mut transactions: Vec<Vec<u8>> = Decode::decode(&mut payload.as_slice()).unwrap();
     println!("transactions: {:?}", transactions);
 
@@ -101,5 +95,3 @@ pub fn decode_transactions(payload: &mut  Vec<u8>) -> Result<Vec<SubstrateUnchec
         .map(|encode| Decode::decode(&mut encode.as_slice()).unwrap())
         .collect())
 }
-
-
