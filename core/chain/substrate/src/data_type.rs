@@ -1,7 +1,6 @@
 use codec::{Decode, Encode, Input, WrapperTypeDecode};
 use node_template_runtime;
 use std::error::Error;
-use codec::{Encode, Decode};
 
 type Number = u32;
 type Date = i64;
@@ -83,7 +82,7 @@ where
     Ok(Decode::decode(&mut payload.as_slice()).unwrap())
 }
 
-pub fn decode_transactions(payload: &mut  Vec<u8>) -> Result<Vec<SubstrateUncheckedExtrinsic>, Box<dyn Error>>{
+pub fn decode_transactions(payload: &mut  Vec<u8>) -> Result<Vec<SubstrateExtrinsic>, Box<dyn Error>>{
     let transactions: Vec<Vec<u8>> = Decode::decode(&mut payload.as_slice()).unwrap();
     println!("transactions: {:?}", transactions);
 

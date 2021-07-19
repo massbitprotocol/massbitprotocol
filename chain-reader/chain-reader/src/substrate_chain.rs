@@ -8,22 +8,15 @@ use massbit_chain_substrate::data_type::{SubstrateBlock as Block,
 use std::sync::mpsc::channel;
 use substrate_api_client::{Api, rpc::json_req, utils::FromHexString};
 use env_logger;
-use massbit_chain_substrate::data_type::{
-    SubstrateBlock as Block, SubstrateEventRecord as EventRecord, SubstrateExtrinsic as Extrinsic,
-    SubstrateHeader as Header,
-};
 use pallet_balances::Call as BalancesCall;
 use pallet_timestamp::Call as TimestampCall;
 use serde_json;
-use sp_core::{sr25519, H256 as Hash};
 use std::error::Error;
-use crate::grpc_stream::stream_mod::{GenericDataProto, ChainType, DataType};
 use tokio::sync::broadcast;
 
 #[cfg(feature = "std")]
 use codec::{Decode, Encode};
 use node_template_runtime::Event;
-use system;
 use std::env;
 use substrate_api_client::Metadata;
 use system;
