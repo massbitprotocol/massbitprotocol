@@ -8,8 +8,9 @@ edition = "2018"
 [dependencies]
 diesel = { version = "1.4.0", features = ["postgres"] }
 plugin = { path = "../../../plugin/plugin" } #
+massbit-chain-substrate = { path = "../../../core/chain/substrate"}
 massbit-chain-solana = { path = "../../../core/chain/solana"}
-index-store = { path = "../../../core/index-store"} #
+index-store = { path = "../../../core/index-store"}
 structmap = "0.1.5"
 structmap-derive = "0.1.5"
 chrono = "0.4.19"

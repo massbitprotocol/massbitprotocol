@@ -9,6 +9,8 @@ import threading
 import ipfshttpclient
 import requests
 import re
+from distutils.dir_util import copy_tree
+import urllib.request as urllib
 
 ################
 # Config Flask #
@@ -113,10 +115,12 @@ def compile_handler():
         populate_stub_solana(generated_folder, "Cargo.lock")
         populate_stub_solana(generated_folder, "Cargo.toml")
         populate_stub_solana(generated_folder, "src/lib.rs")
+        copy_tree("./stub/solana/target", generated_folder + "/target")
     else:  # If not defined, default network type is substrate
         populate_stub_substrate(generated_folder, "Cargo.lock")
         populate_stub_substrate(generated_folder, "Cargo.toml")
         populate_stub_substrate(generated_folder, "src/lib.rs")
+        copy_tree("./stub/substrate/target", generated_folder + "/target")
 
     # Save the formatted data from request to disk, ready for compiling
     write_to_disk(generated_folder + "/src/mapping.rs", mapping)
