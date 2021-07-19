@@ -20,7 +20,7 @@ pub struct SubstrateBlock {
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, Debug)]
-pub struct SubstrateExtrinsic {
+pub struct SubstrateUncheckedExtrinsic {
     pub block_number: Number,
     pub extrinsic: Extrinsic,
     pub block: SubstrateBlock,
@@ -55,12 +55,12 @@ pub trait ExtrinsicTrait {
 //     }
 // }
 
-pub fn get_extrinsics_from_block(block: &SubstrateBlock) -> Vec<SubstrateExtrinsic> {
+pub fn get_extrinsics_from_block(block: &SubstrateBlock) -> Vec<SubstrateUncheckedExtrinsic> {
     let iter = block.block.extrinsics.iter();
     let extrinsics = iter
         .map(|extrinsic| {
             //let hash = extrinsic.get_hash();
-            SubstrateExtrinsic {
+            SubstrateUncheckedExtrinsic {
                 block_number: block.block.header.number,
                 extrinsic: (*extrinsic).clone(),
                 block: block.clone(),
@@ -82,7 +82,7 @@ where
     Ok(Decode::decode(&mut payload.as_slice()).unwrap())
 }
 
-pub fn decode_transactions(payload: &mut  Vec<u8>) -> Result<Vec<SubstrateExtrinsic>, Box<dyn Error>>{
+pub fn decode_transactions(payload: &mut  Vec<u8>) -> Result<Vec<SubstrateUncheckedExtrinsic>, Box<dyn Error>>{
     let transactions: Vec<Vec<u8>> = Decode::decode(&mut payload.as_slice()).unwrap();
     println!("transactions: {:?}", transactions);
 
