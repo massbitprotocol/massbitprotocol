@@ -1,12 +1,8 @@
 use tokio::sync::broadcast;
 use crate::{grpc_stream::stream_mod::{GenericDataProto, ChainType, DataType}, CONFIG};
 
-use solana_client::{pubsub_client::PubsubClient, rpc_client::RpcClient, rpc_response::SlotInfo};
-use solana_transaction_status::{UiConfirmedBlock, EncodedConfirmedBlock, UiTransactionEncoding};
-// use codec::{Decode, Encode};
-//use serde::Serialize;
-use serde_json::{Serializer, Deserializer};
-use serde::Serialize;
+use solana_client::{pubsub_client::PubsubClient, rpc_client::RpcClient};
+use solana_transaction_status::UiTransactionEncoding;
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -16,8 +12,6 @@ use std::{
 };
 use std::error::Error;
 use massbit_chain_solana::data_type::{  SolanaEncodedBlock as Block,
-                                        SolanaTransaction as Transaction,
-                                        SolanaLogMessages as LogMessages,
                                         get_list_log_messages_from_encoded_block,
                                         };
 
@@ -34,7 +28,7 @@ fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>){
     let mut rx = chan.subscribe();
     tokio::spawn(async move {
         loop {
-            rx.recv().await.unwrap();
+            let _ = rx.recv().await;
         }
     });
 }
@@ -76,19 +70,18 @@ pub async fn loop_get_block(chan: broadcast::Sender<GenericDataProto>) {
 
                         for block_height in value_last_root..root{
                             let new_client = client.clone();
-                            //tokio::spawn(async move {
-                            let block = get_block(new_client,block_height);
-                            match block {
-                                Ok(block) => {
-                                    let generic_data_proto = _create_generic_block(block.block.blockhash.clone(),block_height, &block);
-                                    println!("Sending SOLANA as generic data: {:?}", &generic_data_proto.block_number);
-                                    //println!("Sending SOLANA as generic data");
-                                    chan.send(generic_data_proto).unwrap();
-                                },
-                                // Cannot get the block, pass
-                                Err(_) => continue,
-                            }
-
+                            // tokio::spawn(async move {
+                                let block = get_block(new_client,block_height);
+                                match block {
+                                    Ok(block) => {
+                                        let generic_data_proto = _create_generic_block(block.block.blockhash.clone(),block_height, &block);
+                                        println!("Sending SOLANA as generic data: {:?}", &generic_data_proto.block_number);
+                                        //println!("Sending SOLANA as generic data");
+                                        chan.send(generic_data_proto).unwrap();
+                                    },
+                                    // Cannot get the block, pass
+                                    Err(_) => continue,
+                                }
                             //});
                         }
                         last_root = Some(root);
@@ -122,26 +115,6 @@ fn _create_generic_block(   block_hash: String,
     generic_data
 }
 
-fn get_blocks(client: Arc<RpcClient>, chan: &broadcast::Sender<GenericDataProto> , start_block: u64, end_block: u64) {
-    for block_height in start_block..end_block{
-        let new_client = client.clone();
-        //tokio::spawn(async move {
-        let block = get_block(new_client,block_height);
-        match block {
-            Ok(block) => {
-                let generic_data_proto = _create_generic_block(block.block.blockhash.clone(),block_height, &block);
-                //println!("Sending SOLANA as generic data: {:?}", &generic_data_proto.block_number);
-                println!("Sending SOLANA as generic data");
-                chan.send(generic_data_proto).unwrap();
-            },
-            // Cannot get the block, pass
-            Err(_) => continue,
-        }
-
-        //});
-    }
-}
-
 fn get_block(client: Arc<RpcClient>, block_height: u64) -> Result<Block,Box<dyn Error>>{
 
     println!("Starting get Block {}",block_height);
@@ -162,7 +135,7 @@ fn get_block(client: Arc<RpcClient>, block_height: u64) -> Result<Block,Box<dyn 
             Ok(ext_block)
         },
         _ => {
-            println!("Cannot get: {:?}", &block);
+            //println!("Cannot get: {:?}", &block);
             Err(format!("Error cannot get block").into())
         },
     }

@@ -7,7 +7,7 @@ pub mod solana_chain;
 pub mod command;
 
 use lazy_static::lazy_static;
-use grpc_stream::stream_mod::{streamout_server::StreamoutServer, ChainType};
+use grpc_stream::stream_mod::ChainType;
 use command::{Config, ChainConfig};
 
 lazy_static! {

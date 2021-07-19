@@ -1,39 +1,32 @@
 use crate::stream_mod::{
     streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
-    HelloRequest,
 };
 use massbit_chain_solana::data_type::{
-    convert_solana_encoded_block_to_solana_block, decode as solana_decode, SolanaBlock,
+    convert_solana_encoded_block_to_solana_block, decode as solana_decode,
     SolanaEncodedBlock, SolanaLogMessages, SolanaTransaction,
 };
 use massbit_chain_substrate::data_type::{
-    decode_transactions, SubstrateBlock, SubstrateEventRecord, SubstrateHeader,
-    SubstrateUncheckedExtrinsic,
+    SubstrateBlock, SubstrateEventRecord,
 };
-use std::error::Error;
 #[allow(unused_imports)]
-use tonic::{
-    transport::{Channel, Server},
-    Request, Response, Status,
-};
+use tonic::{transport::{Server, Channel}, Request, Response, Status};
 
-use codec::{Decode, Encode};
-use node_template_runtime::Event;
-use sp_core::{sr25519, H256 as Hash};
+
 pub mod stream_mod {
     tonic::include_proto!("chaindata");
 }
-use massbit_chain_substrate::data_type::{decode, get_extrinsics_from_block};
-use std::sync::Arc;
+use massbit_chain_substrate::data_type::{
+    decode, get_extrinsics_from_block
+};
+use std::time::Instant;
+use std::rc::Rc;
 
-type EventRecord = system::EventRecord<Event, Hash>;
+
 
 const URL: &str = "http://127.0.0.1:50051";
 
-pub async fn print_blocks(
-    mut client: StreamoutClient<Channel>,
-    chain_type: ChainType,
-) -> Result<(), Box<dyn Error>> {
+
+pub async fn print_blocks(mut client: StreamoutClient<Channel>, chain_type: ChainType) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     // Not use start_block_number start_block_number yet
     let get_blocks_request = GetBlocksRequest {
         start_block_number: 0,
@@ -56,6 +49,7 @@ pub async fn print_blocks(
         );
         match chain_type {
             ChainType::Substrate => {
+                let now = Instant::now();
                 match DataType::from_i32(data.data_type) {
                     Some(DataType::Block) => {
                         let block: SubstrateBlock = decode(&mut data.payload).unwrap();
@@ -76,51 +70,56 @@ pub async fn print_blocks(
                         println!("Not support data type: {:?}", &data.data_type);
                     }
                 }
-            }
+                let elapsed = now.elapsed();
+                println!("Elapsed processing solana block: {:.2?}", elapsed);
+            },
             ChainType::Solana => {
+                let now = Instant::now();
                 match DataType::from_i32(data.data_type) {
                     Some(DataType::Block) => {
-                        let encoded_block: SolanaEncodedBlock =
-                            solana_decode(&mut data.payload).unwrap();
+
+                        let encoded_block: SolanaEncodedBlock = solana_decode(&mut data.payload).unwrap();
                         // Decode
                         let block = convert_solana_encoded_block_to_solana_block(encoded_block);
+                        let rc_block = Rc::new(block.clone());
+                        println!("Recieved SOLANA BLOCK with block height: {:?}, hash: {:?}", &rc_block.block.block_height.unwrap(), &rc_block.block.blockhash);
 
-                        println!(
-                            "Recieved SOLANA BLOCK with block height: {:?}, hash: {:?}",
-                            &block.block.block_height.unwrap(),
-                            &block.block.transactions
-                        );
-
+                        let mut print_flag = true;
                         for origin_transaction in block.clone().block.transactions {
-                            let log_messages = origin_transaction
-                                .clone()
-                                .meta
-                                .unwrap()
-                                .log_messages
-                                .clone();
+                            let log_messages = origin_transaction.clone().meta.unwrap().log_messages.clone();
                             let transaction = SolanaTransaction {
                                 block_number: ((&block).block.block_height.unwrap() as u32),
                                 transaction: origin_transaction.clone(),
-                                block: block.clone(),
+                                block: rc_block.clone(),
                                 log_messages: log_messages.clone(),
-                                success: false,
+                                success: false
                             };
-                            println!("Recieved SOLANA TRANSACTION with Block number: {:?}, trainsation: {:?}", &transaction.block_number, &transaction.transaction);
+                            let rc_transaction = Rc::new(transaction.clone());
+
+
 
                             let log_messages = SolanaLogMessages {
                                 block_number: ((&block).block.block_height.unwrap() as u32),
                                 log_messages: log_messages.clone(),
-                                transaction: transaction.clone(),
-                                block: block.clone(),
+                                transaction: rc_transaction.clone(),
+                                block: rc_block.clone()
                             };
-                            println!("Recieved SOLANA LOG_MESSAGES with Block number: {:?}, log_messages: {:?}", &transaction.block_number, &transaction.log_messages);
+                            // Print first data only bc it too many.
+                            if print_flag {
+                                println!("Recieved SOLANA TRANSACTION with Block number: {:?}, trainsation: {:?}", &transaction.block_number, &transaction.transaction.transaction.signatures);
+                                println!("Recieved SOLANA LOG_MESSAGES with Block number: {:?}, log_messages: {:?}", &log_messages.block_number, &log_messages.log_messages.unwrap().get(0));
+
+                                print_flag = false;
+                            }
                         }
-                    }
+                    },
                     _ => {
                         println!("Not support this type in Solana");
                     }
                 }
-            }
+                let elapsed = now.elapsed();
+                println!("Elapsed processing solana block: {:.2?}", elapsed);
+            },
             _ => {
                 println!("Not support this package chain-type");
             }
@@ -131,16 +130,17 @@ pub async fn print_blocks(
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+
     println!("Waiting for chain-reader");
 
     tokio::spawn(async move {
-        let mut client = StreamoutClient::connect(URL).await.unwrap();
-        print_blocks(client, ChainType::Solana).await;
+        let client = StreamoutClient::connect(URL).await.unwrap();
+        print_blocks(client, ChainType::Solana).await
     });
 
-    let mut client = StreamoutClient::connect(URL).await.unwrap();
-    print_blocks(client, ChainType::Substrate).await;
+    let client = StreamoutClient::connect(URL).await.unwrap();
+    print_blocks(client, ChainType::Substrate).await?;
 
     Ok(())
 }

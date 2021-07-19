@@ -2,8 +2,8 @@ use solana_transaction_status;
 use std::error::Error;
 use serde_json;
 use serde::{Deserialize, Serialize};
-use solana_sdk::message::Message;
-use solana_transaction_status::{UiTransactionStatusMeta, TransactionStatusMeta};
+use solana_transaction_status::TransactionStatusMeta;
+use std::rc::Rc;
 
 
 //***************** Solana data type *****************
@@ -22,7 +22,7 @@ type LogMessages = Option<Vec<String>>;
 type Transaction = solana_transaction_status::TransactionWithStatusMeta;
 type EncodedBlock = solana_transaction_status::EncodedConfirmedBlock;
 type Block = solana_transaction_status::ConfirmedBlock;
-type Hash = String;
+// type Hash = String;
 
 pub fn decode(payload: &mut Vec<u8>) -> Result<SolanaEncodedBlock, Box<dyn Error>>
 {
@@ -44,7 +44,6 @@ fn decode_encoded_block (encoded_block: EncodedBlock) -> Block {
         rewards: encoded_block.rewards,
         transactions: encoded_block.transactions.iter().filter_map(|transaction| {
             let meta = &transaction.meta.as_ref().unwrap();
-            // Todo: Why cannot decode many transaction?
             let decoded_transaction = transaction.transaction.decode();
             //println!("*** Decode transaction: {:?}",decoded_transaction);
             match decoded_transaction {
@@ -109,7 +108,7 @@ pub struct ExtBlock {
 pub struct ExtTransaction {
     pub block_number: Number,
     pub transaction: Transaction,
-    pub block: ExtBlock,
+    pub block: Rc<ExtBlock>,
     pub log_messages: LogMessages,
     pub success: bool,
 }
@@ -118,7 +117,7 @@ pub struct ExtTransaction {
 pub struct ExtLogMessages {
     pub block_number: Number,
     pub log_messages: LogMessages,
-    pub transaction: ExtTransaction,
-    pub block: ExtBlock,
+    pub transaction: Rc<ExtTransaction>,
+    pub block: Rc<ExtBlock>,
 }
 

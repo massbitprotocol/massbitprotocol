@@ -101,7 +101,7 @@ async fn get_block(client: Arc<RpcClient>, block_height: u64) -> Result<EncodedC
             Ok(block)
         },
         _ => {
-            println!("Cannot get: {:?}", &block);
+            //println!("Cannot get: {:?}", &block);
             Err(format!("Error cannot get block").into())
         },
     }
