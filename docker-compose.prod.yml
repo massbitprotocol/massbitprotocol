@@ -46,7 +46,7 @@ services:
     command: bash -c "./target/release/node-template --dev --ws-external"
 
   chain-reader:
-    image: sprise/chain-reader:0.3
+    image: sprise/chain-reader:0.4
     command: bash -c "sleep 5; ./target/release/chain-reader"
     ports:
       - "50051:50051"
@@ -58,7 +58,7 @@ services:
       NODE_SERVER: ws://substrate-node
 
   indexer:
-    image: sprise/indexer:0.3
+    image: sprise/indexer:0.4
     ports:
       - "3030:3030"
     depends_on:
