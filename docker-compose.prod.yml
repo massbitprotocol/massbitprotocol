@@ -75,7 +75,7 @@ services:
       IPFS_ADDRESS: ipfs:5001
 
   dashboard:
-    image: sprise/dashboard:0.2
+    image: sprise/dashboard:0.3
     ports:
       - "8088:8088"
     depends_on: # Dashboard App will call to indexer to get indexer detail & code-compiler to compile and deploy new index
