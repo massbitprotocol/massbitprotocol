@@ -39,7 +39,7 @@ services:
       INDEX_MANAGER_URL: http://indexer:3030
 
   substrate-node:
-    image: substrate-node
+    image: sprise/substrate-node:0.1
     ports:
       - "9944:9944"
     restart: always
