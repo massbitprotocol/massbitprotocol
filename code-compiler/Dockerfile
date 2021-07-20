@@ -22,8 +22,8 @@ RUN pip3 install -U ipfshttpclient
 RUN wget https://code-compiler-built-target.s3.ap-southeast-2.amazonaws.com/target.zip
 
 COPY ./ massbitprotocol
-RUN unzip target.zip -d massbitprotocol/code-compiler/stub/solana
-RUN unzip target.zip -d massbitprotocol/code-compiler/stub/substrate
+RUN unzip -o target.zip -d massbitprotocol/code-compiler/stub/solana
+RUN unzip -o target.zip -d massbitprotocol/code-compiler/stub/substrate
 
 WORKDIR "massbitprotocol/code-compiler"
 
