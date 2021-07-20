@@ -338,28 +338,29 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
 
                         let mut print_flag = true;
                         for origin_transaction in block.clone().block.transactions {
-                            let log_messages = origin_transaction.clone().meta.unwrap().log_messages.clone();
+                            let origin_log_messages = origin_transaction.meta.clone().unwrap().log_messages;
                             let transaction = SolanaTransaction {
                                 block_number: ((&block).block.block_height.unwrap() as u32),
                                 transaction: origin_transaction.clone(),
                                 //block: rc_block.clone(),
-                                log_messages: log_messages.clone(),
+                                log_messages: origin_log_messages.clone(),
                                 success: false
                             };
 
                             let log_messages = SolanaLogMessages {
                                 block_number: ((&block).block.block_height.unwrap() as u32),
-                                log_messages: log_messages.clone(),
+                                log_messages: origin_log_messages.clone(),
                                 transaction: origin_transaction.clone(),
                             };
                             if print_flag {
                                 //println!("Received Solana transaction & log messages");
                                 println!("Recieved SOLANA TRANSACTION with Block number: {:?}, transaction: {:?}", &transaction.block_number, &transaction.transaction.transaction.signatures);
-                                println!("Recieved SOLANA LOG_MESSAGES with Block number: {:?}, log_messages: {:?}", &log_messages.block_number, &log_messages.clone().log_messages.unwrap().get(0));
+                                println!("Recieved SOLANA LOG_MESSAGES with Block number: {:?}, log_messages: {:?}", &log_messages.block_number, &log_messages.log_messages.clone().unwrap().get(0));
                                 print_flag = false;
                             }
-                            plugins.handle_solana_transaction("1234", &transaction);
-                            plugins.handle_solana_log_messages("1234", &log_messages);
+                            let tmp = plugins.handle_solana_transaction("1234", &transaction);
+                            let tmp = plugins.handle_solana_log_messages("1234", &log_messages);
+
                         }
                     },
                     _ => {

@@ -71,6 +71,8 @@ impl<'a> PluginManager<'a> {
             .extend(registrar.solana_block_handlers);
         self.solana_transaction_handlers
             .extend(registrar.solana_transaction_handlers);
+        self.solana_event_handlers
+            .extend(registrar.solana_event_handlers);
 
         self.libs.push(lib);
 
