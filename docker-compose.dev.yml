@@ -28,25 +28,25 @@ services:
       HASURA_GRAPHQL_DEV_MODE: "true"
       HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup, http-log, webhook-log, websocket-log, query-log
   
-#  code-compiler:
-#    ports:
-#      - "5000:5000"
-#    image: sprise/code-compiler:0.1
-#    environment:
-#      # Pointing to our IPFS container
-#      IPFS_URL: /dns/ipfs/tcp/5001/http
-#      # Pointing to our Index Manager container
-#      INDEX_MANAGER_URL: http://indexer:3030
+  code-compiler:
+    ports:
+      - "5000:5000"
+    image: code-compiler
+    environment:
+      # Pointing to our IPFS container
+      IPFS_URL: /dns/ipfs/tcp/5001/http
+      # Pointing to our Index Manager container
+      INDEX_MANAGER_URL: http://indexer:3030
 
   substrate-node:
-    image: sprise/substrate-node:0.1
+    image: substrate-node
     ports:
       - "9944:9944"
     restart: always
     command: bash -c "./target/release/node-template --dev --ws-external"
 
   chain-reader:
-    image: sprise/chain-reader:0.1
+    image: chain-reader
     command: bash -c "sleep 5; ./target/release/chain-reader"
     ports:
       - "50051:50051"
@@ -58,7 +58,7 @@ services:
       NODE_SERVER: ws://substrate-node
 
   indexer:
-    image: sprise/indexer:0.1
+    image: indexer
     ports:
       - "3030:3030"
     depends_on:
@@ -75,7 +75,7 @@ services:
       IPFS_ADDRESS: ipfs:5001
 
   dashboard:
-    image: sprise/dashboard:0.1
+    image: dashboard
     ports:
       - "8088:8088"
     depends_on: # Dashboard App will call to indexer to get indexer detail & code-compiler to compile and deploy new index

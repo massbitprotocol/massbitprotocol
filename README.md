@@ -3,7 +3,16 @@ The goal of Massbit Indexer is to bring scalability and interoperability to Inde
 In order to embrace the existing popular community and advanced technology, it will bring huge benefits by staying compatible with all the existing indexing mapping logics. 
 And to achieve that, the easiest solution is to develop with some existing features from the-graph, as we respect the great work of the-graph very much.
 
-## To build and deploy docker-compose.prod.yml
+## Dev 
+Build new images
+- Run `docker build -f chain-reader/Dockerfile -t chain-reader .` to build chain-reader
+- Run `docker build -f indexer/Dockerfile -t indexer .` to build indexer
+- Run `docker build -f code-compiler/Dockerfile -t code-compiler .` to build code-compiler
+- Run `docker build -f frontend/dashboard/Dockerfile -t dashboard .` to build the dashboard with the latest code from massbitprocol/dashboard git
+
+To start: `docker-compose -f docker-compose.dev.yml up`
+
+## Deployment with docker-compose.prod.yml
 Build new images
 - Run `docker build --tag sprise/chain-reader:[new_version_id] -f chain-reader/Dockerfile -t chain-reader .` to build chain-reader
 - Run `docker build --tag sprise/indexer:[new_version_id] -f indexer/Dockerfile -t indexer .` to build indexer
