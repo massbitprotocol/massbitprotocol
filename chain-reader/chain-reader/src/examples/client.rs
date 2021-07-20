@@ -20,7 +20,7 @@ use massbit_chain_substrate::data_type::{
 };
 use std::time::Instant;
 use std::rc::Rc;
-
+use std::sync::Arc;
 
 
 const URL: &str = "http://127.0.0.1:50051";
@@ -81,7 +81,7 @@ pub async fn print_blocks(mut client: StreamoutClient<Channel>, chain_type: Chai
                         let encoded_block: SolanaEncodedBlock = solana_decode(&mut data.payload).unwrap();
                         // Decode
                         let block = convert_solana_encoded_block_to_solana_block(encoded_block);
-                        let rc_block = Rc::new(block.clone());
+                        let rc_block = Arc::new(block.clone());
                         println!("Recieved SOLANA BLOCK with block height: {:?}, hash: {:?}", &rc_block.block.block_height.unwrap(), &rc_block.block.blockhash);
 
                         let mut print_flag = true;
@@ -90,19 +90,18 @@ pub async fn print_blocks(mut client: StreamoutClient<Channel>, chain_type: Chai
                             let transaction = SolanaTransaction {
                                 block_number: ((&block).block.block_height.unwrap() as u32),
                                 transaction: origin_transaction.clone(),
-                                block: rc_block.clone(),
                                 log_messages: log_messages.clone(),
                                 success: false
                             };
-                            let rc_transaction = Rc::new(transaction.clone());
+                            let rc_transaction = Arc::new(transaction.clone());
+
 
 
 
                             let log_messages = SolanaLogMessages {
                                 block_number: ((&block).block.block_height.unwrap() as u32),
                                 log_messages: log_messages.clone(),
-                                transaction: rc_transaction.clone(),
-                                block: rc_block.clone()
+                                transaction: origin_transaction.clone(),
                             };
                             // Print first data only bc it too many.
                             if print_flag {
@@ -111,6 +110,7 @@ pub async fn print_blocks(mut client: StreamoutClient<Channel>, chain_type: Chai
 
                                 print_flag = false;
                             }
+
                         }
                     },
                     _ => {
