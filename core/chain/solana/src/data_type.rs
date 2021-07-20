@@ -4,6 +4,7 @@ use serde_json;
 use serde::{Deserialize, Serialize};
 use solana_transaction_status::TransactionStatusMeta;
 use std::rc::Rc;
+use std::sync::Arc;
 
 
 //***************** Solana data type *****************
@@ -108,7 +109,7 @@ pub struct ExtBlock {
 pub struct ExtTransaction {
     pub block_number: Number,
     pub transaction: Transaction,
-    pub block: Rc<ExtBlock>,
+    //pub block: Arc<ExtBlock>,
     pub log_messages: LogMessages,
     pub success: bool,
 }
@@ -117,7 +118,7 @@ pub struct ExtTransaction {
 pub struct ExtLogMessages {
     pub block_number: Number,
     pub log_messages: LogMessages,
-    pub transaction: Rc<ExtTransaction>,
-    pub block: Rc<ExtBlock>,
+    pub transaction: Transaction,
+    //pub block: Arc<ExtBlock>,
 }
 
