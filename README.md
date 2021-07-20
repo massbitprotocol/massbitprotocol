@@ -3,6 +3,27 @@ The goal of Massbit Indexer is to bring scalability and interoperability to Inde
 In order to embrace the existing popular community and advanced technology, it will bring huge benefits by staying compatible with all the existing indexing mapping logics. 
 And to achieve that, the easiest solution is to develop with some existing features from the-graph, as we respect the great work of the-graph very much.
 
+## To build and deploy docker-compose.prod.yml
+Build new images
+- Run `docker build --tag sprise/chain-reader:[new_version_id] -f chain-reader/Dockerfile -t chain-reader .` to build chain-reader
+- Run `docker build --tag sprise/indexer:[new_version_id] -f indexer/Dockerfile -t indexer .` to build indexer
+- Run `docker build --tag sprise/code-compiler:[new_version_id] -f code-compiler/Dockerfile -t code-compiler .` to build code-compiler
+- Run `docker build --tag sprise/dashboard:[new_version_id] -f frontend/dashboard/Dockerfile -t dashboard .` to build the dashboard with the latest code from massbitprocol/dashboard git
+
+Deploy new images to Docker Hub:
+- `docker push sprise/chain-reader:[new_version_id]`
+- `docker push sprise/indexer:[new_version_id]`
+- `docker push sprise/code-compiler:[new_version_id]`
+- `docker push sprise/dashboard:[new_version_id]`
+
+Check the new images here: https://registry.hub.docker.com/u/sprise
+
+To start those images in prod: `docker-compose -f docker-compose.prod.yml up`
+
+Note:
+- The 3 Rust services (substrate-node, chain-reader, indexer) we need to build them separately because their build time is long and we need wait-for-it.sh script implemented.
+- The code-compiler needs to know the context of massbitprotcol source folder so it can run the `cargo build` for the /compile api
+
 ## Create new index with IPFS
 - Start IPFS + Postgres docker
   ```shell
@@ -50,21 +71,3 @@ And to achieve that, the easiest solution is to develop with some existing featu
 
 ## Update build-and-upload.sh script to build and deploy to DockerHub so we can save time on compiling 
 - 
-
-## To start with docker
-- Run `docker build --tag sprise/substrate-node:0.1 -f substrate-node/Dockerfile -t substrate-node .` to build substrate-node
-- Run `docker build --tag sprise/chain-reader:0.1 -f chain-reader/Dockerfile -t chain-reader .` to build chain-reader
-- Run `docker build --tag sprise/indexer:0.1 -f indexer/Dockerfile -t indexer .` to build indexer
-- Run `docker build --tag sprise/code-compiler:0.1 -f code-compiler/Dockerfile -t code-compiler .` to build code-compiler
-- Run `docker-compose up` will start:
-  - IPFS
-  - Postgres
-  - Hasura
-  - Substrate Node
-  - Chain Reader
-  - Index Manager
-  - Code Compiler
-
-Note:
-- The 3 Rust services (substrate-node, chain-reader, indexer) we need to build them separately because their build time is long and we need wait-for-it.sh script implemented.
-- The code-compiler needs to know the context of massbitprotcol source folder so it can run the `cargo build` for the /compile api
