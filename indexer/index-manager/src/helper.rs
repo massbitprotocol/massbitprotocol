@@ -14,6 +14,8 @@ use std::io::Read;
 use std::{env, path::PathBuf};
 use tokio_compat_02::FutureExt;
 use tonic::Request;
+use std::time::Instant;
+use std::rc::Rc;
 
 // Massbit dependencies
 use crate::types::{DeployParams, DeployType, DetailParams, Indexer};
@@ -25,7 +27,6 @@ use stream_mod::{HelloRequest, GetBlocksRequest, GenericDataProto, ChainType, Da
 // Refactor to new files for substrate / solana
 use massbit_chain_substrate::data_type::{decode, decode_transactions, SubstrateBlock as Block, SubstrateBlock, SubstrateHeader as Header, SubstrateUncheckedExtrinsic as Extrinsic, get_extrinsics_from_block, SubstrateEventRecord};
 use massbit_chain_solana::data_type::{SolanaBlock, decode as solana_decode, SolanaEncodedBlock, convert_solana_encoded_block_to_solana_block, SolanaTransaction, SolanaLogMessages};
-use std::rc::Rc;
 
 // Configs
 pub mod stream_mod {
@@ -285,8 +286,9 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
         .into_inner();
 
     // Subscribe new blocks
-    log::info!("[Index Manager Helper] Start plugin manager");
+    log::info!("[Index Manager Helper] Start processing block");
     while let Some(data) = stream.message().await? {
+        let now = Instant::now();
         let mut data = data as GenericDataProto;
         log::info!("[Index Manager Helper] Received chain: {:?}, data block = {:?}, hash = {:?}, data type = {:?}",
                  ChainType::from_i32(data.chain_type).unwrap(),
@@ -294,6 +296,7 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
                  data.block_hash,
                  DataType::from_i32(data.data_type).unwrap());
 
+        // Need to refactor this or this will be called every time a new block comes
         let mut plugins = PluginManager::new(&store);
         unsafe {
             plugins.load("1234", mapping_file_path.clone()).unwrap();
@@ -329,7 +332,7 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
                         let encoded_block: SolanaEncodedBlock = solana_decode(&mut data.payload).unwrap();
                         let block = convert_solana_encoded_block_to_solana_block(encoded_block); // Decoding
                         let rc_block = Rc::new(block.clone());
-                        println!("Received SOLANA BLOCK with block height: {:?}, hash: {:?}", &block.block.block_height.unwrap(), &block.block.transactions);
+                        println!("Received SOLANA BLOCK with block height: {:?}, hash: {:?}", &block.block.block_height.unwrap(), &block.block.blockhash);
                         plugins.handle_solana_block("1234", &block);
 
                         let mut print_flag = true;
@@ -351,8 +354,9 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
                                 block: rc_block.clone()
                             };
                             if print_flag {
-                                println!("Recieved SOLANA TRANSACTION with Block number: {:?}, trainsation: {:?}", &transaction.block_number, &transaction.transaction.transaction.signatures);
-                                println!("Recieved SOLANA LOG_MESSAGES with Block number: {:?}, log_messages: {:?}", &log_messages.block_number, &log_messages.clone().log_messages.unwrap().get(0));
+                                println!("Received Solana transaction & log messages");
+                                // println!("Recieved SOLANA TRANSACTION with Block number: {:?}, trainsation: {:?}", &transaction.block_number, &transaction.transaction.transaction.signatures);
+                                // println!("Recieved SOLANA LOG_MESSAGES with Block number: {:?}, log_messages: {:?}", &log_messages.block_number, &log_messages.clone().log_messages.unwrap().get(0));
                                 print_flag = false;
                             }
                             plugins.handle_solana_log_messages("1234", &log_messages);
@@ -367,6 +371,8 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
                 println!("Not support this package chain-type");
             }
         }
+        let elapsed = now.elapsed();
+        println!("Elapsed processing block: {:.2?}", elapsed);
     }
     Ok(())
 }
