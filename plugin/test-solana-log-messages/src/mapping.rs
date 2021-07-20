@@ -19,7 +19,7 @@ pub fn handle_log_messages(log_messages: &SolanaLogMessages) -> Result<(), Box<d
     let log_messages_solana_ts = LogMessagesSolanaTs {
         block_number: log_messages.block_number as i64,
         log_messages: format!("{:?}", log_messages.log_messages),
-        signature: format!("{:?}", log_messages.transaction.transaction.transaction.signatures),
+        signature: format!("{:?}", log_messages.transaction.transaction.signatures),
     };
     log_messages_solana_ts.save();
     Ok(())
