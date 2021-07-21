@@ -53,7 +53,7 @@ fn solana_slot_subscribe(websocket_url: &String) {
                         new_info, slots_per_second
                     )
                 };
-                println!("{}", message.clone());
+                debug!("{}", message.clone());
 
                 if let Some(previous) = current {
                     let slot_delta: i64 = new_info.slot as i64 - previous.slot as i64;
@@ -68,15 +68,15 @@ fn solana_slot_subscribe(websocket_url: &String) {
                             "|<--- {} <- … <- {} <- {}   (prev)",
                             previous.root, previous.parent, previous.slot
                         );
-                        println!("{:?}",&prev_root);
+                        debug!("{:?}",&prev_root);
 
                         let new_root = format!(
                             "|  '- {} <- … <- {} <- {}   (next)",
                             new_info.root, new_info.parent, new_info.slot
                         );
-                        println!("{}", prev_root);
-                        println!("{}", new_root);
-                        println!("{}", spacer);
+                        debug!("{}", prev_root);
+                        debug!("{}", new_root);
+                        debug!("{}", spacer);
                     }
                 }
                 current = Some(new_info);
@@ -91,17 +91,17 @@ fn solana_slot_subscribe(websocket_url: &String) {
 
 async fn get_block(client: Arc<RpcClient>, block_height: u64) -> Result<EncodedConfirmedBlock,Box<dyn Error>>{
 
-    println!("Starting get Block {}",block_height);
+    info!("Starting get Block {}",block_height);
     let now = Instant::now();
     let block = client.get_block(block_height);
     let elapsed = now.elapsed();
     match block{
         Ok(block) => {
-            println!("Finished get Block: {:?}, time: {:?}, hash: {}", block_height, elapsed, &block.blockhash);
+            info!("Finished get Block: {:?}, time: {:?}, hash: {}", block_height, elapsed, &block.blockhash);
             Ok(block)
         },
         _ => {
-            //println!("Cannot get: {:?}", &block);
+            //error!("Cannot get: {:?}", &block);
             Err(format!("Error cannot get block").into())
         },
     }
@@ -136,9 +136,9 @@ async fn solana_finalized_block_subscribe(websocket_url: &String, json_rpc_url: 
             Ok(new_info) => {
                 // Root is finalized block in Solana
                 let root = new_info.root-100;
-                println!("Root: {:?}",new_info.root);
+                info!("Root: {:?}",new_info.root);
                 let block_height = client.get_block_height().unwrap();
-                println!("Highest Block height: {:?}",&block_height);
+                info!("Highest Block height: {:?}",&block_height);
 
                 match last_root {
                     Some(value_last_root) => {
@@ -150,7 +150,7 @@ async fn solana_finalized_block_subscribe(websocket_url: &String, json_rpc_url: 
                     },
                     _ => last_root = Some(root),
                 };
-                println!("Got Block: {:?}", &last_root.unwrap());
+                info!("Got Block: {:?}", &last_root.unwrap());
             }
             Err(err) => {
                 eprintln!("disconnected: {}", err);
@@ -173,11 +173,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     let client = RpcClient::new(json_rpc_url);
     let block_height = client.get_block_height().unwrap();
     let block = client.get_block(block_height).unwrap();
-    println!("{:?}",block_height);
-    println!("Original block: {:?}",&block);
+    debug!("{:?}",block_height);
+    debug!("Original block: {:?}",&block);
     let payload = serde_json::to_vec(&block).unwrap();
     let decode_block: EncodedConfirmedBlock = serde_json::from_slice(&payload).unwrap();
-    println!("Decode: {:#?}", &decode_block);
+    debug!("Decode: {:#?}", &decode_block);
     assert_eq!(block,decode_block);
 
 

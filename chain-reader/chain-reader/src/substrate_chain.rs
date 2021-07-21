@@ -18,6 +18,7 @@ use node_template_runtime::Event;
 use std::env;
 use system;
 use node_template_runtime::Block as OrgBlock;
+use log::{debug, warn, error, info, Level};
 
 // Check https://github.com/tokio-rs/prost for enum converting in rust protobuf
 const CHAIN_TYPE: ChainType = ChainType::Substrate;
@@ -55,7 +56,7 @@ fn get_block_and_hash_from_header(
 //                             block:&Block) -> GenericDataProto
 // {
 //     let block = (*block).block.clone();
-//     //println!("**Block content: {:#?}",&block);
+//     //debug!("**Block content: {:#?}",&block);
 //
 //     let mut extrinsics: Vec<Vec<u8>> = Vec::new();
 //
@@ -77,7 +78,7 @@ fn get_block_and_hash_from_header(
 //     let encode_extrinsics: Vec<Vec<u8>> =  Decode::decode(&mut generic_data.payload.as_slice()).unwrap();
 //     for encode_extrinsic in encode_extrinsics{
 //         let decode_extrinsic: Extrinsic = Decode::decode(&mut encode_extrinsic.as_slice()).unwrap();
-//         println!("decode_extrinsic: {:?}", decode_extrinsic);
+//         debug!("decode_extrinsic: {:?}", decode_extrinsic);
 //     }
 //
 //     generic_data
@@ -112,7 +113,7 @@ pub async fn loop_get_event(chan: broadcast::Sender<GenericDataProto>) {
     let url = get_node_url_from_cli();
     let api = Api::<sr25519::Pair>::new(url).unwrap();
 
-    println!("Subscribe to events");
+    info!("Subscribe to events");
     let (events_in, events_out) = channel();
     api.subscribe_events(events_in).unwrap();
 
@@ -126,7 +127,7 @@ pub async fn loop_get_event(chan: broadcast::Sender<GenericDataProto>) {
 
         match _events {
             Ok(evts) => {
-                println!("{:?}", evts);
+                debug!("{:?}", evts);
                 for evt in &evts {
                     let ext_event = EventRecord {
                         // Todo: Need find the block number and add here
@@ -139,14 +140,14 @@ pub async fn loop_get_event(chan: broadcast::Sender<GenericDataProto>) {
                         // Todo: Need find the success add add here
                     };
                     let generic_data_proto = _create_generic_event(&ext_event);
-                    println!(
+                    debug!(
                         "Sending SUBSTRATE event as generic data: {:?}",
                         generic_data_proto
                     );
                     chan.send(generic_data_proto).unwrap();
                 }
             }
-            Err(_) => println!("couldn't decode event record list"),
+            Err(_) => error!("couldn't decode event record list"),
         }
     }
 }
@@ -162,12 +163,11 @@ fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>) {
 }
 
 pub async fn loop_get_block_and_extrinsic(chan: broadcast::Sender<GenericDataProto>) {
-    println!("start");
-    env_logger::init();
+    info!("Start get block and extrinsic Substrate");
     let url = get_node_url_from_cli();
     let api = Api::<sr25519::Pair>::new(url).unwrap();
 
-    println!("Subscribing to finalized heads");
+    info!("Subscribing to finalized heads");
     let (send, recv) = channel();
     api.subscribe_finalized_heads(send).unwrap();
 
@@ -183,16 +183,16 @@ pub async fn loop_get_block_and_extrinsic(chan: broadcast::Sender<GenericDataPro
         let (block, hash) = get_block_and_hash_from_header(&api, head).unwrap();
         let generic_block = _create_generic_block(hash.clone(), &block);
         // Send block
-        println!(
+        info!(
             "Got block number: {:?}, hash: {:?}",
             &generic_block.block_number, &generic_block.block_hash
         );
-        //println!("Sending SUBSTRATE block as generic data {:?}", &generic_block);
+        //info!("Sending SUBSTRATE block as generic data {:?}", &generic_block);
         chan.send(generic_block).unwrap();
 
         // // Send array of extrinsics
         // let generic_extrinsics = _create_generic_extrinsic(hash, &block);
-        // println!("Sending SUBSTRATE extrinsics as generic data {:?}", &generic_extrinsics);
+        // info!("Sending SUBSTRATE extrinsics as generic data {:?}", &generic_extrinsics);
         // chan.send(generic_extrinsics).unwrap();
     }
 }
@@ -208,6 +208,6 @@ pub fn get_node_url_from_cli() -> String {
     let node_ip = matches.value_of("node-server").unwrap_or(&node_server);
     let node_port = matches.value_of("node-port").unwrap_or("9944");
     let url = format!("{}:{}", node_ip, node_port);
-    println!("Interacting with node on {}\n", url);
+    info!("Interacting with node on {}\n", url);
     url
 }

@@ -40,7 +40,7 @@ pub async fn print_blocks(mut client: StreamoutClient<Channel>, chain_type: Chai
 
     while let Some(data) = stream.message().await? {
         let mut data = data as GenericDataProto;
-        println!(
+        info!(
             "Received chain: {:?}, data block = {:?}, hash = {:?}, data type = {:?}",
             ChainType::from_i32(data.chain_type).unwrap(),
             data.block_number,
@@ -53,25 +53,25 @@ pub async fn print_blocks(mut client: StreamoutClient<Channel>, chain_type: Chai
                 match DataType::from_i32(data.data_type) {
                     Some(DataType::Block) => {
                         let block: SubstrateBlock = decode(&mut data.payload).unwrap();
-                        println!("Received BLOCK: {:?}", &block.block.header.number);
+                        info!("Received BLOCK: {:?}", &block.block.header.number);
                         let extrinsics = get_extrinsics_from_block(&block);
                         for extrinsic in extrinsics {
-                            //println!("Recieved EXTRINSIC: {:?}", extrinsic);
+                            //info!("Recieved EXTRINSIC: {:?}", extrinsic);
                             let string_extrinsic = format!("Recieved EXTRINSIC:{:?}", extrinsic);
-                            println!("{}", string_extrinsic);
+                            info!("{}", string_extrinsic);
                         }
                     }
                     Some(DataType::Event) => {
                         let event: Vec<SubstrateEventRecord> = decode(&mut data.payload).unwrap();
-                        println!("Received Event: {:?}", event);
+                        info!("Received Event: {:?}", event);
                     },
 
                     _ => {
-                        println!("Not support data type: {:?}", &data.data_type);
+                        warn!("Not support data type: {:?}", &data.data_type);
                     }
                 }
                 let elapsed = now.elapsed();
-                println!("Elapsed processing solana block: {:.2?}", elapsed);
+                debug!("Elapsed processing solana block: {:.2?}", elapsed);
             },
             ChainType::Solana => {
                 let now = Instant::now();
@@ -82,7 +82,7 @@ pub async fn print_blocks(mut client: StreamoutClient<Channel>, chain_type: Chai
                         // Decode
                         let block = convert_solana_encoded_block_to_solana_block(encoded_block);
                         let rc_block = Arc::new(block.clone());
-                        println!("Recieved SOLANA BLOCK with block height: {:?}, hash: {:?}", &rc_block.block.block_height.unwrap(), &rc_block.block.blockhash);
+                        info!("Recieved SOLANA BLOCK with block height: {:?}, hash: {:?}", &rc_block.block.block_height.unwrap(), &rc_block.block.blockhash);
 
                         let mut print_flag = true;
                         for origin_transaction in block.clone().block.transactions {
@@ -97,16 +97,16 @@ pub async fn print_blocks(mut client: StreamoutClient<Channel>, chain_type: Chai
 
 
 
-
                             let log_messages = SolanaLogMessages {
                                 block_number: ((&block).block.block_height.unwrap() as u32),
                                 log_messages: log_messages.clone(),
                                 transaction: origin_transaction.clone(),
                             };
+
                             // Print first data only bc it too many.
                             if print_flag {
-                                println!("Recieved SOLANA TRANSACTION with Block number: {:?}, trainsation: {:?}", &transaction.block_number, &transaction.transaction.transaction.signatures);
-                                println!("Recieved SOLANA LOG_MESSAGES with Block number: {:?}, log_messages: {:?}", &log_messages.block_number, &log_messages.log_messages.unwrap().get(0));
+                                info!("Recieved SOLANA TRANSACTION with Block number: {:?}, trainsation: {:?}", &transaction.block_number, &transaction.transaction.transaction.signatures);
+                                info!("Recieved SOLANA LOG_MESSAGES with Block number: {:?}, log_messages: {:?}", &log_messages.block_number, &log_messages.log_messages.unwrap().get(0));
 
                                 print_flag = false;
                             }
@@ -114,14 +114,14 @@ pub async fn print_blocks(mut client: StreamoutClient<Channel>, chain_type: Chai
                         }
                     },
                     _ => {
-                        println!("Not support this type in Solana");
+                        warn!("Not support this type in Solana");
                     }
                 }
                 let elapsed = now.elapsed();
-                println!("Elapsed processing solana block: {:.2?}", elapsed);
+                debug!("Elapsed processing solana block: {:.2?}", elapsed);
             },
             _ => {
-                println!("Not support this package chain-type");
+                warn!("Not support this package chain-type");
             }
         }
     }
@@ -132,7 +132,7 @@ pub async fn print_blocks(mut client: StreamoutClient<Channel>, chain_type: Chai
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
 
-    println!("Waiting for chain-reader");
+    info!("Waiting for chain-reader");
 
     tokio::spawn(async move {
         let client = StreamoutClient::connect(URL).await.unwrap();
