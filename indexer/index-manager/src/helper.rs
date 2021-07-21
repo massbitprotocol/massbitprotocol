@@ -358,9 +358,8 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
                                 println!("Recieved SOLANA LOG_MESSAGES with Block number: {:?}, log_messages: {:?}", &log_messages.block_number, &log_messages.log_messages.clone().unwrap().get(0));
                                 print_flag = false;
                             }
-                            let tmp = plugins.handle_solana_transaction("1234", &transaction);
-                            let tmp = plugins.handle_solana_log_messages("1234", &log_messages);
-
+                            plugins.handle_solana_transaction("1234", &transaction);
+                            plugins.handle_solana_log_messages("1234", &log_messages);
                         }
                     },
                     _ => {

@@ -81,8 +81,7 @@ pub async fn print_blocks(mut client: StreamoutClient<Channel>, chain_type: Chai
                         let encoded_block: SolanaEncodedBlock = solana_decode(&mut data.payload).unwrap();
                         // Decode
                         let block = convert_solana_encoded_block_to_solana_block(encoded_block);
-                        let rc_block = Arc::new(block.clone());
-                        info!("Recieved SOLANA BLOCK with block height: {:?}, hash: {:?}", &rc_block.block.block_height.unwrap(), &rc_block.block.blockhash);
+                        println!("Recieved SOLANA BLOCK with block height: {:?}, hash: {:?}", &rc_block.block.block_height.unwrap(), &rc_block.block.blockhash);
 
                         let mut print_flag = true;
                         for origin_transaction in block.clone().block.transactions {
@@ -94,6 +93,7 @@ pub async fn print_blocks(mut client: StreamoutClient<Channel>, chain_type: Chai
                                 success: false
                             };
                             let rc_transaction = Arc::new(transaction.clone());
+
 
 
 
