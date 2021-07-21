@@ -27,18 +27,17 @@ impl IndexStore {
             last_store: None
         }
     }
-    fn check_flush(&mut self, _entity_name: String) {
+    fn check_and_flush(&mut self, _entity_name: String) {
         let now = Instant::now();
         let elapsed = match self.last_store {
-            None => PERIOD,
+            None => 0,  //First save
             Some(last) => now.duration_since(last).as_millis()
         };
-        let option_vec =  self.buffer.get_mut(_entity_name.as_str());
-        match option_vec {
+        match self.buffer.get_mut(_entity_name.as_str()) {
             None => {}
             Some(vec) => {
                 let size = vec.len();
-                if size >= BATCH_SIZE || elapsed >= PERIOD {
+                if size >= BATCH_SIZE || (elapsed >= PERIOD && size > 0) {
                     let start = Instant::now();
                     match create_query(_entity_name, vec) {
                         None => {},
@@ -47,7 +46,7 @@ impl IndexStore {
                             diesel::sql_query(query).execute(&con);
                             self.last_store = Some(Instant::now());
                             vec.clear();
-                            log::info!("Insert {:?} records in: {:?} ms.", size, start.elapsed());
+                            log::info!("[Index-Store] Insert {:?} records in: {:?} ms.", size, start.elapsed());
                         }
                     }
                 }
@@ -58,14 +57,17 @@ impl IndexStore {
 impl Store for IndexStore {
     fn save(&mut self, _entity_name: String, mut _data: GenericMap) {
         match self.buffer.get_mut(_entity_name.as_str()) {
+            //Create buffer for first call
             None => {
                 let mut vec = Vec::new();
                 vec.push(_data);
                 self.buffer.insert(_entity_name, vec);
-            }
+            },
+            //Put data into buffer then perform flush to db if buffer size exceeds BATCH_SIZE
+            //or elapsed time from last save exceeds PERIOD
             Some(vec) => {
                 vec.push(_data);
-                self.check_flush(_entity_name);
+                self.check_and_flush(_entity_name);
             }
         }
     }
@@ -73,54 +75,45 @@ impl Store for IndexStore {
 
     }
 }
+///
+/// Create Query with format
+/// INSERT INTO {entity_name} ({field1}, {field2}, {field3}) VALUES
+/// ('strval11',numberval12, numberval13),
+/// ('strval21',numberval22, numberval23),
+///
 fn create_query(_entity_name : String, vec : &Vec<GenericMap>) -> Option<String> {
-    let mut sql_insert = String::new();
-    let mut sql_value = String::new();
-    write!(sql_insert, "INSERT INTO {} (", _entity_name);
-    let mut sep_val = "";
-    let mut ind = 0;
-    for _data in vec.iter() {
-        if ind == 0 {
-            let mut sep_field = "";
-            for (k, _) in _data {
-                write!(sql_insert, "{}{},",sep_field, k);
-                sep_field = ",";
+    if vec.len() > 0 {
+        let fields : Option<Vec<String>> = match vec.get(0) {
+            None => None,
+            Some(_data) => {
+                Some(_data.iter().map(|(k,_)|{k.to_string()}).collect())
             }
-            write!(sql_insert,") VALUES ");
+        };
+        match fields {
+            Some(f) => {
+                //Store vector of row's string form ('strval11',numberval12, numberval13)
+                let row_values : Vec<String> = vec.iter().map(|_data| {
+                    let field_values: Vec<String> = _data.iter().map(|(_,v)| {
+                        let mut str_val = String::new();
+                        match v.string() {
+                            Some(r) =>  { write!(str_val, "'{}'", r); }
+                            _ => {}
+                        };
+                        match v.i64() {
+                            Some(r) => { write!(str_val, "{}", r); }
+                            _ => {}
+                        }
+                        str_val
+                    }).collect();
+                    format!("({})",field_values.join(","))
+                }).collect();
+                Some(format!("INSERT INTO ({}) VALUES {};", f.join(","), row_values.join(",")))
+            }
+            None => None
         }
-        let mut sep_field = "";
-        write!(sql_value,"{} (", sep_val);
-        for (_, v) in _data {
-            match v.string() {
-                Some(r) => {
-                    write!(sql_value, "{}'{}'", sep_field, r);
-                }
-                _ => {}
-            }
-            match v.i64() {
-                Some(r) => {
-                    write!(sql_value, "{}{}", sep_field, r);
-                }
-                _ => {}
-            }
-            sep_field = ",";
-        }
-        write!(sql_value, ")");
-        sep_val = ",";
-        ind = ind + 1;
-    };
-    write!(sql_insert, " {} ", sql_value.as_str());
-    Some(sql_insert)
-
-
-    // Compiling the attributes for the insert query
-    // Example: INSERT INTO BlockTs (block_hash,block_height)
-
-
-    // Compiling the values for the insert query
-    // Example: INSERT INTO BlockTs (block_hash,block_height) VALUES ('0x720c…6c50',610)
-
-
+    } else {
+        None
+    }
 }
 /*
 impl Store for IndexStore {
