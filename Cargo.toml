@@ -10,8 +10,7 @@ members = [
     "plugin/test-solana-log-messages",
     "plugin/test-plugin",
     "core/chain/solana",
-    "cli",
-    "store/postgres"
+    "cli"
 ]
 exclude = ["code-compiler/generated"]
 
