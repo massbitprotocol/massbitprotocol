@@ -9,7 +9,7 @@ use plugin::core::{PluginRegistrar, SubstrateEventHandler as SubstrateEventHandl
 
 #[doc(hidden)]
 #[no_mangle]
-pub static mut STORE: Option<&dyn Store> = None;
+pub static mut STORE: Option<&mut dyn Store> = None;
 
 plugin::export_plugin!(register);
 
