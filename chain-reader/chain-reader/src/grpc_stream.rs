@@ -4,7 +4,7 @@ use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};
 use stream_mod::{ChainType, HelloReply, HelloRequest, GetBlocksRequest, GenericDataProto, streamout_server::Streamout};
 use std::collections::HashMap;
-
+use log::{debug, warn, error, info, Level};
 
 pub mod stream_mod {
     tonic::include_proto!("chaindata");
@@ -25,7 +25,7 @@ impl Streamout for StreamService {
         &self,
         request: Request<HelloRequest>,
     ) -> Result<Response<HelloReply>, Status> {
-        println!("Got a request: {:?}", request);
+        info!("Got a request: {:?}", request);
 
         let reply = HelloReply {
             message: format!("Hello {}!", request.into_inner().name).into(),
@@ -40,7 +40,7 @@ impl Streamout for StreamService {
         &self,
         request: Request<GetBlocksRequest>,
     ) -> Result<Response<Self::ListBlocksStream>, Status> {
-        println!("Request = {:?}", request);
+        info!("Request = {:?}", request);
         let chain_type: ChainType = ChainType::from_i32(request.get_ref().chain_type).unwrap();
 
         // tx, rx for out stream gRPC
