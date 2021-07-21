@@ -225,10 +225,8 @@ pub async fn track_hasura_table(table_name: &String) {
 }
 
 pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
-    let store = IndexStore {
-        connection_string: DATABASE_CONNECTION_STRING.to_string(),
-    };
 
+    let mut store = IndexStore::new(DATABASE_CONNECTION_STRING.as_str());
     // Get mapping file, raw query to create new table and project.yaml config
     let (mapping_file_path, raw_query, config_file_path) = match params.deploy_type {
         DeployType::Local => {
@@ -298,7 +296,7 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
                  DataType::from_i32(data.data_type).unwrap());
 
         // Need to refactor this or this will be called every time a new block comes
-        let mut plugins = PluginManager::new(&store);
+        let mut plugins = PluginManager::new(&mut store);
         unsafe {
             plugins.load("1234", mapping_file_path.clone()).unwrap();
         }
