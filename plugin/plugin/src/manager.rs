@@ -26,7 +26,7 @@ pub struct PluginManager<'a> {
 }
 
 impl<'a> PluginManager<'a> {
-    pub fn new(store: &dyn Store) -> PluginManager {
+    pub fn new(store: &mut dyn Store) -> PluginManager {
         PluginManager {
             store,
             libs: vec![],
