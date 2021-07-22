@@ -1,0 +1,168 @@
+name: Workflow for Tag
+
+on:
+  create:
+    tags:
+      - v*
+
+jobs:
+  #################
+  # Running build #
+  #################
+  build-cargo:
+    name: Build Chain Reader & Indexer
+    env:
+      CHAIN_READER: chain-reader
+      INDEXER: index-manager-main
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          target: wasm32-unknown-unknown
+          override: true
+      - name: Install missing dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y cmake pkg-config libssl-dev git gcc build-essential clang libclang-dev libpq-dev libudev-dev zlib1g-dev llvm make
+          rustup toolchain install nightly-2021-05-20
+          rustup target add wasm32-unknown-unknown --toolchain nightly-2021-05-20
+      - name: Build release
+        run: cargo build --release
+      - name: List release files
+        run: ls -ll target/release
+      - name: Upload chain-reader artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: chain-reader
+          path: target/release/chain-reader
+      - name: Upload indexer artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: index-manager-main
+          path: target/release/index-manager-main
+
+  ##################
+  # Running docker #
+  ##################
+  docker-chain-reader:
+    needs: [build-cargo]
+    name: Docker chain reader
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: Log in to Docker Hub
+        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
+        with:
+          images: sprise/chain-reader
+      - name: Download artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: chain-reader
+          path: target/release/chain-reader
+      - name: Get our docker file to the main source
+        run: cp deployment/chain-reader/Dockerfile Dockerfile
+      - name: List files
+        run: ls -ll
+      - name: Build and push image
+        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  docker-indexer:
+    needs: [build-cargo]
+    name: Docker indexer
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: Log in to Docker Hub
+        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
+        with:
+          images: sprise/indexer
+      - name: Download artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: index-manager-main
+          path: target/release/index-manager-main
+      - name: Get our docker file to the main source
+        run: cp deployment/indexer/Dockerfile Dockerfile
+      - name: List files
+        run: ls -ll
+      - name: Build and push image
+        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  docker-python:
+    name: Docker code compiler
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: Log in to Docker Hub
+        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
+        with:
+          images: sprise/code-compiler
+      - name: Get our docker file to the main source so we have the massbitprotcol app context
+        run: cp deployment/code-compiler/Dockerfile Dockerfile
+      - name: Build and push image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  docker-dashboard:
+    name: Docker dashboard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: Log in to Docker Hub
+        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
+        with:
+          images: sprise/dashboard
+      - name: Get our docker file to the main source so we have the massbitprotcol app context
+        run: cp deployment/dashboard/Dockerfile Dockerfile
+      - name: Build and push image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
