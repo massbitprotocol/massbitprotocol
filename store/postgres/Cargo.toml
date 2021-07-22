@@ -2,10 +2,18 @@
 name = "store-postgres"
 version = "0.1.0"
 edition = "2018"
+[lib]
+name = "graphql"
+path = "src/lib.rs"
+
+[[bin]]
+name = "graphql"
+path = "src/main.rs"
 
 [dependencies]
 async-trait = "0.1.48"
 blake3 = "0.3.8"
+clap = "2.33.3"
 derive_more = { version = "0.99.14" }
 diesel = { version = "1.4.7", features = ["postgres", "serde_json", "numeric", "r2d2"] }
 # We use diesel-dynamic-schema straight from git as the project has not
@@ -31,7 +39,7 @@ diesel_derives = "1.4.1"
 anyhow = "1.0.41"
 git-testament = "0.2.0"
 itertools = "0.10.1"
-
+serde_yaml = "0.8.17"
 [dependencies.graph]
 package = "graph"
 git = "https://github.com/graphprotocol/graph-node"
@@ -65,3 +73,9 @@ exclude = ["src/chain_head_listener.rs"]
 #test-store = { path = "../../graphprotocol/graph-node/store/test-store" }
 #hex-literal = "0.3"
 #graph-mock = { path = "../../graphprotocol/graph-node/mock" }
+
+[workspace]
+
+[patch.crates-io]
+# Include protection against stack overflow when parsing from this PR: https://github.com/graphql-rust/graphql-parser/commit/45167b53e9533c331298683577ba8df7e43480ac
+graphql-parser = {git="https://github.com/graphql-rust/graphql-parser", rev="45167b53e9533c331298683577ba8df7e43480ac"}
