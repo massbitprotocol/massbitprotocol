@@ -56,8 +56,8 @@ pub async fn print_blocks(mut client: StreamoutClient<Channel>, chain_type: Chai
                         info!("Received BLOCK: {:?}", &block.block.header.number);
                         let extrinsics = get_extrinsics_from_block(&block);
                         for extrinsic in extrinsics {
-                            //info!("Recieved EXTRINSIC: {:?}", extrinsic);
-                            let string_extrinsic = format!("Recieved EXTRINSIC:{:?}", extrinsic);
+                            //info!("Received EXTRINSIC: {:?}", extrinsic);
+                            let string_extrinsic = format!("Received EXTRINSIC:{:?}", extrinsic);
                             info!("{}", string_extrinsic);
                         }
                     }
