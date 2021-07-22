@@ -1,3 +1,4 @@
+use log::{info,warn,debug,Level};
 use crate::stream_mod::{
     streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
 };
@@ -81,8 +82,6 @@ pub async fn print_blocks(mut client: StreamoutClient<Channel>, chain_type: Chai
                         let encoded_block: SolanaEncodedBlock = solana_decode(&mut data.payload).unwrap();
                         // Decode
                         let block = convert_solana_encoded_block_to_solana_block(encoded_block);
-                        println!("Recieved SOLANA BLOCK with block height: {:?}, hash: {:?}", &rc_block.block.block_height.unwrap(), &rc_block.block.blockhash);
-
                         let mut print_flag = true;
                         for origin_transaction in block.clone().block.transactions {
                             let log_messages = origin_transaction.clone().meta.unwrap().log_messages.clone();
@@ -131,16 +130,13 @@ pub async fn print_blocks(mut client: StreamoutClient<Channel>, chain_type: Chai
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
-
+    env_logger::init();
+    println!("Start client");
     info!("Waiting for chain-reader");
 
-    tokio::spawn(async move {
-        let client = StreamoutClient::connect(URL).await.unwrap();
-        print_blocks(client, ChainType::Solana).await
-    });
-
     let client = StreamoutClient::connect(URL).await.unwrap();
-    print_blocks(client, ChainType::Substrate).await?;
+    print_blocks(client, ChainType::Solana).await;
+
 
     Ok(())
 }

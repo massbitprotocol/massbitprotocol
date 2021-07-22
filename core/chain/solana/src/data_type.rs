@@ -2,10 +2,14 @@ use solana_transaction_status;
 use std::error::Error;
 use serde_json;
 use serde::{Deserialize, Serialize};
-use solana_transaction_status::TransactionStatusMeta;
+use solana_transaction_status::{TransactionStatusMeta, TransactionTokenBalance, UiTransactionTokenBalance, UiInnerInstructions, InnerInstructions};
 use std::rc::Rc;
 use std::sync::Arc;
-
+use log::{info, warn};
+use bs58;
+use solana_transaction_status::{UiInstruction::{Compiled,Parsed}};
+//use solana_sdk::instruction::CompiledInstruction;
+//use solana_program::instruction::CompiledInstruction;
 
 //***************** Solana data type *****************
 // EncodedConfirmedBlock is block with vec of EncodedTransactionWithStatusMeta.
@@ -39,14 +43,68 @@ pub fn get_list_log_messages_from_encoded_block(block: &EncodedBlock) -> Vec<Log
         .collect()
 }
 
+fn UiTransactionTokenBalance_to_TransactionTokenBalance(ui_ttb: &UiTransactionTokenBalance)-> TransactionTokenBalance{
+    TransactionTokenBalance {
+        account_index: ui_ttb.account_index.clone(),
+        mint: ui_ttb.mint.clone(),
+        ui_token_amount: ui_ttb.ui_token_amount.clone(),
+    }
+}
 
-fn decode_encoded_block (encoded_block: EncodedBlock) -> Block {
+fn UiInnerInstructions_to_UiInstructions(ui_inner_instruction: UiInnerInstructions) -> InnerInstructions {
+    InnerInstructions {
+        index: ui_inner_instruction.index,
+        //instructions: compiled_instructions,
+        instructions: ui_inner_instruction.instructions.iter().filter_map(|ui_instruction| {
+            match ui_instruction {
+                Compiled(ui_compiled_instruction) => {
+                    Some(solana_program::instruction::CompiledInstruction {
+                        program_id_index: ui_compiled_instruction.program_id_index,
+                        accounts: ui_compiled_instruction.accounts.clone(),
+                        data: bs58::decode(ui_compiled_instruction.data.clone()).into_vec().unwrap()
+                    })
+                },
+                // Todo: need support Parsed(UiParsedInstruction)
+                Parsed(UiParsedInstruction) => {
+                    warn!("Not support ui_instruction type: {:?}", UiParsedInstruction);
+                    None
+                },
+            }
+        }).collect()
+    }
+}
+
+pub fn decode_encoded_block (encoded_block: EncodedBlock) -> Block {
     Block {
         rewards: encoded_block.rewards,
         transactions: encoded_block.transactions.iter().filter_map(|transaction| {
             let meta = &transaction.meta.as_ref().unwrap();
             let decoded_transaction = transaction.transaction.decode();
-            //println!("*** Decode transaction: {:?}",decoded_transaction);
+            let post_token_balances: Option<Vec<TransactionTokenBalance>> = match &meta.post_token_balances {
+                Some(post_token_balances) => {
+                    Some(post_token_balances.into_iter()
+                        .map(|ui_ttb| UiTransactionTokenBalance_to_TransactionTokenBalance(ui_ttb))
+                        .collect())
+                },
+                None => None
+            };
+            let pre_token_balances: Option<Vec<TransactionTokenBalance>> = match &meta.pre_token_balances {
+                Some(pre_token_balances) => {
+                    Some(pre_token_balances.into_iter()
+                        .map(|ui_ttb| UiTransactionTokenBalance_to_TransactionTokenBalance(ui_ttb))
+                        .collect())
+                },
+                None => None
+            };
+            let inner_instructions: Option<Vec<InnerInstructions>> = Some(
+                meta.inner_instructions.clone()
+                    .unwrap()
+                    .iter()
+                    .map(|ui_inner_instruction|{
+                       UiInnerInstructions_to_UiInstructions(ui_inner_instruction.clone())
+                    })
+                    .collect());
+
             match decoded_transaction {
                 Some(decoded_transaction) => {
                     Some(solana_transaction_status::TransactionWithStatusMeta {
@@ -57,10 +115,9 @@ fn decode_encoded_block (encoded_block: EncodedBlock) -> Block {
                             fee: meta.fee,
                             post_balances: meta.post_balances.clone(),
                             pre_balances: meta.pre_balances.clone(),
-                            // Todo: decode the following field from UiTransactionStatusMeta, now just ignore
-                            inner_instructions: None,
-                            post_token_balances: None,
-                            pre_token_balances: None,
+                            inner_instructions: inner_instructions,
+                            post_token_balances,
+                            pre_token_balances,
                             // EndTodo
                         }),
                         transaction: decoded_transaction,
