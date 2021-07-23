@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use serde_yaml::Value;
 
 #[allow(dead_code)]
 pub struct IndexManager {
@@ -38,8 +39,7 @@ pub struct DetailParams {
 }
 
 pub struct IndexConfig {
-    pub model: String,
-    pub config: String,
+    pub config: Value,
     pub mapping: PathBuf,
     pub query: String,
 }

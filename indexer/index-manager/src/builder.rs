@@ -1,8 +1,9 @@
 use std::path::PathBuf;
 
 // Massbit dependencies
-use crate::types::{DeployType, IndexConfig};
-use crate::config_helper::{get_raw_query_from_ipfs, get_mapping_file_from_ipfs, get_config_file_from_ipfs, get_raw_query_from_local, get_config_file_from_local, get_mapping_file_from_local};
+use crate::types::{IndexConfig};
+use crate::config_helper::{get_raw_query_from_ipfs, get_mapping_file_from_ipfs, get_config_file_from_ipfs, get_raw_query_from_local, get_config_file_from_local, get_mapping_file_from_local, read_config_file};
+use serde_yaml::Value;
 
 /**
 *** Builder Pattern
@@ -20,8 +21,7 @@ use crate::config_helper::{get_raw_query_from_ipfs, get_mapping_file_from_ipfs, 
 * Index Config Local *
 *********************/
 pub struct IndexConfigLocalBuilder {
-    model: String,
-    config: String,
+    config: Value,
     mapping: PathBuf,
     query: String,
 }
@@ -29,8 +29,7 @@ pub struct IndexConfigLocalBuilder {
 impl Default for IndexConfigLocalBuilder {
     fn default() -> IndexConfigLocalBuilder {
         IndexConfigLocalBuilder {
-            model: "".to_string(),
-            config: "".to_string(),
+            config: Default::default(),
             mapping: "".to_string().parse().unwrap(),
             query: "".to_string(),
         }
@@ -38,11 +37,6 @@ impl Default for IndexConfigLocalBuilder {
 }
 
 impl IndexConfigLocalBuilder {
-    fn model(mut self, model: String) -> IndexConfigLocalBuilder {
-        self.model = model;
-        self
-    }
-
     pub fn query(mut self, query: String) -> IndexConfigLocalBuilder {
         self.query = get_raw_query_from_local(&query);
         self
@@ -54,13 +48,13 @@ impl IndexConfigLocalBuilder {
     }
 
     pub fn config(mut self, config: String) -> IndexConfigLocalBuilder {
-        self.config = get_config_file_from_local(&config);
+        let config = get_config_file_from_local(&config);
+        self.config = read_config_file(&config);
         self
     }
 
     pub fn build(self) -> IndexConfig {
         IndexConfig {
-            model: self.model,
             config: self.config,
             mapping: self.mapping,
             query: self.query,
@@ -72,8 +66,7 @@ impl IndexConfigLocalBuilder {
 * Index Config IPFS *
 ********************/
 pub struct IndexConfigIpfsBuilder {
-    model: String,
-    config: String,
+    config: Value,
     mapping: PathBuf,
     query: String,
 }
@@ -81,8 +74,7 @@ pub struct IndexConfigIpfsBuilder {
 impl Default for IndexConfigIpfsBuilder {
     fn default() -> IndexConfigIpfsBuilder {
         IndexConfigIpfsBuilder {
-            model: "".to_string(),
-            config: "".to_string(),
+            config: Default::default(),
             mapping: "".to_string().parse().unwrap(),
             query: "".to_string(),
         }
@@ -90,11 +82,6 @@ impl Default for IndexConfigIpfsBuilder {
 }
 
 impl IndexConfigIpfsBuilder {
-    fn model(mut self, model: String) -> IndexConfigIpfsBuilder {
-        self.model = model;
-        self
-    }
-
     pub async fn query(mut self, query: String) -> IndexConfigIpfsBuilder {
         self.query = get_raw_query_from_ipfs(&query).await;
         self
@@ -108,13 +95,13 @@ impl IndexConfigIpfsBuilder {
     }
 
     pub async fn config(mut self, config: String) -> IndexConfigIpfsBuilder {
-        self.config = get_config_file_from_ipfs(&config).await;
+        let config = get_config_file_from_ipfs(&config).await;
+        self.config = read_config_file(&config);
         self
     }
 
     pub fn build(self) -> IndexConfig {
         IndexConfig {
-            model: self.model,
             config: self.config,
             mapping: self.mapping,
             query: self.query,

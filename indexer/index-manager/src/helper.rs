@@ -1,68 +1,36 @@
-use diesel::result::DatabaseErrorInformation;
-use diesel::{Connection, PgConnection, QueryResult, Queryable, RunQueryDsl};
+use diesel::{Connection, PgConnection, RunQueryDsl};
 use lazy_static::lazy_static;
-use node_template_runtime::Event;
 use postgres::{Connection as PostgreConnection, TlsMode};
-use reqwest::Client;
-use serde::Deserialize;
-use serde_json::json;
-use sp_core::{sr25519, H256 as Hash};
 use std::error::Error;
-use std::fs;
 use std::fs::File;
 use std::io::Read;
-use std::{env, path::PathBuf};
-use tokio_compat_02::FutureExt;
+use std::{env};
 use tonic::Request;
 use std::time::Instant;
-use std::rc::Rc;
 
 // Massbit dependencies
-use crate::types::{DeployParams, DeployType, DetailParams, Indexer};
+use crate::types::{DeployParams, DeployType, Indexer};
 use index_store::core::IndexStore;
-use ipfs_client::core::create_ipfs_clients;
 use plugin::manager::PluginManager;
-use stream_mod::{HelloRequest, GetBlocksRequest, GenericDataProto, ChainType, DataType, streamout_client::StreamoutClient};
+use stream_mod::{GetBlocksRequest, GenericDataProto, ChainType, DataType, streamout_client::StreamoutClient};
 use crate::builder::{IndexConfigLocalBuilder, IndexConfigIpfsBuilder};
+use crate::hasura::track_hasura_table;
+use crate::store::{create_new_indexer_detail_table, insert_new_indexer};
 // Refactor to new files for substrate / solana
-use massbit_chain_substrate::data_type::{decode, decode_transactions, SubstrateBlock as Block, SubstrateBlock, SubstrateHeader as Header, SubstrateUncheckedExtrinsic as Extrinsic, get_extrinsics_from_block, SubstrateEventRecord};
-use massbit_chain_solana::data_type::{SolanaBlock, decode as solana_decode, SolanaEncodedBlock, convert_solana_encoded_block_to_solana_block, SolanaTransaction, SolanaLogMessages};
-
+use massbit_chain_substrate::data_type::{decode, SubstrateBlock, get_extrinsics_from_block, SubstrateEventRecord};
+use massbit_chain_solana::data_type::{decode as solana_decode, SolanaEncodedBlock, convert_solana_encoded_block_to_solana_block, SolanaTransaction, SolanaLogMessages};
 
 // Configs
 pub mod stream_mod {
     tonic::include_proto!("chaindata");
 }
-
 lazy_static! {
     static ref CHAIN_READER_URL: String =
         env::var("CHAIN_READER_URL").unwrap_or(String::from("http://127.0.0.1:50051"));
-    static ref HASURA_URL: String =
-        env::var("HASURA_URL").unwrap_or(String::from("http://localhost:8080/v1/query"));
     static ref DATABASE_CONNECTION_STRING: String = env::var("DATABASE_CONNECTION_STRING")
         .unwrap_or(String::from("postgres://graph-node:let-me-in@localhost"));
     static ref IPFS_ADDRESS: String =
         env::var("IPFS_ADDRESS").unwrap_or(String::from("0.0.0.0:5001"));
-}
-
-pub async fn get_index_config(ipfs_config_hash: &String) -> serde_yaml::Mapping {
-    let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
-    let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await; // Refactor to use lazy load
-
-    let file_bytes = ipfs_clients[0]
-        .cat_all(ipfs_config_hash.to_string())
-        .compat()
-        .await
-        .unwrap()
-        .to_vec();
-
-    serde_yaml::from_slice(&file_bytes).unwrap()
-}
-
-pub fn create_new_indexer_detail_table(connection: &PgConnection, raw_query: &String) {
-    let query = diesel::sql_query(raw_query.clone());
-    println!("Running: {}", raw_query);
-    query.execute(connection);
 }
 
 pub fn create_indexers_table_if_not_exists(connection: &PgConnection) {
@@ -78,55 +46,6 @@ pub fn create_indexers_table_if_not_exists(connection: &PgConnection) {
             log::warn!("[Index Manager Helper] {}", e);
         }
     };
-}
-
-pub fn read_config_file(config_file_path: &String) -> serde_yaml::Value {
-    let mut project_config_string = String::new();
-    let mut f = File::open(config_file_path).expect("Unable to open file"); // Refactor: Config to download config file from IPFS instead of just reading from local
-    f.read_to_string(&mut project_config_string)
-        .expect("Unable to read string"); // Get raw query
-    let project_config: serde_yaml::Value = serde_yaml::from_str(&project_config_string).unwrap();
-    project_config
-}
-
-pub fn insert_new_indexer(
-    connection: &PgConnection,
-    id: &String,
-    project_config: &serde_yaml::Value,
-) {
-    let network = project_config["dataSources"][0]["kind"].as_str().unwrap();
-    let name = project_config["dataSources"][0]["name"].as_str().unwrap();
-
-    let add_new_indexer = format!(
-        "INSERT INTO indexers(id, name, network) VALUES ('{}','{}','{}');",
-        id, name, network
-    );
-    let result = diesel::sql_query(add_new_indexer).execute(connection);
-    match result {
-        Ok(_) => {
-            log::info!("[Index Manager Helper] New indexer created");
-        }
-        Err(e) => {
-            log::warn!("[Index Manager Helper] {}", e);
-        }
-    };
-}
-
-pub async fn track_hasura_table(table_name: &String) {
-    let gist_body = json!({
-        "type": "track_table",
-        "args": {
-            "schema": "public",
-            "name": table_name.to_lowercase(),
-        }
-    });
-    Client::new()
-        .post(&*HASURA_URL)
-        .json(&gist_body)
-        .send()
-        .compat()
-        .await
-        .unwrap();
 }
 
 pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
@@ -164,12 +83,11 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
     // Create indexers table so we can keep track of the indexers status
     create_indexers_table_if_not_exists(&connection);
 
-    // Read project.yaml config and add a new indexer row
-    let project_config = read_config_file(&index_config.config);
-    insert_new_indexer(&connection, &params.index_name, &project_config);
+    // Add new indexer
+    insert_new_indexer(&connection, &params.index_name, &index_config.config);
 
     // Use correct chain type based on config
-    let chain_type = match project_config["dataSources"][0]["kind"].as_str().unwrap() {
+    let chain_type = match index_config.config["dataSources"][0]["kind"].as_str().unwrap() {
         "substrate" => ChainType::Substrate,
         "solana" => ChainType::Solana,
         _ => ChainType::Substrate, // If not provided, assume it's substrate network
@@ -290,7 +208,7 @@ pub async fn list_handler_helper() -> Result<Vec<Indexer>, Box<dyn Error>> {
     create_indexers_table_if_not_exists(&connection);
 
     // User postgre lib for easy query
-    let mut client =
+    let client =
         PostgreConnection::connect(DATABASE_CONNECTION_STRING.clone(), TlsMode::None).unwrap();
     let mut indexers: Vec<Indexer> = Vec::new();
 
@@ -306,5 +224,5 @@ pub async fn list_handler_helper() -> Result<Vec<Indexer>, Box<dyn Error>> {
         indexers.push(indexer);
     }
 
-    Ok((indexers))
+    Ok(indexers)
 }
