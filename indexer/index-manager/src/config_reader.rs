@@ -1,11 +1,13 @@
 use std::path::PathBuf;
+use crate::helper::get_raw_query_from_ipfs;
+use crate::types::DeployType;
 
 pub struct IndexConfig {
-    model: String,
-    table: String,
-    config: PathBuf,
-    mapping: String,
-    query: String,
+    pub model: String,
+    pub table: String,
+    pub config: PathBuf,
+    pub mapping: String,
+    pub query: String,
 }
 
 /**
@@ -25,13 +27,26 @@ impl IndexConfig {
     }
 }
 
-#[derive(Default)]
 pub struct IndexConfigBuilder {
     model: String,
     table: String,
     config: PathBuf,
     mapping: String,
     query: String,
+    pub deploy_type: DeployType,
+}
+
+impl Default for IndexConfigBuilder {
+    fn default() -> IndexConfigBuilder {
+        IndexConfigBuilder {
+            model: "".to_string(),
+            table: "".to_string(),
+            config: Default::default(),
+            mapping: "".to_string(),
+            query: "".to_string(),
+            deploy_type: DeployType::Ipfs,
+        }
+    }
 }
 
 impl IndexConfigBuilder {
@@ -40,8 +55,13 @@ impl IndexConfigBuilder {
         self
     }
 
-    pub fn query(mut self, query: String) -> IndexConfigBuilder {
-        self.model = query;
+    pub async fn query(mut self, query: String) -> IndexConfigBuilder {
+        self.query = get_raw_query_from_ipfs(&query).await;
+        self
+    }
+
+    pub fn deploy_type(mut self, deploy_type: DeployType) -> IndexConfigBuilder {
+        self.deploy_type = deploy_type;
         self
     }
 
@@ -55,4 +75,3 @@ impl IndexConfigBuilder {
         }
     }
 }
-

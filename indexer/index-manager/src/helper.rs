@@ -248,9 +248,13 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
         }
     };
 
-    let indexConfig = IndexConfigBuilder::default().query(raw_query.clone()).build();
+    let indexConfig = IndexConfigBuilder::default()
+        .deploy_type(DeployType::Ipfs)
+        .query(params.model_path)
+        .await
+        .build();
 
-
+    println!("{:?}", indexConfig.query);
 
 
 
