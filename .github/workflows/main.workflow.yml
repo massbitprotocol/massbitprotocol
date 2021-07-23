@@ -1,10 +1,11 @@
- name: Worflow for Master branch
+name: Worflow for Master branch
 
- on:
+on:
    push:
-     branches: [ master ]
+     branches:
+       - main
 
- jobs:
+jobs:
    # Running test
    test:
      name: Test
