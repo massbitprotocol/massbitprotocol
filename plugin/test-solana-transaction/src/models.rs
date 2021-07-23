@@ -19,7 +19,7 @@ impl TransactionSolanaTs {
     pub fn save(&self) {
         unsafe {
             STORE
-                .as_ref()
+                .as_mut()
                 .unwrap()
                 .save("TransactionSolanaTs".to_string(), self.clone().into());
         }

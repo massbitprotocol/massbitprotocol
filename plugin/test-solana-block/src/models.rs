@@ -19,7 +19,7 @@ impl BlockSolanaTs {
     pub fn save(&self) {
         unsafe {
             STORE
-                .as_ref()
+                .as_mut()
                 .unwrap()
                 .save("BlockSolanaTs".to_string(), self.clone().into());
         }
