@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 #[allow(dead_code)]
 pub struct IndexManager {
@@ -7,13 +8,13 @@ pub struct IndexManager {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct DeployParams {
-    pub(crate) index_name: String,
-    pub(crate) config_path: String,
-    pub(crate) mapping_path: String,
-    pub(crate) model_path: String,
-    pub(crate) table_name: String,
-    pub(crate) deploy_type: DeployType,
-    pub(crate) schema: String,
+    pub index_name: String,
+    pub config: String,
+    pub mapping: String,
+    pub query: String,
+    pub table_name: String,
+    pub deploy_type: DeployType,
+    pub schema: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -31,7 +32,14 @@ pub struct Indexer {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct DetailParams {
-    pub(crate) index_name: String,
-    pub(crate) ipfs_config_hash: String,
-    pub(crate) ipfs_mapping_hash: String,
+    pub index_name: String,
+    pub ipfs_config_hash: String,
+    pub ipfs_mapping_hash: String,
+}
+
+pub struct IndexConfig {
+    pub model: String,
+    pub config: String,
+    pub mapping: PathBuf,
+    pub query: String,
 }
