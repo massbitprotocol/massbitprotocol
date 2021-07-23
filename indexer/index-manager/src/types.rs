@@ -13,6 +13,7 @@ pub struct DeployParams {
     pub(crate) model_path: String,
     pub(crate) table_name: String,
     pub(crate) deploy_type: DeployType,
+    pub(crate) schema: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]

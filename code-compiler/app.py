@@ -107,6 +107,7 @@ def compile_handler():
     project = urllib.parse.unquote_plus(data["project.yaml"])
     up = urllib.parse.unquote_plus(data["up.sql"])
     table = urllib.parse.unquote_plus(data["table"])  # Should refactor this to index_name in the future
+    schema = urllib.parse.unquote_plus(data["schema.graphql"])
     network_type = urllib.parse.unquote_plus(data["network_type"])
 
     # Populate data based on network type so we can run compile with enough data
@@ -127,6 +128,7 @@ def compile_handler():
     write_to_disk(generated_folder + "/src/project.yaml", project)
     write_to_disk(generated_folder + "/src/up.sql", up)
     write_to_disk(generated_folder + "/src/table.txt", table)  # Should refactor this to index_name in the future
+    write_to_disk(generated_folder + "/src/schema.graphql", schema)
 
     # Compile the newly created deployment
     print("Compiling request: " + hash + ". This will take a while!")
@@ -185,6 +187,7 @@ def deploy_handler():
     up = os.path.join("./generated", compilation_id, "src/up.sql")
     so = os.path.join("./generated", compilation_id, "target/release/libblock.so")
     index_name = os.path.join("./generated", compilation_id, "src/table.txt")
+    schema = os.path.join("./generated", compilation_id, "src/schema.graphql")
 
     # Uploading files to IPFS
     if os.environ.get('IPFS_URL'):
@@ -196,6 +199,7 @@ def deploy_handler():
     project_res = client.add(project)
     up_res = client.add(up)
     so_res = client.add(so)
+    schema_res = client.add(schema)
 
     # Reading indexer name from table.txt file, should refactor to index.txt later
     f = open(index_name, "r")
@@ -215,6 +219,7 @@ def deploy_handler():
     print("up.sql: " + up_res['Hash'])
     print("libblock.so: " + so_res['Hash'])
     print("Indexer name: " + index_name)
+    print("schema.graphql: " + schema_res['Hash'])
 
     # Uploading IPFS files to Index Manager
     if os.environ.get('INDEX_MANAGER_URL'):
@@ -231,7 +236,8 @@ def deploy_handler():
                                 so_res['Hash'],
                                 up_res['Hash'],
                                 table_name,
-                                "Ipfs"
+                                "Ipfs",
+                                schema_res['Hash']
                             ],
                             'id': 1,
                         })
