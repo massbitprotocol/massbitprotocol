@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 // Massbit dependencies
 use crate::types::{IndexConfig};
-use crate::config_helper::{get_raw_query_from_ipfs, get_mapping_file_from_ipfs, get_config_file_from_ipfs, get_raw_query_from_local, get_config_file_from_local, get_mapping_file_from_local, read_config_file};
+use crate::config_helper::{get_query_ipfs, get_mapping_ipfs, get_config_ipfs, get_query_local, get_config_local, get_mapping_local, read_config_file};
 use serde_yaml::Value;
 
 /**
@@ -38,20 +38,26 @@ impl Default for IndexConfigLocalBuilder {
 
 impl IndexConfigLocalBuilder {
     pub fn query(mut self, query: String) -> IndexConfigLocalBuilder {
-        self.query = get_raw_query_from_local(&query);
+        self.query = get_query_local(&query);
         self
     }
 
     pub fn mapping(mut self, mapping: String) -> IndexConfigLocalBuilder {
-        self.mapping = get_mapping_file_from_local(&mapping);
+        self.mapping = get_mapping_local(&mapping);
         self
     }
 
     pub fn config(mut self, config: String) -> IndexConfigLocalBuilder {
-        let config = get_config_file_from_local(&config);
+        let config = get_config_local(&config);
         self.config = read_config_file(&config);
         self
     }
+
+    // pub fn schema(mut self, config: String) -> IndexConfigLocalBuilder {
+    //     let config = get_config_file_from_local(&config);
+    //     self.config = read_config_file(&config);
+    //     self
+    // }
 
     pub fn build(self) -> IndexConfig {
         IndexConfig {
@@ -83,19 +89,19 @@ impl Default for IndexConfigIpfsBuilder {
 
 impl IndexConfigIpfsBuilder {
     pub async fn query(mut self, query: String) -> IndexConfigIpfsBuilder {
-        self.query = get_raw_query_from_ipfs(&query).await;
+        self.query = get_query_ipfs(&query).await;
         self
     }
 
     pub async fn mapping(mut self, mapping: String) -> IndexConfigIpfsBuilder {
-        let mapping_file_name = get_mapping_file_from_ipfs(&mapping).await;
-        let mapping_file_location = ["./", &mapping_file_name].join("");
-        self.mapping = PathBuf::from(mapping_file_location.to_string());
+        let mapping_name = get_mapping_ipfs(&mapping).await;
+        let mapping_file = ["./", &mapping_name].join("");
+        self.mapping = PathBuf::from(mapping_file.to_string());
         self
     }
 
     pub async fn config(mut self, config: String) -> IndexConfigIpfsBuilder {
-        let config = get_config_file_from_ipfs(&config).await;
+        let config = get_config_ipfs(&config).await;
         self.config = read_config_file(&config);
         self
     }

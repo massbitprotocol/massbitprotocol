@@ -58,6 +58,7 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
                 .query(params.query)
                 .config(params.config)
                 .mapping(params.mapping)
+                .schema(params.schema)
                 .build();
             index_config
         }
@@ -66,6 +67,7 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
                 .query(params.query).await
                 .config(params.config).await
                 .mapping(params.mapping).await
+                .schema(params.schema).await
                 .build();
             index_config
         }

@@ -24,7 +24,7 @@ lazy_static! {
 //     serde_yaml::from_slice(&file_bytes).unwrap()
 // }
 
-pub async fn get_raw_query_from_ipfs(ipfs_model_hash: &String) -> String {
+pub async fn get_query_ipfs(ipfs_model_hash: &String) -> String {
     log::info!("[Index Manager Helper] Downloading Raw Query from IPFS");
     let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await;
@@ -40,7 +40,7 @@ pub async fn get_raw_query_from_ipfs(ipfs_model_hash: &String) -> String {
     String::from(raw_query)
 }
 
-pub async fn get_mapping_file_from_ipfs(ipfs_mapping_hash: &String) -> String {
+pub async fn get_mapping_ipfs(ipfs_mapping_hash: &String) -> String {
     let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await; // Refactor to use lazy load
 
@@ -68,7 +68,7 @@ pub async fn get_mapping_file_from_ipfs(ipfs_mapping_hash: &String) -> String {
     }
 }
 
-pub async fn get_config_file_from_ipfs(ipfs_config_hash: &String) -> String {
+pub async fn get_config_ipfs(ipfs_config_hash: &String) -> String {
     let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await; // Refactor to use lazy load
 
@@ -98,7 +98,7 @@ pub async fn get_config_file_from_ipfs(ipfs_config_hash: &String) -> String {
     }
 }
 
-pub fn get_raw_query_from_local(model_path: &String) -> String {
+pub fn get_query_local(model_path: &String) -> String {
     let mut raw_query = String::new();
     let mut f = File::open(model_path).expect("Unable to open file");
     f.read_to_string(&mut raw_query)
@@ -106,7 +106,7 @@ pub fn get_raw_query_from_local(model_path: &String) -> String {
     raw_query
 }
 
-pub fn get_config_file_from_local(config_path: &String) -> String {
+pub fn get_config_local(config_path: &String) -> String {
     let mut config_file = String::new();
     let mut f = File::open(config_path).expect("Unable to open file");
     f.read_to_string(&mut config_file)
@@ -114,7 +114,7 @@ pub fn get_config_file_from_local(config_path: &String) -> String {
     config_file
 }
 
-pub fn get_mapping_file_from_local(mapping_path: &String) -> PathBuf {
+pub fn get_mapping_local(mapping_path: &String) -> PathBuf {
     let so_file_path = PathBuf::from(mapping_path.to_string());
     so_file_path
 }
