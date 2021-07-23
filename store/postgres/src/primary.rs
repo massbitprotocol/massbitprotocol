@@ -205,6 +205,7 @@ lazy_static! {
 
 impl Namespace {
     pub fn new(s: String) -> Result<Self, String> {
+        /*
         if s.as_str() == METADATA_NAMESPACE.as_str() {
             return Ok(Namespace(s));
         }
@@ -218,7 +219,7 @@ impl Namespace {
                 return Err(s);
             }
         }
-
+         */
         Ok(Namespace(s))
     }
 

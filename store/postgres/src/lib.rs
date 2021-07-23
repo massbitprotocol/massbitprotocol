@@ -45,7 +45,7 @@ mod sql_value;
 //mod store;
 mod store_events;
 mod subgraph_store;
-pub mod layout;
+pub mod ddlgen;
 #[cfg(debug_assertions)]
 pub mod layout_for_tests {
     pub use crate::block_range::*;
@@ -77,5 +77,5 @@ pub mod command_support {
     }
     pub use crate::entities::Connection;
     pub use crate::primary::Namespace;
-    pub use crate::relational::{Catalog, Column, ColumnType, Layout};
+    pub use crate::relational::{Catalog, Column, ColumnType, Layout, SqlName};
 }

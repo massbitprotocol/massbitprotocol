@@ -1,17 +1,3 @@
-## Graphql schema parser 
-Clone from https://github.com/graphprotocol/graph-node/tree/v0.22.0/store/postgres
-
-Modify file relational.rs to generate ddl as list of seperated queries and list table names
-# DDL gen CLI
-
-## Usage
-```shell
-cargo run -- ddlgen --schema schema.graphql --config project.yaml --ouput migrations 
-```
-
-## Input templates
-`schema.graphql`
-```graphql
    type _Schema_ @fulltext(
         name: "userSearch"
         language: en
@@ -102,10 +88,3 @@ cargo run -- ddlgen --schema schema.graphql --config project.yaml --ouput migrat
         description: String,
         test: String
     }
-```
-`project.yaml`
-```yaml
-
-database:
-  catalog: dbcatalog
-```

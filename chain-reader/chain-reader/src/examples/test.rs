@@ -1,185 +1,139 @@
-/// Solana chain-reader test code
-use solana_client::{pubsub_client::PubsubClient, rpc_client::RpcClient, rpc_response::SlotInfo};
-use solana_transaction_status::{UiConfirmedBlock, EncodedConfirmedBlock};
-use codec::{Decode, Encode};
-//use serde::Serialize;
-use serde_json::{Serializer, Deserializer};
-use serde::Serialize;
-use std::{
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-    time::{Instant}
+use crate::stream_mod::{
+    streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
 };
-use std::error::Error;
+use massbit_chain_solana::data_type::{
+    convert_solana_encoded_block_to_solana_block, decode as solana_decode,
+    SolanaEncodedBlock, SolanaLogMessages, SolanaTransaction, decode_encoded_block,
+};
+use massbit_chain_substrate::data_type::{
+    SubstrateBlock, SubstrateEventRecord,
+};
+#[allow(unused_imports)]
+use tonic::{transport::{Server, Channel}, Request, Response, Status};
+use log::{debug, warn, error, info, Level};
 
-fn solana_slot_subscribe(websocket_url: &String) {
-    let (mut subscription_client, receiver) =
-        PubsubClient::slot_subscribe(&websocket_url).unwrap();
-    let spacer = "|";
-    let exit = Arc::new(AtomicBool::new(false));
-    let mut current: Option<SlotInfo> = None;
-    let mut message = "".to_string();
-    let mut last_root = std::u64::MAX;
-    let mut last_root_update = Instant::now();
-    let mut slots_per_second = std::f64::NAN;
-    loop {
-        if exit.load(Ordering::Relaxed) {
-            eprintln!("{}",message.to_string());
-            subscription_client.shutdown().unwrap();
-            break;
-        }
+pub mod stream_mod {
+    tonic::include_proto!("chaindata");
+}
+use massbit_chain_substrate::data_type::{
+    decode, get_extrinsics_from_block
+};
+use std::time::Instant;
+use std::rc::Rc;
+use std::sync::Arc;
 
-        match receiver.recv() {
-            Ok(new_info) => {
-                if last_root == std::u64::MAX {
-                    last_root = new_info.root;
-                    last_root_update = Instant::now();
-                }
-                if last_root_update.elapsed().as_secs() >= 5 {
-                    let root = new_info.root;
-                    slots_per_second =
-                        (root - last_root) as f64 / last_root_update.elapsed().as_secs() as f64;
-                    last_root_update = Instant::now();
-                    last_root = root;
-                }
 
-                message = if slots_per_second.is_nan() {
-                    format!("{:?}", new_info)
-                } else {
-                    format!(
-                        "{:?} | root slot advancing at {:.2} slots/second",
-                        new_info, slots_per_second
-                    )
-                };
-                debug!("{}", message.clone());
+const URL: &str = "http://127.0.0.1:50051";
 
-                if let Some(previous) = current {
-                    let slot_delta: i64 = new_info.slot as i64 - previous.slot as i64;
-                    let root_delta: i64 = new_info.root as i64 - previous.root as i64;
 
-                    //
-                    // if slot has advanced out of step with the root, we detect
-                    // a mismatch and output the slot information
-                    //
-                    if slot_delta != root_delta {
-                        let prev_root = format!(
-                            "|<--- {} <- … <- {} <- {}   (prev)",
-                            previous.root, previous.parent, previous.slot
-                        );
-                        debug!("{:?}",&prev_root);
+pub async fn print_blocks(mut client: StreamoutClient<Channel>, chain_type: ChainType) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+    // Not use start_block_number start_block_number yet
+    let get_blocks_request = GetBlocksRequest {
+        start_block_number: 0,
+        end_block_number: 1,
+        chain_type: chain_type as i32,
+    };
+    let mut stream = client
+        .list_blocks(Request::new(get_blocks_request))
+        .await?
+        .into_inner();
 
-                        let new_root = format!(
-                            "|  '- {} <- … <- {} <- {}   (next)",
-                            new_info.root, new_info.parent, new_info.slot
-                        );
-                        debug!("{}", prev_root);
-                        debug!("{}", new_root);
-                        debug!("{}", spacer);
+    while let Some(data) = stream.message().await? {
+        let mut data = data as GenericDataProto;
+        info!(
+            "Received chain: {:?}, data block = {:?}, hash = {:?}, data type = {:?}",
+            ChainType::from_i32(data.chain_type).unwrap(),
+            data.block_number,
+            data.block_hash,
+            DataType::from_i32(data.data_type).unwrap()
+        );
+        match chain_type {
+            ChainType::Substrate => {
+                let now = Instant::now();
+                match DataType::from_i32(data.data_type) {
+                    Some(DataType::Block) => {
+                        let block: SubstrateBlock = decode(&mut data.payload).unwrap();
+                        info!("Received BLOCK: {:?}", &block.block.header.number);
+                        let extrinsics = get_extrinsics_from_block(&block);
+                        for extrinsic in extrinsics {
+                            //info!("Received EXTRINSIC: {:?}", extrinsic);
+                            let string_extrinsic = format!("Received EXTRINSIC:{:?}", extrinsic);
+                            info!("{}", string_extrinsic);
+                        }
+                    }
+                    Some(DataType::Event) => {
+                        let event: Vec<SubstrateEventRecord> = decode(&mut data.payload).unwrap();
+                        info!("Received Event: {:?}", event);
+                    },
+
+                    _ => {
+                        warn!("Not support data type: {:?}", &data.data_type);
                     }
                 }
-                current = Some(new_info);
-            }
-            Err(err) => {
-                eprintln!("disconnected: {}", err);
-                break;
-            }
-        }
-    }
-}
+                let elapsed = now.elapsed();
+                debug!("Elapsed processing solana block: {:.2?}", elapsed);
+            },
+            ChainType::Solana => {
+                let now = Instant::now();
+                match DataType::from_i32(data.data_type) {
+                    Some(DataType::Block) => {
+                        let encoded_block: SolanaEncodedBlock = solana_decode(&mut data.payload).unwrap();
+                        let block = decode_encoded_block(encoded_block.block);
 
-async fn get_block(client: Arc<RpcClient>, block_height: u64) -> Result<EncodedConfirmedBlock,Box<dyn Error>>{
+                        // Get transactions
+                        let transactions = block.transactions;
 
-    info!("Starting get Block {}",block_height);
-    let now = Instant::now();
-    let block = client.get_block(block_height);
-    let elapsed = now.elapsed();
-    match block{
-        Ok(block) => {
-            info!("Finished get Block: {:?}, time: {:?}, hash: {}", block_height, elapsed, &block.blockhash);
-            Ok(block)
-        },
-        _ => {
-            //error!("Cannot get: {:?}", &block);
-            Err(format!("Error cannot get block").into())
-        },
-    }
 
-}
+                        // Check each transaction to find serum data
+                        for origin_transaction_with_status_meta in transactions {
+                            let serum_dex_key = "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin";
+                            let mut check_key= false;
+                            //let decode_transaction = origin_transaction_with_status_meta.transaction.decode().unwrap();
+                            for acc_key in &origin_transaction_with_status_meta.transaction.message.account_keys {
+                                if acc_key.to_string() == serum_dex_key {
+                                    check_key = true;
+                                    break;
+                                }
+                            }
 
-async fn get_blocks(client: Arc<RpcClient>, start_block: u64, end_block: u64) {
-    for block_height in start_block..end_block{
-        let new_client = client.clone();
-            tokio::spawn(async move {
-            get_block(new_client,block_height).await;
-        });
-    }
-}
-
-async fn solana_finalized_block_subscribe(websocket_url: &String, json_rpc_url: &String) {
-    let (mut subscription_client, receiver) =
-        PubsubClient::slot_subscribe(&websocket_url).unwrap();
-    let exit = Arc::new(AtomicBool::new(false));
-    let client = Arc::new(RpcClient::new(json_rpc_url.clone()));
-
-    let mut last_root: Option<u64> = None;
-
-    loop {
-        if exit.load(Ordering::Relaxed) {
-            eprintln!("{}","exit".to_string());
-            subscription_client.shutdown().unwrap();
-            break;
-        }
-
-        match receiver.recv() {
-            Ok(new_info) => {
-                // Root is finalized block in Solana
-                let root = new_info.root-100;
-                info!("Root: {:?}",new_info.root);
-                let block_height = client.get_block_height().unwrap();
-                info!("Highest Block height: {:?}",&block_height);
-
-                match last_root {
-                    Some(value_last_root) => {
-                        if root == last_root.unwrap() {
-                            continue;
+                            if check_key {
+                                // Print serum data
+                                info!("Serum trans: {:#?}", origin_transaction_with_status_meta);
+                                //loop{};
+                            }
                         }
-                        get_blocks(client.clone(),value_last_root, root).await;
-                        last_root = Some(root);
                     },
-                    _ => last_root = Some(root),
-                };
-                info!("Got Block: {:?}", &last_root.unwrap());
-            }
-            Err(err) => {
-                eprintln!("disconnected: {}", err);
-                break;
+                    _ => {
+                        warn!("Not support this type in Solana");
+                    }
+                }
+                let elapsed = now.elapsed();
+                debug!("Elapsed processing solana block: {:.2?}", elapsed);
+            },
+            _ => {
+                warn!("Not support this package chain-type");
             }
         }
     }
-}
 
+    Ok(())
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
-    let json_rpc_url = "https://api.mainnet-beta.solana.com".to_string();
-    let websocket_url = "wss://api.mainnet-beta.solana.com".to_string();
+    env_logger::init();
+    info!("Waiting for chain-reader");
 
-    //solana_slot_subscribe(&websocket_url);
-    solana_finalized_block_subscribe(&websocket_url, &json_rpc_url).await;
+    // tokio::spawn(async move {
 
+        let client = StreamoutClient::connect(URL).await.unwrap();
+        print_blocks(client, ChainType::Solana).await;
+    // });
 
-    let client = RpcClient::new(json_rpc_url);
-    let block_height = client.get_block_height().unwrap();
-    let block = client.get_block(block_height).unwrap();
-    debug!("{:?}",block_height);
-    debug!("Original block: {:?}",&block);
-    let payload = serde_json::to_vec(&block).unwrap();
-    let decode_block: EncodedConfirmedBlock = serde_json::from_slice(&payload).unwrap();
-    debug!("Decode: {:#?}", &decode_block);
-    assert_eq!(block,decode_block);
+    // let client = StreamoutClient::connect(URL).await.unwrap();
+    // print_blocks(client, ChainType::Substrate).await?;
 
-
+    loop {
+    };
     Ok(())
 }
