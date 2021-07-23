@@ -42,4 +42,5 @@ pub struct IndexConfig {
     pub config: Value,
     pub mapping: PathBuf,
     pub query: String,
+    pub schema: String,
 }

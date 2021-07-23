@@ -10,6 +10,9 @@ lazy_static! {
         env::var("IPFS_ADDRESS").unwrap_or(String::from("0.0.0.0:5001"));
 }
 
+/**************
+* IPFS Helper *
+***************/
 // pub async fn get_index_config(ipfs_config_hash: &String) -> serde_yaml::Mapping {
 //     let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
 //     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await; // Refactor to use lazy load
@@ -23,6 +26,22 @@ lazy_static! {
 //
 //     serde_yaml::from_slice(&file_bytes).unwrap()
 // }
+
+pub async fn get_schema_ipfs(hash: &String) -> String {
+    log::info!("[Index Manager Helper] Downloading Schema from IPFS");
+    let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
+    let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await;
+
+    let file_bytes = ipfs_clients[0]
+        .cat_all(hash.to_string())
+        .compat()
+        .await
+        .unwrap()
+        .to_vec();
+
+    let schema = std::str::from_utf8(&file_bytes).unwrap();
+    String::from(schema)
+}
 
 pub async fn get_query_ipfs(ipfs_model_hash: &String) -> String {
     log::info!("[Index Manager Helper] Downloading Raw Query from IPFS");
@@ -98,6 +117,9 @@ pub async fn get_config_ipfs(ipfs_config_hash: &String) -> String {
     }
 }
 
+/********************
+* Local file helper *
+*********************/
 pub fn get_query_local(model_path: &String) -> String {
     let mut raw_query = String::new();
     let mut f = File::open(model_path).expect("Unable to open file");
@@ -119,7 +141,6 @@ pub fn get_mapping_local(mapping_path: &String) -> PathBuf {
     so_file_path
 }
 
-
 pub fn read_config_file(config_file_path: &String) -> serde_yaml::Value {
     let mut project_config_string = String::new();
     let mut f = File::open(config_file_path).expect("Unable to open file"); // Refactor: Config to download config file from IPFS instead of just reading from local
@@ -127,4 +148,12 @@ pub fn read_config_file(config_file_path: &String) -> serde_yaml::Value {
         .expect("Unable to read string"); // Get raw query
     let project_config: serde_yaml::Value = serde_yaml::from_str(&project_config_string).unwrap();
     project_config
+}
+
+pub fn get_schema_local(path: &String) -> String {
+    let mut schema = String::new();
+    let mut f = File::open(path).expect("Unable to open file");
+    f.read_to_string(&mut schema)
+        .expect("Unable to read string");
+    schema
 }

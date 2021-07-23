@@ -73,6 +73,8 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
         }
     };
 
+    println!("{}", index_config.schema);
+
     let connection = PgConnection::establish(&DATABASE_CONNECTION_STRING).expect(&format!(
         "Error connecting to {}",
         *DATABASE_CONNECTION_STRING
@@ -99,6 +101,7 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
     let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone())
         .await
         .unwrap();
+
     let get_blocks_request = GetBlocksRequest {
         start_block_number: 0,
         end_block_number: 1,
