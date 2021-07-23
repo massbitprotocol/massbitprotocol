@@ -18,7 +18,7 @@ impl Block {
     pub fn save(&self) {
         unsafe {
             STORE
-                .as_ref()
+                .as_mut()
                 .unwrap()
                 .save("Block".to_string(), self.clone().into());
         }
