@@ -1,9 +1,8 @@
 use std::path::PathBuf;
 
 // Massbit dependencies
-use crate::helper::{get_mapping_file_from_ipfs, get_config_file_from_ipfs, get_raw_query_from_local, get_config_file_from_local, get_mapping_file_from_local};
 use crate::types::{DeployType, IndexConfig};
-use crate::config_helper::get_raw_query_from_ipfs;
+use crate::config_helper::{get_raw_query_from_ipfs, get_mapping_file_from_ipfs, get_config_file_from_ipfs, get_raw_query_from_local, get_config_file_from_local, get_mapping_file_from_local};
 
 /**
 *** Builder Pattern
