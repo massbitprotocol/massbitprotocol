@@ -36,7 +36,7 @@ fn generate_rust_entity(schema_path: &str, output: &str) -> Result<(), Box<dyn E
     };
     for (name, model) in layout.models.into_iter() {
         let mut s = String::new();
-        model.as_rust_struct(&mut s)?;
+        model.as_rust(&mut s)?;
         binding.entities.insert(name, s);
     }
 
