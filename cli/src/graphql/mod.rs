@@ -19,5 +19,5 @@ static_graphql!(q, query, {
 });
 
 static_graphql!(s, schema, {
-    Definition, Document, ObjectType, TypeDefinition, Field,
+    Definition, Document, ObjectType, TypeDefinition, Field, EnumType, Type,
 });
