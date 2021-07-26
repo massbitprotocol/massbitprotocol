@@ -30,13 +30,22 @@ lazy_static! {
 
 pub fn run(matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
     let config_path = matches.value_of("config").unwrap_or("project.yaml");
-    let fd = File::open(config_path).unwrap();
-    let manifest: serde_yaml::Value = serde_yaml::from_reader(fd).unwrap();
+    let fd = File::open(config_path)?;
+    let manifest: serde_yaml::Value = serde_yaml::from_reader(fd)?;
     let def_map = Value::Mapping(Mapping::new());
     let dbconfig = manifest.get("database").unwrap_or(&def_map);
     //Default db catalog - currently not support custom catalog
-    let def_catalog = Value::String(String::from("graph-node"));
-    let catalog = dbconfig.get("catalog").unwrap_or(&def_catalog).as_str().unwrap();
+    let def_catalog = String::from("graph-node");
+    let catalog = match dbconfig.get("catalog") {
+        None => {&def_catalog}
+        Some(value) => {
+            match value.as_str() {
+                None => {&def_catalog}
+                Some(val) => {val}
+            }
+        }
+    };
+    //let catalog = dbconfig.get("catalog").unwrap_or(&def_catalog).as_str()?;
     //input schema path
     let schema_path = matches.value_of("schema").unwrap_or("schema.graphql");
     let session = matches.value_of("hash").unwrap_or("");
