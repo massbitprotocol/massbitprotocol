@@ -22,7 +22,7 @@ use serde_yaml::Value;
 *********************/
 pub struct IndexConfigLocalBuilder {
     schema: String,
-    config: Value,
+    config: String,
     mapping: PathBuf,
     query: String,
 }
@@ -50,8 +50,7 @@ impl IndexConfigLocalBuilder {
     }
 
     pub fn config(mut self, config: String) -> IndexConfigLocalBuilder {
-        let config = get_config_local(&config);
-        self.config = read_config_file(&config);
+        self.config = get_config_local(&config);
         self
     }
 
@@ -75,7 +74,7 @@ impl IndexConfigLocalBuilder {
 ********************/
 pub struct IndexConfigIpfsBuilder {
     schema: String,
-    config: Value,
+    config: String,
     mapping: PathBuf,
     query: String,
 }
@@ -105,8 +104,7 @@ impl IndexConfigIpfsBuilder {
     }
 
     pub async fn config(mut self, config: String) -> IndexConfigIpfsBuilder {
-        let config = get_config_ipfs(&config).await;
-        self.config = read_config_file(&config);
+        self.config = get_config_ipfs(&config).await;
         self
     }
 

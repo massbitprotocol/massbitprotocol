@@ -4,7 +4,7 @@ use postgres::{Connection as PostgreConnection, TlsMode};
 use std::error::Error;
 use std::fs::File;
 use std::io::Read;
-use std::{env};
+use std::{env, fs};
 use tonic::Request;
 use std::time::Instant;
 
@@ -19,6 +19,7 @@ use crate::store::{create_new_indexer_detail_table, insert_new_indexer, run_migr
 // Refactor to new files for substrate / solana
 use massbit_chain_substrate::data_type::{decode, SubstrateBlock, get_extrinsics_from_block, SubstrateEventRecord};
 use massbit_chain_solana::data_type::{decode as solana_decode, SolanaEncodedBlock, convert_solana_encoded_block_to_solana_block, SolanaTransaction, SolanaLogMessages};
+use crate::config_helper::read_config_file;
 
 // Configs
 pub mod stream_mod {
@@ -78,10 +79,10 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
         "Error connecting to {}",
         *DATABASE_CONNECTION_STRING
     ));
-    create_new_indexer_detail_table(&connection, &index_config.query);
 
-    // Another plugin should handle creating table
-    // run_migration_cli();
+    // Should use migration plugin instead of running raw query
+    // create_new_indexer_detail_table(&connection, &index_config.query);
+    run_migration_cli(&index_config.schema, &index_config.config);
 
     // Track the newly created table with hasura
     track_hasura_table(&params.table_name).await;
@@ -90,10 +91,11 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
     create_indexers_table_if_not_exists(&connection);
 
     // Add new indexer
-    insert_new_indexer(&connection, &params.index_name, &index_config.config);
+    let config = read_config_file(&index_config.config);
+    insert_new_indexer(&connection, &params.index_name, &config);
 
     // Use correct chain type based on config
-    let chain_type = match index_config.config["dataSources"][0]["kind"].as_str().unwrap() {
+    let chain_type = match config["dataSources"][0]["kind"].as_str().unwrap() {
         "substrate" => ChainType::Substrate,
         "solana" => ChainType::Solana,
         _ => ChainType::Substrate, // If not provided, assume it's substrate network

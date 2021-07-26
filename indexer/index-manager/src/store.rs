@@ -30,11 +30,19 @@ pub fn insert_new_indexer(
     };
 }
 
-pub fn run_migration_cli() {
+pub fn run_migration_cli(schema: &String, config: &String) {
     let output = Command::new("cargo")
         .arg("run")
         .arg("--manifest-path")
         .arg("store/postgres/Cargo.toml")
+        .arg("--")
+        .arg("ddlgen")
+        .arg("-s")
+        .arg(schema)
+        .arg("-c")
+        .arg(config)
+        .arg("-o")
+        .arg("./migrations")
         .output()
         .expect("failed to execute process");
 

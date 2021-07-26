@@ -39,8 +39,21 @@ pub async fn get_schema_ipfs(hash: &String) -> String {
         .unwrap()
         .to_vec();
 
-    let schema = std::str::from_utf8(&file_bytes).unwrap();
-    String::from(schema)
+    let file_name = ["indexer/generated/", hash, ".graphql"].join("");
+    let res = fs::write(&file_name, file_bytes); // Add logger and says that write file successfully
+
+    match res {
+        Ok(_) => {
+            log::info!("[Index Manager Helper] Write Schema file to local storage successfully");
+            file_name
+        }
+        Err(err) => {
+            panic!(
+                "[Index Manager Helper] Could not write file to local storage {:#?}",
+                err
+            )
+        }
+    }
 }
 
 pub async fn get_query_ipfs(ipfs_model_hash: &String) -> String {
@@ -59,18 +72,18 @@ pub async fn get_query_ipfs(ipfs_model_hash: &String) -> String {
     String::from(raw_query)
 }
 
-pub async fn get_mapping_ipfs(ipfs_mapping_hash: &String) -> String {
+pub async fn get_mapping_ipfs(hash: &String) -> String {
     let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await; // Refactor to use lazy load
 
     let file_bytes = ipfs_clients[0]
-        .cat_all(ipfs_mapping_hash.to_string())
+        .cat_all(hash.to_string())
         .compat()
         .await
         .unwrap()
         .to_vec();
 
-    let file_name = [ipfs_mapping_hash, ".so"].join("");
+    let file_name = ["indexer/generated/", hash, ".so"].join("");
     let res = fs::write(&file_name, file_bytes); // Add logger and says that write file successfully
 
     match res {
@@ -87,18 +100,18 @@ pub async fn get_mapping_ipfs(ipfs_mapping_hash: &String) -> String {
     }
 }
 
-pub async fn get_config_ipfs(ipfs_config_hash: &String) -> String {
+pub async fn get_config_ipfs(hash: &String) -> String {
     let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await; // Refactor to use lazy load
 
     let file_bytes = ipfs_clients[0]
-        .cat_all(ipfs_config_hash.to_string())
+        .cat_all(hash.to_string())
         .compat()
         .await
         .unwrap()
         .to_vec();
 
-    let file_name = [ipfs_config_hash, ".yaml"].join("");
+    let file_name = ["indexer/generated/", hash, ".yaml"].join("");
     let res = fs::write(&file_name, file_bytes); // Add logger and says that write file successfully
 
     match res {

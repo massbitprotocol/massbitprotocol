@@ -39,7 +39,7 @@ pub struct DetailParams {
 }
 
 pub struct IndexConfig {
-    pub config: Value,
+    pub config: String,
     pub mapping: PathBuf,
     pub query: String,
     pub schema: String,
