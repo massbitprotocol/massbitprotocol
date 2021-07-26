@@ -187,7 +187,6 @@ impl TryFrom<&s::Type> for IdType {
 
     fn try_from(field_type: &s::Type) -> Result<Self, Self::Error> {
         let name = named_type(field_type);
-
         match ValueType::from_str(name)? {
             ValueType::String => Ok(IdType::String),
             ValueType::Bytes => Ok(IdType::Bytes),
@@ -279,7 +278,6 @@ impl Layout {
                     }
                 })
         });
-
         // Map of type name to the type of the ID column for the object_types
         // and interfaces in the schema
         let id_types = object_types
@@ -287,7 +285,7 @@ impl Layout {
             .map(|obj_type| IdType::try_from(*obj_type).map(|t| (obj_type.name.to_owned(), t)))
             .chain(id_types_for_interface)
             .collect::<Result<IdTypeMap, _>>()?;
-
+        //println!("relational 290# id_types {:?}", id_types);
         // Construct a Table struct for each ObjectType
         let mut tables = object_types
             .iter()
@@ -508,44 +506,30 @@ impl Layout {
 
         Ok(out)
     }
-    /// Generate the DDL for the entire layout, i.e., all `create table`
-    /// and `create index` etc. statements needed in the database schema
-    /// as a Vector of single sqls
-
-    pub fn as_ddls(&self) -> Result<(Vec<String>,Vec<String>), fmt::Error> {
-        let mut ddls : Vec<String> = Vec::new();
-        let mut table_names : Vec<String> = Vec::new();
+    ///
+    /// Gen Migration: up.sql and down.sql
+    ///
+    pub fn gen_migration(&self) -> Result<(String,String), fmt::Error> {
+        let mut up_sql = String::new();
+        let mut down_sql = String::new();
         // Output enums first
-        for (name, values) in &self.enums {
-            let mut out = String::new();
-            let mut sep = "";
+        self.enums.iter().for_each(|(name, values)|{
             let name = SqlName::from(name.as_str());
-            write!(
-                out,
-                "create type {}.{}\n    as enum (",
-                self.catalog.namespace,
-                name.quoted()
-            )?;
-            for value in values.iter() {
-                write!(out, "{}'{}'", sep, value)?;
-                sep = ", "
-            }
-            writeln!(out, ");")?;
-            ddls.push(out);
-        }
+            writeln!(up_sql, "create type {} as enum ({});",
+                    name.quoted(),
+                    values.iter().map(|val|{val.clone()}).collect::<Vec<String>>().join(",")
+            );
+            writeln!(down_sql, "drop type {};", name.quoted());
+        });
         // We sort tables here solely because the unit tests rely on
         // 'create table' statements appearing in a fixed order
         let mut tables = self.tables.values().collect::<Vec<_>>();
         tables.sort_by_key(|table| table.position);
         // Output 'create table' statements for all tables
-        for table in tables {
-            let mut out = String::new();
-            table.as_ddl(&mut out, self)?;
-            ddls.push(out);
-            table_names.push(table.name.to_string());
-        }
-
-        Ok((ddls, table_names))
+        tables.iter().for_each(|table|{
+            table.gen_migration(&mut up_sql, &mut down_sql, self);
+        });
+        Ok((up_sql, down_sql))
     }
 
     /// Find the table with the provided `name`. The name must exactly match
@@ -1340,8 +1324,8 @@ impl Table {
     fn as_ddl(&self, out: &mut String, layout: &Layout) -> fmt::Result {
         writeln!(
             out,
-            "create table {}.{} (",
-            layout.catalog.namespace,
+            "create table {} (",
+            //layout.catalog.namespace,
             self.name.quoted()
         )?;
         for column in self.columns.iter() {
@@ -1353,8 +1337,8 @@ impl Table {
         write!(
             out,
             "\n        {vid}                  bigserial primary key,\
-             \n        {block_range}          int4range not null,
-        exclude using gist   (id with =, {block_range} with &&)\n);\n",
+             \n        {block_range}          int4range not null);\n",
+        //exclude using gist   (id with =, {block_range} with &&)\n);\n",
             vid = VID_COLUMN,
             block_range = BLOCK_RANGE_COLUMN
         )?;
@@ -1381,10 +1365,10 @@ impl Table {
         // We also index `vid` as that correlates with the order in which
         // entities are stored.
         write!(out,"create index brin_{table_name}\n    \
-                    on {schema_name}.{table_name}\n \
+                    on {table_name}\n \
                        using brin(lower(block_range), coalesce(upper(block_range), {block_max}), vid);\n",
             table_name = self.name,
-            schema_name = layout.catalog.namespace,
+            //schema_name = layout.catalog.namespace,
             block_max = BLOCK_NUMBER_MAX)?;
 
         // Add a BTree index that helps with the `RevertClampQuery` by making
@@ -1392,10 +1376,10 @@ impl Table {
         write!(
             out,
             "create index {table_name}_block_range_closed\n    \
-                     on {schema_name}.{table_name}(coalesce(upper(block_range), {block_max}))\n \
+                     on {table_name}(coalesce(upper(block_range), {block_max}))\n \
                      where coalesce(upper(block_range), {block_max}) < {block_max};\n",
             table_name = self.name,
-            schema_name = layout.catalog.namespace,
+            //schema_name = layout.catalog.namespace,
             block_max = BLOCK_NUMBER_MAX
         )?;
 
@@ -1434,19 +1418,168 @@ impl Table {
 
                 (method, index_expr)
             };
-            write!(
-                out,
-                "create index attr_{table_index}_{column_index}_{table_name}_{column_name}\n    on {schema_name}.\"{table_name}\" using {method}({index_expr});\n",
-                table_index = self.position,
-                table_name = self.name,
-                column_index = i,
-                column_name = column.name,
-                schema_name = layout.catalog.namespace,
-                method = method,
-                index_expr = index_expr,
-            )?;
+            match method {
+                "gist" => {},
+                _ => { write!(
+                    out,
+                    "create index attr_{table_index}_{column_index}_{table_name}_{column_name}\n    on \"{table_name}\" using {method}({index_expr});\n",
+                    table_index = self.position,
+                    table_name = self.name,
+                    column_index = i,
+                    column_name = column.name,
+                    //schema_name = layout.catalog.namespace,
+                    method = method,
+                    index_expr = index_expr,
+                )?;
+                }
+            }
+
         }
         writeln!(out)
+    }
+    /// Generate the DDL for one table, i.e. one `create table` statement
+    /// and all `create index` statements for the table's columns
+    ///
+    /// See the unit tests at the end of this file for the actual DDL that
+    /// gets generated
+    fn gen_migration(&self, up: &mut String, down: &mut String, layout: &Layout) -> fmt::Result {
+        writeln!(
+            up,
+            "create table {} (",
+            //layout.catalog.namespace,
+            self.name.quoted()
+        )?;
+        for column in self.columns.iter() {
+            write!(up, "    ")?;
+            column.as_ddl(up)?;
+            writeln!(up, ",")?;
+        }
+        // Add block_range column and constraint
+        write!(
+            up,
+            "\n        {vid}                  bigserial primary key,\
+             \n        {block_range}          int4range not null);\n",
+            //exclude using gist   (id with =, {block_range} with &&)\n);\n",
+            vid = VID_COLUMN,
+            block_range = BLOCK_RANGE_COLUMN
+        )?;
+
+        // Add a BRIN index on the block_range bounds to exploit the fact
+        // that block ranges closely correlate with where in a table an
+        // entity appears physically. This index is incredibly efficient for
+        // reverts where we look for very recent blocks, so that this index
+        // is highly selective. See https://github.com/graphprotocol/graph-node/issues/1415#issuecomment-630520713
+        // for details on one experiment.
+        //
+        // We do not index the `block_range` as a whole, but rather the lower
+        // and upper bound separately, since experimentation has shown that
+        // Postgres will not use the index on `block_range` for clauses like
+        // `block_range @> $block` but rather falls back to a full table scan.
+        //
+        // We also make sure that we do not put `NULL` in the index for
+        // the upper bound since nulls can not be compared to anything and
+        // will make the index less effective.
+        //
+        // To make the index usable, queries need to have clauses using
+        // `lower(block_range)` and `coalesce(..)` verbatim.
+        //
+        // We also index `vid` as that correlates with the order in which
+        // entities are stored.
+        write!(up,"create index brin_{table_name}\n    \
+                    on {table_name}\n \
+                       using brin(lower(block_range), coalesce(upper(block_range), {block_max}), vid);\n",
+               table_name = self.name,
+               //schema_name = layout.catalog.namespace,
+               block_max = BLOCK_NUMBER_MAX)?;
+        writeln!(down, "DROP INDEX IF EXISTS brin_{table_name};", table_name = self.name);
+        // Add a BTree index that helps with the `RevertClampQuery` by making
+        // it faster to find entity versions that have been modified
+        write!(
+            up,
+            "create index {table_name}_block_range_closed\n    \
+                     on {table_name}(coalesce(upper(block_range), {block_max}))\n \
+                     where coalesce(upper(block_range), {block_max}) < {block_max};\n",
+            table_name = self.name,
+            //schema_name = layout.catalog.namespace,
+            block_max = BLOCK_NUMBER_MAX
+        )?;
+        writeln!(down, "DROP INDEX IF EXISTS {table_name}_block_range_closed;", table_name = self.name);
+        // Create indexes. Skip columns whose type is an array of enum,
+        // since there is no good way to index them with Postgres 9.6.
+        // Once we move to Postgres 11, we can enable that
+        // (tracked in graph-node issue #1330)
+        for (i, column) in self
+            .columns
+            .iter()
+            .filter(|col| !(col.is_list() && col.is_enum()))
+            .enumerate()
+        {
+            let (method, index_expr) = if column.is_reference() && !column.is_list() {
+                // For foreign keys, index the key together with the block range
+                // since we almost always also have a block_range clause in
+                // queries that look for specific foreign keys
+                let index_expr = format!("{}, {}", column.name.quoted(), BLOCK_RANGE_COLUMN);
+                ("gist", index_expr)
+            } else {
+                // Attributes that are plain strings are indexed with a BTree; but
+                // they can be too large for Postgres' limit on values that can go
+                // into a BTree. For those attributes, only index the first
+                // STRING_PREFIX_SIZE characters
+                let index_expr = if column.is_text() {
+                    format!("left({}, {})", column.name.quoted(), STRING_PREFIX_SIZE)
+                } else {
+                    column.name.quoted()
+                };
+
+                let method = if column.is_list() || column.is_fulltext() {
+                    "gin"
+                } else {
+                    "btree"
+                };
+
+                (method, index_expr)
+            };
+            match method {
+                "gist" => {},
+                _ => {
+                    writeln!(
+                        up,
+                        "create index attr_{table_index}_{column_index}_{table_name}_{column_name}\n    on \"{table_name}\" using {method}({index_expr});",
+                        table_index = self.position,
+                        table_name = self.name,
+                        column_index = i,
+                        column_name = column.name,
+                        //schema_name = layout.catalog.namespace,
+                        method = method,
+                        index_expr = index_expr,
+                    )?;
+                    writeln!(
+                        down,
+                        "DROP INDEX IF EXISTS attr_{table_index}_{column_index}_{table_name}_{column_name};",
+                        table_index = self.position,
+                        table_name = self.name,
+                        column_index = i,
+                        column_name = column.name,
+                        //schema_name = layout.catalog.namespace,
+                    )?;
+                }
+            }
+        }
+        //Relationship
+        /*
+        for (i, column) in self
+            .columns
+            .iter()
+            .filter(|col| col.is_reference())
+            .enumerate()
+        {
+            println!("CONSTRAINT fk_{reference} FOREIGN KEY({column_name}) REFERENCES {reference}({reference_id})",
+                     reference = column.field_type,
+                     reference_id = &PRIMARY_KEY_COLUMN.to_owned(),
+                     column_name = column.name);
+        }
+         */
+        writeln!(down, "DROP TABLE IF EXISTS {};", self.name.quoted())
     }
 }
 

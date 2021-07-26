@@ -36,6 +36,7 @@ mod dynds;
 mod entities;
 mod functions;
 mod jsonb;
+mod metrics_registry;
 mod notification_listener;
 mod primary;
 //pub mod query_store;
