@@ -1,10 +1,12 @@
+extern crate exitcode;
 use clap::{App, Arg, SubCommand};
 use graphql::ddlgen;
 use std::error::Error;
 use serde_yaml::{Value, Mapping};
 use std::fs::File;
-
-fn main() -> Result<(), Box<dyn Error>>{
+use std::process;
+fn main() {
+    env_logger::init();
     let matches = App::new("massbit-cli")
         .version("1.0")
         .about("Massbit CLI")
@@ -29,16 +31,18 @@ fn main() -> Result<(), Box<dyn Error>>{
                         .help("codegen output directory")
                         .takes_value(true)
                         .short("o"),
+                )
+                .arg(
+                    Arg::with_name("hash")
+                        .help("Session id or current running")
+                        .takes_value(true)
+                        .short("h"),
                 ),
+
         )
         .get_matches();
-    let config_path = matches.value_of("config").unwrap_or("project.yaml");
-    let fd = File::open(config_path).unwrap();
-    let manifest: serde_yaml::Value = serde_yaml::from_reader(fd).unwrap();
     if let Some(ref matches) = matches.subcommand_matches("ddlgen")  {
-        let def_map = Value::Mapping(Mapping::new());
-        let dbconfig = manifest.get("database").unwrap_or(&def_map);
-        ddlgen::run(matches, dbconfig);
+        ddlgen::run(matches);
     }
-    Ok(())
+    process::exit(exitcode::OK);
 }
