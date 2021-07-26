@@ -34,23 +34,22 @@ pub fn run(matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
     let manifest: serde_yaml::Value = serde_yaml::from_reader(fd).unwrap();
     let def_map = Value::Mapping(Mapping::new());
     let dbconfig = manifest.get("database").unwrap_or(&def_map);
-    let def_schema = Value::String(String::from("graph-node"));
-    let catalog = dbconfig.get("catalog").unwrap_or(&def_schema).as_str().unwrap();
-
+    //Default db catalog - currently not support custom catalog
+    let def_catalog = Value::String(String::from("graph-node"));
+    let catalog = dbconfig.get("catalog").unwrap_or(&def_catalog).as_str().unwrap();
+    //input schema path
     let schema_path = matches.value_of("schema").unwrap_or("schema.graphql");
     let session = matches.value_of("hash").unwrap_or("");
     let output = matches.value_of("output").unwrap_or("./migrations");
-    let db_name = String::from("graph-node");
-
 
     let raw_schema = fs::read_to_string(schema_path)?;
     let now: String = Utc::now().format("%Y-%m-%d-%H%M%S").to_string();
-    //let out_dir = format!("./migrations/{:?}", now.format("%Y-%m-%d-%H%M%S").to_string());
+    //include session hash in output dir
     let out_dir = format!("{}/{}_{}", output, now.as_str(), session);
-    //println!("Output dir {}", out_dir.as_str());
+
     match generate_ddl(raw_schema.as_str(), catalog, out_dir.as_str()) {
         Ok(_) => {
-            let url = format!("{}/{}",DATABASE_CONNECTION_STRING.as_str(), db_name);
+            let url = format!("{}/{}",DATABASE_CONNECTION_STRING.as_str(), catalog);
             let path = PathBuf::from(out_dir.as_str());
             run_migrations(path, url.as_str());
             Ok(())
@@ -58,6 +57,9 @@ pub fn run(matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
         Err(err) => Err(err)
     }
 }
+///
+/// Run diesel migrations
+///
 fn run_migrations(path: PathBuf, db_url : &str) -> Result<(), Box<dyn Error>>{
     log::info!("Migration path: {:?}", &path);
     match diesel_migrations::migration_from(path) {
@@ -91,6 +93,7 @@ pub fn generate_ddl(raw: &str, catalog: &str, output_dir: &str) -> Result<(), Bo
         Ok(layout) => {
             let result = layout.gen_migration()?;
             let mut queries : Vec<String> = Vec::new();
+            //Tobe improved
             layout.tables.iter().for_each(|(name,_table)| {
                 let query = serde_json::json!({
                     "type": "track_table",
