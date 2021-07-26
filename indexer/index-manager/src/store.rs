@@ -1,4 +1,5 @@
 use diesel::{PgConnection, RunQueryDsl};
+use std::process::Command;
 
 pub fn create_new_indexer_detail_table(connection: &PgConnection, raw_query: &String) {
     let query = diesel::sql_query(raw_query.clone());
@@ -27,4 +28,16 @@ pub fn insert_new_indexer(
             log::warn!("[Index Manager Helper] {}", e);
         }
     };
+}
+
+pub fn run_migration_cli() {
+    let output = Command::new("ls")
+        .arg("-ll")
+        .output()
+        .expect("failed to execute process");
+
+    println!("status: {}", output.status);
+    println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+    println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+    assert!(output.status.success());
 }
