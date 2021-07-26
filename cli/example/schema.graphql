@@ -1,0 +1,4 @@
+type BlockTs @entity {
+    id: ID!
+    blockHeight: BigInt!
+}

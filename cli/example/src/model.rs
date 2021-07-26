@@ -3,24 +3,24 @@ use structmap::{FromMap, ToMap};
 use structmap_derive::{FromMap, ToMap};
 
 #[derive(Default, Clone, FromMap, ToMap)]
-pub struct Block {
-    pub block_hash: String,
+pub struct BlockTs {
+    pub id: String,
     pub block_height: i64,
 }
 
-impl Into<structmap::GenericMap> for Block {
+impl Into<structmap::GenericMap> for BlockTs {
     fn into(self) -> structmap::GenericMap {
-        Block::to_genericmap(self.clone())
+        BlockTs::to_genericmap(self.clone())
     }
 }
 
-impl Block {
+impl BlockTs {
     pub fn save(&self) {
         unsafe {
             STORE
-                .as_mut()
+                .as_ref()
                 .unwrap()
-                .save("Block".to_string(), self.clone().into());
+                .save("BlockTs".to_string(), self.clone().into());
         }
     }
 }

@@ -10,17 +10,17 @@ pub fn {{handler.name}}(block: &types::SubstrateBlock) -> Result<(), Box<dyn Err
 {% elif handler.kind == "substrate/ExtrinsicHandler" %}
 #[derive(Debug, Clone, PartialEq)]
 pub fn {{handler.name}}(extrinsic: &types::SubstrateExtrinsic) -> Result<(), Box<dyn Error>> {
-    unimplemented!();
+    todo!();
 }
 {% elif handler.kind == "substrate/EventHandler" %}
 #[derive(Debug, Clone, PartialEq)]
 pub fn {{handler.name}}(event: &types::SubstrateEventRecord) -> Result<(), Box<dyn Error>> {
-    unimplemented!();
+    todo!();
 }
 {% elif handler.kind == "solana/BlockHandler" %}
 #[derive(Debug, Clone, PartialEq)]
 pub fn {{handler.name}}(block: &types::SolanaBlock) -> Result<(), Box<dyn Error>> {
-    unimplemented!();
+    todo!();
 }
 {% elif handler.kind == "solana/TransactionHandler" %}
 #[derive(Debug, Clone, PartialEq)]

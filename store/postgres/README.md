@@ -2,110 +2,78 @@
 Clone from https://github.com/graphprotocol/graph-node/tree/v0.22.0/store/postgres
 
 Modify file relational.rs to generate ddl as list of seperated queries and list table names
-# DDL gen CLI
+# Migration CLI
 
 ## Usage
 ```shell
-cargo run -- ddlgen --schema schema.graphql --config project.yaml --ouput migrations 
+cargo run -- ddlgen -s schema.graphql -c project.yaml -o ./migrations -h sessionid
 ```
 
 ## Input templates
 `schema.graphql`
 ```graphql
-   type _Schema_ @fulltext(
-        name: "userSearch"
-        language: en
-        algorithm: rank
-        include: [
-            {
-                entity: "User",
-                fields: [
-                    { name: "name"},
-                    { name: "email"},
-                ]
-            }
-        ]
-    ) @fulltext(
-        name: "nullableStringsSearch"
-        language: en
-        algorithm: rank
-        include: [
-            {
-                entity: "NullableStrings",
-                fields: [
-                    { name: "name"},
-                    { name: "description"},
-                    { name: "test"},
-                ]
-            }
-        ]
-    )
+type Block @entity {
+    id: ID!
+    block_number: Int!
+    block_hash: String!
+    sum_fee: Int!
+    transaction_number: Int!
+    success_rate: BigDecimal!
+}
 
-    type Thing @entity {
-        id: ID!
-        bigThing: Thing!
-    }
+type Transaction @entity {
+    id: ID!
+    signature: String!
+    timestamp: Int!
+    fee: Int!
+    block: Block!
+    block_number: Int!
+    success: Boolean!
+}
 
-    enum Color { yellow, red, BLUE }
 
-    type Scalar @entity {
-        id: ID,
-        bool: Boolean,
-        int: Int,
-        bigDecimal: BigDecimal,
-        bigDecimalArray: [BigDecimal!]!
-        string: String,
-        strings: [String!],
-        bytes: Bytes,
-        byteArray: [Bytes!],
-        bigInt: BigInt,
-        bigIntArray: [BigInt!]!
-        color: Color,
-    }
+type TransactionAccount @entity {
+    id: ID!
+    pub_key: String!
+    pos_balance: Int!
+    change_balance: Int!
+    is_program: Boolean!
+    transaction_own: Transaction!
+    inner_account_index: Int!
+}
 
-    interface Pet {
-        id: ID!,
-        name: String!
-    }
+type InstructionDetail @entity {
+    id: ID!
+    name: String
+    is_decoded: Boolean!
+}
 
-    type Cat implements Pet @entity {
-        id: ID!,
-        name: String!
-    }
+type TransactionInstruction @entity {
+    id: ID!
+    transaction_own: Transaction!
+    inner_account_index: Int!
+    instruction_detail: InstructionDetail!
 
-    type Dog implements Pet @entity {
-        id: ID!,
-        name: String!
-    }
+}
 
-    type Ferret implements Pet @entity {
-        id: ID!,
-        name: String!
-    }
-
-    type User @entity {
-        id: ID!,
-        name: String!,
-        bin_name: Bytes!,
-        email: String!,
-        age: Int!,
-        seconds_age: BigInt!,
-        weight: BigDecimal!,
-        coffee: Boolean!,
-        favorite_color: Color,
-        drinks: [String!]
-    }
-
-    type NullableStrings @entity {
-        id: ID!,
-        name: String,
-        description: String,
-        test: String
-    }
 ```
 `project.yaml`
 ```yaml
 
 database:
-  catalog: dbcatalog
+  catalog: graph-node
+```
+### Output
+3 Files up.sql, down.sql, hasura_queries.json in {output}/{timestamp}_{sessionId}
+
+
+`hasura_queries.json`
+```yaml
+[
+  {"args":{"name":"TransactionInstruction","schema":"public"},"type":"track_table"},
+  {"args":{"name":"Block","schema":"public"},"type":"track_table"},
+  {"args":{"name":"Transaction","schema":"public"},"type":"track_table"},
+  {"args":{"name":"TransactionAccount","schema":"public"},"type":"track_table"},
+  {"args":{"name":"InstructionDetail","schema":"public"},"type":"track_table"}
+]
 ```
