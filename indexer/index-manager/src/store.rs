@@ -30,13 +30,15 @@ pub fn insert_new_indexer(
     };
 }
 
-pub fn run_migration_cli(schema: &String, config: &String) {
+pub fn plugin_migration(index_name: &String, schema: &String, config: &String) {
     let output = Command::new("cargo")
         .arg("run")
         .arg("--manifest-path")
         .arg("store/postgres/Cargo.toml")
         .arg("--")
         .arg("ddlgen")
+        .arg("-n")
+        .arg(index_name)
         .arg("-s")
         .arg(schema)
         .arg("-c")

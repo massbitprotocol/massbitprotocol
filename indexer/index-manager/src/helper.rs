@@ -14,8 +14,8 @@ use index_store::core::IndexStore;
 use plugin::manager::PluginManager;
 use stream_mod::{GetBlocksRequest, GenericDataProto, ChainType, DataType, streamout_client::StreamoutClient};
 use crate::builder::{IndexConfigLocalBuilder, IndexConfigIpfsBuilder};
-use crate::hasura::track_hasura_table;
-use crate::store::{create_new_indexer_detail_table, insert_new_indexer, run_migration_cli};
+use crate::hasura::{track_hasura_table, plugin_hasura};
+use crate::store::{create_new_indexer_detail_table, insert_new_indexer, plugin_migration};
 // Refactor to new files for substrate / solana
 use massbit_chain_substrate::data_type::{decode, SubstrateBlock, get_extrinsics_from_block, SubstrateEventRecord};
 use massbit_chain_solana::data_type::{decode as solana_decode, SolanaEncodedBlock, convert_solana_encoded_block_to_solana_block, SolanaTransaction, SolanaLogMessages};
@@ -80,12 +80,13 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
         *DATABASE_CONNECTION_STRING
     ));
 
-    // Should use migration plugin instead of running raw query
-    // create_new_indexer_detail_table(&connection, &index_config.query);
-    run_migration_cli(&index_config.schema, &index_config.config);
+    // Create tables for the new indexer
+    create_new_indexer_detail_table(&connection, &index_config.query);
+    // plugin_migration(&params.index_name, &index_config.schema, &index_config.config); # Implement this when the ddl gen is ready
 
     // Track the newly created table with hasura
     track_hasura_table(&params.table_name).await;
+    // plugin_hasura(&params.index_name).await; # Implement this when the ddl gen is ready
 
     // Create indexers table so we can keep track of the indexers status
     create_indexers_table_if_not_exists(&connection);
