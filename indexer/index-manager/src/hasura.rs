@@ -34,16 +34,16 @@ pub async fn plugin_hasura(index_name: &String) {
         if folder.contains(index_name) {
             println!("Found the folder");
             // TODO Find the payload in the folder and add it in the request to hasura
-            let gist_body = json!(
-                index_name
-            );
-            Client::new()
-                .post(&*HASURA_URL)
-                .json(&gist_body)
-                .send()
-                .compat()
-                .await
-                .unwrap();
+            // let gist_body = json!(
+            //     payload
+            // );
+            // Client::new()
+            //     .post(&*HASURA_URL)
+            //     .json(&gist_body)
+            //     .send()
+            //     .compat()
+            //     .await
+            //     .unwrap();
         };
     }
 }

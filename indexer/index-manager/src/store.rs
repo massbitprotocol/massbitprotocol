@@ -37,7 +37,7 @@ pub fn plugin_migration(index_name: &String, schema: &String, config: &String) {
         .arg("store/postgres/Cargo.toml")
         .arg("--")
         .arg("ddlgen")
-        .arg("-n")
+        .arg("-h")
         .arg(index_name)
         .arg("-s")
         .arg(schema)
