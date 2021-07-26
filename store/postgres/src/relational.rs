@@ -50,6 +50,7 @@ use crate::block_range::{BLOCK_RANGE_COLUMN, BLOCK_UNVERSIONED};
 pub use crate::catalog::Catalog;
 use crate::entities::STRING_PREFIX_SIZE;
 use graph_graphql::graphql_parser::query::Type;
+use anyhow::Error;
 
 lazy_static! {
     /// Experimental: a list of fully qualified table names that contain
@@ -79,7 +80,6 @@ lazy_static! {
         Arc::new(layout)
     };
 }
-
 /// A string we use as a SQL name for a table or column. The important thing
 /// is that SQL names are snake cased. Using this type makes it easier to
 /// spot cases where we use a GraphQL name like 'bigThing' when we should
@@ -169,7 +169,7 @@ impl fmt::Display for SqlName {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum IdType {
     String,
-    Bytes,
+    Bytes
 }
 
 impl TryFrom<&s::ObjectType> for IdType {
@@ -191,6 +191,7 @@ impl TryFrom<&s::Type> for IdType {
         match ValueType::from_str(name)? {
             ValueType::String => Ok(IdType::String),
             ValueType::Bytes => Ok(IdType::Bytes),
+            //ValueType::BigInt => Ok(IdType::BigInt),
             _ => Err(anyhow!(
                 "The `id` field has type `{}` but only `String`, `Bytes`, and `ID` are allowed",
                 &name
@@ -965,7 +966,8 @@ impl From<IdType> for ColumnType {
     fn from(id_type: IdType) -> Self {
         match id_type {
             IdType::Bytes => ColumnType::BytesId,
-            IdType::String => ColumnType::String,
+            IdType::String => ColumnType::String
+            //IdType::BigInt => ColumnType::BigInt
         }
     }
 }
@@ -1452,21 +1454,37 @@ impl Table {
             //layout.catalog.namespace,
             self.name.quoted()
         )?;
+        let mut constraints : Vec<String> = Vec::new();
         for column in self.columns.iter() {
             write!(up, "    ")?;
-            column.as_ddl(up)?;
+            if column.is_primary_key() {
+                write!(up, "    ")?;
+                write!(up, "{:20} {} PRIMARY KEY", column.name.quoted(), column.sql_type())?;
+            } else {
+                column.as_ddl(up)?;
+            }
+            if column.is_reference() {
+                constraints.push(format!("CONSTRAINT fk_{column_name} FOREIGN KEY({column_name}) REFERENCES {reference}({reference_id})",
+                                         reference = named_type(&column.field_type).to_snake_case(),
+                                         reference_id = &PRIMARY_KEY_COLUMN.to_owned(),
+                                         column_name = column.name));
+            }
             writeln!(up, ",")?;
         }
         // Add block_range column and constraint
         write!(
             up,
-            "\n        {vid}                  bigserial primary key,\
-             \n        {block_range}          int4range not null);\n",
+            //"\n        {vid}                  bigserial primary key,\
+             "\n        {block_range}          int4range not null",
             //exclude using gist   (id with =, {block_range} with &&)\n);\n",
-            vid = VID_COLUMN,
+            //vid = VID_COLUMN,
             block_range = BLOCK_RANGE_COLUMN
         )?;
-
+        //Foreign key constraint
+        if constraints.len() > 0 {
+            writeln!(up, ",\n\t\t{}", constraints.join(",\n"));
+        }
+        writeln!(up, ");");
         // Add a BRIN index on the block_range bounds to exploit the fact
         // that block ranges closely correlate with where in a table an
         // entity appears physically. This index is incredibly efficient for
@@ -1488,6 +1506,11 @@ impl Table {
         //
         // We also index `vid` as that correlates with the order in which
         // entities are stored.
+        /*
+         * 2021-07-26
+         * vuviettai: remove field vid
+         */
+        /*
         write!(up,"create index brin_{table_name}\n    \
                     on {table_name}\n \
                        using brin(lower(block_range), coalesce(upper(block_range), {block_max}), vid);\n",
@@ -1495,6 +1518,7 @@ impl Table {
                //schema_name = layout.catalog.namespace,
                block_max = BLOCK_NUMBER_MAX)?;
         writeln!(down, "DROP INDEX IF EXISTS brin_{table_name};", table_name = self.name);
+        */
         // Add a BTree index that helps with the `RevertClampQuery` by making
         // it faster to find entity versions that have been modified
         write!(
@@ -1543,7 +1567,9 @@ impl Table {
                 (method, index_expr)
             };
             match method {
-                "gist" => {},
+                "gist" => {
+                    println!("Currently not support gist with column {}, improve later", column.name.to_string());
+                },
                 _ => {
                     writeln!(
                         up,
@@ -1568,28 +1594,6 @@ impl Table {
                 }
             }
         }
-        //Relationship
-        /*
-        for (i, column) in self
-            .columns
-            .iter()
-            .filter(|col| col.is_reference())
-            .enumerate()
-        {
-            println!("{:?}", column);
-            let reference = match &column.field_type {
-                Type::NamedType(named_type) => {named_type}
-                Type::ListType(_) => {
-                   &String::new()
-                }
-                Type::NonNullType(nonenulltype) => {*nonenulltype.to_string()}
-            };
-            println!("CONSTRAINT fk_{column_name} FOREIGN KEY({column_name}) REFERENCES {reference}({reference_id})",
-                     reference = column.field_type,
-                     reference_id = &PRIMARY_KEY_COLUMN.to_owned(),
-                     column_name = column.name);
-        }
-        */
         writeln!(down, "DROP TABLE IF EXISTS {};", self.name.quoted())
     }
 }
