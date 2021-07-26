@@ -72,8 +72,7 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
             index_config
         }
     };
-
-    println!("{}", index_config.schema);
+    
 
     let connection = PgConnection::establish(&DATABASE_CONNECTION_STRING).expect(&format!(
         "Error connecting to {}",
