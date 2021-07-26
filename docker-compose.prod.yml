@@ -47,7 +47,6 @@ services:
 
   chain-reader:
     image: sprise/chain-reader:latest
-    command: bash -c "sleep 5; ./target/release/chain-reader"
     ports:
       - "50051:50051"
     depends_on:
