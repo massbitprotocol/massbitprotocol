@@ -31,6 +31,9 @@ pub fn insert_new_indexer(
 }
 
 pub fn plugin_migration(index_name: &String, schema: &String, config: &String) {
+    println!("index_name{}", index_name);
+    println!("schema {}", schema);
+    println!("config {}", config);
     let output = Command::new("cargo")
         .arg("run")
         .arg("--manifest-path")
@@ -39,17 +42,14 @@ pub fn plugin_migration(index_name: &String, schema: &String, config: &String) {
         .arg("ddlgen")
         .arg("-h")
         .arg(index_name)
-        .arg("-s")
-        .arg(schema)
         .arg("-c")
-        .arg(config)
-        .arg("-o")
-        .arg("./migrations")
+        .arg("./indexer/generated/Qmd6SFyDQwPsyxSz4cJXeKSsv1dYBirntbGs6msG7GfbDX.yaml")
+        .arg("-s")
+        .arg("./indexer/generated/QmQpeUrxtQE5N2SVog1ZCxd7c7RN4fBNQu5aLwkk5RY9ER.graphql")
         .output()
         .expect("failed to execute process");
 
     println!("status: {}", output.status);
     println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
-    println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
     assert!(output.status.success());
 }
