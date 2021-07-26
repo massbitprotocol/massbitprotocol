@@ -49,6 +49,7 @@ use graph::prelude::{
 use crate::block_range::{BLOCK_RANGE_COLUMN, BLOCK_UNVERSIONED};
 pub use crate::catalog::Catalog;
 use crate::entities::STRING_PREFIX_SIZE;
+use graph_graphql::graphql_parser::query::Type;
 
 lazy_static! {
     /// Experimental: a list of fully qualified table names that contain
@@ -1419,7 +1420,9 @@ impl Table {
                 (method, index_expr)
             };
             match method {
-                "gist" => {},
+                "gist" => {
+                    println!("Currenty not support gist in db, improve later");
+                },
                 _ => { write!(
                     out,
                     "create index attr_{table_index}_{column_index}_{table_name}_{column_name}\n    on \"{table_name}\" using {method}({index_expr});\n",
@@ -1573,12 +1576,20 @@ impl Table {
             .filter(|col| col.is_reference())
             .enumerate()
         {
-            println!("CONSTRAINT fk_{reference} FOREIGN KEY({column_name}) REFERENCES {reference}({reference_id})",
+            println!("{:?}", column);
+            let reference = match &column.field_type {
+                Type::NamedType(named_type) => {named_type}
+                Type::ListType(_) => {
+                   &String::new()
+                }
+                Type::NonNullType(nonenulltype) => {*nonenulltype.to_string()}
+            };
+            println!("CONSTRAINT fk_{column_name} FOREIGN KEY({column_name}) REFERENCES {reference}({reference_id})",
                      reference = column.field_type,
                      reference_id = &PRIMARY_KEY_COLUMN.to_owned(),
                      column_name = column.name);
         }
-         */
+        */
         writeln!(down, "DROP TABLE IF EXISTS {};", self.name.quoted())
     }
 }
