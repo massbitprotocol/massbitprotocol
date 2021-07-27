@@ -16,15 +16,20 @@ plugin::export_plugin!(register);
 extern "C" fn register(registrar: &mut dyn PluginRegistrar) {
     {%- for handler in handlers %}
     {%- if handler.kind == "substrate/BlockHandler" %}
-    registrar.register_substrate_block_handler("{{ handler.name }}", Box::new(SubstrateBlockHandler));
+    #registrar.register_substrate_block_handler("{{ handler.name }}", Box::new(SubstrateBlockHandler));
+    registrar.register_substrate_block_handler(Box::new(SubstrateBlockHandler));
     {%- elif handler.kind == "substrate/ExtrinsicHandler" %}
-    registrar.register_substrate_extrinsic_handler("{{ handler.name }}", Box::new(SubstrateExtrinsicHandler));
+    #registrar.register_substrate_extrinsic_handler("{{ handler.name }}", Box::new(SubstrateExtrinsicHandler));
+    registrar.register_substrate_extrinsic_handler(Box::new(SubstrateExtrinsicHandler));
     {%- elif handler.kind == "substrate/EventHandler" %}
-    registrar.register_substrate_event_handler("{{ handler.name }}", Box::new(SubstrateEventHandler));
+    #registrar.register_substrate_event_handler("{{ handler.name }}", Box::new(SubstrateEventHandler));
+    registrar.register_substrate_event_handler(Box::new(SubstrateEventHandler));
     {%- elif handler.kind == "solana/BlockHandler" %}
-    registrar.register_solana_block_handler("{{ handler.name }}", Box::new(SolanaBlockHandler));
+    #registrar.register_solana_block_handler("{{ handler.name }}", Box::new(SolanaBlockHandler));
+    registrar.register_solana_block_handler(Box::new(SolanaBlockHandler));
     {%- elif handler.kind == "solana/TransactionHandler" %}
-    registrar.register_solana_transaction_handler("{{ handler.name }}", Box::new(SolanaTransactionHandler));
+    #registrar.register_solana_transaction_handler("{{ handler.name }}", Box::new(SolanaTransactionHandler));
+    registrar.register_solana_transaction_handler(Box::new(SolanaTransactionHandler));
     {%- endif -%}
     {%- endfor %}
 }
