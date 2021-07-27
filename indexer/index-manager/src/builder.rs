@@ -29,10 +29,10 @@ pub struct IndexConfigLocalBuilder {
 impl Default for IndexConfigLocalBuilder {
     fn default() -> IndexConfigLocalBuilder {
         IndexConfigLocalBuilder {
-            schema: "".to_string(),
+            schema: Default::default(),
             config: Default::default(),
             mapping: "".to_string().parse().unwrap(),
-            query: "".to_string(),
+            query: Default::default(),
         }
     }
 }
@@ -81,10 +81,10 @@ pub struct IndexConfigIpfsBuilder {
 impl Default for IndexConfigIpfsBuilder {
     fn default() -> IndexConfigIpfsBuilder {
         IndexConfigIpfsBuilder {
-            schema: "".to_string(),
+            schema: Default::default(),
             config: Default::default(),
             mapping: "".to_string().parse().unwrap(),
-            query: "".to_string(),
+            query: Default::default(),
         }
     }
 }
