@@ -1,5 +1,12 @@
 use diesel::{PgConnection, RunQueryDsl};
 use std::process::Command;
+use std::fs::File;
+use std::io::Read;
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref INDEXER_MIGRATION_FILE: String = String::from("./indexer/migration/indexers.sql");
+}
 
 pub fn create_new_indexer_detail_table(connection: &PgConnection, raw_query: &String) {
     let query = diesel::sql_query(raw_query.clone());
@@ -30,10 +37,10 @@ pub fn insert_new_indexer(
     };
 }
 
-pub fn plugin_migration(index_name: &String, schema: &String, config: &String) {
-    log::debug!("[Index Manager Store] index_name {}", index_name);
-    log::debug!("[Index Manager Store] schema {}", schema);
-    log::debug!("[Index Manager Store] config {}", config);
+pub fn migrate_with_ddl_gen_plugin(index_name: &String, schema: &String, config: &String) {
+    log::debug!("[Index Manager Store] Index name: {}", index_name);
+    log::debug!("[Index Manager Store] Index schema: {}", schema);
+    log::debug!("[Index Manager Store] Index config: {}", config);
     let output = Command::new("cargo")
         .arg("run")
         .arg("--manifest-path")
@@ -49,7 +56,20 @@ pub fn plugin_migration(index_name: &String, schema: &String, config: &String) {
         .output()
         .expect("failed to execute plugin migration");
 
-    log::info!("[Index Manager Store] status: {}", output.status);
-    log::info!("[Index Manager Store] stdout: {}", String::from_utf8_lossy(&output.stdout));
+    log::info!("[Index Manager Store] Plugin migration status: {}", output.status);
+    log::info!("[Index Manager Store] Plugin migration stdout: {}", String::from_utf8_lossy(&output.stdout));
     assert!(output.status.success());
+}
+
+pub fn create_indexers_table_if_not_exists(connection: &PgConnection) {
+    let mut query = String::new();
+    let mut f = File::open(&*INDEXER_MIGRATION_FILE).expect("Unable to open file");
+    f.read_to_string(&mut query).expect("Unable to read string"); // Get raw query
+    let result = diesel::sql_query(query).execute(connection);
+    match result {
+        Ok(_) => {}
+        Err(e) => {
+            log::warn!("[Index Manager Store] {}", e);
+        }
+    };
 }

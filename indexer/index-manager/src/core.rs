@@ -7,7 +7,7 @@ use futures::future::FutureExt;
 // Massbit dependencies
 use tokio02_spawn::core::abort_on_panic;
 use tokio02_spawn::core::tokio02_spawn;
-use crate::helper::{loop_blocks, list_handler_helper};
+use crate::core_helper::{loop_blocks, list_handler_helper};
 use crate::types::{IndexManager, DeployParams};
 
 impl IndexManager {
