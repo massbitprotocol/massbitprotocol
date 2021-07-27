@@ -1,25 +1,15 @@
-use diesel::{Connection, PgConnection, RunQueryDsl};
+use diesel::{Connection, PgConnection};
 use lazy_static::lazy_static;
 use postgres::{Connection as PostgreConnection, TlsMode};
 use std::error::Error;
-use std::fs::File;
-use std::io::Read;
-use std::{env, fs};
-use tonic::Request;
-use std::time::Instant;
+use std::{env};
 
 // Massbit dependencies
 use crate::types::{DeployParams, DeployType, Indexer};
-use index_store::core::IndexStore;
-use plugin::manager::PluginManager;
 use crate::builder::{IndexConfigLocalBuilder, IndexConfigIpfsBuilder};
 use crate::hasura::{track_hasura_table, track_hasura_with_ddl_gen_plugin};
 use crate::store::{create_new_indexer_detail_table, insert_new_indexer, migrate_with_ddl_gen_plugin, create_indexers_table_if_not_exists};
-use massbit_chain_substrate::data_type::{decode, SubstrateBlock, get_extrinsics_from_block, SubstrateEventRecord};
-use massbit_chain_solana::data_type::{decode as solana_decode, SolanaEncodedBlock, convert_solana_encoded_block_to_solana_block, SolanaTransaction, SolanaLogMessages};
 use crate::config::read_config_file;
-use crate::manifest::get_chain_type;
-use crate::types::stream_mod::{GetBlocksRequest, GenericDataProto, ChainType, DataType, streamout_client::StreamoutClient};
 use crate::chain_reader_client::chain_reader_client_start;
 
 lazy_static! {
@@ -62,7 +52,12 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
     // Parsing config file
     let config = read_config_file(&index_config.config);
 
+    // Old functions to run migrate and track without DDL Gen Plugin
+    create_new_indexer_detail_table(&connection, &index_config.query);
+    track_hasura_table(&params.table_name).await;
+
     // Refactor these 4 functions as function of DDL Gen Plugin Struct
+    // Run migrate and track with DDL Gen Plugin
     migrate_with_ddl_gen_plugin(&params.index_name, &index_config.schema, &index_config.config); // Create tables for the new index
     track_hasura_with_ddl_gen_plugin(&params.index_name).await; // Track the newly created tables in hasura
     create_indexers_table_if_not_exists(&connection); // Create indexers table so we can keep track of the indexers status. TODO: Refactor as part of ddl gen plugin

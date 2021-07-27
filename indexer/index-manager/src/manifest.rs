@@ -1,5 +1,5 @@
 use serde_yaml::Value;
-use crate::types::stream_mod::{GetBlocksRequest, GenericDataProto, ChainType, DataType, streamout_client::StreamoutClient};
+use crate::types::stream_mod::{ChainType};
 
 pub fn get_chain_type(config: &Value) -> ChainType {
     let chain_type = match config["dataSources"][0]["kind"].as_str().unwrap() {

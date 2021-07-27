@@ -3,7 +3,6 @@ use tokio_compat_02::FutureExt;
 use serde_json::{json, Value};
 use lazy_static::lazy_static;
 use std::{env};
-use std::fs;
 
 // Massbit dependencies
 use crate::hasura_helper::{assert_no_duplicated_index, get_hasura_payload_folder, get_hasura_payload};

@@ -1,5 +1,5 @@
 use std::fs;
-use std::fs::{DirEntry, ReadDir, File};
+use std::fs::{File};
 use std::path::PathBuf;
 use std::io::Read;
 use lazy_static::lazy_static;

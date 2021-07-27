@@ -2,8 +2,7 @@ use std::path::PathBuf;
 
 // Massbit dependencies
 use crate::types::{IndexConfig};
-use crate::config::{get_query_ipfs, get_mapping_ipfs, get_config_ipfs, get_query_local, get_config_local, get_mapping_local, read_config_file, get_schema_ipfs, get_schema_local};
-use serde_yaml::Value;
+use crate::config::{get_query_ipfs, get_mapping_ipfs, get_config_ipfs, get_query_local, get_config_local, get_mapping_local, get_schema_ipfs, get_schema_local};
 
 /**
 *** Builder Pattern

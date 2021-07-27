@@ -1,7 +1,7 @@
 use std::time::Instant;
 use tonic::Request;
 use lazy_static::lazy_static;
-use std::{env, fs};
+use std::{env};
 
 // Massbit dependencies
 use plugin::PluginManager;

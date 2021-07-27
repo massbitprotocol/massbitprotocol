@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use serde_yaml::Value;
 pub use stream_mod::{GetBlocksRequest, GenericDataProto, ChainType, DataType, streamout_client::StreamoutClient};
 pub mod stream_mod {
     tonic::include_proto!("chaindata");
