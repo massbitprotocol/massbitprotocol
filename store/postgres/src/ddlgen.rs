@@ -33,7 +33,7 @@ pub fn run(matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
     let config_path = matches.value_of("config").unwrap_or("project.yaml");
     let def_catalog = r#"graph-node"#;
     let mut contents = String::new();
-     match File::open(config_path) {
+    match File::open(config_path) {
         Ok(mut file) => {
             match file.read_to_string(&mut contents) {
                 Ok(_) => {}
@@ -135,9 +135,13 @@ pub fn generate_ddl(raw: &str, catalog: &str, output_dir: &str) -> Result<(), Bo
                     "type": "track_table",
                     "args": {
                         "schema": "public",
-                        "name": name.as_str()
+                        "name": table.name.as_str()
                     },
                 }));
+                /*
+                 * 21-07-27
+                 * vuviettai: hasura use create_object_relationship api to create relationship in DB
+                 * Migration sql already include this creation.
                 table.columns
                     .iter()
                     .filter(|col| col.is_reference())
@@ -145,7 +149,7 @@ pub fn generate_ddl(raw: &str, catalog: &str, output_dir: &str) -> Result<(), Bo
                         let query = serde_json::json!({
                             "type": "create_object_relationship",
                             "args": {
-                                "table": name.as_str(),
+                                "table": table.name.as_str(),
                                 "name": column.name.as_str(),
                                 "using" : {
                                     "foreign_key_constraint_on" : column.name.as_str()
@@ -154,7 +158,7 @@ pub fn generate_ddl(raw: &str, catalog: &str, output_dir: &str) -> Result<(), Bo
                         });
                         queries.push(query);
                     });
-
+                */
             });
 
             fs::create_dir_all(output_dir)?;
