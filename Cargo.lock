@@ -2517,7 +2517,6 @@ dependencies = [
  "jsonrpc-http-server",
  "lazy_static",
  "log",
- "manifest-reader",
  "massbit-chain-solana",
  "massbit-chain-substrate",
  "node-template-runtime",
@@ -3076,17 +3075,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f374d42cdfc1d7dbf3d3dec28afab2eb97ffbf43a3234d795b5986dbf4b90ba"
 dependencies = [
  "hashbrown",
-]
-
-[[package]]
-name = "manifest-reader"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "env_logger 0.8.4",
- "log",
- "serde_yaml",
- "thiserror",
 ]
 
 [[package]]

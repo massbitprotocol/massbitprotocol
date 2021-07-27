@@ -26,7 +26,6 @@ lazy_static = "1.2.0"
 
 # Massbit dependencies
 ipfs-client = { path = "../../core/ipfs-client" }
-manifest-reader = { path = "../manifest-reader" }
 tokio02-spawn = { path = "../../core/tokio02-spawn" }
 massbit-chain-substrate = { path = "../../core/chain/substrate"}
 massbit-chain-solana = { path = "../../core/chain/solana" }

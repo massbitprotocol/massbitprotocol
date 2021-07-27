@@ -6,3 +6,5 @@ pub mod config;
 pub mod hasura;
 pub mod store;
 pub mod hasura_helper;
+pub mod manifest;
+pub mod chain_reader_client;

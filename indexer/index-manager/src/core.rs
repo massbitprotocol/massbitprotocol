@@ -8,7 +8,12 @@ use futures::future::FutureExt;
 use tokio02_spawn::core::abort_on_panic;
 use tokio02_spawn::core::tokio02_spawn;
 use crate::core_helper::{loop_blocks, list_handler_helper};
-use crate::types::{IndexManager, DeployParams};
+use crate::types::DeployParams;
+
+#[allow(dead_code)]
+pub struct IndexManager {
+    http_addr: String,
+}
 
 impl IndexManager {
     pub fn serve(

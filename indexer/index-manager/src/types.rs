@@ -1,10 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use serde_yaml::Value;
-
-#[allow(dead_code)]
-pub struct IndexManager {
-    http_addr: String,
+pub use stream_mod::{GetBlocksRequest, GenericDataProto, ChainType, DataType, streamout_client::StreamoutClient};
+pub mod stream_mod {
+    tonic::include_proto!("chaindata");
 }
 
 #[derive(Clone, Debug, Deserialize)]
