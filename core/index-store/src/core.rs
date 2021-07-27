@@ -5,6 +5,7 @@ use std::collections::{HashMap, BTreeMap};
 use std::time::{SystemTime, SystemTimeError, Duration, Instant};
 use std::fmt::{self, Write};
 use structmap::value::Value;
+use diesel::result::Error;
 
 const BATCH_SIZE: usize = 1000;
 const PERIOD: u128 = 200;        //Period to insert in ms
@@ -43,7 +44,12 @@ impl IndexStore {
                         None => {},
                         Some(query) => {
                             let con = PgConnection::establish(&self.connection_string).expect(&format!("Error connecting to {}", self.connection_string));
-                            diesel::sql_query(query).execute(&con);
+                            match diesel::sql_query(query.as_str()).execute(&con) {
+                                Ok(_) => {}
+                                Err(err) => {
+                                    log::error!("[Index-Store] Error {:?} while insert querey {:?}.", err, query.as_str());
+                                }
+                            }
                             self.last_store = Some(Instant::now());
                             vec.clear();
                             log::info!("[Index-Store] Insert {:?} records in: {:?} ms.", size, start.elapsed());
@@ -107,7 +113,7 @@ fn create_query(_entity_name : String, vec : &Vec<GenericMap>) -> Option<String>
                     }).collect();
                     format!("({})",field_values.join(","))
                 }).collect();
-                Some(format!("INSERT INTO ({}) VALUES {};", f.join(","), row_values.join(",")))
+                Some(format!("INSERT INTO {} ({}) VALUES {};", _entity_name.as_str(), f.join(","), row_values.join(",")))
             }
             None => None
         }
