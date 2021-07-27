@@ -1,3 +1,8 @@
+/**
+*** Objective of this file is to provide API to call to hasura
+**/
+
+// Generic dependencies
 use reqwest::Client;
 use tokio_compat_02::FutureExt;
 use serde_json::{json, Value};

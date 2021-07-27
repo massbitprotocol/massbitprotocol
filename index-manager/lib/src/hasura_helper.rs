@@ -1,3 +1,8 @@
+/**
+*** Objective of this file is to check and get hasura payload from DDL Gen plugin
+**/
+
+// Generic dependencies
 use std::fs;
 use std::fs::{File};
 use std::path::PathBuf;

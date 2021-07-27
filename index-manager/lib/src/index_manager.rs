@@ -1,3 +1,9 @@
+/**
+*** Objective of this file is to create a server with API endpoints.
+*** No business logic should be put here
+**/
+
+// Generic dependencies
 use jsonrpc_http_server::{jsonrpc_core::{Compatibility, IoHandler, Params, Value}, ServerBuilder, jsonrpc_core};
 use futures::channel::{mpsc};
 use futures::executor::block_on;

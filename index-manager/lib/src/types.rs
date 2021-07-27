@@ -1,5 +1,12 @@
+/**
+*** The objective of this file is to expose types / models
+**/
+
+// Generic dependencies
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+
+// Massbit dependencies
 pub use stream_mod::{GetBlocksRequest, GenericDataProto, ChainType, DataType, streamout_client::StreamoutClient};
 pub mod stream_mod {
     tonic::include_proto!("chaindata");

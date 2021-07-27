@@ -1,5 +1,10 @@
-use std::path::PathBuf;
+/**
+*** Objective of this file, is to build the IndexConfig from the user's Index Request
+*** It will connect to IPFS to get the files and save them to storage
+**/
 
+// Generic dependencies
+use std::path::PathBuf;
 // Massbit dependencies
 use crate::types::{IndexConfig};
 use crate::ipfs::{get_mapping_ipfs, get_config_ipfs, get_schema_ipfs};
@@ -15,10 +20,6 @@ use crate::ipfs::{get_mapping_ipfs, get_config_ipfs, get_schema_ipfs};
 ***  - I think this is useful when there's too many complex check that needs to be done and we want to hide it from the main logic
 *** Reference: https://rust-unofficial.github.io/patterns/patterns/creational/builder.html
 **/
-
-/********************
-* Index Config IPFS *
-********************/
 pub struct IndexConfigIpfsBuilder {
     schema: String,
     config: String,

@@ -1,3 +1,11 @@
+/**
+*** Objective of this file is to connect to chain reader server
+*** Get gRPC generic block then parse to the correct format
+*** Then pass the correct data type to the plugin manager
+*** Plugin manager will then run the User SO Mapping file with the input data from Chain Reader
+**/
+
+// Generic dependencies
 use std::time::Instant;
 use tonic::Request;
 use lazy_static::lazy_static;

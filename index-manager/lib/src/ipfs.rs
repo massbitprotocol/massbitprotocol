@@ -1,34 +1,24 @@
-use ipfs_client::core::create_ipfs_clients;
+/**
+*** Objective of this file is to call to IPFS and get the index's information
+**/
+
+// Generic dependencies
 use tokio_compat_02::FutureExt;
 use lazy_static::lazy_static;
 use std::{env, fs};
 use std::fs::File;
 use std::io::Read;
 
+// Massbit dependencies
+use ipfs_client::core::create_ipfs_clients;
+
 lazy_static! {
     static ref IPFS_ADDRESS: String =
         env::var("IPFS_ADDRESS").unwrap_or(String::from("0.0.0.0:5001"));
 }
 
-/**************
-* IPFS Helper *
-***************/
-// pub async fn get_index_config(ipfs_config_hash: &String) -> serde_yaml::Mapping {
-//     let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
-//     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await; // Refactor to use lazy load
-//
-//     let file_bytes = ipfs_clients[0]
-//         .cat_all(ipfs_config_hash.to_string())
-//         .compat()
-//         .await
-//         .unwrap()
-//         .to_vec();
-//
-//     serde_yaml::from_slice(&file_bytes).unwrap()
-// }
-
 pub async fn get_schema_ipfs(hash: &String) -> String {
-    log::info!("[Index Manager Helper] Downloading Schema from IPFS");
+    log::info!("[Index Manager IPFS] Downloading Schema from IPFS");
     let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await;
 
@@ -44,12 +34,12 @@ pub async fn get_schema_ipfs(hash: &String) -> String {
 
     match res {
         Ok(_) => {
-            log::info!("[Index Manager Helper] Write Schema file to storage successfully");
+            log::info!("[Index Manager IPFS] Write Schema file to storage successfully");
             file_name
         }
         Err(err) => {
             panic!(
-                "[Index Manager Helper] Could not write Schema file to storage {:#?}",
+                "[Index Manager IPFS] Could not write Schema file to storage {:#?}",
                 err
             )
         }
@@ -57,7 +47,7 @@ pub async fn get_schema_ipfs(hash: &String) -> String {
 }
 
 pub async fn get_query_ipfs(ipfs_model_hash: &String) -> String {
-    log::info!("[Index Manager Helper] Downloading Raw Query from IPFS");
+    log::info!("[Index Manager IPFS] Downloading Raw Query from IPFS");
     let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await;
 
@@ -88,12 +78,12 @@ pub async fn get_mapping_ipfs(hash: &String) -> String {
 
     match res {
         Ok(_) => {
-            log::info!("[Index Manager Helper] Write SO file to storage successfully");
+            log::info!("[Index Manager IPFS] Write SO file to storage successfully");
             file_name
         }
         Err(err) => {
             panic!(
-                "[Index Manager Helper] Could not write SO file to storage {:#?}",
+                "[Index Manager IPFS] Could not write SO file to storage {:#?}",
                 err
             )
         }
@@ -117,13 +107,13 @@ pub async fn get_config_ipfs(hash: &String) -> String {
     match res {
         Ok(_) => {
             log::info!(
-                "[Index Manager Helper] Write project.yaml to storage successfully"
+                "[Index Manager IPFS] Write project.yaml to storage successfully"
             );
             file_name
         }
         Err(err) => {
             panic!(
-                "[Index Manager Helper] Could not write project.yaml to storage {:#?}",
+                "[Index Manager IPFS] Could not write project.yaml to storage {:#?}",
                 err
             )
         }

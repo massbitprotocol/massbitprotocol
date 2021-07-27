@@ -1,3 +1,9 @@
+/**
+*** Objective of this file is to create a new index with some configs before passing them to plugin manager
+*** Also provide some endpoints to get the index's detail
+**/
+
+// Generic dependencies
 use diesel::{Connection, PgConnection};
 use lazy_static::lazy_static;
 use postgres::{Connection as PostgreConnection, TlsMode};
@@ -6,7 +12,7 @@ use std::{env};
 
 // Massbit dependencies
 use crate::types::{DeployParams, Indexer};
-use crate::builder::{IndexConfigIpfsBuilder};
+use crate::config_builder::{IndexConfigIpfsBuilder};
 use crate::hasura::{track_hasura_with_ddl_gen_plugin};
 use crate::store::{insert_new_indexer, migrate_with_ddl_gen_plugin, create_indexers_table_if_not_exists};
 use crate::ipfs::read_config_file;

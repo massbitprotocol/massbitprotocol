@@ -1,3 +1,10 @@
+/**
+*** Objective of this file is to write to databases that are related to indexer
+*** like: indexer list, indexer detail, ...
+*** Also, there's a helper function to call to DDL Gen to migrate data
+**/
+
+// Generic dependencies
 use diesel::{PgConnection, RunQueryDsl};
 use std::process::Command;
 use std::fs::File;

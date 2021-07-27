@@ -1,4 +1,11 @@
+/**
+*** Objective of this file is to parse the config project.yaml file to get
+*** information like: chain type, index name, ...
+**/
+
+// Generic dependencies
 use serde_yaml::Value;
+// Massbit dependencies
 use crate::types::stream_mod::{ChainType};
 
 pub fn get_chain_type(config: &Value) -> ChainType {

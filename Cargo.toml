@@ -3,7 +3,7 @@ members = [
     "chain-reader/chain-reader",
     "mock",
     "core/chain/substrate",
-    "indexer/main",
+    "index-manager/main",
     "plugin/plugin",
     "plugin/test-solana-block",
     "plugin/test-solana-transaction",

@@ -34,4 +34,4 @@ chain-reader/data/
 
 *.zip
 
-indexer/generated/
+index-manager/generated/
