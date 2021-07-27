@@ -13,6 +13,6 @@ pub fn init_logger() {
                      record.args()
             )
         })
-        .filter(None, LevelFilter::Debug)
+        .filter(None, LevelFilter::Info)
         .init();
 }

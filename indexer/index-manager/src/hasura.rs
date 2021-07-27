@@ -1,6 +1,6 @@
 use reqwest::Client;
 use tokio_compat_02::FutureExt;
-use serde_json::json;
+use serde_json::{json, Value};
 use lazy_static::lazy_static;
 use std::{env};
 use std::fs;
@@ -36,9 +36,10 @@ pub async fn track_hasura_with_ddl_gen_plugin(index_name: &String) {
     assert_no_duplicated_index(&index_name);
     let folder = get_hasura_payload_folder(&index_name);
     let payload = get_hasura_payload(&folder);
+    let v: Value = serde_json::from_str(&payload).unwrap();
     Client::new()
         .post(&*HASURA_URL)
-        .json(&json!(payload))
+        .json(&v)
         .send()
         .compat()
         .await
