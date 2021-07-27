@@ -19,6 +19,7 @@ use diesel_migrations;
 use std::path::{PathBuf};
 use serde_json;
 use std::fs::File;
+use std::io::Read;
 
 
 lazy_static! {
@@ -30,22 +31,48 @@ lazy_static! {
 
 pub fn run(matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
     let config_path = matches.value_of("config").unwrap_or("project.yaml");
-    let fd = File::open(config_path)?;
-    let manifest: serde_yaml::Value = serde_yaml::from_reader(fd)?;
-    let def_map = Value::Mapping(Mapping::new());
-    let dbconfig = manifest.get("database").unwrap_or(&def_map);
-    //Default db catalog - currently not support custom catalog
-    let def_catalog = String::from("graph-node");
-    let catalog = match dbconfig.get("catalog") {
-        None => {&def_catalog}
-        Some(value) => {
-            match value.as_str() {
-                None => {&def_catalog}
-                Some(val) => {val}
+    let def_catalog = r#"graph-node"#;
+    let mut contents = String::new();
+     match File::open(config_path) {
+        Ok(mut file) => {
+            match file.read_to_string(&mut contents) {
+                Ok(_) => {}
+                Err(_) => {
+                    log::warn!("Cannot read config file {}", config_path);
+                }
+            }
+        }
+        Err(_) => {
+            log::warn!("Config file {} not found", config_path);
+        }
+    };
+    let mut catalog = String::from(def_catalog);
+    if contents.len() > 0 {
+        let manifest: serde_yaml::Value = serde_yaml::from_str(contents.as_str())?;
+        match manifest.get("database") {
+            None => {
+                log::warn!("Database configuration not found, use default value: {}", &"graph-node".to_owned());
+            }
+            Some(val) => {
+                match val.get("catalog") {
+                    None => {
+                        log::warn!("Catalog not found, use default value: {}", &"graph-node".to_owned());
+                    }
+                    Some(value) => {
+                        match value.as_str() {
+                            None => {
+                                log::warn!("Config value for catalog is invalidd, use default value: {}", &"graph-node".to_owned());
+                            }
+                            Some(str) => {
+                                catalog = String::from(str);
+                            }
+                        }
+                    }
+                }
             }
         }
     };
-    //let catalog = dbconfig.get("catalog").unwrap_or(&def_catalog).as_str()?;
+
     //input schema path
     let schema_path = matches.value_of("schema").unwrap_or("schema.graphql");
     let session = matches.value_of("hash").unwrap_or("");
@@ -56,7 +83,7 @@ pub fn run(matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
     //include session hash in output dir
     let out_dir = format!("{}/{}_{}", output, now.as_str(), session);
 
-    match generate_ddl(raw_schema.as_str(), catalog, out_dir.as_str()) {
+    match generate_ddl(raw_schema.as_str(), catalog.as_str(), out_dir.as_str()) {
         Ok(_) => {
             let url = format!("{}/{}",DATABASE_CONNECTION_STRING.as_str(), catalog);
             let path = PathBuf::from(out_dir.as_str());
@@ -101,28 +128,49 @@ pub fn generate_ddl(raw: &str, catalog: &str, output_dir: &str) -> Result<(), Bo
     match Layout::new(&schema, catalog, false) {
         Ok(layout) => {
             let result = layout.gen_migration()?;
-            let mut queries : Vec<String> = Vec::new();
-            //Tobe improved
-            layout.tables.iter().for_each(|(name,_table)| {
-                let query = serde_json::json!({
+            let mut queries : Vec<serde_json::Value> = Vec::new();
+            //Generate hasura request to track tables + relationships
+            layout.tables.iter().for_each(|(name, table)| {
+                queries.push(serde_json::json!({
                     "type": "track_table",
                     "args": {
                         "schema": "public",
-                        "name": name
+                        "name": name.as_str()
                     },
-                });
-                match serde_json::to_string(&query) {
-                    Ok(val) => {
-                        queries.push(val);
-                    }
-                    Err(_) => {}
-                }
+                }));
+                table.columns
+                    .iter()
+                    .filter(|col| col.is_reference())
+                    .for_each(|column|{
+                        let query = serde_json::json!({
+                            "type": "create_object_relationship",
+                            "args": {
+                                "table": name.as_str(),
+                                "name": column.name.as_str(),
+                                "using" : {
+                                    "foreign_key_constraint_on" : column.name.as_str()
+                                }
+                            },
+                        });
+                        queries.push(query);
+                    });
+
             });
 
             fs::create_dir_all(output_dir)?;
             fs::write(format!("{}/up.sql", output_dir), result.0);
             fs::write(format!("{}/down.sql", output_dir),result.1);
-            fs::write(format!("{}/hasura_queries.json", output_dir), format!("[\n\t{}\n]", queries.join(",\n\t")));
+            let bulk = serde_json::json!({
+                "type": "bulk",
+                "args" : queries
+            });
+            match serde_json::to_string(&bulk) {
+                Ok(val) => {
+                    fs::write(format!("{}/hasura_queries.json", output_dir),
+                              format!("{}", val));
+                }
+                Err(_) => {}
+            }
             Ok(())
         },
         Err(_err) => {

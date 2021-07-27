@@ -6,7 +6,7 @@ Modify file relational.rs to generate ddl as list of seperated queries and list 
 
 ## Usage
 ```shell
-cargo run -- ddlgen -s schema.graphql -c project.yaml -o ./migrations -h sessionid
+cargo run -- ddlgen -s schema.graphql -c project1.yaml -o ./migrations -h sessionid
 ```
 
 ## Input templates
@@ -69,11 +69,14 @@ database:
 
 `hasura_queries.json`
 ```yaml
-[
-  {"args":{"name":"TransactionInstruction","schema":"public"},"type":"track_table"},
-  {"args":{"name":"Block","schema":"public"},"type":"track_table"},
-  {"args":{"name":"Transaction","schema":"public"},"type":"track_table"},
-  {"args":{"name":"TransactionAccount","schema":"public"},"type":"track_table"},
-  {"args":{"name":"InstructionDetail","schema":"public"},"type":"track_table"}
-]
+{
+  "type": "bulk",
+  "args": [
+    { "args": { "name": "TransactionInstruction","schema": "public" },"type": "track_table" },
+    { "args": { "name": "Block","schema": "public" },"type": "track_table" },
+    { "args": { "name": "Transaction","schema": "public" },"type": "track_table" },
+    { "args": { "name": "TransactionAccount","schema": "public" },"type": "track_table" },
+    { "args": { "name": "InstructionDetail","schema": "public" },"type": "track_table" }
+  ]
+}
 ```
