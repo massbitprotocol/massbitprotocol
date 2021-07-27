@@ -17,6 +17,7 @@ use crate::hasura::{track_hasura_with_ddl_gen_plugin};
 use crate::store::{insert_new_indexer, migrate_with_ddl_gen_plugin, create_indexers_table_if_not_exists};
 use crate::ipfs::read_config_file;
 use crate::chain_reader::chain_reader_client_start;
+use crate::config::get_index_name;
 
 lazy_static! {
     static ref CHAIN_READER_URL: String =
@@ -42,15 +43,12 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
 
     // Parse config file
     let config = read_config_file(&index_config.config);
+    let index_name = get_index_name(&config);
 
-    // migrate_with_ddl_gen_plugin(&params.index_name, &index_config.schema, &index_config.config); // Create tables for the new index
-    migrate_with_ddl_gen_plugin(&"hard_code_indexer_name".to_string(), &index_config.schema, &index_config.config); // Create tables for the new index
-    // track_hasura_with_ddl_gen_plugin(&params.index_name).await; // Track the newly created tables in hasura
-    track_hasura_with_ddl_gen_plugin(&"hard_code_indexer_name".to_string()).await;
-
+    migrate_with_ddl_gen_plugin(&index_name, &index_config.schema, &index_config.config); // Create tables for the new index
+    track_hasura_with_ddl_gen_plugin(&index_name).await; // Track the newly created tables in hasura
     create_indexers_table_if_not_exists(&connection); // Create indexers table so we can keep track of the indexers status. TODO: Refactor as part of ddl gen plugin
-    // insert_new_indexer(&connection, &params.index_name, &config);  // Create a new indexer so we can keep track of it's status
-    insert_new_indexer(&connection, &"hard_code_indexer_name".to_string(), &config);
+    insert_new_indexer(&connection, &index_name, &config);  // Create a new indexer so we can keep track of it's status
 
     // Chain Reader Client Configuration to subscribe and get latest block from Chain Reader Server
     chain_reader_client_start(&config, &index_config.mapping).await;

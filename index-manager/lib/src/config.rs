@@ -16,3 +16,8 @@ pub fn get_chain_type(config: &Value) -> ChainType {
     };
     chain_type
 }
+
+pub fn get_index_name(config: &Value) -> String {
+    let index_name = config["dataSources"][0]["name"].as_str().unwrap();
+    String::from(index_name)
+}
