@@ -3,7 +3,7 @@ use std::process::Command;
 
 pub fn create_new_indexer_detail_table(connection: &PgConnection, raw_query: &String) {
     let query = diesel::sql_query(raw_query.clone());
-    println!("Running: {}", raw_query);
+    log::info!("[Index Manager Store] Creating new indexer by raw_query: {}", raw_query);
     query.execute(connection);
 }
 
@@ -22,18 +22,18 @@ pub fn insert_new_indexer(
     let result = diesel::sql_query(add_new_indexer).execute(connection);
     match result {
         Ok(_) => {
-            log::info!("[Index Manager Helper] New indexer created");
+            log::info!("[Index Manager Store] New indexer created");
         }
         Err(e) => {
-            log::warn!("[Index Manager Helper] {}", e);
+            log::warn!("[Index Manager Store] {}", e);
         }
     };
 }
 
 pub fn plugin_migration(index_name: &String, schema: &String, config: &String) {
-    println!("index_name{}", index_name);
-    println!("schema {}", schema);
-    println!("config {}", config);
+    log::debug!("[Index Manager Store] index_name {}", index_name);
+    log::debug!("[Index Manager Store] schema {}", schema);
+    log::debug!("[Index Manager Store] config {}", config);
     let output = Command::new("cargo")
         .arg("run")
         .arg("--manifest-path")
@@ -43,13 +43,13 @@ pub fn plugin_migration(index_name: &String, schema: &String, config: &String) {
         .arg("-h")
         .arg(index_name)
         .arg("-c")
-        .arg("./indexer/generated/Qmd6SFyDQwPsyxSz4cJXeKSsv1dYBirntbGs6msG7GfbDX.yaml")
+        .arg(config)
         .arg("-s")
-        .arg("./indexer/generated/QmQpeUrxtQE5N2SVog1ZCxd7c7RN4fBNQu5aLwkk5RY9ER.graphql")
+        .arg(schema)
         .output()
-        .expect("failed to execute process");
+        .expect("failed to execute plugin migration");
 
-    println!("status: {}", output.status);
-    println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+    log::info!("[Index Manager Store] status: {}", output.status);
+    log::info!("[Index Manager Store] stdout: {}", String::from_utf8_lossy(&output.stdout));
     assert!(output.status.success());
 }
