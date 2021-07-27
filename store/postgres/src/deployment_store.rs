@@ -38,13 +38,14 @@ use crate::relational_queries::FromEntityData;
 use crate::{connection_pool::ConnectionPool, detail, entities as e};
 use crate::{deployment, primary::Namespace};
 
-embed_migrations!("./migrations");
+//embed_migrations!("./migrations");
 
 /// Run all schema migrations.
 ///
 /// When multiple `graph-node` processes start up at the same time, we ensure
 /// that they do not run migrations in parallel by using `blocking_conn` to
 /// serialize them. The `conn` is used to run the actual migration.
+/*
 fn initiate_schema(logger: &Logger, conn: &PgConnection, blocking_conn: &PgConnection) {
     // Collect migration logging output
     let mut output = vec![];
@@ -111,7 +112,7 @@ fn initiate_schema(logger: &Logger, conn: &PgConnection, blocking_conn: &PgConne
         conn.batch_execute("select pg_stat_statements_reset()").ok();
     }
 }
-
+*/
 /// When connected to read replicas, this allows choosing which DB server to use for an operation.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ReplicaId {
@@ -183,7 +184,7 @@ impl DeploymentStore {
         let logger = logger.new(o!("component" => "Store"));
 
         // Create the entities table (if necessary)
-        initiate_schema(&logger, &pool.get().unwrap(), &pool.get().unwrap());
+        //initiate_schema(&logger, &pool.get().unwrap(), &pool.get().unwrap());
 
         // Create a list of replicas with repetitions according to the weights
         // and shuffle the resulting list. Any missing weights in the list
