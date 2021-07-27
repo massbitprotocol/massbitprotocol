@@ -105,10 +105,8 @@ def compile_handler():
     mapping = urllib.parse.unquote_plus(data["mapping.rs"])
     models = urllib.parse.unquote_plus(data["models.rs"])
     project = urllib.parse.unquote_plus(data["project.yaml"])
-    up = urllib.parse.unquote_plus(data["up.sql"])
-    table = urllib.parse.unquote_plus(data["table"])  # Should refactor this to index_name in the future
     schema = urllib.parse.unquote_plus(data["schema.graphql"])
-    network_type = urllib.parse.unquote_plus(data["network_type"])
+    network_type = urllib.parse.unquote_plus(data["network_type"])  # Should be checking in the project.yaml
 
     # Populate data based on network type so we can run compile with enough data
     if network_type.lower() == "solana":
@@ -126,8 +124,6 @@ def compile_handler():
     write_to_disk(generated_folder + "/src/mapping.rs", mapping)
     write_to_disk(generated_folder + "/src/models.rs", models)
     write_to_disk(generated_folder + "/src/project.yaml", project)
-    write_to_disk(generated_folder + "/src/up.sql", up)
-    write_to_disk(generated_folder + "/src/table.txt", table)  # Should refactor this to index_name in the future
     write_to_disk(generated_folder + "/src/schema.graphql", schema)
 
     # Compile the newly created deployment
@@ -183,10 +179,8 @@ def deploy_handler():
     compilation_id = urllib.parse.unquote_plus(data["compilation_id"])
 
     # Get the files path from generated/hash folder
-    project = os.path.join("./generated", compilation_id, "src/project.yaml")
-    up = os.path.join("./generated", compilation_id, "src/up.sql")
+    config = os.path.join("./generated", compilation_id, "src/project.yaml")
     so = os.path.join("./generated", compilation_id, "target/release/libblock.so")
-    index_name = os.path.join("./generated", compilation_id, "src/table.txt")
     schema = os.path.join("./generated", compilation_id, "src/schema.graphql")
 
     # Uploading files to IPFS
@@ -196,29 +190,13 @@ def deploy_handler():
         client = ipfshttpclient.connect()
 
     print("Uploading files to IPFS...")
-    project_res = client.add(project)
-    up_res = client.add(up)
+    config_res = client.add(config)
     so_res = client.add(so)
     schema_res = client.add(schema)
 
-    # Reading indexer name from table.txt file, should refactor to index.txt later
-    f = open(index_name, "r")
-    index_name = f.read()
-
-    # Read table_name from SQL query
-    f = open(up, "r")
-    up = f.read()
-    pattern = "(.*TABLE\s+)(.*)(\s+\(.*)"
-    match = re.search(pattern, up, re.IGNORECASE)
-    if match:
-        table_name = match.group(2)
-    print("Table name :", table_name)
-
     # Uploading to IPFS result
-    print("project.yaml: " + project_res['Hash'])
-    print("up.sql: " + up_res['Hash'])
+    print("project.yaml: " + config_res['Hash'])
     print("libblock.so: " + so_res['Hash'])
-    print("Indexer name: " + index_name)
     print("schema.graphql: " + schema_res['Hash'])
 
     # Uploading IPFS files to Index Manager
@@ -226,17 +204,14 @@ def deploy_handler():
         index_manager_url = os.environ.get('INDEX_MANAGER_URL')  # Connection to indexer
     else:
         index_manager_url = 'http://0.0.0.0:3030'
+
     res = requests.post(index_manager_url,
                         json={
                             'jsonrpc': '2.0',
                             'method': 'index_deploy',
                             'params': [
-                                index_name,
-                                project_res['Hash'],
+                                config_res['Hash'],
                                 so_res['Hash'],
-                                up_res['Hash'],
-                                table_name,
-                                "Ipfs",
                                 schema_res['Hash']
                             ],
                             'id': 1,
