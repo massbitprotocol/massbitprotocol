@@ -1455,7 +1455,10 @@ impl Table {
             self.name.quoted()
         )?;
         let mut constraints : Vec<String> = Vec::new();
-        for column in self.columns.iter() {
+        for (i, column) in self.columns.iter().enumerate() {
+            if i > 0 {
+                write!(up, ",\n");
+            }
             write!(up, "    ")?;
             if column.is_primary_key() {
                 write!(up, "    ")?;
@@ -1469,17 +1472,22 @@ impl Table {
                                          reference_id = &PRIMARY_KEY_COLUMN.to_owned(),
                                          column_name = column.name));
             }
-            writeln!(up, ",")?;
         }
         // Add block_range column and constraint
+        /*
+         * 2021-07-27
+         * vuviettai: remove default fields of graph-node
+         */
+        /*
         write!(
             up,
-            //"\n        {vid}                  bigserial primary key,\
-             "\n        {block_range}          int4range not null",
+            //"\n,        {vid}                  bigserial primary key\
+             "\n,        {block_range}          int4range not null",
             //exclude using gist   (id with =, {block_range} with &&)\n);\n",
             //vid = VID_COLUMN,
             block_range = BLOCK_RANGE_COLUMN
         )?;
+         */
         //Foreign key constraint
         if constraints.len() > 0 {
             writeln!(up, ",\n\t\t{}", constraints.join(",\n"));
@@ -1508,7 +1516,7 @@ impl Table {
         // entities are stored.
         /*
          * 2021-07-26
-         * vuviettai: remove field vid
+         * vuviettai: remove field vid, block_range
          */
         /*
         write!(up,"create index brin_{table_name}\n    \
@@ -1518,7 +1526,6 @@ impl Table {
                //schema_name = layout.catalog.namespace,
                block_max = BLOCK_NUMBER_MAX)?;
         writeln!(down, "DROP INDEX IF EXISTS brin_{table_name};", table_name = self.name);
-        */
         // Add a BTree index that helps with the `RevertClampQuery` by making
         // it faster to find entity versions that have been modified
         write!(
@@ -1535,6 +1542,7 @@ impl Table {
         // since there is no good way to index them with Postgres 9.6.
         // Once we move to Postgres 11, we can enable that
         // (tracked in graph-node issue #1330)
+        */
         for (i, column) in self
             .columns
             .iter()

@@ -129,7 +129,7 @@ pub fn generate_ddl(raw: &str, catalog: &str, output_dir: &str) -> Result<(), Bo
         Ok(layout) => {
             let result = layout.gen_migration()?;
             let mut queries : Vec<serde_json::Value> = Vec::new();
-            //Tobe improved
+            //Generate hasura request to track tables + relationships
             layout.tables.iter().for_each(|(name, table)| {
                 queries.push(serde_json::json!({
                     "type": "track_table",
@@ -171,10 +171,6 @@ pub fn generate_ddl(raw: &str, catalog: &str, output_dir: &str) -> Result<(), Bo
                 }
                 Err(_) => {}
             }
-            /*
-            fs::write(format!("{}/hasura_queries.json", output_dir),
-                      format!("{\n\t}[\n\t{}\n]", queries.join(",\n\t")));
-             */
             Ok(())
         },
         Err(_err) => {
