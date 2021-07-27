@@ -1,3 +1,9 @@
+/**
+*** Objective of this file is to create a server with API endpoints.
+*** No business logic should be put here
+**/
+
+// Generic dependencies
 use jsonrpc_http_server::{jsonrpc_core::{Compatibility, IoHandler, Params, Value}, ServerBuilder, jsonrpc_core};
 use futures::channel::{mpsc};
 use futures::executor::block_on;
@@ -7,8 +13,13 @@ use futures::future::FutureExt;
 // Massbit dependencies
 use tokio02_spawn::core::abort_on_panic;
 use tokio02_spawn::core::tokio02_spawn;
-use crate::helper::{loop_blocks, list_handler_helper};
-use crate::types::{IndexManager, DeployParams, DetailParams};
+use crate::index_manager_helper::{loop_blocks, list_handler_helper};
+use crate::types::DeployParams;
+
+#[allow(dead_code)]
+pub struct IndexManager {
+    http_addr: String,
+}
 
 impl IndexManager {
     pub fn serve(
@@ -25,23 +36,12 @@ impl IndexManager {
         }));
         let sender_deploy = task_sender.clone();
         let sender_list = task_sender.clone();
-        let sender_detail = task_sender.clone();
 
-        handler.add_method("index_list", move|params: Params| {
+        handler.add_method("index_list", move |_| {
             Box::pin(tokio02_spawn(
                 sender_list.clone(),
                 async move {
                     list_handler().await
-                }.boxed(),
-            )).compat()
-        });
-
-        handler.add_method("index_detail", move|params: Params| {
-            Box::pin(tokio02_spawn(
-                sender_detail.clone(),
-                async move {
-                    let params = params.parse().unwrap();
-                    detail_handler(params).await
                 }.boxed(),
             )).compat()
         });
@@ -78,12 +78,4 @@ async fn list_handler(
 ) -> Result<Value, jsonrpc_core::Error> {
     let indexers = list_handler_helper().await.unwrap();
     Ok(serde_json::to_value(indexers).expect("Unable to get index list"))
-}
-
-async fn detail_handler(
-    params: DetailParams,
-) -> Result<Value, jsonrpc_core::Error> {
-    // Comment out until we have finished the plugin manager store v2
-    // let indexers = detail_handler_helper(params).await.unwrap();
-    Ok(serde_json::to_value("").expect("Unable to get index detail"))
 }

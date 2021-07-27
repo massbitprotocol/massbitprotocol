@@ -1,6 +1,6 @@
 // Massbit dependencies
-use index_manager::types::IndexManager;
 use logger::core::init_logger;
+use index_manager_lib::index_manager::IndexManager;
 
 #[tokio::main]
 async fn main() {

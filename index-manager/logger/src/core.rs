@@ -1,3 +1,7 @@
+/**
+*** The objective of this file is to parse the env logger to the correct format
+**/
+
 use std::io::Write;
 use chrono::Local;
 use env_logger::Builder;
