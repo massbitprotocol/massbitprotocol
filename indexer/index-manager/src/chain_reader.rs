@@ -5,7 +5,7 @@ use std::{env};
 
 // Massbit dependencies
 use plugin::PluginManager;
-use crate::manifest::get_chain_type;
+use crate::config::get_chain_type;
 use massbit_chain_substrate::data_type::{decode, SubstrateBlock, get_extrinsics_from_block, SubstrateEventRecord};
 use massbit_chain_solana::data_type::{decode as solana_decode, SolanaEncodedBlock, convert_solana_encoded_block_to_solana_block, SolanaTransaction, SolanaLogMessages};
 use crate::types::stream_mod::{GetBlocksRequest, GenericDataProto, ChainType, DataType, streamout_client::StreamoutClient};

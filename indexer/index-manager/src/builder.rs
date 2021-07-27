@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 // Massbit dependencies
 use crate::types::{IndexConfig};
-use crate::config::{get_query_ipfs, get_mapping_ipfs, get_config_ipfs, get_query_local, get_config_local, get_mapping_local, get_schema_ipfs, get_schema_local};
+use crate::ipfs::{get_mapping_ipfs, get_config_ipfs, get_schema_ipfs};
 
 /**
 *** Builder Pattern
@@ -16,58 +16,6 @@ use crate::config::{get_query_ipfs, get_mapping_ipfs, get_config_ipfs, get_query
 *** Reference: https://rust-unofficial.github.io/patterns/patterns/creational/builder.html
 **/
 
-/*********************
-* Index Config Local *
-*********************/
-pub struct IndexConfigLocalBuilder {
-    schema: String,
-    config: String,
-    mapping: PathBuf,
-    query: String,
-}
-
-impl Default for IndexConfigLocalBuilder {
-    fn default() -> IndexConfigLocalBuilder {
-        IndexConfigLocalBuilder {
-            schema: Default::default(),
-            config: Default::default(),
-            mapping: "".to_string().parse().unwrap(),
-            query: Default::default(),
-        }
-    }
-}
-
-impl IndexConfigLocalBuilder {
-    pub fn query(mut self, query: String) -> IndexConfigLocalBuilder {
-        self.query = get_query_local(&query);
-        self
-    }
-
-    pub fn mapping(mut self, mapping: String) -> IndexConfigLocalBuilder {
-        self.mapping = get_mapping_local(&mapping);
-        self
-    }
-
-    pub fn config(mut self, config: String) -> IndexConfigLocalBuilder {
-        self.config = get_config_local(&config);
-        self
-    }
-
-    pub fn schema(mut self, schema: String) -> IndexConfigLocalBuilder {
-        self.schema = get_schema_local(&schema);
-        self
-    }
-
-    pub fn build(self) -> IndexConfig {
-        IndexConfig {
-            schema: self.schema,
-            config: self.config,
-            mapping: self.mapping,
-            query: self.query,
-        }
-    }
-}
-
 /********************
 * Index Config IPFS *
 ********************/
@@ -75,7 +23,6 @@ pub struct IndexConfigIpfsBuilder {
     schema: String,
     config: String,
     mapping: PathBuf,
-    query: String,
 }
 
 impl Default for IndexConfigIpfsBuilder {
@@ -84,17 +31,11 @@ impl Default for IndexConfigIpfsBuilder {
             schema: Default::default(),
             config: Default::default(),
             mapping: "".to_string().parse().unwrap(),
-            query: Default::default(),
         }
     }
 }
 
 impl IndexConfigIpfsBuilder {
-    pub async fn query(mut self, query: String) -> IndexConfigIpfsBuilder {
-        self.query = get_query_ipfs(&query).await;
-        self
-    }
-
     pub async fn mapping(mut self, mapping: String) -> IndexConfigIpfsBuilder {
         let mapping_name = get_mapping_ipfs(&mapping).await;
         let mapping_file = ["./", &mapping_name].join("");
@@ -117,7 +58,6 @@ impl IndexConfigIpfsBuilder {
             schema: self.schema,
             config: self.config,
             mapping: self.mapping,
-            query: self.query,
         }
     }
 }

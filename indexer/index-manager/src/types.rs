@@ -7,19 +7,9 @@ pub mod stream_mod {
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct DeployParams {
-    pub index_name: String,
     pub config: String,
     pub mapping: String,
-    pub query: String,
-    pub table_name: String,
-    pub deploy_type: DeployType,
     pub schema: String,
-}
-
-#[derive(Clone, Debug, Deserialize)]
-pub enum DeployType {
-    Local,
-    Ipfs,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -39,6 +29,5 @@ pub struct DetailParams {
 pub struct IndexConfig {
     pub config: String,
     pub mapping: PathBuf,
-    pub query: String,
     pub schema: String,
 }

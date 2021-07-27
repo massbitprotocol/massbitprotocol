@@ -12,7 +12,7 @@ lazy_static! {
     static ref COMPONENT_NAME: String = String::from("[Index Manger Hasura]");
 }
 
-pub async fn track_hasura_table(table_name: &String) {
+pub async fn track_hasura_by_table(table_name: &String) {
     let body = json!({
         "type": "track_table",
         "args": {

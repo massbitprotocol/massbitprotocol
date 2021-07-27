@@ -5,12 +5,12 @@ use std::error::Error;
 use std::{env};
 
 // Massbit dependencies
-use crate::types::{DeployParams, DeployType, Indexer};
-use crate::builder::{IndexConfigLocalBuilder, IndexConfigIpfsBuilder};
-use crate::hasura::{track_hasura_table, track_hasura_with_ddl_gen_plugin};
-use crate::store::{create_new_indexer_detail_table, insert_new_indexer, migrate_with_ddl_gen_plugin, create_indexers_table_if_not_exists};
-use crate::config::read_config_file;
-use crate::chain_reader_client::chain_reader_client_start;
+use crate::types::{DeployParams, Indexer};
+use crate::builder::{IndexConfigIpfsBuilder};
+use crate::hasura::{track_hasura_with_ddl_gen_plugin};
+use crate::store::{insert_new_indexer, migrate_with_ddl_gen_plugin, create_indexers_table_if_not_exists};
+use crate::ipfs::read_config_file;
+use crate::chain_reader::chain_reader_client_start;
 
 lazy_static! {
     static ref CHAIN_READER_URL: String =
@@ -23,45 +23,28 @@ lazy_static! {
 
 pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
     // Get user index mapping logic, query for migration and index's configurations
-    let index_config = match params.deploy_type {
-        DeployType::Local => {
-            let index_config = IndexConfigLocalBuilder::default()
-                .query(params.query)
-                .config(params.config)
-                .mapping(params.mapping)
-                .schema(params.schema)
-                .build();
-            index_config
-        }
-        DeployType::Ipfs => {
-            let index_config = IndexConfigIpfsBuilder::default()
-                .query(params.query).await
-                .config(params.config).await
-                .mapping(params.mapping).await
-                .schema(params.schema).await
-                .build();
-            index_config
-        }
-    };
+    let index_config = IndexConfigIpfsBuilder::default()
+        .config(params.config).await
+        .mapping(params.mapping).await
+        .schema(params.schema).await
+        .build();
 
     let connection = PgConnection::establish(&DATABASE_CONNECTION_STRING).expect(&format!(
         "Error connecting to {}",
         *DATABASE_CONNECTION_STRING
     ));
 
-    // Parsing config file
+    // Parse config file
     let config = read_config_file(&index_config.config);
 
-    // Old functions to run migrate and track without DDL Gen Plugin
-    create_new_indexer_detail_table(&connection, &index_config.query);
-    track_hasura_table(&params.table_name).await;
+    // migrate_with_ddl_gen_plugin(&params.index_name, &index_config.schema, &index_config.config); // Create tables for the new index
+    migrate_with_ddl_gen_plugin(&"hard_code_indexer_name".to_string(), &index_config.schema, &index_config.config); // Create tables for the new index
+    // track_hasura_with_ddl_gen_plugin(&params.index_name).await; // Track the newly created tables in hasura
+    track_hasura_with_ddl_gen_plugin(&"hard_code_indexer_name".to_string()).await;
 
-    // Refactor these 4 functions as function of DDL Gen Plugin Struct
-    // Run migrate and track with DDL Gen Plugin
-    migrate_with_ddl_gen_plugin(&params.index_name, &index_config.schema, &index_config.config); // Create tables for the new index
-    track_hasura_with_ddl_gen_plugin(&params.index_name).await; // Track the newly created tables in hasura
     create_indexers_table_if_not_exists(&connection); // Create indexers table so we can keep track of the indexers status. TODO: Refactor as part of ddl gen plugin
-    insert_new_indexer(&connection, &params.index_name, &config);  // Create a new indexer so we can keep track of it's status
+    // insert_new_indexer(&connection, &params.index_name, &config);  // Create a new indexer so we can keep track of it's status
+    insert_new_indexer(&connection, &"hard_code_indexer_name".to_string(), &config);
 
     // Chain Reader Client Configuration to subscribe and get latest block from Chain Reader Server
     chain_reader_client_start(&config, &index_config.mapping).await;

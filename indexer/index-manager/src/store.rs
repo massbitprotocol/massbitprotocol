@@ -8,9 +8,9 @@ lazy_static! {
     static ref INDEXER_MIGRATION_FILE: String = String::from("./indexer/migration/indexers.sql");
 }
 
-pub fn create_new_indexer_detail_table(connection: &PgConnection, raw_query: &String) {
+pub fn run_raw_query(connection: &PgConnection, raw_query: &String) {
     let query = diesel::sql_query(raw_query.clone());
-    log::info!("[Index Manager Store] Creating new indexer by raw_query: {}", raw_query);
+    log::info!("[Index Manager Store] Running raw_query: {}", raw_query);
     query.execute(connection);
 }
 
