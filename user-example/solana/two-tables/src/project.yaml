@@ -3,5 +3,5 @@ schema:
 
 dataSources:
   - kind: solana
-    name: Index
+    name: Index-two-table
     network: https://data-seed-prebsc-1-s1.binance.org:8545/

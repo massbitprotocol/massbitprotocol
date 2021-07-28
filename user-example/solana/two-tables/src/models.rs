@@ -10,13 +10,6 @@ pub struct Block {
     pub sum_fee: i64,
     pub transaction_number: i64,
     pub success_rate: i64
-
-    // id: ID!
-    // block_number: Int!
-    // block_hash: String!
-    // sum_fee: Int!
-    // transaction_number: Int!
-    // success_rate: BigDecimal!
 }
 
 impl Into<structmap::GenericMap> for Block {
@@ -44,15 +37,7 @@ pub struct Transaction {
     pub fee: i64,
     pub block: String,
     pub block_number: i64,
-    pub success: bool, // Support bool?
-
-    // id: ID!
-    // signature: String!
-    // timestamp: Int!
-    // fee: Int!
-    // block: Block!
-    // block_number: Int!
-    // success: Boolean!
+    pub success: bool,
 }
 
 impl Into<structmap::GenericMap> for Transaction {

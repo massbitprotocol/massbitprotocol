@@ -21,13 +21,6 @@ pub fn handle_transaction(transaction: &types::SolanaTransaction) -> Result<(), 
         block_number: Default::default(),
         success: true,
 
-        // pub id: String,
-        // pub signature: String,
-        // pub timestamp: i64,
-        // pub fee: i64,
-        // pub block: String,
-        // pub block_number: i64,
-        // pub success: bool, // Support bool?
     };
     let block_ts = Block {
         id: block_id,
@@ -37,15 +30,9 @@ pub fn handle_transaction(transaction: &types::SolanaTransaction) -> Result<(), 
         transaction_number: Default::default(),
         success_rate: Default::default()
 
-        // pub id: String,
-        // pub block_number: i64,
-        // pub block_hash: String,
-        // pub sum_fee: i64,
-        // pub transaction_number: i64,
-        // pub success_rate: i64
     };
     block_ts.save();
-    // transaction_ts.save();
+    transaction_ts.save();
 
     Ok(())
 }
