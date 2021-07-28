@@ -17,7 +17,7 @@ use crate::hasura::{track_hasura_with_ddl_gen_plugin};
 use crate::store::{insert_new_indexer, migrate_with_ddl_gen_plugin, create_indexers_table_if_not_exists};
 use crate::ipfs::read_config_file;
 use crate::chain_reader::chain_reader_client_start;
-use crate::config::get_index_name;
+use crate::config::{get_index_name, generate_random_hash};
 
 lazy_static! {
     static ref CHAIN_READER_URL: String =
@@ -43,7 +43,7 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
 
     // Parse config file
     let config = read_config_file(&index_config.config);
-    let index_name = get_index_name(&config);
+    let index_name = format!("{}-{}", get_index_name(&config), generate_random_hash());
 
     migrate_with_ddl_gen_plugin(&index_name, &index_config.schema, &index_config.config); // Create tables for the new index
     track_hasura_with_ddl_gen_plugin(&index_name).await; // Track the newly created tables in hasura
