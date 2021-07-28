@@ -33,3 +33,5 @@ chain-reader/data/
 /code-compiler/generated
 
 *.zip
+
+index-manager/generated/

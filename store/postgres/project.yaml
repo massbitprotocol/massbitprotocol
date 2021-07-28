@@ -1,0 +1,4 @@
+schema:
+  file: schema.graphql
+database:
+  catalog: graph-node

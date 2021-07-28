@@ -11,5 +11,5 @@ log = "0.4.0"
 env_logger = "0.8.4"
 
 # Massbit dependencies
-index-manager = { path = "../index-manager" }
+index-manager-lib = { path = "../lib" }
 logger = { path = "../logger" }
