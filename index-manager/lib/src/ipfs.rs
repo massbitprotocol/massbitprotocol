@@ -15,6 +15,7 @@ use ipfs_client::core::create_ipfs_clients;
 lazy_static! {
     static ref IPFS_ADDRESS: String =
         env::var("IPFS_ADDRESS").unwrap_or(String::from("0.0.0.0:5001"));
+    static ref GENERATED_FOLDER: String = String::from("index-manager/generated/");
 }
 
 pub async fn get_schema_ipfs(hash: &String) -> String {
@@ -29,7 +30,7 @@ pub async fn get_schema_ipfs(hash: &String) -> String {
         .unwrap()
         .to_vec();
 
-    let file_name = ["indexer/generated/", hash, ".graphql"].join("");
+    let file_name = [&*GENERATED_FOLDER, hash, ".graphql"].join("");
     let res = fs::write(&file_name, file_bytes); // Add logger and says that write file successfully
 
     match res {
@@ -73,7 +74,7 @@ pub async fn get_mapping_ipfs(hash: &String) -> String {
         .unwrap()
         .to_vec();
 
-    let file_name = ["indexer/generated/", hash, ".so"].join("");
+    let file_name = [&*GENERATED_FOLDER, hash, ".so"].join("");
     let res = fs::write(&file_name, file_bytes); // Add logger and says that write file successfully
 
     match res {
@@ -101,7 +102,7 @@ pub async fn get_config_ipfs(hash: &String) -> String {
         .unwrap()
         .to_vec();
 
-    let file_name = ["indexer/generated/", hash, ".yaml"].join("");
+    let file_name = [&*GENERATED_FOLDER, hash, ".yaml"].join("");
     let res = fs::write(&file_name, file_bytes); // Add logger and says that write file successfully
 
     match res {

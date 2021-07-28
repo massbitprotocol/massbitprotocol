@@ -12,7 +12,7 @@ use std::io::Read;
 use lazy_static::lazy_static;
 
 lazy_static! {
-    static ref INDEXER_MIGRATION_FILE: String = String::from("./indexer/migration/indexers.sql");
+    static ref INDEXER_MIGRATION_FILE: String = String::from("./index-manager/migration/indexers.sql");
 }
 
 pub fn run_raw_query(connection: &PgConnection, raw_query: &String) {
