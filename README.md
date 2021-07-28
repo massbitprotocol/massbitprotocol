@@ -78,5 +78,20 @@ Note:
   ```
 - After that, there will be the indexed data in the Postgres database.
 
+## For dev environment
+### Run services
+```bash
+sh run.sh
+```
+### Deploy
+```
+curl --location --request POST 'localhost:5000/deploy' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "compilation_id": "056d7c458f004d778cb44cdfff82baa5"}'
+```
+
+
+
 ## Update build-and-upload.sh script to build and deploy to DockerHub so we can save time on compiling 
-- 
+

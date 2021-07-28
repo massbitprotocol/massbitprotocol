@@ -8,7 +8,7 @@ use sp_runtime::Digest;
 use std::str::FromStr;
 use structmap::GenericMap;
 
-const LIBPATH: &'static str = "../../target/debug/libtest_plugin.dylib";
+const LIBPATH: &'static str = "../../target/debug/libtest_plugin.so";
 
 fn make_helpers() {
     static ONCE: ::std::sync::Once = ::std::sync::Once::new();

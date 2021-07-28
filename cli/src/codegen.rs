@@ -43,7 +43,7 @@ fn generate_rust_entity(schema_path: &str, output: &str) -> Result<(), Box<dyn E
     let mut tera = Tera::default();
     tera.add_raw_template("model", include_str!("templates/model.rs.tmpl"))?;
     let data = tera.render("model", &Context::from_serialize(binding)?)?;
-    fs::write(format!("{}/model.rs", output), data)?;
+    fs::write(format!("{}/models.rs", output), data)?;
 
     Ok(())
 }
