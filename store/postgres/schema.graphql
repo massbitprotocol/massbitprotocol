@@ -1,0 +1,11 @@
+type BlockTs @entity {
+    id: ID!
+    block_number: Int!
+}
+
+type TransactionSolanaTs @entity {
+    id: ID!
+    log_messages: String!
+    signature: String!
+    block_id: BlockTs!
+}
