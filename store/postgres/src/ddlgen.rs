@@ -9,7 +9,7 @@ use graph::prelude::{Schema, SubgraphDeploymentId};
 use lazy_static::lazy_static;
 use clap::ArgMatches;
 use serde_yaml::{Value, Mapping};
-use crate::relational::Layout;
+use crate::relational::{self, Layout};
 use crate::primary::Namespace;
 use crate::catalog::Catalog;
 //use crate::metrics_registry::*;
@@ -20,6 +20,7 @@ use std::path::{PathBuf};
 use serde_json;
 use std::fs::File;
 use std::io::Read;
+use inflector::Inflector;
 
 
 lazy_static! {
@@ -125,61 +126,104 @@ pub fn generate_ddl(raw: &str, catalog: &str, output_dir: &str) -> Result<(), Bo
     let schema = Schema::parse(raw, THINGS_SUBGRAPH_ID.clone())?;
     //println!("{}",schema.document.to_string());
     let catalog = Catalog::make_empty(Namespace::new(String::from(catalog))?)?;
-    match Layout::new(&schema, catalog, false) {
-        Ok(layout) => {
-            let result = layout.gen_migration()?;
-            let mut queries : Vec<serde_json::Value> = Vec::new();
-            //Generate hasura request to track tables + relationships
-            layout.tables.iter().for_each(|(name, table)| {
-                queries.push(serde_json::json!({
-                    "type": "track_table",
-                    "args": {
+    let mut result = Ok(());
+    if let Ok(layout) = Layout::new(&schema, catalog, false) {
+        let result = layout.gen_migration()?;
+        fs::create_dir_all(output_dir)?;
+        fs::write(format!("{}/up.sql", output_dir), result.0);
+        fs::write(format!("{}/down.sql", output_dir),result.1);
+        //Generate hasura request to track tables + relationships
+        let mut hasura_ups : Vec<serde_json::Value> = Vec::new();
+        let mut hasura_downs : Vec<serde_json::Value> = Vec::new();
+        layout.tables.iter().for_each(|(name, table)| {
+            hasura_ups.push(serde_json::json!({
+                "type": "track_table",
+                "args": {
+                    "schema": "public",
+                    "name": table.name.as_str()
+                },
+            }));
+            hasura_downs.push(serde_json::json!({
+                "type": "untrack_table",
+                "args": {
+                    "table" : {
                         "schema": "public",
                         "name": table.name.as_str()
                     },
-                }));
-                /*
-                 * 21-07-27
-                 * vuviettai: hasura use create_object_relationship api to create relationship in DB
-                 * Migration sql already include this creation.
-                table.columns
-                    .iter()
-                    .filter(|col| col.is_reference())
-                    .for_each(|column|{
-                        let query = serde_json::json!({
-                            "type": "create_object_relationship",
-                            "args": {
-                                "table": table.name.as_str(),
-                                "name": column.name.as_str(),
-                                "using" : {
-                                    "foreign_key_constraint_on" : column.name.as_str()
+                    "source": "default",
+                    "cascade": true
+                },
+            }));
+            /*
+             * 21-07-27
+             * vuviettai: hasura use create_object_relationship api to create relationship in DB
+             * Migration sql already include this creation.
+             */
+            table.columns
+                .iter()
+                .filter(|col| col.is_reference())
+                .for_each(|column|{
+                    hasura_ups.push(serde_json::json!({
+                        "type": "create_object_relationship",
+                        "args": {
+                            "table": table.name.as_str(),
+                            "name": relational::named_type(&column.field_type),
+                            "using" : {
+                                "foreign_key_constraint_on" : column.name.as_str()
+                            }
+                        }
+                    }));
+                    hasura_downs.push(serde_json::json!({
+                        "type": "drop_relationship",
+                        "args": {
+                            "relationship": relational::named_type(&column.field_type),
+                            "source": "default",
+                            "table": table.name.as_str()
+                        }
+                    }));
+                    let ref_table = relational::named_type(&column.field_type).to_snake_case();
+                    hasura_ups.push(serde_json::json!({
+                        "type": "create_array_relationship",
+                        "args": {
+                            "name": table.name.as_str(),
+                            "table": ref_table.clone(),
+                            "using" : {
+                                "foreign_key_constraint_on" : {
+                                    "table": table.name.as_str(),
+                                    "column": column.name.as_str()
                                 }
-                            },
-                        });
-                        queries.push(query);
-                    });
-                */
-            });
+                            }
+                        }
+                    }));
+                    hasura_downs.push(serde_json::json!({
+                        "type": "drop_relationship",
+                        "args": {
+                            "relationship": table.name.as_str(),
+                            "source": "default",
+                            "table": ref_table
+                        }
+                    }));
+                });
+        });
 
-            fs::create_dir_all(output_dir)?;
-            fs::write(format!("{}/up.sql", output_dir), result.0);
-            fs::write(format!("{}/down.sql", output_dir),result.1);
-            let bulk = serde_json::json!({
-                "type": "bulk",
-                "args" : queries
-            });
-            match serde_json::to_string(&bulk) {
-                Ok(val) => {
-                    fs::write(format!("{}/hasura_queries.json", output_dir),
-                              format!("{}", val));
-                }
-                Err(_) => {}
-            }
-            Ok(())
-        },
-        Err(_err) => {
-            println!("Error");
-            Err(format!("Invalid schema").into())
+        let bulk_up = serde_json::json!({
+            "type": "bulk",
+            "args" : hasura_ups
+        });
+        if let Ok(payload) = serde_json::to_string(&bulk_up) {
+            fs::write(format!("{}/hasura_queries.json", output_dir),
+                      format!("{}", payload));
         }
+        let bulk_down = serde_json::json!({
+            "type": "bulk",
+            "args" : hasura_downs
+        });
+        if let Ok(payload) = serde_json::to_string(&bulk_down) {
+            fs::write(format!("{}/hasura_down.json", output_dir),
+                      format!("{}", payload));
+        }
+    } else {
+        result = Err(format!("Invalid schema").into())
     }
+    result
 }

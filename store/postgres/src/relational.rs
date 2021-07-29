@@ -1466,6 +1466,11 @@ impl Table {
             } else {
                 column.as_ddl(up)?;
             }
+            /*
+             * 2021-07-29
+             * vuviettai: don't add constraint, this cause ForeignKeyViolation when insert data
+             */
+
             if column.is_reference() {
                 constraints.push(format!("CONSTRAINT fk_{column_name} FOREIGN KEY({column_name}) REFERENCES {reference}({reference_id})",
                                          reference = named_type(&column.field_type).to_snake_case(),
@@ -1608,7 +1613,7 @@ impl Table {
 
 /// Return the enclosed named type for a field type, i.e., the type after
 /// stripping List and NonNull.
-fn named_type(field_type: &q::Type) -> &str {
+pub fn named_type(field_type: &q::Type) -> &str {
     match field_type {
         q::Type::NamedType(name) => name.as_str(),
         q::Type::ListType(child) => named_type(child),
