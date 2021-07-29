@@ -39,12 +39,9 @@ class CargoCodegen(threading.Thread):
             schema = os.path.join("src/schema.graphql")
             project = os.path.join("src/project.yaml")
             folder = os.path.join("src/")
-            print("Generating code from: " , schema)
-            print("Generating code from: ", project)
-            command = "cargo run --manifest-path=../../../Cargo.toml --bin cli -- codegen -s {schema} -c {project} -o {folder} "\
+            command = "$HOME/.cargo/bin/cargo run --manifest-path=../../../Cargo.toml --bin cli -- codegen -s {schema} -c {project} -o {folder} "\
                 .format(schema = schema, project = project, folder = folder)
             print("Running: " + command)
-            print("Output folder is: ", self.generated_folder)
 
             # Start
             output = subprocess.check_output([command], stderr=subprocess.STDOUT,
