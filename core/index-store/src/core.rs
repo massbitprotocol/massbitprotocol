@@ -19,7 +19,7 @@ lazy_static! {
     static ref COMPONENT_NAME: String = String::from("[Index-Store]");
 }
 
-const BATCH_SIZE: usize = 1000;
+const BATCH_SIZE: usize = 100;
 const PERIOD: u128 = 500;        //Period to insert in ms
 
 type ArcVec = Arc<Mutex<Vec<GenericMap>>>;

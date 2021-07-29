@@ -154,6 +154,8 @@ pub fn generate_ddl(raw: &str, catalog: &str, output_dir: &str) -> Result<(), Bo
                     "cascade": true
                 },
             }));
+        });
+        layout.tables.iter().for_each(|(name, table)| {
             /*
              * 21-07-27
              * vuviettai: hasura use create_object_relationship api to create relationship in DB
