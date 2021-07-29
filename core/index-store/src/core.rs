@@ -40,8 +40,7 @@ impl TableBuffer {
         size
     }
     pub fn elapsed_since_last_flush(&self) -> u128 {
-        let now =
-            SystemTime::now().duration_since(UNIX_EPOCH).expect("system time before Unix epoch");
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("system time before Unix epoch");
         now.as_millis() - self.last_store
     }
     fn push(&mut self, record: GenericMap) {
@@ -319,8 +318,34 @@ async fn get_entity_dependencies(connection: &str, schema: &str) -> Result<HashM
             }
         }
     });
-    log::info!("Found references {:?}", &dependencies);
-    Ok(dependencies)
+    log::info!("{} Found references {:?}", &*COMPONENT_NAME, &dependencies);
+    let mut chain_deps : HashMap<String, Vec<String>> = HashMap::default();
+    dependencies.iter().for_each(|(key,_)| {
+        let vec = create_chain_dependencies(key, &dependencies);
+        chain_deps.insert(key.clone(), vec);
+    });
+    log::info!("{} Chain dependencies {:?}", &*COMPONENT_NAME, &chain_deps);
+    Ok(chain_deps)
+}
+/*
+ * Create chain dependencies from db relationship:
+ * For example: A depends on B, B depends on C then output A depends on [C,B]
+ */
+fn create_chain_dependencies(table_name: &String, dependencies: &HashMap<String, Vec<String>>) -> Vec<String> {
+    let mut res : Vec<String> = Vec::default();
+    let mut checking: Vec<String> = Vec::default();
+    if let Some(dep) = dependencies.get(table_name) {
+        dep.iter().for_each(|ref_table|{
+            let mut tmp = create_chain_dependencies(ref_table, dependencies);
+            tmp.iter().for_each(|item|{
+                if !res.contains(item) {
+                    res.push(item.clone());
+                }
+            });
+            res.push(ref_table.clone());
+        });
+    };
+    res
 }
 /*
 ///
