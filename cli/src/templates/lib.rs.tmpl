@@ -1,14 +1,15 @@
 mod mapping;
-mod model;
+mod models;
 
-use massbit_chain_substrate::data_type as types;
+use massbit_chain_substrate::data_type as substrate_types;
+use massbit_chain_solana::data_type as solana_types;
 use plugin::core::{self, PluginRegistrar};
-use store::Store;
+use index_store::core::Store;
 use std::error::Error;
 
 #[doc(hidden)]
 #[no_mangle]
-pub static mut STORE: Option<&dyn Store> = None;
+pub static mut STORE: Option<&mut dyn Store> = None;
 
 plugin::export_plugin!(register);
 
@@ -16,19 +17,14 @@ plugin::export_plugin!(register);
 extern "C" fn register(registrar: &mut dyn PluginRegistrar) {
     {%- for handler in handlers %}
     {%- if handler.kind == "substrate/BlockHandler" %}
-    #registrar.register_substrate_block_handler("{{ handler.name }}", Box::new(SubstrateBlockHandler));
     registrar.register_substrate_block_handler(Box::new(SubstrateBlockHandler));
     {%- elif handler.kind == "substrate/ExtrinsicHandler" %}
-    #registrar.register_substrate_extrinsic_handler("{{ handler.name }}", Box::new(SubstrateExtrinsicHandler));
     registrar.register_substrate_extrinsic_handler(Box::new(SubstrateExtrinsicHandler));
     {%- elif handler.kind == "substrate/EventHandler" %}
-    #registrar.register_substrate_event_handler("{{ handler.name }}", Box::new(SubstrateEventHandler));
     registrar.register_substrate_event_handler(Box::new(SubstrateEventHandler));
     {%- elif handler.kind == "solana/BlockHandler" %}
-    #registrar.register_solana_block_handler("{{ handler.name }}", Box::new(SolanaBlockHandler));
     registrar.register_solana_block_handler(Box::new(SolanaBlockHandler));
     {%- elif handler.kind == "solana/TransactionHandler" %}
-    #registrar.register_solana_transaction_handler("{{ handler.name }}", Box::new(SolanaTransactionHandler));
     registrar.register_solana_transaction_handler(Box::new(SolanaTransactionHandler));
     {%- endif -%}
     {%- endfor %}
@@ -39,7 +35,7 @@ extern "C" fn register(registrar: &mut dyn PluginRegistrar) {
 pub struct SubstrateBlockHandler;
 
 impl core::SubstrateBlockHandler for SubstrateBlockHandler {
-    fn handle_block(&self, block: &types::SubstrateBlock) -> Result<(), Box<dyn Error>> {
+    fn handle_block(&self, block: &substrate_types::SubstrateBlock) -> Result<(), Box<dyn Error>> {
         mapping::{{ handler.name }}(block)
     }
 }
@@ -48,7 +44,7 @@ impl core::SubstrateBlockHandler for SubstrateBlockHandler {
 pub struct SubstrateExtrinsicHandler;
 
 impl core::SubstrateExtrinsicHandler for SubstrateExtrinsicHandler {
-    fn handle_extrinsic(&self, extrinsic: &types::SubstrateExtrinsic) -> Result<(), Box<dyn Error>> {
+    fn handle_extrinsic(&self, extrinsic: &substrate_types::SubstrateExtrinsic) -> Result<(), Box<dyn Error>> {
         mapping::{{ handler.name }}(extrinsic)
     }
 }
@@ -57,7 +53,7 @@ impl core::SubstrateExtrinsicHandler for SubstrateExtrinsicHandler {
 pub struct SubstrateEventHandler;
 
 impl core::SubstrateEventHandler for SubstrateEventHandler {
-    fn handle_event(&self, event: &types::SubstrateEventRecord) -> Result<(), Box<dyn Error>> {
+    fn handle_event(&self, event: &substrate_types::SubstrateEventRecord) -> Result<(), Box<dyn Error>> {
         mapping::{{ handler.name }}(event)
     }
 }
@@ -66,7 +62,7 @@ impl core::SubstrateEventHandler for SubstrateEventHandler {
 pub struct SolanaBlockHandler;
 
 impl core::SolanaBlockHandler for SolanaBlockHandler {
-    fn handle_block(&self, block: &types::SolanaBlock) -> Result<(), Box<dyn Error>> {
+    fn handle_block(&self, block: &solana_types::SolanaBlock) -> Result<(), Box<dyn Error>> {
         mapping::{{ handler.name }}(block)
     }
 }
@@ -75,8 +71,17 @@ impl core::SolanaBlockHandler for SolanaBlockHandler {
 pub struct SolanaTransactionHandler;
 
 impl core::SolanaTransactionHandler for SolanaTransactionHandler {
-    fn handle_transaction(&self, transaction: &types::SolanaTransaction) -> Result<(), Box<dyn Error>> {
+    fn handle_transaction(&self, transaction: &solana_types::SolanaTransaction) -> Result<(), Box<dyn Error>> {
         mapping::{{ handler.name }}(transaction)
+    }
+}
+{% elif handler.kind == "solana/LogMessagesHandler" %}
+#[derive(Debug, Clone, PartialEq)]
+pub struct SolanaLogMessagesHandler;
+
+impl core::SolanaLogMessagesHandler for SolanaLogMessagesHandler {
+    fn handle_log_messages(&self, log_messages: &solana_types::SolanaLogMessages) -> Result<(), Box<dyn Error>> {
+        mapping::{{ handler.name }}(log_messages)
     }
 }
 {%- endif -%}

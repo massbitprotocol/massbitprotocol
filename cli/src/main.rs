@@ -28,6 +28,12 @@ fn main() {
                         .about("codegen output directory")
                         .takes_value(true)
                         .short('o'),
+                )
+                .arg(
+                    Arg::new("mapping_gen")
+                        .about("generate mapping file or not")
+                        .takes_value(false)
+                        .short('m'),
                 ),
         )
         .get_matches();
