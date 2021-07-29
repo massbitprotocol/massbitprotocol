@@ -52,14 +52,3 @@ curl --location --request POST 'localhost:5000/deploy' \
 --data-raw '{
     "compilation_id": "056d7c458f004d778cb44cdfff82baa5"}'
 ```
-
-### Dev (docker-compose.dev.yml and docker-compose.min.yml)
-Cons: need to manually create new image for every services
-
-Build new images
-- Run `docker build -f chain-reader/Dockerfile -t chain-reader .` to build chain-reader
-- Run `docker build -f indexer/Dockerfile -t indexer .` to build indexer
-- Run `docker build -f code-compiler/Dockerfile -t code-compiler .` to build code-compiler
-- Run `docker build -f frontend/dashboard/Dockerfile -t dashboard .` to build the dashboard with the latest code from massbitprocol/dashboard git
-
-To start: `docker-compose -f docker-compose.dev.yml up`
