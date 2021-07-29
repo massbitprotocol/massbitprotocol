@@ -13,6 +13,12 @@ use tokio_postgres::{NoTls};
 use std::collections::hash_map::RandomState;
 use std::ops::Deref;
 use diesel::result::Error as DieselError;
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref COMPONENT_NAME: String = String::from("[Index-Store]");
+}
+
 const BATCH_SIZE: usize = 1000;
 const PERIOD: u128 = 500;        //Period to insert in ms
 
@@ -49,8 +55,7 @@ impl TableBuffer {
         //Todo: improve redundent clone
         let res = data.clone();
         data.clear();
-        let now =
-            SystemTime::now().duration_since(UNIX_EPOCH).expect("system time before Unix epoch");
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("system time before Unix epoch");
         self.last_store = now.as_millis();
         res
     }
@@ -84,7 +89,7 @@ impl Store for IndexStore {
         }
     }
     fn flush(&mut self) {
-
+        //Todo: flush data in buffer to db when stop Indexer or periodically
     }
 }
 /*
@@ -100,7 +105,7 @@ impl IndexStore {
                 res
             }
             Err(err) => {
-                println!("{:?}", err);
+                log::error!("{} Cannot load relationship from db: {:?}", &*COMPONENT_NAME, err);
                 HashMap::new()
             }
         };
@@ -115,13 +120,15 @@ impl IndexStore {
         if let Some(table_buf) = self.buffer.get(_entity_name.as_str()) {
             let size = table_buf.size();
             if size >= BATCH_SIZE || (table_buf.elapsed_since_last_flush() >= PERIOD && size > 0) {
+                //Todo: move this init connection to new fn.
                 let con = PgConnection::establish(&self.connection_string).expect(&format!("Error connecting to {}", self.connection_string));
                 let buffer = &mut self.buffer;
+                //Todo: implement multiple levels of relationship (chain dependencies)
                 let dependencies  = self.entity_dependencies.get(_entity_name.as_str());
                 match dependencies {
                     Some(deps) => {
                         deps.iter().rev().for_each(|reference|{
-                            log::info!("Flush reference data into table {}", reference.as_str());
+                            log::info!("{} Flush reference data into table {}", &*COMPONENT_NAME, reference.as_str());
                             if let Some(ref_buf) = buffer.get_mut(reference.as_str()) {
                                 let buf_data = ref_buf.move_buffer();
                                 flush_entity(reference, &buf_data, &con);
@@ -132,7 +139,7 @@ impl IndexStore {
                 };
                 if let Some(table_buf) = buffer.get_mut(_entity_name.as_str()) {
                     let buf_data = table_buf.move_buffer();
-                    log::info!("Flush data into table {}", _entity_name.as_str());
+                    log::info!("{} Flush data into table {}", &*COMPONENT_NAME, _entity_name.as_str());
                     flush_entity(_entity_name, &buf_data, &con);
                 }
                 /*
@@ -203,13 +210,13 @@ fn flush_entity(table_name : &String, _buffer : &Vec<GenericMap>, conn: &PgConne
     if let Some(query) = create_query(table_name, _buffer) {
         match diesel::sql_query(query.as_str()).execute(conn) {
             Ok(res) => {
-                log::info!("[Index-Store] Execute query with result {:?}.", res);
+                log::info!("{} Execute query with result {:?}.", &*COMPONENT_NAME, res);
             }
             Err(err) => {
-                log::error!("[Index-Store] Error {:?} while insert query {:?}.", err, query.as_str());
+                log::error!("{} Error {:?} while insert query {:?}.", &*COMPONENT_NAME, err, query.as_str());
             }
         }
-        log::info!("[Index-Store] Insert {:?} records into table {:?} in: {:?} ms.", _buffer.len(), table_name, start.elapsed());
+        log::info!("{} Insert {:?} records into table {:?} in: {:?} ms.", &*COMPONENT_NAME, _buffer.len(), table_name, start.elapsed());
     }
 }
 
@@ -228,13 +235,16 @@ fn create_query(_entity_name : &str, buffer : &Vec<GenericMap>) -> Option<String
             let row_values : Vec<String> = buffer.iter().map(|_data| {
                 let field_values: Vec<String> = _data.iter().map(|(_,v)| {
                     let mut str_val = String::new();
-                    match v.string() {
-                        Some(r) =>  { write!(str_val, "'{}'", r); }
-                        _ => {}
-                    };
-                    match v.i64() {
-                        Some(r) => { write!(str_val, "{}", r); }
-                        _ => {}
+                    if let Some(r) = v.bool() {
+                        write!(str_val, "{}", r);
+                    } else if let Some(r) = v.f64() {
+                        write!(str_val, "{}", r);
+                    }  else if let Some(r) = v.i64() {
+                        write!(str_val, "{}", r);
+                    }  else if let Some(r) = v.u64() {
+                        write!(str_val, "{}", r);
+                    } else if let Some(r)  = v.string() {
+                        write!(str_val, "'{}'", r);
                     }
                     str_val
                 }).collect();
@@ -251,7 +261,7 @@ fn create_query(_entity_name : &str, buffer : &Vec<GenericMap>) -> Option<String
 /// Get relationship dependencies from database
 /// When flush data into one table, first check and flush data in reference table
 ///
-
+//Todo: get dependencies from input schema (not from DB)
 async fn get_entity_dependencies(connection: &str, schema: &str) -> Result<HashMap<String, Vec<String>>, Box<dyn Error>> {
     //let conn = establish_connection();
     let query = r#"
