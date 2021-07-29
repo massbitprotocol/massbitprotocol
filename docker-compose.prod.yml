@@ -24,19 +24,39 @@ services:
     restart: always
     environment:
       HASURA_GRAPHQL_DATABASE_URL: postgresql://graph-node:let-me-in@postgres:5432/graph-node
-      HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
       HASURA_GRAPHQL_DEV_MODE: "true"
       HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup, http-log, webhook-log, websocket-log, query-log
-  
-  code-compiler:
-    image: sprise/code-compiler:latest
+
+  hasura-console:
+    image: massbit-hasura:latest
     ports:
-      - "5000:5000"
+      - "3000:3000"
+      - "3001:3001"
+    depends_on:
+      - "postgres"
+    restart: always
     environment:
-      # Pointing to our IPFS container
-      IPFS_URL: /dns/ipfs/tcp/5001/http
-      # Pointing to our Index Manager container
-      INDEX_MANAGER_URL: http://indexer:3030
+      NODE_ENV: development
+      PORT: 3000
+      CDN_ASSETS: "true"
+      ASSETS_PATH: https://graphql-engine-cdn.hasura.io/console/assets
+      ASSETS_VERSION: channel/stable/v1.0
+      ENABLE_TELEMETRY: "true"
+      URL_PREFIX: /
+      DATA_API_URL: http://localhost:8080
+      SERVER_VERSION: v1.0.0
+      CONSOLE_MODE: server
+      ADMIN_SECRET: massbit
+
+#  code-compiler:
+#    image: sprise/code-compiler:latest
+#    ports:
+#      - "5000:5000"
+#    environment:
+#      # Pointing to our IPFS container
+#      IPFS_URL: /dns/ipfs/tcp/5001/http
+#      # Pointing to our Index Manager container
+#      INDEX_MANAGER_URL: http://indexer:3030
 
   substrate-node:
     image: sprise/substrate-node:0.1
@@ -56,27 +76,28 @@ services:
       # Pointing to our substrate container
       NODE_SERVER: ws://substrate-node
 
-  indexer:
-    image: sprise/indexer:latest
-    ports:
-      - "3030:3030"
-    depends_on:
-      - "chain-reader"
-    restart: always
-    environment:
-      # Pointing to our chain-reader container
-      CHAIN_READER_URL: http://chain-reader:50051
-      # Pointing to our hasura container
-      HASURA_URL: http://hasura:8080/v1/query
-      # Pointing to our postgres container (the last param is the postgres container name)
-      DATABASE_CONNECTION_STRING: postgres://graph-node:let-me-in@postgres
-      # Pointing to our IPFS container
-      IPFS_ADDRESS: ipfs:5001
+#  indexer:
+#    image: sprise/indexer:latest
+#    ports:
+#      - "3030:3030"
+#    depends_on:
+#      - "chain-reader"
+#    restart: always
+#    environment:
+#      # Pointing to our chain-reader container
+#      CHAIN_READER_URL: http://chain-reader:50051
+#      # Pointing to our hasura container
+#      HASURA_URL: http://hasura:8080/v1/query
+#      # Pointing to our postgres container (the last param is the postgres container name)
+#      DATABASE_CONNECTION_STRING: postgres://graph-node:let-me-in@postgres
+#      # Pointing to our IPFS container
+#      IPFS_ADDRESS: ipfs:5001
 
   dashboard:
     image: sprise/dashboard:latest
     ports:
       - "8088:8088"
     depends_on: # Dashboard App will call to indexer to get indexer detail & code-compiler to compile and deploy new index
-      - "indexer"
-      - "code-compiler"
+      - "hasura-console"
+#      - "indexer"
+#      - "code-compiler"
