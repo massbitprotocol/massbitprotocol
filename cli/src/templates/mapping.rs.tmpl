@@ -4,27 +4,22 @@ use massbit_chain_solana::data_type as solana_types;
 use std::error::Error;
 {% for handler in handlers -%}
 {%- if handler.kind == "substrate/BlockHandler" %}
-##[derive(Debug, Clone, PartialEq)]
 pub fn {{handler.name}}(block: &substrate_types::SubstrateBlock) -> Result<(), Box<dyn Error>> {
     unimplemented!();
 }
 {% elif handler.kind == "substrate/ExtrinsicHandler" %}
-##[derive(Debug, Clone, PartialEq)]
 pub fn {{handler.name}}(extrinsic: &substrate_types::SubstrateExtrinsic) -> Result<(), Box<dyn Error>> {
     todo!();
 }
 {% elif handler.kind == "substrate/EventHandler" %}
-##[derive(Debug, Clone, PartialEq)]
 pub fn {{handler.name}}(event: &substrate_types::SubstrateEventRecord) -> Result<(), Box<dyn Error>> {
     todo!();
 }
 {% elif handler.kind == "solana/BlockHandler" %}
-##[derive(Debug, Clone, PartialEq)]
 pub fn {{handler.name}}(block: &solana_types::SolanaBlock) -> Result<(), Box<dyn Error>> {
     todo!();
 }
 {% elif handler.kind == "solana/TransactionHandler" %}
-##[derive(Debug, Clone, PartialEq)]
 pub fn {{handler.name}}(transaction: &solana_types::SolanaTransaction) -> Result<(), Box<dyn Error>> {
     unimplemented!();
 }
