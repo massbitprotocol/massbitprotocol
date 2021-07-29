@@ -35,7 +35,7 @@ def write_to_disk(file, data):
     return "ok"
 
 
-def populate_stub_substrate(dst_dir, file_name):
+def populate_stub(dst_dir, file_name):
     """
     populate_stub use the existing stub folder to populate the new folder with it's existing files
 
@@ -44,21 +44,8 @@ def populate_stub_substrate(dst_dir, file_name):
     :param file_name: (String) Path to the file + the file's name that we want to copy
     :return: (String) ok
     """
-    print("Populating " + file_name + " from /stub/substrate")
-    copyfile("./stub/substrate/" + file_name, dst_dir + "/" + file_name)
-
-
-def populate_stub_solana(dst_dir, file_name):
-    """
-    populate_stub use the existing stub folder to populate the new folder with it's existing files
-
-    :param dst_dir: (String) Path to directory we want to populate data
-
-    :param file_name: (String) Path to the file + the file's name that we want to copy
-    :return: (String) ok
-    """
-    print("Populating " + file_name + " from /stub/solana")
-    copyfile("./stub/solana/" + file_name, dst_dir + "/" + file_name)
+    print("Populating " + file_name + " from /stub")
+    copyfile("./stub/" + file_name, dst_dir + "/" + file_name)
 
 
 class CargoBuild(threading.Thread):
@@ -106,25 +93,19 @@ def compile_handler():
     models = urllib.parse.unquote_plus(data["models.rs"])
     project = urllib.parse.unquote_plus(data["project.yaml"])
     schema = urllib.parse.unquote_plus(data["schema.graphql"])
-    network_type = urllib.parse.unquote_plus(data["network_type"])  # Should be checking in the project.yaml
+    lib = urllib.parse.unquote_plus(data["lib.rs"])
 
-    # Populate data based on network type so we can run compile with enough data
-    if network_type.lower() == "solana":
-        populate_stub_solana(generated_folder, "Cargo.lock")
-        populate_stub_solana(generated_folder, "Cargo.toml")
-        populate_stub_solana(generated_folder, "src/lib.rs")
-        copy_tree("./stub/solana/target", generated_folder + "/target")
-    else:  # If not defined, default network type is substrate
-        populate_stub_substrate(generated_folder, "Cargo.lock")
-        populate_stub_substrate(generated_folder, "Cargo.toml")
-        populate_stub_substrate(generated_folder, "src/lib.rs")
-        copy_tree("./stub/substrate/target", generated_folder + "/target")
+    # Populating stub data
+    populate_stub(generated_folder, "Cargo.lock")
+    populate_stub(generated_folder, "Cargo.toml")
+    copy_tree("stub/target", generated_folder + "/target")
 
     # Save the formatted data from request to disk, ready for compiling
     write_to_disk(generated_folder + "/src/mapping.rs", mapping)
     write_to_disk(generated_folder + "/src/models.rs", models)
     write_to_disk(generated_folder + "/src/project.yaml", project)
     write_to_disk(generated_folder + "/src/schema.graphql", schema)
+    write_to_disk(generated_folder + "/src/lib.rs", lib)
 
     # Compile the newly created deployment
     print("Compiling request: " + hash + ". This will take a while!")
@@ -179,7 +160,7 @@ def deploy_handler():
     compilation_id = urllib.parse.unquote_plus(data["compilation_id"])
 
     # Get the files path from generated/hash folder
-    config = os.path.join("./generated", compilation_id, "src/project.yaml")
+    project = os.path.join("./generated", compilation_id, "src/project.yaml")
     so = os.path.join("./generated", compilation_id, "target/release/libblock.so")
     schema = os.path.join("./generated", compilation_id, "src/schema.graphql")
 
@@ -190,7 +171,7 @@ def deploy_handler():
         client = ipfshttpclient.connect()
 
     print("Uploading files to IPFS...")
-    config_res = client.add(config)
+    config_res = client.add(project)
     so_res = client.add(so)
     schema_res = client.add(schema)
 
