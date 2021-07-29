@@ -21,6 +21,41 @@ cors = CORS(app)
 ###################
 # Helper function #
 ###################
+class CargoCodegen(threading.Thread):
+    """
+    CargoCodgen is to create a new thread to build new code from schema.graphql & project.yml
+
+    """
+
+    def __init__(self, generated_folder):
+        self.stdout = None
+        self.stderr = None
+        self.generated_folder = generated_folder
+        threading.Thread.__init__(self)
+
+    def run(self):
+        try:
+            # Config
+            schema = os.path.join("src/schema.graphql")
+            project = os.path.join("src/project.yaml")
+            folder = os.path.join("src/")
+            print("Generating code from: " , schema)
+            print("Generating code from: ", project)
+            command = "cargo run --manifest-path=../../../Cargo.toml --bin cli -- codegen -s {schema} -c {project} -o {folder} "\
+                .format(schema = schema, project = project, folder = folder)
+            print("Running: " + command)
+            print("Output folder is: ", self.generated_folder)
+
+            # Start
+            output = subprocess.check_output([command], stderr=subprocess.STDOUT,
+                                             shell=True, universal_newlines=True, cwd=self.generated_folder)
+        except subprocess.CalledProcessError as exc:
+            print("Codegen has failed. The result can be found in: " + self.generated_folder)
+            write_to_disk(self.generated_folder + "/error-codegen.txt", exc.output)
+        else:
+            print("Codegen was success. The result can be found in: " + self.generated_folder)
+            write_to_disk(self.generated_folder + "/success-codegen.txt", output)
+
 def write_to_disk(file, data):
     """
     write_to_disk create and save the file to disk
@@ -48,7 +83,7 @@ def populate_stub(dst_dir, file_name):
     copyfile("./stub/" + file_name, dst_dir + "/" + file_name)
 
 
-class CargoBuild(threading.Thread):
+class CargoGenAndBuild(threading.Thread):
     """
     CargoBuild is class that will run `cargo build --release` in a new thread, not blocking the main thread
 
@@ -61,6 +96,10 @@ class CargoBuild(threading.Thread):
         threading.Thread.__init__(self)
 
     def run(self):
+        cargo_codegen = CargoCodegen(self.generated_folder)
+        cargo_codegen.run()  # TODO: This still block the request
+
+        print("Compiling...")
         try:
             # Docker container doesn't know about cargo path so we need to use $HOME
             output = subprocess.check_output(["$HOME/.cargo/bin/cargo build --release"], stderr=subprocess.STDOUT,
@@ -90,10 +129,8 @@ def compile_handler():
 
     # URL-decode the data
     mapping = urllib.parse.unquote_plus(data["mapping.rs"])
-    models = urllib.parse.unquote_plus(data["models.rs"])
     project = urllib.parse.unquote_plus(data["project.yaml"])
     schema = urllib.parse.unquote_plus(data["schema.graphql"])
-    lib = urllib.parse.unquote_plus(data["lib.rs"])
 
     # Populating stub data
     populate_stub(generated_folder, "Cargo.lock")
@@ -102,15 +139,13 @@ def compile_handler():
 
     # Save the formatted data from request to disk, ready for compiling
     write_to_disk(generated_folder + "/src/mapping.rs", mapping)
-    write_to_disk(generated_folder + "/src/models.rs", models)
     write_to_disk(generated_folder + "/src/project.yaml", project)
     write_to_disk(generated_folder + "/src/schema.graphql", schema)
-    write_to_disk(generated_folder + "/src/lib.rs", lib)
 
-    # Compile the newly created deployment
-    print("Compiling request: " + hash + ". This will take a while!")
-    cargo_build = CargoBuild(generated_folder)
-    cargo_build.start()
+    # Codegen + Build
+    print("Generating code + compiling for: " + hash + ". This will take a while!")
+    cargo_gen_and_build = CargoGenAndBuild(generated_folder)
+    cargo_gen_and_build.start()
 
     return {
                "status": "success",
