@@ -9,10 +9,10 @@ type Block @entity {
 
 type Transaction @entity {
     id: ID!
-    signature: String!
+    signatures: [String]!
     timestamp: Int!
     fee: Int!
-    block: Block!
+#    block: Block!
     block_number: Int!
     success: Boolean!
 }

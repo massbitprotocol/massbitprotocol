@@ -8,6 +8,7 @@ members = [
     "user-example/solana/test-solana-block",
     "user-example/solana/test-solana-transaction",
     "user-example/solana/test-solana-log-messages",
+    "user-example/solana/five-tables",
     "plugin/test-plugin",
     "core/chain/solana",
     "cli"
