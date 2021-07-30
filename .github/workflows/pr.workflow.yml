@@ -25,8 +25,8 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y cmake pkg-config libssl-dev git gcc build-essential clang libclang-dev libpq-dev libudev-dev zlib1g-dev llvm make
-          rustup toolchain install nightly-2021-05-20
-          rustup target add wasm32-unknown-unknown --toolchain nightly-2021-05-20
+          rustup toolchain install nightly-2021-06-17
+          rustup target add wasm32-unknown-unknown --toolchain nightly-2021-06-17
       - name: Run check
         run: |
           cargo check
