@@ -29,5 +29,5 @@ jobs:
   #    - uses: Swatinem/rust-cache@v1
       - name: Run test without coverage
         run: |
-          cargo update
+          cargo update -p node-template-runtime
           cargo test
