@@ -19,4 +19,4 @@ RUN $HOME/.cargo/bin/rustup target add wasm32-unknown-unknown --toolchain nightl
 RUN $HOME/.cargo/bin/cargo build --release
 
 EXPOSE 50051
-CMD RUST_LOG=debug ./target/release/chain-reader
+CMD bash -c "sleep 5; RUST_LOG=debug ./target/release/chain-reader"

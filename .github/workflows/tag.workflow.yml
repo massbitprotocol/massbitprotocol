@@ -118,7 +118,7 @@ jobs:
       - name: Allow binary to be executable
         run: sudo chmod +x target/release/index-manager-main/index-manager-main
       - name: Get our docker file to the main source
-        run: cp deployment/indexer/Dockerfile Dockerfile
+        run: cp deployment/index-manager/Dockerfile Dockerfile
       - name: Remove the .dockerignore file if it exists because we need the /target folder in prod
         run: rm -f -- .dockerignore
       - name: List files

@@ -30,7 +30,7 @@ lazy_static! {
 }
 
 pub async fn chain_reader_client_start(config: &Value, mapping: &PathBuf) -> Result<(), Box<dyn Error>> {
-    let mut store = IndexStore::new(DATABASE_CONNECTION_STRING.as_str());
+    let mut store = IndexStore::new(DATABASE_CONNECTION_STRING.as_str()).await;
     let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone())
         .await?;
     let chain_type = get_chain_type(&config);

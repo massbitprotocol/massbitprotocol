@@ -72,6 +72,16 @@ pub async fn loop_get_block(chan: broadcast::Sender<GenericDataProto>) {
 
                                 for block_height in value_last_root..root{
                                     let new_client = client.clone();
+                                    let chan_clone = chan.clone();
+                                    tokio::spawn(async move {
+                                        if let Ok(block) = get_block(new_client, block_height) {
+                                            let generic_data_proto = _create_generic_block(block.block.blockhash.clone(), block_height, &block);
+                                            info!("Sending SOLANA as generic data: {:?}", &generic_data_proto.block_number);
+                                            //info!("Sending SOLANA as generic data");
+                                            chan_clone.send(generic_data_proto).unwrap();
+                                        }
+                                    });
+                                    /*
                                     // tokio::spawn(async move {
                                     let block = get_block(new_client,block_height);
                                     match block {
@@ -85,6 +95,7 @@ pub async fn loop_get_block(chan: broadcast::Sender<GenericDataProto>) {
                                         Err(_) => continue,
                                     }
                                     //});
+                                     */
                                 }
                                 last_root = Some(root);
                             },
