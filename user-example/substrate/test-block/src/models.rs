@@ -2,25 +2,27 @@ use crate::STORE;
 use structmap::{FromMap, ToMap};
 use structmap_derive::{FromMap, ToMap};
 
-#[derive(Default, Clone, FromMap, ToMap)]
-pub struct BlockTs {
+#[derive(FromMap)]
+#[derive(Default, Clone, ToMap)]
+pub struct SubstrateBlock {
+    pub id: String,
     pub block_hash: String,
     pub block_height: i64,
 }
 
-impl Into<structmap::GenericMap> for BlockTs {
+impl Into<structmap::GenericMap> for SubstrateBlock {
     fn into(self) -> structmap::GenericMap {
-        BlockTs::to_genericmap(self.clone())
+        SubstrateBlock::to_genericmap(self.clone())
     }
 }
 
-impl BlockTs {
+impl SubstrateBlock {
     pub fn save(&self) {
         unsafe {
             STORE
-                .as_ref()
+                .as_mut()
                 .unwrap()
-                .save("BlockTs".to_string(), self.clone().into());
+                .save("substrate_block".to_string(), self.clone().into());
         }
     }
 }
