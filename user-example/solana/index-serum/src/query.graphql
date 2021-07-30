@@ -1,5 +1,5 @@
 #Number of active accounts everyday.
-query MyQuery {
+query active_accounts_everyday {
   serum_transaction_account_aggregate(where: {SerumTransaction: {timestamp: {_gte: 1627578000, _lt: 16276644000}}}, distinct_on: pub_key) {
     aggregate {
       count(columns: pub_key)
@@ -9,7 +9,7 @@ query MyQuery {
 
 
 #List of 10 most transfer amount everyday.
-query MyQuery {
+query most_transfer_amount {
   serum_transaction_account(distinct_on: change_balance, order_by: {change_balance: desc}, limit: 10, where: {change_balance: {_gte: "0"}, serum_Transaction: {timestamp: {_gte: "1627578000", _lt: "16276644000"}}}) {
     id
     change_balance
@@ -17,7 +17,7 @@ query MyQuery {
 }
 
 #Number of difference Instruction
-query MyQuery {
+query difference_Instruction {
   serum_instruction_detail_aggregate {
     aggregate {
       count(columns: name, distinct: true)
@@ -27,7 +27,7 @@ query MyQuery {
 
 
 #Number of transaction everyday
-query MyQuery {
+query transaction_everyday {
   serum_transaction_aggregate(distinct_on: signatures, where: {timestamp: {_gte: 1627578000, _lt: 16276644000}}) {
     aggregate {
       count
@@ -36,7 +36,7 @@ query MyQuery {
 }
 
 #Number of fee per day
-query MyQuery {
+query fee_per_day {
   serum_transaction_aggregate(distinct_on: signatures, where: {timestamp: {_gte: 1627578000, _lt: 16276644000}}) {
     aggregate {
       sum {
@@ -47,7 +47,7 @@ query MyQuery {
 }
 
 #Number of Sol transfer amount everyday
-query MyQuery {
+query sol_transfer_amount_everyday {
   serum_transaction_account_aggregate(where: {change_balance: {_gte: "0"}, SerumTransaction: {timestamp: {_gte: 1627578000, _lt: 16276644000}}}) {
     aggregate {
       sum {
