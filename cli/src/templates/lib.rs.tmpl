@@ -44,7 +44,7 @@ impl core::SubstrateBlockHandler for SubstrateBlockHandler {
 pub struct SubstrateExtrinsicHandler;
 
 impl core::SubstrateExtrinsicHandler for SubstrateExtrinsicHandler {
-    fn handle_extrinsic(&self, extrinsic: &substrate_types::SubstrateExtrinsic) -> Result<(), Box<dyn Error>> {
+    fn handle_extrinsic(&self, extrinsic: &substrate_types::SubstrateUncheckedExtrinsic) -> Result<(), Box<dyn Error>> {
         mapping::{{ handler.name }}(extrinsic)
     }
 }
