@@ -9,9 +9,13 @@ if __name__ == '__main__':
     dir_json = {}
     chains = next(os.walk('.'))[1]
     for chain in chains:
+        if chain[0] == ".":
+            continue
         dir_json[chain] = {}
         examples = next(os.walk(os.path.join('.', chain)))[1]
         for example in examples:
+            if example[0] == ".":
+                continue
             dir_json[chain][example]={}
             files = [f for f in os.listdir(os.path.join('.', chain, example, "src")) if os.path.isfile(os.path.join(os.path.join('.', chain, example, "src"), f))]
             for file in files:

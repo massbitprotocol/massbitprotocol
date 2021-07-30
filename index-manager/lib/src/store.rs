@@ -65,6 +65,7 @@ pub fn migrate_with_ddl_gen_plugin(index_name: &String, schema: &String, config:
 
     log::info!("[Index Manager Store] Plugin migration status: {}", output.status);
     log::info!("[Index Manager Store] Plugin migration stdout: {}", String::from_utf8_lossy(&output.stdout));
+    log::error!("[Index Manager Store] Plugin migration stderr: {}", String::from_utf8_lossy(&output.stderr));
     assert!(output.status.success());
 }
 
