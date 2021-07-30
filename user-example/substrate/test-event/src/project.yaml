@@ -1,0 +1,11 @@
+schema:
+  file: ./schema.graphql
+
+dataSources:
+  - kind: substrate
+    name: substrate-event
+    mapping:
+      language: rust
+      handlers:
+        - handler: handleEvent
+          kind: substrate/EventHandler
