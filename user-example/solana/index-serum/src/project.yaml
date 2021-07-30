@@ -1,0 +1,12 @@
+schema:
+  file: ./schema.graphql
+
+dataSources:
+  - kind: solana
+    name: index-serum
+    network: https://data-seed-prebsc-1-s1.binance.org:8545/
+    mapping:
+      language: rust
+      handlers:
+        - handler: handleBlock
+          kind: solana/BlockHandler

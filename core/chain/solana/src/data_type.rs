@@ -18,6 +18,7 @@ pub type SolanaBlock = ExtBlock;
 pub type SolanaTransaction = ExtTransaction;
 // The most similar Event concept in Solana is log_messages in UiTransactionStatusMeta in EncodedTransactionWithStatusMeta
 pub type SolanaLogMessages = ExtLogMessages;
+pub type Pubkey = solana_program::pubkey::Pubkey;
 //***************** End solana data type *****************
 
 

@@ -1,0 +1,43 @@
+type SerumBlock @entity {
+    id: ID!
+    block_number: BigInt!
+    block_hash: String!
+    sum_fee: BigInt!
+    transaction_number: BigInt!
+    success_rate: BigDecimal!
+}
+
+type SerumTransaction @entity {
+    id: ID!
+    signatures: String!
+    timestamp: BigInt!
+    fee: BigInt!
+    block: Block!
+    block_number: BigInt!
+    success: Boolean!
+}
+
+
+type SerumTransactionAccount @entity {
+    id: ID!
+    pub_key: String!
+    pos_balance: BigInt!
+    change_balance: BigInt!
+    is_program: Boolean!
+    transaction_own: Transaction!
+    inner_account_index: BigInt!
+}
+
+type SerumInstructionDetail @entity {
+    id: ID!
+    name: String
+    is_decoded: Boolean!
+}
+
+type SerumTransactionInstruction @entity {
+    id: ID!
+    transaction_own: Transaction!
+    inner_account_index: BigInt!
+    instruction_detail: InstructionDetail!
+
+}

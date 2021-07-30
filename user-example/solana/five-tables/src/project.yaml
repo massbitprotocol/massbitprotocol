@@ -10,5 +10,3 @@ dataSources:
       handlers:
         - handler: handleBlock
           kind: solana/BlockHandler
-        - handler: handleTransaction
-          kind: solana/TransactionHandler

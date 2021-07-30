@@ -31,8 +31,8 @@ DEFAULT_TABS_TITLE4="Code-compiler"
 
 
 DEFAULT_TABS_CMD1="docker-compose -f docker-compose.min.yml up"
-DEFAULT_TABS_CMD2="cargo run --bin chain-reader"
-DEFAULT_TABS_CMD3="cargo run --bin index-manager-main" # Use quotes like this if there are spaces in the path
+DEFAULT_TABS_CMD2="cd . && cargo run --bin chain-reader"
+DEFAULT_TABS_CMD3="cd . && cargo run --bin index-manager-main" # Use quotes like this if there are spaces in the path
 DEFAULT_TABS_CMD4="cd code-compiler/ && python app.py" # Use quotes like this if there are spaces in the path
 
 

@@ -446,6 +446,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "block"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "diesel",
+ "index-store",
+ "massbit-chain-solana",
+ "massbit-chain-substrate",
+ "plugin",
+ "structmap",
+ "structmap-derive",
+ "uuid",
+]
+
+[[package]]
 name = "block-buffer"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"

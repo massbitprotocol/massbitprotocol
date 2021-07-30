@@ -17,6 +17,13 @@
         }
     },
     "solana": {
+        "index-serum": {
+            "models.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/index-serum/src/models.rs",
+            "lib.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/index-serum/src/lib.rs",
+            "schema.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/index-serum/src/schema.graphql",
+            "mapping.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/index-serum/src/mapping.rs",
+            "project.yaml": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/index-serum/src/project.yaml"
+        },
         "test-solana-block": {
             "models.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-block/src/models.rs",
             "lib.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-block/src/lib.rs",
@@ -40,6 +47,13 @@
             "schema.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/two-tables/src/schema.graphql",
             "mapping.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/two-tables/src/mapping.rs",
             "project.yaml": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/two-tables/src/project.yaml"
+        },
+        "five-tables": {
+            "models.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/five-tables/src/models.rs",
+            "lib.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/five-tables/src/lib.rs",
+            "schema.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/five-tables/src/schema.graphql",
+            "mapping.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/five-tables/src/mapping.rs",
+            "project.yaml": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/five-tables/src/project.yaml"
         }
     }
 }

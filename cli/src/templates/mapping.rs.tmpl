@@ -21,7 +21,11 @@ pub fn {{handler.name}}(block: &solana_types::SolanaBlock) -> Result<(), Box<dyn
 }
 {% elif handler.kind == "solana/TransactionHandler" %}
 pub fn {{handler.name}}(transaction: &solana_types::SolanaTransaction) -> Result<(), Box<dyn Error>> {
-    unimplemented!();
+    todo!();
+}
+{% elif handler.kind == "solana/LogMessagesHandler" %}
+pub fn {{handler.name}}(log_messages: &solana_types::SolanaLogMessages) -> Result<(), Box<dyn Error>> {
+    todo!();
 }
 {%- endif -%}
 {%- endfor -%}
