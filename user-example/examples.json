@@ -18,35 +18,12 @@
     },
     "solana": {
         "index-serum": {
+            "query.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/index-serum/src/query.graphql",
             "models.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/index-serum/src/models.rs",
             "lib.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/index-serum/src/lib.rs",
             "schema.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/index-serum/src/schema.graphql",
             "mapping.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/index-serum/src/mapping.rs",
             "project.yaml": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/index-serum/src/project.yaml"
-        },
-        "test-solana-block": {
-            "models.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-block/src/models.rs",
-            "lib.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-block/src/lib.rs",
-            "schema.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-block/src/schema.graphql",
-            "mapping.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-block/src/mapping.rs",
-            "project.yaml": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-block/src/project.yaml"
-        },
-        "test-solana-transaction": {
-            "models.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-transaction/src/models.rs",
-            "lib.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-transaction/src/lib.rs",
-            "mapping.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-transaction/src/mapping.rs"
-        },
-        "test-solana-log-messages": {
-            "models.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-log-messages/src/models.rs",
-            "lib.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-log-messages/src/lib.rs",
-            "mapping.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-log-messages/src/mapping.rs"
-        },
-        "two-tables": {
-            "models.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/two-tables/src/models.rs",
-            "lib.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/two-tables/src/lib.rs",
-            "schema.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/two-tables/src/schema.graphql",
-            "mapping.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/two-tables/src/mapping.rs",
-            "project.yaml": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/two-tables/src/project.yaml"
         },
         "five-tables": {
             "models.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/five-tables/src/models.rs",
