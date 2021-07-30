@@ -1,0 +1,5 @@
+type SubstrateBlock @entity {
+    id: ID!
+    block_hash: String!
+    block_height: BigInt!
+}
