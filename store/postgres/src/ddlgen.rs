@@ -133,17 +133,19 @@ pub fn generate_ddl(raw: &str, catalog: &str, output_dir: &str) -> Result<(), Bo
         fs::write(format!("{}/up.sql", output_dir), result.0);
         fs::write(format!("{}/down.sql", output_dir),result.1);
         //Generate hasura request to track tables + relationships
-        let mut hasura_ups : Vec<serde_json::Value> = Vec::new();
-        let mut hasura_downs : Vec<serde_json::Value> = Vec::new();
+        let mut hasura_tables : Vec<serde_json::Value> = Vec::new();
+        let mut hasura_relations : Vec<serde_json::Value> = Vec::new();
+        let mut hasura_down_relations : Vec<serde_json::Value> = Vec::new();
+        let mut hasura_down_tables : Vec<serde_json::Value> = Vec::new();
         layout.tables.iter().for_each(|(name, table)| {
-            hasura_ups.push(serde_json::json!({
+            hasura_tables.push(serde_json::json!({
                 "type": "track_table",
                 "args": {
                     "schema": "public",
                     "name": table.name.as_str()
                 },
             }));
-            hasura_downs.push(serde_json::json!({
+            hasura_down_tables.push(serde_json::json!({
                 "type": "untrack_table",
                 "args": {
                     "table" : {
@@ -163,7 +165,7 @@ pub fn generate_ddl(raw: &str, catalog: &str, output_dir: &str) -> Result<(), Bo
                 .iter()
                 .filter(|col| col.is_reference())
                 .for_each(|column|{
-                    hasura_ups.push(serde_json::json!({
+                    hasura_relations.push(serde_json::json!({
                         "type": "create_object_relationship",
                         "args": {
                             "table": table.name.as_str(),
@@ -173,7 +175,7 @@ pub fn generate_ddl(raw: &str, catalog: &str, output_dir: &str) -> Result<(), Bo
                             }
                         }
                     }));
-                    hasura_downs.push(serde_json::json!({
+                    hasura_down_relations.push(serde_json::json!({
                         "type": "drop_relationship",
                         "args": {
                             "relationship": relational::named_type(&column.field_type),
@@ -182,7 +184,7 @@ pub fn generate_ddl(raw: &str, catalog: &str, output_dir: &str) -> Result<(), Bo
                         }
                     }));
                     let ref_table = relational::named_type(&column.field_type).to_snake_case();
-                    hasura_ups.push(serde_json::json!({
+                    hasura_relations.push(serde_json::json!({
                         "type": "create_array_relationship",
                         "args": {
                             "name": table.name.as_str(),
@@ -195,7 +197,7 @@ pub fn generate_ddl(raw: &str, catalog: &str, output_dir: &str) -> Result<(), Bo
                             }
                         }
                     }));
-                    hasura_downs.push(serde_json::json!({
+                    hasura_down_relations.push(serde_json::json!({
                         "type": "drop_relationship",
                         "args": {
                             "relationship": table.name.as_str(),
@@ -205,18 +207,19 @@ pub fn generate_ddl(raw: &str, catalog: &str, output_dir: &str) -> Result<(), Bo
                     }));
                 });
         });
-
+        hasura_tables.append(&mut hasura_relations);
         let bulk_up = serde_json::json!({
             "type": "bulk",
-            "args" : hasura_ups
+            "args" : hasura_tables
         });
+        hasura_down_relations.append(&mut hasura_down_tables);
         if let Ok(payload) = serde_json::to_string(&bulk_up) {
             fs::write(format!("{}/hasura_queries.json", output_dir),
                       format!("{}", payload));
         }
         let bulk_down = serde_json::json!({
             "type": "bulk",
-            "args" : hasura_downs
+            "args" : hasura_down_relations
         });
         if let Ok(payload) = serde_json::to_string(&bulk_down) {
             fs::write(format!("{}/hasura_down.json", output_dir),

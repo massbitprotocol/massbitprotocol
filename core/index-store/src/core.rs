@@ -51,9 +51,8 @@ impl TableBuffer {
     pub fn move_buffer(&mut self) -> Vec<GenericMap> {
         let buffer = self.data.clone();
         let mut data = buffer.lock().unwrap();
-        //Todo: improve redundent clone
-        let res = data.clone();
-        data.clear();
+        let mut res = Vec::with_capacity(data.len());
+        res.append(&mut data); //Move records from data to res;
         let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("system time before Unix epoch");
         self.last_store = now.as_millis();
         res
@@ -126,7 +125,7 @@ impl IndexStore {
                 let dependencies  = self.entity_dependencies.get(_entity_name.as_str());
                 match dependencies {
                     Some(deps) => {
-                        deps.iter().rev().for_each(|reference|{
+                        deps.iter().for_each(|reference|{
                             log::info!("{} Flush reference data into table {}", &*COMPONENT_NAME, reference.as_str());
                             if let Some(ref_buf) = buffer.get_mut(reference.as_str()) {
                                 let buf_data = ref_buf.move_buffer();
@@ -347,6 +346,36 @@ fn create_chain_dependencies(table_name: &String, dependencies: &HashMap<String,
     };
     res
 }
+/*
+ * Create chain dependencies from graphql.schema with cycle dependencies detection:
+ * Input empty init cycle_deps
+ * For example: A depends on B, B depends on C then output A depends on [C,B]
+ * If A -> B; B -> C, C -> A => detect cycle dependency
+ */
+/*
+fn create_chain_dependencies(table_name: &String, dependencies: &HashMap<String, Vec<String>>, cycle_deps: &mut Vec<String>) -> Vec<String> {
+    let mut res : Vec<String> = Vec::default();
+    let mut checking: Vec<String> = Vec::default();
+    if let Some(dep) = dependencies.get(table_name) {
+        cycle_deps.push(table_name.clone());
+        dep.iter().for_each(|ref_table|{
+            if cycle_deps.contains(ref_table) {
+                log::error!("{} Cycle dependency detected {}", &*COMPONENT_NAME, ref_table)
+                //Todo: stop working here message user to change graphql.schema
+            } else {
+                let mut tmp = create_chain_dependencies(ref_table, dependencies, cycle_deps);
+                tmp.iter().for_each(|item|{
+                    if !res.contains(item) {
+                        res.push(item.clone());
+                    }
+                });
+            }
+            res.push(ref_table.clone());
+        });
+    };
+    res
+}
+ */
 /*
 ///
 /// Collect all dependencies chain start by table_name
