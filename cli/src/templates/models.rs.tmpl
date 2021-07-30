@@ -3,9 +3,9 @@ use structmap::{FromMap, ToMap};
 use structmap_derive::{FromMap, ToMap};
 
 #[derive(FromMap)]
-{%- for name, entity in entities %}
+{%- for name, value in entities %}
 #[derive(Default, Clone, ToMap)]
-{{ entity }}
+{{ value[1] }}
 
 impl Into<structmap::GenericMap> for {{ name }} {
     fn into(self) -> structmap::GenericMap {
@@ -19,7 +19,7 @@ impl {{ name }} {
             STORE
                 .as_mut()
                 .unwrap()
-                .save("{{ name }}".to_string(), self.clone().into());
+                .save("{{ value[0] }}".to_string(), self.clone().into());
         }
     }
 }

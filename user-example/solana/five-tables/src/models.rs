@@ -25,7 +25,7 @@ impl Block {
             STORE
                 .as_mut()
                 .unwrap()
-                .save("Block".to_string(), self.clone().into());
+                .save("block".to_string(), self.clone().into());
         }
     }
 }
@@ -48,7 +48,7 @@ impl InstructionDetail {
             STORE
                 .as_mut()
                 .unwrap()
-                .save("InstructionDetail".to_string(), self.clone().into());
+                .save("instruction_detail".to_string(), self.clone().into());
         }
     }
 }
@@ -58,6 +58,7 @@ pub struct Transaction {
     pub signatures: String,
     pub timestamp: i64,
     pub fee: i64,
+    pub block: String,
     pub block_number: i64,
     pub success: bool,
 }
@@ -74,7 +75,7 @@ impl Transaction {
             STORE
                 .as_mut()
                 .unwrap()
-                .save("Transaction".to_string(), self.clone().into());
+                .save("transaction".to_string(), self.clone().into());
         }
     }
 }
@@ -101,7 +102,7 @@ impl TransactionAccount {
             STORE
                 .as_mut()
                 .unwrap()
-                .save("TransactionAccount".to_string(), self.clone().into());
+                .save("transaction_account".to_string(), self.clone().into());
         }
     }
 }
@@ -125,7 +126,7 @@ impl TransactionInstruction {
             STORE
                 .as_mut()
                 .unwrap()
-                .save("TransactionInstruction".to_string(), self.clone().into());
+                .save("transaction_instruction".to_string(), self.clone().into());
         }
     }
 }

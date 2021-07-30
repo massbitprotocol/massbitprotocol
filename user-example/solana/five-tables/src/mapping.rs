@@ -8,14 +8,14 @@ pub fn handle_block(block: &solana_types::SolanaBlock) -> Result<(), Box<dyn Err
     let block_id = Uuid::new_v4().to_simple().to_string();
     // Create Block
     let block_ts = Block {
-        id: block_id,
+        id: block_id.clone(),
         block_number: block.block.block_height.unwrap() as i64,
         block_hash: block.block.blockhash.to_string(),
         sum_fee: Default::default(),
         transaction_number: block.block.transactions.len() as i64,
         success_rate: Default::default()
     };
-
+    block_ts.save();
     // Create transaction
     for transaction in &block.block.transactions{
         let transaction_id = Uuid::new_v4().to_simple().to_string();
@@ -28,6 +28,7 @@ pub fn handle_block(block: &solana_types::SolanaBlock) -> Result<(), Box<dyn Err
                 .collect(),
             timestamp: block.timestamp,
             fee: meta.fee as i64,
+            block: block_id.clone(),
             block_number: block.block.block_height.unwrap() as i64,
             // Todo: get success
             success: true,
