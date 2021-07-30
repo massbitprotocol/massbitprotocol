@@ -229,7 +229,7 @@ fn create_query(_entity_name : &str, buffer : &Vec<GenericMap>) -> Option<String
     if buffer.len() > 0 {
         if let Some(_data) = buffer.get(0) {
             let fields : Vec<String> = _data.iter().map(|(k,_)|{k.to_string()}).collect();
-            //Store vector of row's stuse std::sync::{Arc, Mutex};ring form ('strval11',numberval12, numberval13)
+            //Store vector of row's form ('strval11',numberval12, numberval13)
             let row_values : Vec<String> = buffer.iter().map(|_data| {
                 let field_values: Vec<String> = _data.iter().map(|(_,v)| {
                     let mut str_val = String::new();
