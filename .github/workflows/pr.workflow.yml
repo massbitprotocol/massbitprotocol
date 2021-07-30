@@ -27,6 +27,6 @@ jobs:
           rustup toolchain install nightly-2021-05-20
           rustup target add wasm32-unknown-unknown --toolchain nightly-2021-05-20
       - uses: Swatinem/rust-cache@v1
-      - name: Run test without coverage
-        run: |
-          cargo test
+#      - name: Run test without coverage
+#        run: |
+#          cargo test
