@@ -1,0 +1,11 @@
+schema:
+  file: ./schema.graphql
+
+dataSources:
+  - kind: substrate
+    name: substrate-extrinsic
+    mapping:
+      language: rust
+      handlers:
+        - handler: handleExtrinsic
+          kind: substrate/ExtrinsicHandler
