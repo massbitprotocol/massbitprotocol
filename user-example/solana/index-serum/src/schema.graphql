@@ -12,7 +12,7 @@ type SerumTransaction @entity {
     signatures: String!
     timestamp: BigInt!
     fee: BigInt!
-    block: Block!
+    block: SerumBlock!
     block_number: BigInt!
     success: Boolean!
 }
@@ -24,7 +24,7 @@ type SerumTransactionAccount @entity {
     pos_balance: BigInt!
     change_balance: BigInt!
     is_program: Boolean!
-    transaction_own: Transaction!
+    transaction_own: SerumTransaction!
     inner_account_index: BigInt!
 }
 
@@ -36,8 +36,8 @@ type SerumInstructionDetail @entity {
 
 type SerumTransactionInstruction @entity {
     id: ID!
-    transaction_own: Transaction!
+    transaction_own: SerumTransaction!
     inner_account_index: BigInt!
-    instruction_detail: InstructionDetail!
+    instruction_detail: SerumInstructionDetail!
 
 }
