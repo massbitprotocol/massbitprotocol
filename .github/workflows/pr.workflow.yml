@@ -29,4 +29,5 @@ jobs:
           rustup target add wasm32-unknown-unknown --toolchain nightly-2021-06-17
       - name: Run check
         run: |
+          cargo tree
           cargo check
