@@ -85,7 +85,14 @@ Endpoint: /deploy/{compilation_id}
   "payload": ""
 }
 ```
-
+- Example
+```
+curl --location --request POST 'localhost:5000/deploy' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "compilation_id": "7b353f75ed783c96c56ddccb37b4992a"
+}'
+```
 ---
 Endpoint: /index-manager
 

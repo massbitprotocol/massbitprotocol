@@ -36,5 +36,8 @@ chain-reader/data/
 
 *.zip
 
-index-manager/generated/
+# ignore all but .gitkeep
+index-manager/generated/*
+!index-manager/generated/.gitkeep
+
 migrations/
