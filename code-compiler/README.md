@@ -27,6 +27,10 @@ Endpoint: /compile
   "network_type": "substrate"
 }
 ```
+- Example:
+```
+curl --location --request POST 'localhost:5000/compile' --header 'Content-Type: application/json' --data-raw '{ "mapping.rs":"","project.yaml":"","schema.graphql":""}'
+```
 
 - Result: 
 ```json

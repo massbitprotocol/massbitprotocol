@@ -2580,6 +2580,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "index-serum"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "diesel",
+ "index-store",
+ "massbit-chain-solana",
+ "massbit-chain-substrate",
+ "plugin",
+ "structmap",
+ "structmap-derive",
+ "uuid",
+]
+
+[[package]]
 name = "index-store"
 version = "0.1.0"
 dependencies = [
