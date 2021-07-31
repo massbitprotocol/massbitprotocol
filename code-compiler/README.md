@@ -29,7 +29,7 @@ Endpoint: /compile
 ```
 - Example:
 ```
-curl --location --request POST 'localhost:5000/compile' --header 'Content-Type: application/json' --data-raw '{ "mapping.rs":"","project.yaml":"","schema.graphql":""}'
+curl --location --request POST 'localhost:5000/compile' --header 'Content-Type: application/json' --data-raw '{ "mapping.rs":"use%20crate%3A%3Amodels%3A%3A%2A%3B%0Ause%20massbit_chain_substrate%3A%3Adata_type%20as%20substrate_types%3B%0Ause%20uuid%3A%3AUuid%3B%0A%0Apub%20fn%20handle_block%28block%3A%20%26substrate_types%3A%3ASubstrateBlock%29%20-%3E%20Result%3C%28%29%2C%20Box%3Cdyn%20std%3A%3Aerror%3A%3AError%3E%3E%20%7B%0A%20%20%20%20println%21%28%22%5BSO%20File%5D%20Received%20Substrate%20Block%22%29%3B%0A%20%20%20%20let%20block_id%20%3D%20Uuid%3A%3Anew_v4%28%29.to_simple%28%29.to_string%28%29%3B%0A%20%20%20%20let%20block_ts%20%3D%20SubstrateBlock%20%7B%0A%20%20%20%20%20%20%20%20id%3A%20block_id.clone%28%29%2C%0A%20%20%20%20%20%20%20%20block_hash%3A%20block.block.header.hash%28%29.to_string%28%29%2C%0A%20%20%20%20%20%20%20%20block_height%3A%20block.block.header.number%20as%20i64%2C%0A%20%20%20%20%7D%3B%0A%20%20%20%20block_ts.save%28%29%3B%0A%20%20%20%20Ok%28%28%29%29%0A%7D%0A","project.yaml":"schema%3A%0A%20%20file%3A%20.%2Fschema.graphql%0A%0AdataSources%3A%0A%20%20-%20kind%3A%20substrate%0A%20%20%20%20name%3A%20substrate-block%0A%20%20%20%20mapping%3A%0A%20%20%20%20%20%20language%3A%20rust%0A%20%20%20%20%20%20handlers%3A%0A%20%20%20%20%20%20%20%20-%20handler%3A%20handleBlock%0A%20%20%20%20%20%20%20%20%20%20kind%3A%20substrate%2FBlockHandler","schema.graphql":"type%20SubstrateBlock%20%40entity%20%7B%0A%20%20%20%20id%3A%20ID%21%0A%20%20%20%20block_hash%3A%20String%21%0A%20%20%20%20block_height%3A%20BigInt%21%0A%7D%0A"}'
 ```
 
 - Result: 
