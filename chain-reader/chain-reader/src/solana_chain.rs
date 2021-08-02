@@ -131,55 +131,29 @@ pub async fn loop_get_block_old(chan: broadcast::Sender<GenericDataProto>) {
                 // Root is finalized block in Solana
                 let root = new_info.root-BLOCK_AVAILABLE_MARGIN;
                 info!("Root: {:?}",new_info.root);
-                let block_height = client.get_block_height();
-                match block_height {
-                    Ok(block_height) => {
-                        info!("Highest Block height: {:?}",&block_height);
+                match last_root {
+                    Some(value_last_root) => {
+                        if root == last_root.unwrap() {
+                            continue;
+                        }
 
-                        match last_root {
-                            Some(value_last_root) => {
-                                if root == last_root.unwrap() {
-                                    continue;
+                        for block_height in value_last_root..root{
+                            let new_client = client.clone();
+                            let chan_clone = chan.clone();
+                            tokio::spawn(async move {
+                                if let Ok(block) = get_block(new_client, block_height) {
+                                    let generic_data_proto = _create_generic_block(block.block.blockhash.clone(), block_height, &block);
+                                    info!("Sending SOLANA as generic data: {:?}", &generic_data_proto.block_number);
+                                    //info!("Sending SOLANA as generic data");
+                                    chan_clone.send(generic_data_proto).unwrap();
                                 }
-
-                                for block_height in value_last_root..root{
-                                    let new_client = client.clone();
-                                    let chan_clone = chan.clone();
-                                    tokio::spawn(async move {
-                                        if let Ok(block) = get_block(new_client, block_height) {
-                                            let generic_data_proto = _create_generic_block(block.block.blockhash.clone(), block_height, &block);
-                                            info!("Sending SOLANA as generic data: {:?}", &generic_data_proto.block_number);
-                                            //info!("Sending SOLANA as generic data");
-                                            chan_clone.send(generic_data_proto).unwrap();
-                                        }
-                                    });
-                                    /*
-                                    // tokio::spawn(async move {
-                                    let block = get_block(new_client,block_height);
-                                    match block {
-                                        Ok(block) => {
-                                            let generic_data_proto = _create_generic_block(block.block.blockhash.clone(),block_height, &block);
-                                            info!("Sending SOLANA as generic data: {:?}", &generic_data_proto.block_number);
-                                            //info!("Sending SOLANA as generic data");
-                                            chan.send(generic_data_proto).unwrap();
-                                        },
-                                        // Cannot get the block, pass
-                                        Err(_) => continue,
-                                    }
-                                    //});
-                                     */
-                                }
-                                last_root = Some(root);
-                            },
-                            _ => last_root = Some(root),
-                        };
-                        info!("Got Block: {:?}", &last_root.unwrap());
-                    }
-                    Err(e) => {
-                        error!("Error: {:?}",e);
-                        continue;
-                    }
-                }
+                            });
+                        }
+                        last_root = Some(root);
+                    },
+                    _ => last_root = Some(root),
+                };
+                info!("Got Block: {:?}", &last_root.unwrap());
             }
             Err(err) => {
                 eprintln!("disconnected: {}", err);
