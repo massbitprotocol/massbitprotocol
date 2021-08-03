@@ -52,37 +52,6 @@ fn get_block_and_hash_from_header(
     Ok((ext_block, hash))
 }
 
-// fn _create_generic_extrinsic(   block_hash: String,
-//                             block:&Block) -> GenericDataProto
-// {
-//     let block = (*block).block.clone();
-//     //debug!("**Block content: {:#?}",&block);
-//
-//     let mut extrinsics: Vec<Vec<u8>> = Vec::new();
-//
-//     for extrinsic in block.extrinsics.clone(){
-//         extrinsics.push(extrinsic.encode());
-//
-//     }
-//     let payload = extrinsics.encode();
-//
-//     let generic_data = GenericDataProto{
-//         chain_type: CHAIN_TYPE as i32,
-//         version: VERSION.to_string(),
-//         data_type: DataType::Transaction as i32,
-//         block_hash,
-//         block_number: block.header.number as u64,
-//         payload,
-//     };
-//     // For decode:
-//     let encode_extrinsics: Vec<Vec<u8>> =  Decode::decode(&mut generic_data.payload.as_slice()).unwrap();
-//     for encode_extrinsic in encode_extrinsics{
-//         let decode_extrinsic: Extrinsic = Decode::decode(&mut encode_extrinsic.as_slice()).unwrap();
-//         debug!("decode_extrinsic: {:?}", decode_extrinsic);
-//     }
-//
-//     generic_data
-// }
 fn _create_generic_block(block_hash: String, block: &Block) -> GenericDataProto {
     let block = (*block).clone();
 
@@ -187,13 +156,8 @@ pub async fn loop_get_block_and_extrinsic(chan: broadcast::Sender<GenericDataPro
             "Got block number: {:?}, hash: {:?}",
             &generic_block.block_number, &generic_block.block_hash
         );
-        //info!("Sending SUBSTRATE block as generic data {:?}", &generic_block);
         chan.send(generic_block).unwrap();
 
-        // // Send array of extrinsics
-        // let generic_extrinsics = _create_generic_extrinsic(hash, &block);
-        // info!("Sending SUBSTRATE extrinsics as generic data {:?}", &generic_extrinsics);
-        // chan.send(generic_extrinsics).unwrap();
     }
 }
 

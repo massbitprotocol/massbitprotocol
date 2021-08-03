@@ -34,78 +34,8 @@ fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>){
     });
 }
 
+
 pub async fn loop_get_block(chan: broadcast::Sender<GenericDataProto>) {
-    info!("Start get block Solana");
-    let config = CONFIG.chains.get(&CHAIN_TYPE).unwrap();
-    let json_rpc_url = config.url.clone();
-    let websocket_url = config.ws.clone();
-    info!("Init Solana client");
-    {
-        let (mut subscription_client, receiver) =
-            PubsubClient::slot_subscribe(&websocket_url).unwrap();
-        info!("Finished init Solana client");
-
-        let main_latest_root = Arc::new(Mutex::new(0_u64));
-        let receiver_latest_root = Arc::clone(&main_latest_root);
-        //Listen for incomming message
-        let thread_receiver = tokio::spawn(async move {
-            let start = Instant::now();
-            let mut startblock = 0_u64;
-            loop {
-                if let Ok(slot) = receiver.recv() {
-                    let mut root = receiver_latest_root.lock().unwrap();
-                    let mut rate = 0_f32;
-                    if startblock == 0 {
-                        startblock = slot.root;
-                    } else {
-                        rate = (slot.root - startblock) as f32/ start.elapsed().as_secs_f32();
-                    }
-                    if slot.root > *root + BLOCK_AVAILABLE_MARGIN {
-                        info!("[RECEIVER] Received from websocket root block: {} at rate {} blocks/s", slot.root, rate);
-                        *root = slot.root - BLOCK_AVAILABLE_MARGIN;
-                    }
-                }
-            }
-        });
-        let exit = Arc::new(AtomicBool::new(false));
-        let client = Arc::new(RpcClient::new(json_rpc_url.clone()));
-        let mut last_root: u64 = 0;
-        fix_one_thread_not_receive(&chan);
-        loop {
-            if exit.load(Ordering::Relaxed) {
-                eprintln!("{}", "exit".to_string());
-                subscription_client.shutdown().unwrap();
-                break;
-            }
-            let latest_root = *main_latest_root.lock().unwrap();
-            if latest_root == 0 || latest_root == last_root {
-                continue;
-            } else if last_root == 0 {
-                last_root = latest_root;
-            } else {
-                //0 < last_root < latest_root
-                info!("[MAIN] Latest stable block: {}, Pending block: {}", latest_root, latest_root - last_root);
-                if let Ok(_block_height) = client.get_block_height() {
-                    for block_height in last_root..latest_root {
-                        let new_client = client.clone();
-                        let chan_clone = chan.clone();
-                        tokio::spawn(async move {
-                            if let Ok(block) = get_block(new_client, block_height) {
-                                let generic_data_proto = _create_generic_block(block.block.blockhash.clone(), block_height, &block);
-                                info!("[CHILD] Sending generic data: {:?} of SOLANA  block: {}", &generic_data_proto.block_number, block_height);
-                                chan_clone.send(generic_data_proto).unwrap();
-                            }
-                        });
-                    }
-                    last_root = latest_root;
-                }
-            }
-        }
-    }
-}
-
-
-pub async fn loop_get_block_old(chan: broadcast::Sender<GenericDataProto>) {
     info!("Start get block Solana");
     let config = CONFIG.chains.get(&CHAIN_TYPE).unwrap();
     let json_rpc_url = config.url.clone();
@@ -117,7 +47,7 @@ pub async fn loop_get_block_old(chan: broadcast::Sender<GenericDataProto>) {
     let exit = Arc::new(AtomicBool::new(false));
     let client = Arc::new(RpcClient::new(json_rpc_url.clone()));
 
-    let mut last_root: Option<u64> = None;
+    let mut last_indexed_slot: Option<u64> = None;
     fix_one_thread_not_receive(&chan);
     loop {
         if exit.load(Ordering::Relaxed) {
@@ -129,57 +59,31 @@ pub async fn loop_get_block_old(chan: broadcast::Sender<GenericDataProto>) {
         match receiver.recv() {
             Ok(new_info) => {
                 // Root is finalized block in Solana
-                let root = new_info.root-BLOCK_AVAILABLE_MARGIN;
-                info!("Root: {:?}",new_info.root);
-                let block_height = client.get_block_height();
-                match block_height {
-                    Ok(block_height) => {
-                        info!("Highest Block height: {:?}",&block_height);
-
-                        match last_root {
-                            Some(value_last_root) => {
-                                if root == last_root.unwrap() {
-                                    continue;
+                let current_root = new_info.root-BLOCK_AVAILABLE_MARGIN;
+                //info!("Root: {:?}",new_info.root);
+                match last_indexed_slot {
+                    Some(value_last_indexed_slot) => {
+                        if current_root == value_last_indexed_slot {
+                            continue;
+                        }
+                        info!("Latest stable block: {}, Pending block: {}", current_root, current_root - value_last_indexed_slot);
+                        for block_height in value_last_indexed_slot..current_root {
+                            let new_client = client.clone();
+                            let chan_clone = chan.clone();
+                            tokio::spawn(async move {
+                                if let Ok(block) = get_block(new_client, block_height) {
+                                    let generic_data_proto = _create_generic_block(block.block.blockhash.clone(), block_height, &block);
+                                    info!("Sending SOLANA as generic data: {:?}", &generic_data_proto.block_number);
+                                    //info!("Sending SOLANA as generic data");
+                                    chan_clone.send(generic_data_proto).unwrap();
                                 }
-
-                                for block_height in value_last_root..root{
-                                    let new_client = client.clone();
-                                    let chan_clone = chan.clone();
-                                    tokio::spawn(async move {
-                                        if let Ok(block) = get_block(new_client, block_height) {
-                                            let generic_data_proto = _create_generic_block(block.block.blockhash.clone(), block_height, &block);
-                                            info!("Sending SOLANA as generic data: {:?}", &generic_data_proto.block_number);
-                                            //info!("Sending SOLANA as generic data");
-                                            chan_clone.send(generic_data_proto).unwrap();
-                                        }
-                                    });
-                                    /*
-                                    // tokio::spawn(async move {
-                                    let block = get_block(new_client,block_height);
-                                    match block {
-                                        Ok(block) => {
-                                            let generic_data_proto = _create_generic_block(block.block.blockhash.clone(),block_height, &block);
-                                            info!("Sending SOLANA as generic data: {:?}", &generic_data_proto.block_number);
-                                            //info!("Sending SOLANA as generic data");
-                                            chan.send(generic_data_proto).unwrap();
-                                        },
-                                        // Cannot get the block, pass
-                                        Err(_) => continue,
-                                    }
-                                    //});
-                                     */
-                                }
-                                last_root = Some(root);
-                            },
-                            _ => last_root = Some(root),
-                        };
-                        info!("Got Block: {:?}", &last_root.unwrap());
+                            });
+                        }
+                        last_indexed_slot = Some(current_root);
                     }
-                    Err(e) => {
-                        error!("Error: {:?}",e);
-                        continue;
-                    }
-                }
+                    _ => last_indexed_slot = Some(current_root),
+                };
+                //debug!("Got Block: {:?}", &last_indexed_slot.unwrap());
             }
             Err(err) => {
                 eprintln!("disconnected: {}", err);
@@ -208,15 +112,15 @@ fn _create_generic_block(   block_hash: String,
 
 fn get_block(client: Arc<RpcClient>, block_height: u64) -> Result<Block,Box<dyn Error>>{
 
-    info!("Starting get Block {}",block_height);
+    info!("Starting RPC get Block {}",block_height);
     let now = Instant::now();
     let block = client.get_block_with_encoding(block_height, RPC_BLOCK_ENCODING);
     let elapsed = now.elapsed();
     match block{
         Ok(block) => {
+            info!("Finished RPC get Block: {:?}, time: {:?}, hash: {}", block_height, elapsed, &block.blockhash);
             let timestamp = (&block).block_time.unwrap();
             let list_log_messages = get_list_log_messages_from_encoded_block(&block);
-            info!("Finished get Block: {:?}, time: {:?}, hash: {}", block_height, elapsed, &block.blockhash);
             let ext_block = Block {
                 version: VERSION.to_string(),
                 block,
@@ -226,7 +130,7 @@ fn get_block(client: Arc<RpcClient>, block_height: u64) -> Result<Block,Box<dyn 
             Ok(ext_block)
         },
         _ => {
-            //error!("Cannot get: {:?}", &block);
+            debug!("Cannot get RPC get Block: {:?}, Error:{:?}, time: {:?}", block_height, block, elapsed);
             Err(format!("Error cannot get block").into())
         },
     }

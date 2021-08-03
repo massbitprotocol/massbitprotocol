@@ -40,4 +40,7 @@ chain-reader/data/
 index-manager/generated/*
 !index-manager/generated/.gitkeep
 
-migrations/
+# ignore all but .gitkeep
+index-manager/generated/*
+!index-manager/generated/.gitkeep
+
