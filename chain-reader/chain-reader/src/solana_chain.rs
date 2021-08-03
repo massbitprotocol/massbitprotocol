@@ -182,15 +182,15 @@ fn _create_generic_block(   block_hash: String,
 
 fn get_block(client: Arc<RpcClient>, block_height: u64) -> Result<Block,Box<dyn Error>>{
 
-    info!("Starting get Block {}",block_height);
+    info!("Starting RPC get Block {}",block_height);
     let now = Instant::now();
     let block = client.get_block_with_encoding(block_height, RPC_BLOCK_ENCODING);
     let elapsed = now.elapsed();
     match block{
         Ok(block) => {
+            info!("Finished RPC get Block: {:?}, time: {:?}, hash: {}", block_height, elapsed, &block.blockhash);
             let timestamp = (&block).block_time.unwrap();
             let list_log_messages = get_list_log_messages_from_encoded_block(&block);
-            info!("Finished get Block: {:?}, time: {:?}, hash: {}", block_height, elapsed, &block.blockhash);
             let ext_block = Block {
                 version: VERSION.to_string(),
                 block,
@@ -200,7 +200,7 @@ fn get_block(client: Arc<RpcClient>, block_height: u64) -> Result<Block,Box<dyn 
             Ok(ext_block)
         },
         _ => {
-            //error!("Cannot get: {:?}", &block);
+            debug!("Cannot get RPC get Block: {:?}, Error:{:?}, time: {:?}", block_height, block, elapsed);
             Err(format!("Error cannot get block").into())
         },
     }
