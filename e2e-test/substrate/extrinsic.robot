@@ -4,10 +4,16 @@ Library  OperatingSystem
 Library  lib/Request.py
 
 *** Test Cases ***
+######################
+# Prerequisite tests #
+######################
 Check code-compiler is up
     ${response}=    GET  http://localhost:5000  # Refactor this as global variable
 
-Create a new compile request and check if it's running
+##############
+# Main tests #
+##############
+Create a new compile extrinsic request & check if it's running
     ${object} =  Load JSON  payload/extrinsic.json
     ${compile_res}=    Request.Post Request  http://localhost:5000/compile  ${object}
     Should be equal   ${compile_res["status"]}  success
@@ -16,7 +22,7 @@ Create a new compile request and check if it's running
     Should be equal   ${status_res.json()}[status]  in-progress
     # Need an API to cancel the request so we can clean up the running compilation progress
 
-Create a new compile request and check if it is success after a while
+Create a new compile extrinsic request & check if it is success after a while
     ${object} =  Load JSON  payload/extrinsic.json
     ${compile_res}=    Request.Post Request  http://localhost:5000/compile  ${object}
     Should be equal   ${compile_res["status"]}  success
