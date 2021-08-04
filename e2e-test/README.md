@@ -3,6 +3,7 @@
 ## Prerequisites
 ```
 pip install robotframework-requests
+pip install robotframework-databaselibrary
 ```
 
 ## Run 1 test
