@@ -45,7 +45,7 @@ Compile and Deploy extrinsic, then check if data exists in DB
     # Configuration
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
-    # Remove all rows in the table if exists
+    # Remove table if exists
     Delete Table If Exists  ${TABLE_NAME}
 
     # Compile request
