@@ -25,7 +25,7 @@ Check index-manager is up
 ##############
 # Main tests #
 ##############
-#Compile extrinsic & check if it's running
+Compile extrinsic & check if it's running
     # Compile request
     ${object} =  Load JSON  ${JSON_PAYLOAD}
     ${compile_res}=  Request.Post Request
