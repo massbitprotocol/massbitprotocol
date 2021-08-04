@@ -40,7 +40,10 @@ chain-reader/data/
 index-manager/generated/*
 !index-manager/generated/.gitkeep
 
-# ignore all but .gitkeep
-index-manager/generated/*
-!index-manager/generated/.gitkeep
+migrations/
+e2e-test/substrate/report.html
+
+e2e-test/substrate/output.xml
+
+e2e-test/substrate/log.html
 
