@@ -7,7 +7,6 @@ def post_request(url, payload):
     print(x.text)
     return json.loads(x.text)
 
-  
 def load_json(path):
     f = open(path,)
     data = json.load(f)
