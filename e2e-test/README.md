@@ -5,15 +5,17 @@
 pip install robotframework-requests
 pip install robotframework-databaselibrary
 ```
+And make sure you have started all the services 
 
-## Run 1 test
+## Run a Substrate test
 ```
-robot extrinsic.robot
+robot --variable JSON_PAYLOAD:payload/[add_payload_file_here].json substrate.robot
 ```
-
-## Run all test
+Example
 ```
-robot .
+robot --variable JSON_PAYLOAD:payload/extrinsic.json substrate.robot
+robot --variable JSON_PAYLOAD:payload/block.json substrate.robot
+robot --variable JSON_PAYLOAD:payload/event.json substrate.robot
 ```
 
 ## Log
