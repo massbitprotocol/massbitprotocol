@@ -25,20 +25,20 @@ Check index-manager is up
 ##############
 # Main tests #
 ##############
-Compile extrinsic & check if it's running
-    # Compile request
-    ${object} =  Load JSON  ${JSON_PAYLOAD}
-    ${compile_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/compile
-    ...  ${object}
-    Should be equal  ${compile_res["status"]}  success
-
-    # Compile status
-    ${status_res}=  GET
-    ...  ${CODE_COMPILER}/compile/status/${compile_res["payload"]}
-    ...  expected_status=200
-    # Need an API to cancel the request so we can clean up the running compilation progress
-    Should be equal  ${status_res.json()}[status]  in-progress
+#Compile extrinsic & check if it's running
+#    # Compile request
+#    ${object} =  Load JSON  ${JSON_PAYLOAD}
+#    ${compile_res}=  Request.Post Request
+#    ...  ${CODE_COMPILER}/compile
+#    ...  ${object}
+#    Should be equal  ${compile_res["status"]}  success
+#
+#    # Compile status
+#    ${status_res}=  GET
+#    ...  ${CODE_COMPILER}/compile/status/${compile_res["payload"]}
+#    ...  expected_status=200
+#    # Need an API to cancel the request so we can clean up the running compilation progress
+#    Should be equal  ${status_res.json()}[status]  in-progress
 
 
 Compile and Deploy extrinsic, then check if data exists in DB
