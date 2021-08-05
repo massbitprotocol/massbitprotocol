@@ -2,4 +2,5 @@
 #
 # The E2E test need to pass before user can push to origin
 #
-/home/hughie/miniconda3/bin/robot  --variable JSON_PAYLOAD:e2e-test/substrate/payload/extrinsic.json --variable TABLE_NAME:substrate_extrinsic_test e2e-test/substrate/substrate.robot
+pip install robotframework -t ./e2e-test 
+python3 e2e-test/robot/run.py  --variable JSON_PAYLOAD:e2e-test/substrate/payload/extrinsic.json --variable TABLE_NAME:substrate_extrinsic_test e2e-test/substrate/substrate.robot
