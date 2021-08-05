@@ -2,4 +2,4 @@
 #
 # The E2E test need to pass before user can push to origin
 #
-robot  --variable JSON_PAYLOAD:e2e-test/substrate/payload/extrinsic.json --variable TABLE_NAME:substrate_extrinsic_test e2e-test/substrate/substrate.robot
+/home/hughie/miniconda3/bin/robot  --variable JSON_PAYLOAD:e2e-test/substrate/payload/extrinsic.json --variable TABLE_NAME:substrate_extrinsic_test e2e-test/substrate/substrate.robot
