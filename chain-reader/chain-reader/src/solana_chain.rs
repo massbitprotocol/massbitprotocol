@@ -73,8 +73,7 @@ pub async fn loop_get_block(chan: broadcast::Sender<GenericDataProto>) {
                             tokio::spawn(async move {
                                 if let Ok(block) = get_block(new_client, block_height) {
                                     let generic_data_proto = _create_generic_block(block.block.blockhash.clone(), block_height, &block);
-                                    info!("Sending SOLANA as generic data: {:?}", &generic_data_proto.block_number);
-                                    //info!("Sending SOLANA as generic data");
+                                    debug!("Sending SOLANA as generic data: {:?}", &generic_data_proto.block_number);
                                     chan_clone.send(generic_data_proto).unwrap();
                                 }
                             });
@@ -83,7 +82,6 @@ pub async fn loop_get_block(chan: broadcast::Sender<GenericDataProto>) {
                     }
                     _ => last_indexed_slot = Some(current_root),
                 };
-                //debug!("Got Block: {:?}", &last_indexed_slot.unwrap());
             }
             Err(err) => {
                 eprintln!("disconnected: {}", err);
@@ -112,13 +110,13 @@ fn _create_generic_block(   block_hash: String,
 
 fn get_block(client: Arc<RpcClient>, block_height: u64) -> Result<Block,Box<dyn Error>>{
 
-    info!("Starting RPC get Block {}",block_height);
+    debug!("Starting RPC get Block {}",block_height);
     let now = Instant::now();
     let block = client.get_block_with_encoding(block_height, RPC_BLOCK_ENCODING);
     let elapsed = now.elapsed();
     match block{
         Ok(block) => {
-            info!("Finished RPC get Block: {:?}, time: {:?}, hash: {}", block_height, elapsed, &block.blockhash);
+            debug!("Finished RPC get Block: {:?}, time: {:?}, hash: {}", block_height, elapsed, &block.blockhash);
             let timestamp = (&block).block_time.unwrap();
             let list_log_messages = get_list_log_messages_from_encoded_block(&block);
             let ext_block = Block {

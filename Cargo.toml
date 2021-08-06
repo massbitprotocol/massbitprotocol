@@ -3,6 +3,8 @@ members = [
     "chain-reader/chain-reader",
     "mock",
     "core/chain/substrate",
+    "core/chain/solana",
+    "core/chain/ethereum",
     "index-manager/main",
     "plugin/plugin",
     "user-example/solana/test-solana-block",

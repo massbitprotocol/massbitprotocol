@@ -36,6 +36,7 @@ rand = "0.7"
 
 massbit-chain-substrate = { path = "../../core/chain/substrate" }
 massbit-chain-solana = { path = "../../core/chain/solana" }
+massbit-chain-ethereum = { path = "../../core/chain/ethereum" }
 
 [dependencies.substrate-api-client]
 git = "https://github.com/scs/substrate-api-client.git"
@@ -100,6 +101,16 @@ git = "https://github.com/massbitprotocol/solana.git"
 
 ############# End solana
 
+############# Ethereum
+[dependencies.web3]
+package = "web3"
+git = "https://github.com/tomusdrw/rust-web3.git"
+branch = "master"
+
+hex-literal = "0.3"
+hex = "1.7.9"
+
+############# End Ethereum
 
 [features]
 default = ["std"]
@@ -124,3 +135,7 @@ path = "src/examples/client.rs"
 [[bin]] # Bin to run examples
 name = "test"
 path = "src/examples/test.rs"
+
+[[bin]] # Bin to run examples
+name = "test-ethereum"
+path = "src/examples/test_ethereum.rs"
