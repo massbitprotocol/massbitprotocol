@@ -1,9 +1,9 @@
 name: Workflow for Tag
 
 on:
-  create:
+  push:
     branches:
-      - "!*"
+      - '!*'
     tags:
       - "v*"
 
