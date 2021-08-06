@@ -6,6 +6,10 @@ use massbit_chain_solana::data_type::{
     convert_solana_encoded_block_to_solana_block, decode as solana_decode,
     SolanaEncodedBlock, SolanaLogMessages, SolanaTransaction,
 };
+use massbit_chain_ethereum::data_type::{
+    EthereumBlock,
+    decode as ethereum_decode,
+};
 use massbit_chain_substrate::data_type::{
     SubstrateBlock, SubstrateEventRecord,
 };
@@ -119,6 +123,17 @@ pub async fn print_blocks(mut client: StreamoutClient<Channel>, chain_type: Chai
                 let elapsed = now.elapsed();
                 debug!("Elapsed processing solana block: {:.2?}", elapsed);
             },
+            ChainType::Ethereum => {
+                match DataType::from_i32(data.data_type) {
+                    Some(DataType::Block) => {
+                        let block: EthereumBlock = ethereum_decode(&mut data.payload).unwrap();
+                        info!("Recieved ETHREUM BLOCK with Block number: {}", &block.block.number.unwrap().as_u64());
+                    },
+                    _ => {
+                        warn!("Not support this type in Ethereum");
+                    }
+                }
+            },
             _ => {
                 warn!("Not support this package chain-type");
             }
@@ -135,7 +150,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     info!("Waiting for chain-reader");
 
     let client = StreamoutClient::connect(URL).await.unwrap();
-    print_blocks(client, ChainType::Solana).await;
+    print_blocks(client, ChainType::Ethereum).await;
 
 
     Ok(())

@@ -31,9 +31,9 @@ pub struct ExtBlock {
 }
 
 
-// pub fn decode(payload: &mut Vec<u8>) -> Result<SolanaEncodedBlock, Box<dyn Error>>
-// {
-//     let decode_block: SolanaEncodedBlock = serde_json::from_slice(&payload).unwrap();
-//     Ok(decode_block)
-// }
+pub fn decode(payload: &mut Vec<u8>) -> Result<EthereumBlock, Box<dyn Error>>
+{
+    let decode_block: EthereumBlock = serde_json::from_slice(&payload).unwrap();
+    Ok(decode_block)
+}
 
