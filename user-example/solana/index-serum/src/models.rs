@@ -4,7 +4,7 @@ use structmap_derive::{FromMap, ToMap};
 
 #[derive(FromMap)]
 #[derive(Default, Clone, ToMap)]
-pub struct Block {
+pub struct SerumBlock {
     pub id: String,
     pub block_number: i64,
     pub block_hash: String,
@@ -13,47 +13,47 @@ pub struct Block {
     pub success_rate: i64,
 }
 
-impl Into<structmap::GenericMap> for Block {
+impl Into<structmap::GenericMap> for SerumBlock {
     fn into(self) -> structmap::GenericMap {
-        Block::to_genericmap(self.clone())
+        SerumBlock::to_genericmap(self.clone())
     }
 }
 
-impl Block {
+impl SerumBlock {
     pub fn save(&self) {
         unsafe {
             STORE
                 .as_mut()
                 .unwrap()
-                .save("block".to_string(), self.clone().into());
+                .save("serum_block".to_string(), self.clone().into());
         }
     }
 }
 #[derive(Default, Clone, ToMap)]
-pub struct InstructionDetail {
+pub struct SerumInstructionDetail {
     pub id: String,
     pub name: String,
     pub is_decoded: bool,
 }
 
-impl Into<structmap::GenericMap> for InstructionDetail {
+impl Into<structmap::GenericMap> for SerumInstructionDetail {
     fn into(self) -> structmap::GenericMap {
-        InstructionDetail::to_genericmap(self.clone())
+        SerumInstructionDetail::to_genericmap(self.clone())
     }
 }
 
-impl InstructionDetail {
+impl SerumInstructionDetail {
     pub fn save(&self) {
         unsafe {
             STORE
                 .as_mut()
                 .unwrap()
-                .save("instruction_detail".to_string(), self.clone().into());
+                .save("serum_instruction_detail".to_string(), self.clone().into());
         }
     }
 }
 #[derive(Default, Clone, ToMap)]
-pub struct Transaction {
+pub struct SerumTransaction {
     pub id: String,
     pub signatures: String,
     pub timestamp: i64,
@@ -63,24 +63,24 @@ pub struct Transaction {
     pub success: bool,
 }
 
-impl Into<structmap::GenericMap> for Transaction {
+impl Into<structmap::GenericMap> for SerumTransaction {
     fn into(self) -> structmap::GenericMap {
-        Transaction::to_genericmap(self.clone())
+        SerumTransaction::to_genericmap(self.clone())
     }
 }
 
-impl Transaction {
+impl SerumTransaction {
     pub fn save(&self) {
         unsafe {
             STORE
                 .as_mut()
                 .unwrap()
-                .save("transaction".to_string(), self.clone().into());
+                .save("serum_transaction".to_string(), self.clone().into());
         }
     }
 }
 #[derive(Default, Clone, ToMap)]
-pub struct TransactionAccount {
+pub struct SerumTransactionAccount {
     pub id: String,
     pub pub_key: String,
     pub pos_balance: i64,
@@ -90,43 +90,43 @@ pub struct TransactionAccount {
     pub inner_account_index: i64,
 }
 
-impl Into<structmap::GenericMap> for TransactionAccount {
+impl Into<structmap::GenericMap> for SerumTransactionAccount {
     fn into(self) -> structmap::GenericMap {
-        TransactionAccount::to_genericmap(self.clone())
+        SerumTransactionAccount::to_genericmap(self.clone())
     }
 }
 
-impl TransactionAccount {
+impl SerumTransactionAccount {
     pub fn save(&self) {
         unsafe {
             STORE
                 .as_mut()
                 .unwrap()
-                .save("transaction_account".to_string(), self.clone().into());
+                .save("serum_transaction_account".to_string(), self.clone().into());
         }
     }
 }
 #[derive(Default, Clone, ToMap)]
-pub struct TransactionInstruction {
+pub struct SerumTransactionInstruction {
     pub id: String,
     pub transaction_own: String,
     pub inner_account_index: i64,
     pub instruction_detail: String,
 }
 
-impl Into<structmap::GenericMap> for TransactionInstruction {
+impl Into<structmap::GenericMap> for SerumTransactionInstruction {
     fn into(self) -> structmap::GenericMap {
-        TransactionInstruction::to_genericmap(self.clone())
+        SerumTransactionInstruction::to_genericmap(self.clone())
     }
 }
 
-impl TransactionInstruction {
+impl SerumTransactionInstruction {
     pub fn save(&self) {
         unsafe {
             STORE
                 .as_mut()
                 .unwrap()
-                .save("transaction_instruction".to_string(), self.clone().into());
+                .save("serum_transaction_instruction".to_string(), self.clone().into());
         }
     }
 }
