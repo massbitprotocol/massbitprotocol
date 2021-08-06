@@ -9,8 +9,6 @@ Library  lib/PGConnection.py
 *** Variables ***
 ${CODE_COMPILER}  http://localhost:5000
 ${INDEX_MANAGER}  http://localhost:3000
-#${JSON_PAYLOAD}   payload/[add_payload_file_here].json   # or pass it in by --variable in the commandline
-#${TABLE_NAME}   substrate_extrinsic_test   # or pass it in by --variable in the commandline
 
 *** Test Cases ***
 ##Temporarily ignore to save Rust compiling resource

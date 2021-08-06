@@ -1,5 +1,29 @@
 # E2E Test for Substrate and Solana template
 
+## Testing plans
+Solana
+- block
+- transaction
+- log message
+
+Substrate
+- block (done)
+- extrinsic
+- event 
+
+Health check for all services
+- code-compiler
+- chain-reader
+- index-manager
+- dashboard
+- hasura graphql-engine
+- hasura console
+- solana proxy
+- IPFS
+- Postgres DB
+
+Detail testing plan: https://app.gitbook.com/@hughie/s/massbit/e2e-test-planning
+
 ## Prerequisites
 ```
 pip install robotframework-requests
