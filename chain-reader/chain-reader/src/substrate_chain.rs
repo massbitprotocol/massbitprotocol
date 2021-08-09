@@ -1,24 +1,23 @@
 use crate::grpc_stream::stream_mod::{ChainType, DataType, GenericDataProto};
 use clap::App;
-use sp_core::{sr25519, H256 as Hash};
-use massbit_chain_substrate::data_type::{SubstrateBlock as Block,
-                                         SubstrateHeader as Header,
-                                         SubstrateEventRecord as EventRecord,
-                                        };
-use std::sync::mpsc::channel;
-use substrate_api_client::{Api, rpc::json_req, utils::FromHexString};
 use env_logger;
+use massbit_chain_substrate::data_type::{
+    SubstrateBlock as Block, SubstrateEventRecord as EventRecord, SubstrateHeader as Header,
+};
 use serde_json;
+use sp_core::{sr25519, H256 as Hash};
 use std::error::Error;
+use std::sync::mpsc::channel;
+use substrate_api_client::{rpc::json_req, utils::FromHexString, Api};
 use tokio::sync::broadcast;
 
 #[cfg(feature = "std")]
 use codec::{Decode, Encode};
+use log::{debug, error, info, warn, Level};
+use node_template_runtime::Block as OrgBlock;
 use node_template_runtime::Event;
 use std::env;
 use system;
-use node_template_runtime::Block as OrgBlock;
-use log::{debug, warn, error, info, Level};
 
 // Check https://github.com/tokio-rs/prost for enum converting in rust protobuf
 const CHAIN_TYPE: ChainType = ChainType::Substrate;
@@ -157,7 +156,6 @@ pub async fn loop_get_block_and_extrinsic(chan: broadcast::Sender<GenericDataPro
             &generic_block.block_number, &generic_block.block_hash
         );
         chan.send(generic_block).unwrap();
-
     }
 }
 

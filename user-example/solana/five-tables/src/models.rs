@@ -2,8 +2,7 @@ use crate::STORE;
 use structmap::{FromMap, ToMap};
 use structmap_derive::{FromMap, ToMap};
 
-#[derive(FromMap)]
-#[derive(Default, Clone, ToMap)]
+#[derive(FromMap, Default, Clone, ToMap)]
 pub struct Block {
     pub id: String,
     pub block_number: i64,

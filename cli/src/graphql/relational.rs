@@ -5,7 +5,7 @@ use anyhow::{anyhow, Error};
 use graphql_parser::schema;
 use inflector::Inflector;
 use serde::Serialize;
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::convert::TryFrom;
 use std::fmt::{self, Write};
 use std::str::FromStr;
@@ -137,7 +137,7 @@ impl ModelFieldType {
             return Ok(id_type.clone().into());
         }
 
-        if let Some(values) = enums.get(&*name) {
+        if let Some(_values) = enums.get(&*name) {
             return Ok(ModelFieldType::String);
         }
 

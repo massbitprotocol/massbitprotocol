@@ -6,7 +6,7 @@ use structmap_derive::{FromMap, ToMap};
 pub struct TransactionSolanaTs {
     pub block_number: i64,
     pub fee: i64,
-    pub signature: String
+    pub signature: String,
 }
 
 impl Into<structmap::GenericMap> for TransactionSolanaTs {

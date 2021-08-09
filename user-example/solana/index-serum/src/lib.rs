@@ -1,10 +1,9 @@
 mod mapping;
 mod models;
 
-use massbit_chain_substrate::data_type as substrate_types;
+use index_store::core::Store;
 use massbit_chain_solana::data_type as solana_types;
 use plugin::core::{self, PluginRegistrar};
-use index_store::core::Store;
 use std::error::Error;
 
 #[doc(hidden)]

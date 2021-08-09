@@ -1,19 +1,21 @@
+use lazy_static::lazy_static;
 /**
 *** Objective of this file is to provide API to call to hasura
 **/
-
 // Generic dependencies
 use reqwest::Client;
-use tokio_compat_02::FutureExt;
 use serde_json::{json, Value};
-use lazy_static::lazy_static;
-use std::{env};
+use std::env;
+use tokio_compat_02::FutureExt;
 
 // Massbit dependencies
-use crate::hasura_helper::{assert_no_duplicated_index, get_hasura_payload_folder, get_hasura_payload};
+use crate::hasura_helper::{
+    assert_no_duplicated_index, get_hasura_payload, get_hasura_payload_folder,
+};
 
 lazy_static! {
-    static ref HASURA_URL: String = env::var("HASURA_URL").unwrap_or(String::from("http://localhost:8080/v1/query"));
+    static ref HASURA_URL: String =
+        env::var("HASURA_URL").unwrap_or(String::from("http://localhost:8080/v1/query"));
     static ref COMPONENT_NAME: String = String::from("[Index Manger Hasura]");
 }
 

@@ -1,15 +1,15 @@
 #[macro_use]
 extern crate clap;
 
-pub mod grpc_stream;
-pub mod substrate_chain;
-pub mod solana_chain;
-pub mod ethereum_chain;
 pub mod command;
+pub mod ethereum_chain;
+pub mod grpc_stream;
+pub mod solana_chain;
+pub mod substrate_chain;
 
-use lazy_static::lazy_static;
+use command::{ChainConfig, Config};
 use grpc_stream::stream_mod::ChainType;
-use command::{Config, ChainConfig};
+use lazy_static::lazy_static;
 
 lazy_static! {
     // Load default config
@@ -32,4 +32,3 @@ lazy_static! {
         url: "0.0.0.0:50051".to_string(),
     };
 }
-

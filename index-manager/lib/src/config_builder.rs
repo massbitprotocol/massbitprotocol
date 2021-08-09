@@ -2,12 +2,11 @@
 *** Objective of this file, is to build the IndexConfig from the user's Index Request
 *** It will connect to IPFS to get the files and save them to storage
 **/
-
 // Generic dependencies
 use std::path::PathBuf;
 // Massbit dependencies
-use crate::types::{IndexConfig};
-use crate::ipfs::{get_mapping_ipfs, get_config_ipfs, get_schema_ipfs};
+use crate::ipfs::{get_config_ipfs, get_mapping_ipfs, get_schema_ipfs};
+use crate::types::IndexConfig;
 
 /**
 *** Builder Pattern
@@ -62,4 +61,3 @@ impl IndexConfigIpfsBuilder {
         }
     }
 }
-

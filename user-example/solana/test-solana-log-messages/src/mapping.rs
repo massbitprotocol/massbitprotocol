@@ -1,19 +1,19 @@
 use crate::models::LogMessagesSolanaTs;
-use massbit_chain_solana::data_type::{
-    SolanaBlock,
-    SolanaTransaction,
-    SolanaLogMessages
-};
+use massbit_chain_solana::data_type::{SolanaBlock, SolanaLogMessages, SolanaTransaction};
 
-pub fn handle_block(block: &SolanaBlock) -> Result<(), Box<dyn std::error::Error>> {
+pub fn handle_block(_block: &SolanaBlock) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-pub fn handle_transaction(transaction: &SolanaTransaction) -> Result<(), Box<dyn std::error::Error>> {
+pub fn handle_transaction(
+    _transaction: &SolanaTransaction,
+) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-pub fn handle_log_messages(log_messages: &SolanaLogMessages) -> Result<(), Box<dyn std::error::Error>> {
+pub fn handle_log_messages(
+    log_messages: &SolanaLogMessages,
+) -> Result<(), Box<dyn std::error::Error>> {
     println!("[SO File] Received Solana Log Messages");
 
     let log_messages_solana_ts = LogMessagesSolanaTs {

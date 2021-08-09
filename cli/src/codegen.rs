@@ -2,7 +2,7 @@ use crate::graphql::relational::Layout;
 use crate::graphql::schema::Schema;
 
 use clap::ArgMatches;
-use inflector::cases::snakecase::to_snake_case;
+
 use inflector::Inflector;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -24,7 +24,7 @@ pub fn run(matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
 
 #[derive(Serialize)]
 pub struct EntityBinding {
-    pub entities: HashMap<String, (String,String)>,
+    pub entities: HashMap<String, (String, String)>,
 }
 
 fn generate_rust_entity(schema_path: &str, output: &str) -> Result<(), Box<dyn Error>> {
@@ -61,7 +61,11 @@ pub struct Handler {
     pub kind: String,
 }
 
-fn generate_plugin(config_path: &str, output: &str, mapping_gen: bool) -> Result<(), Box<dyn Error>> {
+fn generate_plugin(
+    config_path: &str,
+    output: &str,
+    mapping_gen: bool,
+) -> Result<(), Box<dyn Error>> {
     let f = File::open(config_path)?;
     let manifest: serde_yaml::Value = serde_yaml::from_reader(f)?;
     let mut binding = HandlerBinding::default();

@@ -1,26 +1,32 @@
+use lazy_static::lazy_static;
+use std::env;
 /**
 *** Objective of this file is to connect to chain reader server
 *** Get gRPC generic block then parse to the correct format
 *** Then pass the correct data type to the plugin manager
 *** Plugin manager will then run the User SO Mapping file with the input data from Chain Reader
 **/
-
 // Generic dependencies
 use std::time::Instant;
 use tonic::Request;
-use lazy_static::lazy_static;
-use std::{env};
 
 // Massbit dependencies
-use plugin::PluginManager;
 use crate::config::get_chain_type;
-use massbit_chain_substrate::data_type::{decode, SubstrateBlock, get_extrinsics_from_block, SubstrateEventRecord};
-use massbit_chain_solana::data_type::{decode as solana_decode, SolanaEncodedBlock, convert_solana_encoded_block_to_solana_block, SolanaTransaction, SolanaLogMessages};
-use crate::types::stream_mod::{GetBlocksRequest, GenericDataProto, ChainType, DataType, streamout_client::StreamoutClient};
-use serde_yaml::Value;
+use crate::types::stream_mod::{
+    streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
+};
 use index_store::core::IndexStore;
-use std::path::PathBuf;
+use massbit_chain_solana::data_type::{
+    convert_solana_encoded_block_to_solana_block, decode as solana_decode, SolanaEncodedBlock,
+    SolanaLogMessages, SolanaTransaction,
+};
+use massbit_chain_substrate::data_type::{
+    decode, get_extrinsics_from_block, SubstrateBlock, SubstrateEventRecord,
+};
+use plugin::PluginManager;
+use serde_yaml::Value;
 use std::error::Error;
+use std::path::PathBuf;
 
 lazy_static! {
     static ref CHAIN_READER_URL: String =
@@ -29,10 +35,12 @@ lazy_static! {
         .unwrap_or(String::from("postgres://graph-node:let-me-in@localhost"));
 }
 
-pub async fn chain_reader_client_start(config: &Value, mapping: &PathBuf) -> Result<(), Box<dyn Error>> {
+pub async fn chain_reader_client_start(
+    config: &Value,
+    mapping: &PathBuf,
+) -> Result<(), Box<dyn Error>> {
     let mut store = IndexStore::new(DATABASE_CONNECTION_STRING.as_str()).await;
-    let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone())
-        .await?;
+    let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await?;
     let chain_type = get_chain_type(&config);
     let get_blocks_request = GetBlocksRequest {
         start_block_number: 0,
@@ -84,18 +92,24 @@ pub async fn chain_reader_client_start(config: &Value, mapping: &PathBuf) -> Res
             ChainType::Solana => {
                 match DataType::from_i32(data.data_type) {
                     Some(DataType::Block) => {
-                        let encoded_block: SolanaEncodedBlock = solana_decode(&mut data.payload).unwrap();
+                        let encoded_block: SolanaEncodedBlock =
+                            solana_decode(&mut data.payload).unwrap();
                         let block = convert_solana_encoded_block_to_solana_block(encoded_block); // Decoding
-                        println!("Received SOLANA BLOCK with block height: {:?}, hash: {:?}", &block.block.block_height.unwrap(), &block.block.blockhash);
+                        println!(
+                            "Received SOLANA BLOCK with block height: {:?}, hash: {:?}",
+                            &block.block.block_height.unwrap(),
+                            &block.block.blockhash
+                        );
                         plugins.handle_solana_block("1234", &block);
                         let mut print_flag = true;
                         for origin_transaction in block.clone().block.transactions {
-                            let origin_log_messages = origin_transaction.meta.clone().unwrap().log_messages;
+                            let origin_log_messages =
+                                origin_transaction.meta.clone().unwrap().log_messages;
                             let transaction = SolanaTransaction {
                                 block_number: ((&block).block.block_height.unwrap() as u32),
                                 transaction: origin_transaction.clone(),
                                 log_messages: origin_log_messages.clone(),
-                                success: false
+                                success: false,
                             };
                             let log_messages = SolanaLogMessages {
                                 block_number: ((&block).block.block_height.unwrap() as u32),
@@ -110,12 +124,12 @@ pub async fn chain_reader_client_start(config: &Value, mapping: &PathBuf) -> Res
                             plugins.handle_solana_transaction("1234", &transaction);
                             plugins.handle_solana_log_messages("1234", &log_messages);
                         }
-                    },
+                    }
                     _ => {
                         println!("Not support type in Solana");
                     }
                 } // End of Solana i32 data
-            }, // End of Solana type
+            } // End of Solana type
             _ => {
                 println!("Not support this package chain-type");
             }

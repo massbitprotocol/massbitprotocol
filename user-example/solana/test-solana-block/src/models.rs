@@ -6,7 +6,7 @@ use structmap_derive::{FromMap, ToMap};
 pub struct BlockSolanaTs {
     pub block_hash: String,
     pub block_height: i64,
-    pub timestamp: String
+    pub timestamp: String,
 }
 
 impl Into<structmap::GenericMap> for BlockSolanaTs {

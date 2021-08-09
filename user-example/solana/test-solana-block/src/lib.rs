@@ -2,16 +2,11 @@ mod mapping;
 mod models;
 
 use index_store::core::Store;
-use massbit_chain_solana::data_type::{
-    SolanaBlock,
-    SolanaTransaction,
-    SolanaLogMessages,
-};
+use massbit_chain_solana::data_type::{SolanaBlock, SolanaLogMessages, SolanaTransaction};
 use plugin::core::{
-    PluginRegistrar,
-    SolanaBlockHandler as SolanaBlockHandlerTrait,
+    PluginRegistrar, SolanaBlockHandler as SolanaBlockHandlerTrait,
+    SolanaLogMessagesHandler as SolanaLogMessagesHandlerTrait,
     SolanaTransactionHandler as SolanaTransactionHandlerTrait,
-    SolanaLogMessagesHandler as SolanaLogMessagesHandlerTrait
 };
 
 #[doc(hidden)]
@@ -31,7 +26,10 @@ extern "C" fn register(registrar: &mut dyn PluginRegistrar) {
 #[derive(Debug, Clone, PartialEq)]
 pub struct SolanaLogMessagesHandler;
 impl SolanaLogMessagesHandlerTrait for SolanaLogMessagesHandler {
-    fn handle_log_messages(&self, event: &SolanaLogMessages) -> Result<(), Box<dyn std::error::Error>> {
+    fn handle_log_messages(
+        &self,
+        event: &SolanaLogMessages,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         mapping::handle_log_messages(event)
     }
 }
@@ -40,7 +38,10 @@ impl SolanaLogMessagesHandlerTrait for SolanaLogMessagesHandler {
 #[derive(Debug, Clone, PartialEq)]
 pub struct SolanaTransactionHandler;
 impl SolanaTransactionHandlerTrait for SolanaTransactionHandler {
-    fn handle_transaction(&self, transaction: &SolanaTransaction) -> Result<(), Box<dyn std::error::Error>> {
+    fn handle_transaction(
+        &self,
+        transaction: &SolanaTransaction,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         mapping::handle_transaction(transaction)
     }
 }

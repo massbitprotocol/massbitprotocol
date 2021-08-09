@@ -1,9 +1,4 @@
-use node_template_runtime::{Block, Header, Hash, DigestItem};
-use std::str::FromStr;
-use sp_runtime::Digest;
-
 // Massbit Dependencies
-use massbit_chain_substrate::data_type::SubstrateBlock;
 
 // pub fn generate_substrate_block() -> SubstrateBlock{
 //     let block: SubstrateBlock = Block {

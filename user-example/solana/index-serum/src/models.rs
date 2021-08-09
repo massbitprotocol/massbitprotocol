@@ -2,8 +2,7 @@ use crate::STORE;
 use structmap::{FromMap, ToMap};
 use structmap_derive::{FromMap, ToMap};
 
-#[derive(FromMap)]
-#[derive(Default, Clone, ToMap)]
+#[derive(FromMap, Default, Clone, ToMap)]
 pub struct SerumBlock {
     pub id: String,
     pub block_number: i64,
@@ -123,10 +122,10 @@ impl Into<structmap::GenericMap> for SerumTransactionInstruction {
 impl SerumTransactionInstruction {
     pub fn save(&self) {
         unsafe {
-            STORE
-                .as_mut()
-                .unwrap()
-                .save("serum_transaction_instruction".to_string(), self.clone().into());
+            STORE.as_mut().unwrap().save(
+                "serum_transaction_instruction".to_string(),
+                self.clone().into(),
+            );
         }
     }
 }

@@ -2,22 +2,23 @@
 *** Objective of this file is to create a new index with some configs before passing them to plugin manager
 *** Also provide some endpoints to get the index's detail
 **/
-
 // Generic dependencies
 use diesel::{Connection, PgConnection};
 use lazy_static::lazy_static;
 use postgres::{Connection as PostgreConnection, TlsMode};
+use std::env;
 use std::error::Error;
-use std::{env};
 
 // Massbit dependencies
-use crate::types::{DeployParams, Indexer};
-use crate::config_builder::{IndexConfigIpfsBuilder};
-use crate::hasura::{track_hasura_with_ddl_gen_plugin};
-use crate::store::{insert_new_indexer, migrate_with_ddl_gen_plugin, create_indexers_table_if_not_exists};
-use crate::ipfs::read_config_file;
 use crate::chain_reader::chain_reader_client_start;
-use crate::config::{get_index_name, generate_random_hash};
+use crate::config::{generate_random_hash, get_index_name};
+use crate::config_builder::IndexConfigIpfsBuilder;
+use crate::hasura::track_hasura_with_ddl_gen_plugin;
+use crate::ipfs::read_config_file;
+use crate::store::{
+    create_indexers_table_if_not_exists, insert_new_indexer, migrate_with_ddl_gen_plugin,
+};
+use crate::types::{DeployParams, Indexer};
 
 lazy_static! {
     static ref CHAIN_READER_URL: String =
@@ -31,9 +32,12 @@ lazy_static! {
 pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
     // Get user index mapping logic, query for migration and index's configurations
     let index_config = IndexConfigIpfsBuilder::default()
-        .config(params.config).await
-        .mapping(params.mapping).await
-        .schema(params.schema).await
+        .config(params.config)
+        .await
+        .mapping(params.mapping)
+        .await
+        .schema(params.schema)
+        .await
         .build();
 
     let connection = PgConnection::establish(&DATABASE_CONNECTION_STRING).expect(&format!(
@@ -48,7 +52,7 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
     migrate_with_ddl_gen_plugin(&index_name, &index_config.schema, &index_config.config); // Create tables for the new index
     track_hasura_with_ddl_gen_plugin(&index_name).await; // Track the newly created tables in hasura
     create_indexers_table_if_not_exists(&connection); // Create indexers table so we can keep track of the indexers status. TODO: Refactor as part of ddl gen plugin
-    insert_new_indexer(&connection, &index_name, &config);  // Create a new indexer so we can keep track of it's status
+    insert_new_indexer(&connection, &index_name, &config); // Create a new indexer so we can keep track of it's status
 
     // Chain Reader Client Configuration to subscribe and get latest block from Chain Reader Server
     chain_reader_client_start(&config, &index_config.mapping).await;
