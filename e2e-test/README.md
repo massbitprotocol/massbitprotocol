@@ -26,8 +26,7 @@ Detail testing plan: https://app.gitbook.com/@hughie/s/massbit/e2e-test-planning
 
 ## Prerequisites
 ```
-pip install robotframework-requests
-pip install robotframework-databaselibrary
+pip install robotframework robotframework-requests robotframework-databaselibrary psycopg2 rpaframework
 ```
 And make sure you have started all the services 
 
