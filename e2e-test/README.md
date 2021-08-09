@@ -2,19 +2,19 @@
 
 ## Testing plans
 Solana
-- block
-- transaction
-- log message
+- block (done)
+- transaction (done)
+- log message (done)
 
 Substrate
 - block (done)
-- extrinsic
-- event 
+- extrinsic (done)
+- event (done)
 
 Health check for all services
-- code-compiler
+- code-compiler (done)
 - chain-reader
-- index-manager
+- index-manager (done)
 - dashboard
 - hasura graphql-engine
 - hasura console
@@ -31,15 +31,15 @@ pip install robotframework-databaselibrary
 ```
 And make sure you have started all the services 
 
-## Run a Substrate test
+## Run a test
 ```
-robot --variable JSON_PAYLOAD:payload/[add_payload_file_here].json --variable TABLE_NAME:[add_table_name_here] substrate.robot
+robot [test-name].robot
 ```
 Example
 ```
-robot --variable JSON_PAYLOAD:payload/extrinsic.json --variable TABLE_NAME:substrate_extrinsic_test substrate.robot 
-robot --variable JSON_PAYLOAD:payload/block.json --variable TABLE_NAME:substrate_block_test substrate.robot 
-robot --variable JSON_PAYLOAD:payload/event.json --variable TABLE_NAME:substrate_event_test substrate.robot 
+robot substrate.robot 
+robot solana.robot 
+robot health-check.robot 
 ```
 
 ## Log
