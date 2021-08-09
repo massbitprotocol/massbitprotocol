@@ -9,5 +9,5 @@ pub mod config_builder;
 
 pub mod store;
 pub mod ipfs;
-pub mod chain_reader;
+//pub mod chain_reader;
 pub mod types;
