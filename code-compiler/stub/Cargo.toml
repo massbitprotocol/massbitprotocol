@@ -12,7 +12,7 @@ structmap-derive = "0.1.5"
 chrono = "0.4.19"
 uuid = { version = "0.8", features = ["serde", "v4"] }
 # Massbit dependencies
-plugin = { path = "../../../plugin/plugin" } #
+adapter = { path = "../../../plugin/adapter" }
 massbit-chain-substrate = { path = "../../../core/chain/substrate" }
 massbit-chain-solana = { path = "../../../core/chain/solana" }
 index-store = { path = "../../../core/index-store" }

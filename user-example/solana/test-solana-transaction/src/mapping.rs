@@ -1,18 +1,20 @@
-use crate::models::TransactionSolanaTs;
+use crate::models::Transaction;
 use massbit_chain_solana::data_type::{
     SolanaBlock,
     SolanaTransaction,
     SolanaLogMessages
 };
-
+use uuid::Uuid;
 pub fn handle_block(block: &SolanaBlock) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
 pub fn handle_transaction(transaction: &SolanaTransaction) -> Result<(), Box<dyn std::error::Error>> {
     println!("[SO File] Received Solana Transaction");
-
-    let transaction_solana_ts = TransactionSolanaTs {
+    // Create ID
+    let transaction_id = Uuid::new_v4().to_simple().to_string();
+    let transaction_solana_ts = Transaction {
+        id: transaction_id,
         block_number: transaction.block_number as i64,
         fee: transaction.transaction.meta.clone().unwrap().fee as i64,
         signature: format!("{:?}", transaction.transaction.transaction.signatures),
@@ -21,6 +23,3 @@ pub fn handle_transaction(transaction: &SolanaTransaction) -> Result<(), Box<dyn
     Ok(())
 }
 
-pub fn handle_log_messages(event: &SolanaLogMessages) -> Result<(), Box<dyn std::error::Error>> {
-    Ok(())
-}

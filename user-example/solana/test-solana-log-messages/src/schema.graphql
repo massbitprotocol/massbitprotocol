@@ -1,0 +1,6 @@
+type SolanaLogMessages @entity {
+    id: ID!
+    block_number: BigInt!
+    log_messages: String!
+    signature: String!
+}

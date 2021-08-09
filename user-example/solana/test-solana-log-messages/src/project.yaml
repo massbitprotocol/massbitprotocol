@@ -3,11 +3,10 @@ schema:
 
 dataSources:
   - kind: solana
-    name: Solana-Block
+    name: Solana-Log-Messages
     network: https://data-seed-prebsc-1-s1.binance.org:8545/
     mapping:
       language: rust
       handlers:
-        - handler: handleBlock
-          kind: solana/BlockHandler
-
+        - handler: handleLogMessages
+          kind: solana/LogMessagesHandler

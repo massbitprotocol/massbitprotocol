@@ -16,8 +16,9 @@ use crate::config_builder::{IndexConfigIpfsBuilder};
 use crate::hasura::{track_hasura_with_ddl_gen_plugin};
 use crate::store::{insert_new_indexer, migrate_with_ddl_gen_plugin, create_indexers_table_if_not_exists};
 use crate::ipfs::read_config_file;
-use crate::chain_reader::chain_reader_client_start;
+//use crate::chain_reader::chain_reader_client_start;
 use crate::config::{get_index_name, generate_random_hash};
+use adapter::core::AdapterManager;
 
 lazy_static! {
     static ref CHAIN_READER_URL: String =
@@ -51,7 +52,10 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
     insert_new_indexer(&connection, &index_name, &config);  // Create a new indexer so we can keep track of it's status
 
     // Chain Reader Client Configuration to subscribe and get latest block from Chain Reader Server
-    chain_reader_client_start(&config, &index_config.mapping).await;
+    //chain_reader_client_start(&config, &index_config.mapping).await;
+    log::info!("Load library from {:?}", &index_config.mapping);
+    let mut adapter = AdapterManager::new();
+    adapter.init(&index_name, &config, &index_config.mapping).await;
     Ok(())
 }
 

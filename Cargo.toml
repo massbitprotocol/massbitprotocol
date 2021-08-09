@@ -6,12 +6,7 @@ members = [
     "core/chain/solana",
     "core/chain/ethereum",
     "index-manager/main",
-    "plugin/plugin",
-    "user-example/solana/test-solana-block",
-    "user-example/solana/test-solana-transaction",
-    "user-example/solana/test-solana-log-messages",
-    "user-example/solana/five-tables",
-    "user-example/solana/index-serum",
+    "plugin/adapter",
     "plugin/test-plugin",
     "core/chain/solana",
     "cli"
