@@ -44,3 +44,5 @@ migrations/
 report.html
 output.xml
 log.html
+
+wasm/assemblyscript

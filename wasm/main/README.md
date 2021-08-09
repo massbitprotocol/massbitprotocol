@@ -6,3 +6,8 @@ cd massbitprotocol/wasm/main
 rustc src/main.rs --target wasm32-wasi
 wasmtime main.wasm
 ```
+
+Or use .wasm file from assemblyscript
+```shell
+wasmtime ../assembly-example/index.wasm
+```
