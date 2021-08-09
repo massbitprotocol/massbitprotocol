@@ -14,7 +14,7 @@ pub fn handle_transaction(transaction: &SolanaTransaction) -> Result<(), Box<dyn
 }
 
 pub fn handle_log_messages(log_messages: &SolanaLogMessages) -> Result<(), Box<dyn std::error::Error>> {
-    println!("[SO File] Received Solana Log Messages");
+    //println!("[SO File] Received Solana Log Messages");
     let id = Uuid::new_v4().to_simple().to_string();
     let log_messages_solana_ts = SolanaLogMessages {
         id,
