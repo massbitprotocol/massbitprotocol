@@ -31,8 +31,13 @@ pip install robotframework-databaselibrary
 ```
 And make sure you have started all the services 
 
-## Run a test
+## Run all test
+```shell
+make
 ```
+
+## Run a test
+```shell
 robot [test-name].robot
 ```
 Example
