@@ -1,6 +1,4 @@
 test-all:
-	@echo "Installing Robotframework prerequisites..."
-	pip install robotframework robotframework-requests robotframework-databaselibrary
 	@echo "Running substrate tests ..."
 	cd substrate && robot substrate.robot || true
 	@echo "Running solana tests ..."
