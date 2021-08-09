@@ -1,31 +1,27 @@
-## Assembly script Compiler
-
-Assembly script compiler isn't published in NPM, so we need to pull the compiler from the github repo
+## Create new AssemblyScript example
 ```shell
-git clone https://github.com/AssemblyScript/assemblyscript
-cd assemblyscript
+cd assembly-example
+npm install -g assemblyscript
+asinit hello-world
+cd hello-world
+npm install --save as-wasi
+npm run asbuild
 ```
-
-Build
-```shell
-assemblyscript/bin/asc assembly-example/assembly/index.ts --textFile > assembly-example/assembly/index.wat
-assemblyscript/bin/asc assembly-example/assembly/index.ts --binaryFile > assembly-example/assembly/index.wasm
-```
-
 
 ## Rust WASM Time
-
+Prerequisites
 ```shell
 rustup target add wasm32-wasi
-rustc main/src/main.rs --target wasm32-wasi
 ```
 
-Use .wasm file from assemblyscript
+Run .wasm file from assemblyscript-example with CLI
 ```shell
-wasmtime assembly-example/assembly/index.wasm
+wasmtime assembly-example/hello-world/build/optimized.wasm
+```
+Run .wasm file from assemblyscript-example with Rust code
+```shell
+cargo run --bin wasm-main
 ```
 
-Or use .wasm file from Rust
-```shell
-wasmtime main/main.wasm
-```
+## Reference
+https://github.com/bytecodealliance/wasmtime/tree/main/examples

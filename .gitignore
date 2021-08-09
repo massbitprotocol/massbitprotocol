@@ -46,3 +46,5 @@ output.xml
 log.html
 
 wasm/assemblyscript
+wasm/assembly-example/hello-world/node_modules
+wasm/assembly-example/hello-world/build
