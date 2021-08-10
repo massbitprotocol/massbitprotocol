@@ -5,6 +5,8 @@ Solana
 - block (done)
 - transaction (done)
 - log message (done)
+- index serum (done)
+- five tables (done)
 
 Substrate
 - block (done)
@@ -13,13 +15,13 @@ Substrate
 
 Health check for all services
 - code-compiler (done)
-- chain-reader
 - index-manager (done)
-- dashboard
-- hasura graphql-engine
-- hasura console
-- solana proxy
-- IPFS
+- dashboard (done)
+- hasura graphql-engine (done)
+- hasura console (done)
+- solana proxy (done)
+- IPFS (done)
+- chain-reader
 - Postgres DB
 
 Detail testing plan: https://app.gitbook.com/@hughie/s/massbit/e2e-test-planning
