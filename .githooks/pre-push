@@ -1,4 +1,4 @@
 #!/bin/sh
 # The E2E test need to pass before user can push to origin
 
-../../Makefile
+cd ../../e2e-test && make
