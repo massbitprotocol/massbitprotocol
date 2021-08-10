@@ -1,5 +1,6 @@
 *** Settings ***
 Library  RequestsLibrary
+Library  lib/request.py
 
 *** Variables ***
 ${CODE_COMPILER}  http://localhost:5000
@@ -15,7 +16,7 @@ Check code-compiler is up
     ${response}=  GET  ${CODE_COMPILER} 
 
 Check index-manager is up
-    ${response}=  GET  ${INDEX_MANAGER}
+    ${response}=  Post request with header  ${INDEX_MANAGER}
 
 Check ipfs is up
     ${response}=  GET  ${IPFS}/api/v0/swarm/peers
