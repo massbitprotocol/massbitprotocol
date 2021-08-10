@@ -8,7 +8,7 @@ import subprocess
 import threading
 import ipfshttpclient
 import requests
-import re
+import yaml
 from distutils.dir_util import copy_tree
 
 ################
@@ -125,24 +125,28 @@ def compile_handler():
     os.mkdir(generated_folder + "/src")
 
     # URL-decode the data
-    mapping = urllib.parse.unquote_plus(data["mapping.rs"])
     project = urllib.parse.unquote_plus(data["project.yaml"])
     schema = urllib.parse.unquote_plus(data["schema.graphql"])
-
-    # Populating stub data
-    populate_stub(generated_folder, "Cargo.lock")
-    populate_stub(generated_folder, "Cargo.toml")
-    copy_tree("stub/target", generated_folder + "/target")
-
-    # Save the formatted data from request to disk, ready for compiling
-    write_to_disk(generated_folder + "/src/mapping.rs", mapping)
-    write_to_disk(generated_folder + "/src/project.yaml", project)
-    write_to_disk(generated_folder + "/src/schema.graphql", schema)
-
-    # Codegen + Build
-    print("Generating code + compiling for: " + hash + ". This will take a while!")
-    cargo_gen_and_build = CargoGenAndBuild(generated_folder)
-    cargo_gen_and_build.start()
+    project_config = yaml.safe_load(urllib.parse.unquote_plus(data["project.yaml"]))
+    if project_config['dataSources'][0]['mapping']['language'] == 'rust':
+        mapping = urllib.parse.unquote_plus(data["mapping.rs"])
+        # Populating stub data
+        populate_stub(generated_folder, "Cargo.lock")
+        populate_stub(generated_folder, "Cargo.toml")
+        copy_tree("stub/target", generated_folder + "/target")
+        # Save the formatted data from request to disk, ready for compiling
+        write_to_disk(generated_folder + "/src/mapping.rs", mapping)
+        write_to_disk(generated_folder + "/src/project.yaml", project)
+        write_to_disk(generated_folder + "/src/schema.graphql", schema)
+        # Codegen + Build
+        print("Generating code + compiling for: " + hash + ". This will take a while!")
+        cargo_gen_and_build = CargoGenAndBuild(generated_folder)
+        cargo_gen_and_build.start()
+    elif project_config['dataSources'][0]['mapping']['language'] == 'wasm':
+        mapping = urllib.parse.unquote_plus(data["mapping.ts"])
+        # TODO Add Assembly script compiler here
+    else:
+        raise Exception('Mapping language is not supported')
 
     return {
                "status": "success",
