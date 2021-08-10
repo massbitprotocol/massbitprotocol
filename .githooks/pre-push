@@ -1,4 +1,6 @@
 #!/bin/sh
 # The E2E test need to pass before user can push to origin
 
-$HOME/miniconda3/bin/robot  --variable JSON_PAYLOAD:e2e-test/substrate/payload/extrinsic.json --variable TABLE_NAME:substrate_extrinsic_test e2e-test/substrate/substrate.robot
+$HOME/miniconda3/bin/robot e2e-test/substrate/substrate.robot
+$HOME/miniconda3/bin/robot e2e-test/solana/solana.robot
+$HOME/miniconda3/bin/robot e2e-test/health-check/health-check.robot || true
