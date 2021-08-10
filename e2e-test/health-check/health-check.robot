@@ -3,7 +3,7 @@ Library  RequestsLibrary
 
 *** Variables ***
 ${CODE_COMPILER}  http://localhost:5000
-${INDEX_MANAGER}  http://localhost:3000
+${INDEX_MANAGER}  http://localhost:3030
 ${IPFS}  http://localhost:5001
 ${SOLANA_PROXY}  https://mainnet-beta-solana.massbit.io
 ${HASURA_ENGINE}  http://localhost:8080
