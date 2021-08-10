@@ -1,13 +1,12 @@
+use lazy_static::lazy_static;
+use std::fs::File;
+use std::io::Read;
+use std::{env, fs};
 /**
 *** Objective of this file is to call to IPFS and get the index's information
 **/
-
 // Generic dependencies
 use tokio_compat_02::FutureExt;
-use lazy_static::lazy_static;
-use std::{env, fs};
-use std::fs::File;
-use std::io::Read;
 
 // Massbit dependencies
 use ipfs_client::core::create_ipfs_clients;
@@ -107,9 +106,7 @@ pub async fn get_config_ipfs(hash: &String) -> String {
 
     match res {
         Ok(_) => {
-            log::info!(
-                "[Index Manager IPFS] Write project.yaml to storage successfully"
-            );
+            log::info!("[Index Manager IPFS] Write project.yaml to storage successfully");
             file_name
         }
         Err(err) => {

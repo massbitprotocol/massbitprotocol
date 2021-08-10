@@ -1,15 +1,14 @@
+use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
 /**
 *** Objective of this file is to parse the config project.yaml file to get
 *** information like: chain type, index name, ...
 **/
-
 // Generic dependencies
 use serde_yaml::Value;
 use std::iter;
-use rand::{Rng, thread_rng};
-use rand::distributions::Alphanumeric;
 // Massbit dependencies
-use crate::types::stream_mod::{ChainType};
+use crate::types::stream_mod::ChainType;
 
 pub fn get_chain_type(config: &Value) -> ChainType {
     let chain_type = match config["dataSources"][0]["kind"].as_str().unwrap() {

@@ -1,6 +1,6 @@
 use anyhow::Error;
 use bytes::Bytes;
-use futures03::{Stream};
+use futures03::Stream;
 use http::header::CONTENT_LENGTH;
 use http::Uri;
 use reqwest::multipart;

@@ -8,7 +8,6 @@ members = [
     "index-manager/main",
     "plugin/adapter",
     "plugin/test-plugin",
-    "core/chain/solana",
     "cli"
 ]
 exclude = ["code-compiler/generated"]

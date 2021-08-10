@@ -1,6 +1,6 @@
-use node_template_runtime::{Block, Header, Hash, DigestItem};
-use std::str::FromStr;
+use node_template_runtime::{Block, DigestItem, Hash, Header};
 use sp_runtime::Digest;
+use std::str::FromStr;
 
 // Massbit Dependencies
 use massbit_chain_substrate::data_type::SubstrateBlock;

@@ -1,10 +1,9 @@
-
 use web3::{
     futures::{future, StreamExt},
     types::{
-        Address, Block, BlockId, BlockNumber as Web3BlockNumber, Bytes, CallRequest,
-        Filter, FilterBuilder, Log, Transaction, TransactionReceipt, H256,
-    }
+        Address, Block, BlockId, BlockNumber as Web3BlockNumber, Bytes, CallRequest, Filter,
+        FilterBuilder, Log, Transaction, TransactionReceipt, H256,
+    },
 };
 
 use std::error::Error;
@@ -31,10 +30,11 @@ async fn main() -> web3::Result<()> {
             .await;
 
         for header in headers {
-            let block = web3.eth()
-                .block_with_txs(BlockId::Hash(header.unwrap().hash.unwrap())).await;
-            println!("Block: {:?}",block);
+            let block = web3
+                .eth()
+                .block_with_txs(BlockId::Hash(header.unwrap().hash.unwrap()))
+                .await;
+            println!("Block: {:?}", block);
         }
     }
-
 }
