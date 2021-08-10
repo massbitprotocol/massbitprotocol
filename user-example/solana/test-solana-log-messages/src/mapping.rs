@@ -1,4 +1,4 @@
-use crate::models::SolanaLogMessages;
+use crate::models::*;
 use massbit_chain_solana::data_type::{
     SolanaBlock,
     SolanaTransaction,
@@ -16,7 +16,7 @@ pub fn handle_transaction(transaction: &SolanaTransaction) -> Result<(), Box<dyn
 pub fn handle_log_messages(log_messages: &SolanaLogMessages) -> Result<(), Box<dyn std::error::Error>> {
     //println!("[SO File] Received Solana Log Messages");
     let id = Uuid::new_v4().to_simple().to_string();
-    let log_messages_solana_ts = SolanaLogMessages {
+    let log_messages_solana_ts = SolanaLogMessagesTs {
         id,
         block_number: log_messages.block_number as i64,
         log_messages: format!("{:?}", log_messages.log_messages),

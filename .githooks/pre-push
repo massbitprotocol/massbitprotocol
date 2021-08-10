@@ -1,0 +1,3 @@
+#!/bin/sh
+# The E2E tests need to pass before developers can push to origin
+make test-run-all

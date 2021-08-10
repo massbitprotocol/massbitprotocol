@@ -1,9 +1,10 @@
-use crate::models::Block;
+use crate::models::*;
 use massbit_chain_solana::data_type::{
     SolanaBlock,
     SolanaTransaction,
     SolanaLogMessages
 };
+use uuid::Uuid;
 
 pub fn handle_block(block: &SolanaBlock) -> Result<(), Box<dyn std::error::Error>> {
     //println!("[SO File] Received Solana Block");

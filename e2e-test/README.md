@@ -1,10 +1,12 @@
 # E2E Test for Substrate and Solana template
 
-## Testing plans
+## Testing coverage
 Solana
 - block (done)
 - transaction (done)
 - log message (done)
+- index serum (done)
+- five tables (done)
 
 Substrate
 - block (done)
@@ -13,26 +15,30 @@ Substrate
 
 Health check for all services
 - code-compiler (done)
-- chain-reader
 - index-manager (done)
-- dashboard
-- hasura graphql-engine
-- hasura console
-- solana proxy
-- IPFS
+- dashboard (done)
+- hasura graphql-engine (done)
+- hasura console (done)
+- solana proxy (done)
+- IPFS (done)
+- chain-reader
 - Postgres DB
 
 Detail testing plan: https://app.gitbook.com/@hughie/s/massbit/e2e-test-planning
 
 ## Prerequisites
+```shell
+cd [to_project_root]
+make test-init
+make create-git-hook
 ```
-pip install robotframework robotframework-requests robotframework-databaselibrary psycopg2 rpaframework
-```
-And make sure you have started all the services 
+- Make sure you have started all the services 
+- If you don't want tests to run in every git push, you can run `make remove-all-git-hook`
 
 ## Run all test
 ```shell
-make
+cd [to_project_root]
+make test-run-all
 ```
 
 ## Run a test

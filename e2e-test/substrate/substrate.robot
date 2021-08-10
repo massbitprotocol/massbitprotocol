@@ -15,11 +15,12 @@ ${INDEX_MANAGER}  http://localhost:3000
 ########################
 # Test-substrate-block #
 ########################
-Deploy substrate example test-block, then check if data exists in DB
+Deploy test-block, then check if data was inserted into DB
     # Configuration
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
     # Remove table if exists
+    Delete Table If Exists  __diesel_schema_migrations
     Delete Table If Exists  substrate_block
 
     # Compile request
@@ -42,19 +43,23 @@ Deploy substrate example test-block, then check if data exists in DB
     ...  ${CODE_COMPILER}/deploy
     ...  ${json}
     Should be equal  ${deploy_res["status"]}  success
-    sleep  20 seconds  # Wait for indexing
 
     # Check that there is a table with data in it
-    Check If Exists In Database  SELECT * FROM substrate_block FETCH FIRST ROW ONLY
+    Wait Until Keyword Succeeds
+    ...  10x
+    ...  5 sec
+    ...  Pooling Database Data
+    ...  SELECT * FROM substrate_block FETCH FIRST ROW ONLY
 
 ########################
 # Test-substrate-event #
 ########################
-Deploy substrate example test-event, then check if data exists in DB
+Deploy test-event, then check if data was inserted into DB
     # Configuration
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
     # Remove table if exists
+    Delete Table If Exists  __diesel_schema_migrations
     Delete Table If Exists  substrate_event
 
     # Compile request
@@ -77,19 +82,23 @@ Deploy substrate example test-event, then check if data exists in DB
     ...  ${CODE_COMPILER}/deploy
     ...  ${json}
     Should be equal  ${deploy_res["status"]}  success
-    sleep  20 seconds  # Wait for indexing
 
     # Check that there is a table with data in it
-    Check If Exists In Database  SELECT * FROM substrate_event FETCH FIRST ROW ONLY
+    Wait Until Keyword Succeeds
+    ...  10x
+    ...  5 sec
+    ...  Pooling Database Data
+    ...  SELECT * FROM substrate_event FETCH FIRST ROW ONLY
 
 ############################
 # Test-substrate-extrinsic #
 ############################
-Deploy substrate example test-extrinsic, then check if data exists in DB
+Deploy test-extrinsic, then check if data was inserted into DB
     # Configuration
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
     # Remove table if exists
+    Delete Table If Exists  __diesel_schema_migrations
     Delete Table If Exists  substrate_extrinsic
 
     # Compile request
@@ -112,10 +121,13 @@ Deploy substrate example test-extrinsic, then check if data exists in DB
     ...  ${CODE_COMPILER}/deploy
     ...  ${json}
     Should be equal  ${deploy_res["status"]}  success
-    sleep  20 seconds  # Wait for indexing
 
     # Check that there is a table with data in it
-    Check If Exists In Database  SELECT * FROM substrate_extrinsic FETCH FIRST ROW ONLY
+    Wait Until Keyword Succeeds
+    ...  10x
+    ...  5 sec
+    ...  Pooling Database Data
+    ...  SELECT * FROM substrate_extrinsic FETCH FIRST ROW ONLY
 
 ###################
 # Helper Function #
@@ -125,3 +137,7 @@ Pooling Status
     [Arguments]  ${payload}
     ${status_res} =    GET  ${CODE_COMPILER}/compile/status/${payload}  expected_status=200
     Should be equal   ${status_res.json()}[status]  success
+
+Pooling Database Data
+    [Arguments]  ${query}
+    Check If Exists In Database  ${query}

@@ -1,4 +1,4 @@
-type SolanaLogMessages @entity {
+type SolanaLogMessagesTs @entity {
     id: ID!
     block_number: BigInt!
     log_messages: String!
