@@ -1,6 +1,6 @@
 # E2E Test for Substrate and Solana template
 
-## Testing plans
+## Testing coverage
 Solana
 - block (done)
 - transaction (done)
@@ -27,13 +27,17 @@ Health check for all services
 Detail testing plan: https://app.gitbook.com/@hughie/s/massbit/e2e-test-planning
 
 ## Prerequisites
-```
+```shell
+cd [to_project_root]
 make test-init
+make create-git-hook
 ```
-And make sure you have started all the services 
+- Make sure you have started all the services 
+- If you don't want tests to run in every git push, you can run `make remove-all-git-hook`
 
 ## Run all test
 ```shell
+cd [to_project_root]
 make test-run-all
 ```
 
