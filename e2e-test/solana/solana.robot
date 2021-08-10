@@ -118,6 +118,92 @@ Deploy solana example test-solana-log-messages, then check if data exists in DB
     # Check that there is a table with data in it
     Check If Exists In Database  SELECT * FROM solana_log_messages FETCH FIRST ROW ONLY
 
+
+###########################
+# Test-solana-five-tables #
+###########################
+Deploy solana example test-solana-five-tables, then check if data exists in DB
+    # Configuration
+    Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
+
+    # Remove table if exists
+    Delete Table If Exists  transaction_instruction
+    Delete Table If Exists  transaction-account
+    Delete Table If Exists  instruction_detail
+    Delete Table If Exists  transaction
+    Delete Table If Exists  block
+
+    # Compile request
+    ${object} =  Read Index Example  ../../user-example/solana/five-tables/src
+    ${compile_res}=  Request.Post Request
+    ...  ${CODE_COMPILER}/compile
+    ...  ${object}
+    Should be equal  ${compile_res["status"]}  success
+
+    # Compile status
+    Wait Until Keyword Succeeds
+    ...  60x
+    ...  10 sec
+    ...  Pooling Status
+    ...  ${compile_res["payload"]}
+
+    # Deploy
+    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}"}
+    ${deploy_res}=  Request.Post Request
+    ...  ${CODE_COMPILER}/deploy
+    ...  ${json}
+    Should be equal  ${deploy_res["status"]}  success
+    sleep  20 seconds  # Wait for indexing
+
+    # Check that there is a table with data in it
+    Check If Exists In Database  SELECT * FROM transaction_instruction FETCH FIRST ROW ONLY
+    Check If Exists In Database  SELECT * FROM transaction_account FETCH FIRST ROW ONLY
+    Check If Exists In Database  SELECT * FROM instruction_detail FETCH FIRST ROW ONLY
+    Check If Exists In Database  SELECT * FROM transaction FETCH FIRST ROW ONLY
+    Check If Exists In Database  SELECT * FROM block FETCH FIRST ROW ONLY
+
+
+############################
+# Test-solana-index-serum #
+############################
+Deploy solana example test-solana-index-serum, then check if data exists in DB
+    # Configuration
+    Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
+
+    # Remove table if exists
+    Delete Table If Exists  serum_instruction_detail
+    Delete Table If Exists  serum_transaction_instruction
+    Delete Table If Exists  serum_transaction_account
+    Delete Table If Exists  serum_transaction
+    Delete Table If Exists  serum_block
+
+    # Compile request
+    ${object} =  Read Index Example  ../../user-example/solana/index-serum/src
+    ${compile_res}=  Request.Post Request
+    ...  ${CODE_COMPILER}/compile
+    ...  ${object}
+    Should be equal  ${compile_res["status"]}  success
+
+    # Compile status
+    Wait Until Keyword Succeeds
+    ...  60x
+    ...  10 sec
+    ...  Pooling Status
+    ...  ${compile_res["payload"]}
+
+    # Deploy
+    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}"}
+    ${deploy_res}=  Request.Post Request
+    ...  ${CODE_COMPILER}/deploy
+    ...  ${json}
+    Should be equal  ${deploy_res["status"]}  success
+    sleep  20 seconds  # Wait for indexing
+
+    # Check that there is a table with data in it
+    Check If Exists In Database  SELECT * FROM serum_transaction FETCH FIRST ROW ONLY
+    Check If Exists In Database  SELECT * FROM serum_transaction_account FETCH FIRST ROW ONLY
+
+
 ###################
 # Helper Function #
 ###################
