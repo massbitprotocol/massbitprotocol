@@ -1,5 +1,6 @@
 use crate::substrate_chain;
 use crate::solana_chain;
+use crate::ethereum_chain;
 use tonic::{transport::Server};
 use crate::{grpc_stream::stream_mod::{streamout_server::StreamoutServer, ChainType}, CONFIG};
 use crate::grpc_stream::{StreamService};
@@ -19,17 +20,11 @@ pub struct ChainConfig{
     pub ws: String,
 }
 
-
-
-
-
 pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>>{
     // Broadcast Channel
-    //let (chan, _) = broadcast::channel(1024);
     let mut chans = HashMap::new();
 
     // Spawm thread get_data
-
     for chain_type in CONFIG.chains.keys(){
         let (chan, _) = broadcast::channel(1024);
         // Clone broadcast channel
@@ -59,9 +54,12 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
                 chans.insert(ChainType::Solana,chan);
             },
             ChainType::Ethereum => {
-                continue;
-            },
-
+                // Spawn task
+                tokio::spawn(async move {
+                    ethereum_chain::loop_get_block(chan_sender).await;
+                });
+                // add chan to chans
+                chans.insert(ChainType::Ethereum,chan);            },
         }
     }
 

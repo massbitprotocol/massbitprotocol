@@ -12,82 +12,18 @@ ${CODE_COMPILER}  http://localhost:5000
 ${INDEX_MANAGER}  http://localhost:3000
 
 *** Test Cases ***
-<<<<<<< HEAD
-######################
-# Prerequisite tests #est
-######################
-Check code-compiler is up
-    ${response}=  GET  ${CODE_COMPILER} 
-
-Check index-manager is up
-    ${response}=  GET  ${INDEX_MANAGER} 
-
-##############
-# Main tests #
-##############
-#Compile extrinsic & check if it's running
-#    # Compile request
-#    ${object} =  Load JSON  ${JSON_PAYLOAD}
-#    ${compile_res}=  Request.Post Request
-#    ...  ${CODE_COMPILER}/compile
-#    ...  ${object}
-#    Should be equal  ${compile_res["status"]}  success
-#
-#    # Compile status
-#    ${status_res}=  GET
-#    ...  ${CODE_COMPILER}/compile/status/${compile_res["payload"]}
-#    ...  expected_status=200
-#    # Need an API to cancel the request so we can clean up the running compilation progress
-#    Should be equal  ${status_res.json()}[status]  in-progress
-=======
-########################
-# Test-substrate-block #
-########################
-Deploy substrate example test-block, then check if data exists in DB
+#####################
+# Test-solana-block #
+#####################
+Deploy solana example test-solana-block, then check if data exists in DB
     # Configuration
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
     # Remove table if exists
-    Delete Table If Exists  substrate_block
+    Delete Table If Exists  block
 
     # Compile request
-    ${object} =  Read Index Example  ../../user-example/substrate/test-block/src
-    ${compile_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/compile
-    ...  ${object}
-    Should be equal  ${compile_res["status"]}  success
-
-    # Compile status
-    Wait Until Keyword Succeeds
-    ...  60x
-    ...  10 sec
-    ...  Pooling Status
-    ...  ${compile_res["payload"]}
-
-    # Deploy
-    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}"}
-    ${deploy_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/deploy
-    ...  ${json}
-    Should be equal  ${deploy_res["status"]}  success
-    sleep  20 seconds  # Wait for indexing
->>>>>>> main
-
-    # Check that there is a table with data in it
-    Check If Exists In Database  SELECT * FROM substrate_block FETCH FIRST ROW ONLY
-
-########################
-# Test-substrate-event #
-########################
-Deploy substrate example test-event, then check if data exists in DB
-    # Configuration
-    Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
-
-    # Remove table if exists
-    Delete Table If Exists  substrate_event
-
-    # Compile request
-    ${object} =  Read Index Example  ../../user-example/substrate/test-event/src
+    ${object} =  Read Index Example  ../../user-example/solana/test-solana-block/src
     ${compile_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/compile
     ...  ${object}
@@ -109,20 +45,56 @@ Deploy substrate example test-event, then check if data exists in DB
     sleep  20 seconds  # Wait for indexing
 
     # Check that there is a table with data in it
-    Check If Exists In Database  SELECT * FROM substrate_event FETCH FIRST ROW ONLY
+    Check If Exists In Database  SELECT * FROM block FETCH FIRST ROW ONLY
+
+###########################
+# Test-solana-transaction #
+###########################
+Deploy solana example test-solana-transaction, then check if data exists in DB
+    # Configuration
+    Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
+
+    # Remove table if exists
+    Delete Table If Exists  transaction
+
+    # Compile request
+    ${object} =  Read Index Example  ../../user-example/solana/test-solana-transaction/src
+    ${compile_res}=  Request.Post Request
+    ...  ${CODE_COMPILER}/compile
+    ...  ${object}
+    Should be equal  ${compile_res["status"]}  success
+
+    # Compile status
+    Wait Until Keyword Succeeds
+    ...  60x
+    ...  10 sec
+    ...  Pooling Status
+    ...  ${compile_res["payload"]}
+
+    # Deploy
+    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}"}
+    ${deploy_res}=  Request.Post Request
+    ...  ${CODE_COMPILER}/deploy
+    ...  ${json}
+    Should be equal  ${deploy_res["status"]}  success
+    sleep  20 seconds  # Wait for indexing
+
+    # Check that there is a table with data in it
+    Check If Exists In Database  SELECT * FROM transaction FETCH FIRST ROW ONLY
+
 
 ############################
-# Test-substrate-extrinsic #
+# Test-solana-log-messages #
 ############################
-Deploy substrate example test-extrinsic, then check if data exists in DB
+Deploy solana example test-solana-log-messages, then check if data exists in DB
     # Configuration
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
     # Remove table if exists
-    Delete Table If Exists  substrate_extrinsic
+    Delete Table If Exists  solana_log_messages
 
     # Compile request
-    ${object} =  Read Index Example  ../../user-example/substrate/test-extrinsic/src
+    ${object} =  Read Index Example  ../../user-example/solana/test-solana-log-messages/src
     ${compile_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/compile
     ...  ${object}
@@ -144,7 +116,7 @@ Deploy substrate example test-extrinsic, then check if data exists in DB
     sleep  20 seconds  # Wait for indexing
 
     # Check that there is a table with data in it
-    Check If Exists In Database  SELECT * FROM substrate_extrinsic FETCH FIRST ROW ONLY
+    Check If Exists In Database  SELECT * FROM solana_log_messages FETCH FIRST ROW ONLY
 
 ###################
 # Helper Function #

@@ -1,0 +1,6 @@
+type Transaction @entity {
+    id: ID!
+    signature: String!
+    fee: BigInt!
+    block_number: BigInt!
+}

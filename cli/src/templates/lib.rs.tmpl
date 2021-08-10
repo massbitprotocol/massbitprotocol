@@ -1,9 +1,11 @@
 mod mapping;
 mod models;
 
-use massbit_chain_substrate::data_type as substrate_types;
-use massbit_chain_solana::data_type as solana_types;
-use plugin::core::{self, PluginRegistrar};
+{%- for chain_type in chain_types %}
+use massbit_chain_{{ chain_type }}::data_type as {{ chain_type }}_types;
+use adapter::{{ chain_type }}::*;
+{%- endfor %}
+use adapter::core::PluginRegistrar;
 use index_store::core::Store;
 use std::error::Error;
 
@@ -11,78 +13,47 @@ use std::error::Error;
 #[no_mangle]
 pub static mut STORE: Option<&mut dyn Store> = None;
 
-plugin::export_plugin!(register);
+adapter::export_plugin!(register);
 
 #[allow(dead_code, improper_ctypes_definitions)]
 extern "C" fn register(registrar: &mut dyn PluginRegistrar) {
-    {%- for handler in handlers %}
-    {%- if handler.kind == "substrate/BlockHandler" %}
-    registrar.register_substrate_block_handler(Box::new(SubstrateBlockHandler));
-    {%- elif handler.kind == "substrate/ExtrinsicHandler" %}
-    registrar.register_substrate_extrinsic_handler(Box::new(SubstrateExtrinsicHandler));
-    {%- elif handler.kind == "substrate/EventHandler" %}
-    registrar.register_substrate_event_handler(Box::new(SubstrateEventHandler));
-    {%- elif handler.kind == "solana/BlockHandler" %}
-    registrar.register_solana_block_handler(Box::new(SolanaBlockHandler));
-    {%- elif handler.kind == "solana/TransactionHandler" %}
-    registrar.register_solana_transaction_handler(Box::new(SolanaTransactionHandler));
-    {%- endif -%}
+    {%- for chain_type in chain_types %}
+    registrar.register_{{ chain_type }}_handler(Box::new({{ chain_type|title }}HandlerAdapter));
     {%- endfor %}
 }
-{% for handler in handlers -%}
-{%- if handler.kind == "substrate/BlockHandler" %}
-#[derive(Debug, Clone, PartialEq)]
-pub struct SubstrateBlockHandler;
 
-impl core::SubstrateBlockHandler for SubstrateBlockHandler {
+{%- for chain_type in chain_types %}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct {{ chain_type|title }}HandlerAdapter;
+
+impl {{ chain_type|title }}Handler for {{ chain_type|title }}HandlerAdapter {
+{%- for handler in handlers -%}
+{%- if handler.kind == "substrate/BlockHandler" and chain_type == "substrate" %}
     fn handle_block(&self, block: &substrate_types::SubstrateBlock) -> Result<(), Box<dyn Error>> {
         mapping::{{ handler.name }}(block)
     }
-}
-{% elif handler.kind == "substrate/ExtrinsicHandler" %}
-#[derive(Debug, Clone, PartialEq)]
-pub struct SubstrateExtrinsicHandler;
-
-impl core::SubstrateExtrinsicHandler for SubstrateExtrinsicHandler {
+{% elif handler.kind == "substrate/ExtrinsicHandler" and chain_type == "substrate" %}
     fn handle_extrinsic(&self, extrinsic: &substrate_types::SubstrateUncheckedExtrinsic) -> Result<(), Box<dyn Error>> {
         mapping::{{ handler.name }}(extrinsic)
     }
-}
-{% elif handler.kind == "substrate/EventHandler" %}
-#[derive(Debug, Clone, PartialEq)]
-pub struct SubstrateEventHandler;
-
-impl core::SubstrateEventHandler for SubstrateEventHandler {
+{% elif handler.kind == "substrate/EventHandler" and chain_type == "substrate" %}
     fn handle_event(&self, event: &substrate_types::SubstrateEventRecord) -> Result<(), Box<dyn Error>> {
         mapping::{{ handler.name }}(event)
     }
-}
-{% elif handler.kind == "solana/BlockHandler" %}
-#[derive(Debug, Clone, PartialEq)]
-pub struct SolanaBlockHandler;
-
-impl core::SolanaBlockHandler for SolanaBlockHandler {
+{% elif handler.kind == "solana/BlockHandler" and chain_type == "solana" %}
     fn handle_block(&self, block: &solana_types::SolanaBlock) -> Result<(), Box<dyn Error>> {
         mapping::{{ handler.name }}(block)
     }
-}
-{% elif handler.kind == "solana/TransactionHandler" %}
-#[derive(Debug, Clone, PartialEq)]
-pub struct SolanaTransactionHandler;
-
-impl core::SolanaTransactionHandler for SolanaTransactionHandler {
+{% elif handler.kind == "solana/TransactionHandler" and chain_type == "solana" %}
     fn handle_transaction(&self, transaction: &solana_types::SolanaTransaction) -> Result<(), Box<dyn Error>> {
         mapping::{{ handler.name }}(transaction)
     }
-}
-{% elif handler.kind == "solana/LogMessagesHandler" %}
-#[derive(Debug, Clone, PartialEq)]
-pub struct SolanaLogMessagesHandler;
-
-impl core::SolanaLogMessagesHandler for SolanaLogMessagesHandler {
+{% elif handler.kind == "solana/LogMessagesHandler" and chain_type == "solana" %}
     fn handle_log_messages(&self, log_messages: &solana_types::SolanaLogMessages) -> Result<(), Box<dyn Error>> {
         mapping::{{ handler.name }}(log_messages)
     }
-}
 {%- endif -%}
+{% endfor %}
+}
 {%- endfor -%}
