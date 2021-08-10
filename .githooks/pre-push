@@ -1,4 +1,3 @@
 #!/bin/sh
-# The E2E test need to pass before user can push to origin
-
-cd e2e-test && make
+# The E2E tests need to pass before developers can push to origin
+make test-run-all
