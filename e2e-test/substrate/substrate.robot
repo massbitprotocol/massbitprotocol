@@ -12,38 +12,10 @@ ${CODE_COMPILER}  http://localhost:5000
 ${INDEX_MANAGER}  http://localhost:3000
 
 *** Test Cases ***
-<<<<<<< HEAD
-######################
-# Prerequisite tests #est
-######################
-Check code-compiler is up
-    ${response}=  GET  ${CODE_COMPILER} 
-
-Check index-manager is up
-    ${response}=  GET  ${INDEX_MANAGER} 
-
-##############
-# Main tests #
-##############
-#Compile extrinsic & check if it's running
-#    # Compile request
-#    ${object} =  Load JSON  ${JSON_PAYLOAD}
-#    ${compile_res}=  Request.Post Request
-#    ...  ${CODE_COMPILER}/compile
-#    ...  ${object}
-#    Should be equal  ${compile_res["status"]}  success
-#
-#    # Compile status
-#    ${status_res}=  GET
-#    ...  ${CODE_COMPILER}/compile/status/${compile_res["payload"]}
-#    ...  expected_status=200
-#    # Need an API to cancel the request so we can clean up the running compilation progress
-#    Should be equal  ${status_res.json()}[status]  in-progress
-=======
 ########################
 # Test-substrate-block #
 ########################
-Deploy substrate example test-block, then check if data exists in DB
+Deploy substrate test-block, then check if data exists in DB
     # Configuration
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
@@ -71,7 +43,6 @@ Deploy substrate example test-block, then check if data exists in DB
     ...  ${json}
     Should be equal  ${deploy_res["status"]}  success
     sleep  20 seconds  # Wait for indexing
->>>>>>> main
 
     # Check that there is a table with data in it
     Check If Exists In Database  SELECT * FROM substrate_block FETCH FIRST ROW ONLY
@@ -79,7 +50,7 @@ Deploy substrate example test-block, then check if data exists in DB
 ########################
 # Test-substrate-event #
 ########################
-Deploy substrate example test-event, then check if data exists in DB
+Deploy substrate test-event, then check if data exists in DB
     # Configuration
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
@@ -114,7 +85,7 @@ Deploy substrate example test-event, then check if data exists in DB
 ############################
 # Test-substrate-extrinsic #
 ############################
-Deploy substrate example test-extrinsic, then check if data exists in DB
+Deploy substrate test-extrinsic, then check if data exists in DB
     # Configuration
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
