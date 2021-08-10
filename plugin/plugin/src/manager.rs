@@ -1,7 +1,7 @@
 use crate::core::{
     PluginDeclaration, PluginRegistrar as PluginRegistrarTrait, SolanaBlockHandler,
-    SolanaLogMessagesHandler, SolanaTransactionHandler, SubstrateBlockHandler, SubstrateEventHandler,
-    SubstrateExtrinsicHandler,
+    SolanaLogMessagesHandler, SolanaTransactionHandler, SubstrateBlockHandler,
+    SubstrateEventHandler, SubstrateExtrinsicHandler,
 };
 use index_store::core::Store;
 use libloading::Library;
@@ -250,7 +250,10 @@ pub struct SubstrateExtrinsicHandlerProxy {
 }
 
 impl SubstrateExtrinsicHandler for SubstrateExtrinsicHandlerProxy {
-    fn handle_extrinsic(&self, extrinsic: &SubstrateUncheckedExtrinsic) -> Result<(), Box<dyn Error>> {
+    fn handle_extrinsic(
+        &self,
+        extrinsic: &SubstrateUncheckedExtrinsic,
+    ) -> Result<(), Box<dyn Error>> {
         self.handler.handle_extrinsic(extrinsic)
     }
 }

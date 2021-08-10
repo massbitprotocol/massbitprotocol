@@ -1,14 +1,14 @@
-use std::error::Error;
-use serde_json;
-use serde::{Deserialize, Serialize};
 use log::{info, warn};
+use serde::{Deserialize, Serialize};
+use serde_json;
+use std::error::Error;
 
 use web3::{
     futures::{future, StreamExt},
     types::{
-        Address, Block, BlockId, BlockNumber as Web3BlockNumber, Bytes, CallRequest,
-        Filter, FilterBuilder, Log, Transaction, TransactionReceipt, H256,
-    }
+        Address, Block, BlockId, BlockNumber as Web3BlockNumber, Bytes, CallRequest, Filter,
+        FilterBuilder, Log, Transaction, TransactionReceipt, H256,
+    },
 };
 
 //***************** Ethereum data type *****************
@@ -30,10 +30,7 @@ pub struct ExtBlock {
     pub receipts: Vec<TransactionReceipt>,
 }
 
-
-pub fn decode(payload: &mut Vec<u8>) -> Result<EthereumBlock, Box<dyn Error>>
-{
+pub fn decode(payload: &mut Vec<u8>) -> Result<EthereumBlock, Box<dyn Error>> {
     let decode_block: EthereumBlock = serde_json::from_slice(&payload).unwrap();
     Ok(decode_block)
 }
-

@@ -82,7 +82,9 @@ where
     Ok(Decode::decode(&mut payload.as_slice()).unwrap())
 }
 
-pub fn decode_transactions(payload: &mut  Vec<u8>) -> Result<Vec<SubstrateUncheckedExtrinsic>, Box<dyn Error>>{
+pub fn decode_transactions(
+    payload: &mut Vec<u8>,
+) -> Result<Vec<SubstrateUncheckedExtrinsic>, Box<dyn Error>> {
     let transactions: Vec<Vec<u8>> = Decode::decode(&mut payload.as_slice()).unwrap();
     println!("transactions: {:?}", transactions);
 

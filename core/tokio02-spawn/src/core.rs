@@ -1,6 +1,6 @@
 use futures::channel::{mpsc, oneshot};
-use futures::{SinkExt, Future, TryFutureExt};
 use futures::future::FutureExt;
+use futures::{Future, SinkExt, TryFutureExt};
 use std::fmt::Debug;
 use std::panic::AssertUnwindSafe;
 
@@ -10,9 +10,9 @@ pub async fn tokio02_spawn<I: Send + 'static, ER: Send + 'static>(
     mut task_sink: mpsc::Sender<Box<dyn std::future::Future<Output = ()> + Send + Unpin>>,
     future: impl std::future::Future<Output = Result<I, ER>> + Send + Unpin + 'static,
 ) -> Result<I, ER>
-    where
-        I: Debug,
-        ER: Debug,
+where
+    I: Debug,
+    ER: Debug,
 {
     let (return_sender, return_receiver) = oneshot::channel();
     task_sink

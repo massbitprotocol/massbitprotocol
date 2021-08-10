@@ -3,16 +3,16 @@
 *** like: indexer list, indexer detail, ...
 *** Also, there's a helper function to call to DDL Gen to migrate data
 **/
-
 // Generic dependencies
 use diesel::{PgConnection, RunQueryDsl};
-use std::process::Command;
+use lazy_static::lazy_static;
 use std::fs::File;
 use std::io::Read;
-use lazy_static::lazy_static;
+use std::process::Command;
 
 lazy_static! {
-    static ref INDEXER_MIGRATION_FILE: String = String::from("./index-manager/migration/indexers.sql");
+    static ref INDEXER_MIGRATION_FILE: String =
+        String::from("./index-manager/migration/indexers.sql");
 }
 
 pub fn run_raw_query(connection: &PgConnection, raw_query: &String) {
@@ -63,9 +63,18 @@ pub fn migrate_with_ddl_gen_plugin(index_name: &String, schema: &String, config:
         .output()
         .expect("failed to execute plugin migration");
 
-    log::info!("[Index Manager Store] Plugin migration status: {}", output.status);
-    log::info!("[Index Manager Store] Plugin migration stdout: {}", String::from_utf8_lossy(&output.stdout));
-    log::error!("[Index Manager Store] Plugin migration stderr: {}", String::from_utf8_lossy(&output.stderr));
+    log::info!(
+        "[Index Manager Store] Plugin migration status: {}",
+        output.status
+    );
+    log::info!(
+        "[Index Manager Store] Plugin migration stdout: {}",
+        String::from_utf8_lossy(&output.stdout)
+    );
+    log::error!(
+        "[Index Manager Store] Plugin migration stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     assert!(output.status.success());
 }
 

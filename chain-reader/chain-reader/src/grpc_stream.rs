@@ -1,10 +1,13 @@
-use tokio::sync::{mpsc, broadcast};
+use tokio::sync::{broadcast, mpsc};
 use tokio_stream::wrappers::ReceiverStream;
 
-use tonic::{Request, Response, Status};
-use stream_mod::{ChainType, HelloReply, HelloRequest, GetBlocksRequest, GenericDataProto, streamout_server::Streamout};
+use log::{debug, error, info, warn, Level};
 use std::collections::HashMap;
-use log::{debug, warn, error, info, Level};
+use stream_mod::{
+    streamout_server::Streamout, ChainType, GenericDataProto, GetBlocksRequest, HelloReply,
+    HelloRequest,
+};
+use tonic::{Request, Response, Status};
 
 pub mod stream_mod {
     tonic::include_proto!("chaindata");
@@ -12,9 +15,8 @@ pub mod stream_mod {
 
 #[derive(Debug)]
 pub struct StreamService {
-    pub chans: HashMap<ChainType,broadcast::Sender<GenericDataProto>>,
+    pub chans: HashMap<ChainType, broadcast::Sender<GenericDataProto>>,
 }
-
 
 #[tonic::async_trait]
 impl Streamout for StreamService {
@@ -44,7 +46,7 @@ impl Streamout for StreamService {
         let (tx, rx) = mpsc::channel(1024);
 
         // Create new channel for connect between input and output stream
-        let mut rx_chan =  self.chans.get(&chain_type).unwrap().subscribe();
+        let mut rx_chan = self.chans.get(&chain_type).unwrap().subscribe();
 
         tokio::spawn(async move {
             loop {

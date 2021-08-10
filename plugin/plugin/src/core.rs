@@ -10,7 +10,10 @@ pub trait SubstrateBlockHandler {
 }
 
 pub trait SubstrateExtrinsicHandler {
-    fn handle_extrinsic(&self, extrinsic: &SubstrateUncheckedExtrinsic) -> Result<(), Box<dyn Error>>;
+    fn handle_extrinsic(
+        &self,
+        extrinsic: &SubstrateUncheckedExtrinsic,
+    ) -> Result<(), Box<dyn Error>>;
 }
 
 pub trait SubstrateEventHandler {
