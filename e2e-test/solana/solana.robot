@@ -15,7 +15,7 @@ ${INDEX_MANAGER}  http://localhost:3000
 #####################
 # Test-solana-block #
 #####################
-Deploy test-solana-block, then check if data exists in DB
+Deploy test-solana-block, then check if data was inserted into DB
     # Configuration
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
@@ -55,7 +55,7 @@ Deploy test-solana-block, then check if data exists in DB
 ############################
 ## Test-solana-transaction #
 ############################
-Deploy test-solana-transaction, then check if data exists in DB
+Deploy test-solana-transaction, then check if data was inserted into DB
     # Configuration
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
@@ -95,7 +95,7 @@ Deploy test-solana-transaction, then check if data exists in DB
 #############################
 ## Test-solana-log-messages #
 #############################
-Deploy test-solana-log-messages, then check if data exists in DB
+Deploy test-solana-log-messages, then check if data was inserted into DB
     # Configuration
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
@@ -136,7 +136,7 @@ Deploy test-solana-log-messages, then check if data exists in DB
 ############################
 ## Test-solana-five-tables #
 ############################
-Deploy test-solana-five-tables, then check if data exists in DB
+Deploy test-solana-five-tables, then check if data was inserted into DB
     # Configuration
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
@@ -181,7 +181,7 @@ Deploy test-solana-five-tables, then check if data exists in DB
 #############################
 ## Test-solana-index-serum #
 #############################
-Deploy test-solana-index-serum, then check if data exists in DB
+Deploy test-solana-index-serum, then check if data was inserted into DB
     # Configuration
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
