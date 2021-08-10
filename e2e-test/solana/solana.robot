@@ -54,54 +54,15 @@ ${INDEX_MANAGER}  http://localhost:3000
 ############################
 ## Test-solana-transaction #
 ############################
-Deploy test-solana-transaction, then check if data exists in DB
-    # Configuration
-    Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
-
-    # Remove table if exists
-    Delete Table If Exists  transaction
-
-    # Compile request
-    ${object} =  Read Index Example  ../../user-example/solana/test-solana-transaction/src
-    ${compile_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/compile
-    ...  ${object}
-    Should be equal  ${compile_res["status"]}  success
-
-    # Compile status
-    Wait Until Keyword Succeeds
-    ...  60x
-    ...  10 sec
-    ...  Pooling Status
-    ...  ${compile_res["payload"]}
-
-    # Deploy
-    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}"}
-    ${deploy_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/deploy
-    ...  ${json}
-    Should be equal  ${deploy_res["status"]}  success
-
-    # Check that there is a table with data in it
-    Wait Until Keyword Succeeds
-    ...  12x
-    ...  5 sec
-    ...  Pooling Database Data
-    ...  SELECT * FROM transaction FETCH FIRST ROW ONLY
-
-
-#############################
-## Test-solana-log-messages #
-#############################
-#Deploy test-solana-log-messages, then check if data exists in DB
+#Deploy test-solana-transaction, then check if data exists in DB
 #    # Configuration
 #    Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 #
 #    # Remove table if exists
-#    Delete Table If Exists  solana_log_messages
+#    Delete Table If Exists  transaction
 #
 #    # Compile request
-#    ${object} =  Read Index Example  ../../user-example/solana/test-solana-log-messages/src
+#    ${object} =  Read Index Example  ../../user-example/solana/test-solana-transaction/src
 #    ${compile_res}=  Request.Post Request
 #    ...  ${CODE_COMPILER}/compile
 #    ...  ${object}
@@ -120,12 +81,57 @@ Deploy test-solana-transaction, then check if data exists in DB
 #    ...  ${CODE_COMPILER}/deploy
 #    ...  ${json}
 #    Should be equal  ${deploy_res["status"]}  success
-#    sleep  20 seconds  # Wait for indexing
 #
 #    # Check that there is a table with data in it
+#    Wait Until Keyword Succeeds
+#    ...  12x
+#    ...  5 sec
+#    ...  Pooling Database Data
+#    ...  SELECT * FROM transaction FETCH FIRST ROW ONLY
+
+
+#############################
+## Test-solana-log-messages #
+#############################
+Deploy test-solana-log-messages, then check if data exists in DB
+    # Configuration
+    Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
+
+    # Remove table if exists
+    Delete Table If Exists  solana_log_messages
+
+    # Compile request
+    ${object} =  Read Index Example  ../../user-example/solana/test-solana-log-messages/src
+    ${compile_res}=  Request.Post Request
+    ...  ${CODE_COMPILER}/compile
+    ...  ${object}
+    Should be equal  ${compile_res["status"]}  success
+
+    # Compile status
+    Wait Until Keyword Succeeds
+    ...  60x
+    ...  10 sec
+    ...  Pooling Status
+    ...  ${compile_res["payload"]}
+
+    # Deploy
+    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}"}
+    ${deploy_res}=  Request.Post Request
+    ...  ${CODE_COMPILER}/deploy
+    ...  ${json}
+    Should be equal  ${deploy_res["status"]}  success
+    sleep  20 seconds  # Wait for indexing
+
+    # Check that there is a table with data in it
 #    Check If Exists In Database  SELECT * FROM solana_log_messages FETCH FIRST ROW ONLY
-#
-#
+    # Check that there is a table with data in it
+    Wait Until Keyword Succeeds
+    ...  12x
+    ...  5 sec
+    ...  Pooling Database Data
+    ...  SELECT * FROM solana_log_messages_ts FETCH FIRST ROW ONLY
+
+
 ############################
 ## Test-solana-five-tables #
 ############################

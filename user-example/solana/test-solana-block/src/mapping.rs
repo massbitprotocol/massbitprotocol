@@ -1,4 +1,4 @@
-use crate::models::Block;
+use crate::models::*;
 use massbit_chain_solana::data_type::{
     SolanaBlock,
     SolanaTransaction,
