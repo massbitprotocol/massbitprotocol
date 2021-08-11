@@ -1,5 +1,5 @@
 use bs58;
-use log::{info, warn};
+use log::warn;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use solana_transaction_status;
@@ -9,10 +9,6 @@ use solana_transaction_status::{
     UiTransactionTokenBalance,
 };
 use std::error::Error;
-use std::rc::Rc;
-use std::sync::Arc;
-//use solana_sdk::instruction::CompiledInstruction;
-//use solana_program::instruction::CompiledInstruction;
 
 //***************** Solana data type *****************
 // EncodedConfirmedBlock is block with vec of EncodedTransactionWithStatusMeta.
@@ -30,7 +26,6 @@ type LogMessages = Option<Vec<String>>;
 type Transaction = solana_transaction_status::TransactionWithStatusMeta;
 type EncodedBlock = solana_transaction_status::EncodedConfirmedBlock;
 type Block = solana_transaction_status::ConfirmedBlock;
-// type Hash = String;
 
 pub fn decode(payload: &mut Vec<u8>) -> Result<SolanaEncodedBlock, Box<dyn Error>> {
     let decode_block: SolanaEncodedBlock = serde_json::from_slice(&payload).unwrap();
@@ -45,9 +40,7 @@ pub fn get_list_log_messages_from_encoded_block(block: &EncodedBlock) -> Vec<Log
         .collect()
 }
 
-fn UiTransactionTokenBalance_to_TransactionTokenBalance(
-    ui_ttb: &UiTransactionTokenBalance,
-) -> TransactionTokenBalance {
+fn to_transaction_token_balance(ui_ttb: &UiTransactionTokenBalance) -> TransactionTokenBalance {
     TransactionTokenBalance {
         account_index: ui_ttb.account_index.clone(),
         mint: ui_ttb.mint.clone(),
@@ -55,9 +48,7 @@ fn UiTransactionTokenBalance_to_TransactionTokenBalance(
     }
 }
 
-fn UiInnerInstructions_to_UiInstructions(
-    ui_inner_instruction: UiInnerInstructions,
-) -> InnerInstructions {
+fn to_ui_instructions(ui_inner_instruction: UiInnerInstructions) -> InnerInstructions {
     InnerInstructions {
         index: ui_inner_instruction.index,
         //instructions: compiled_instructions,
@@ -76,8 +67,11 @@ fn UiInnerInstructions_to_UiInstructions(
                         })
                     }
                     // Todo: need support Parsed(UiParsedInstruction)
-                    Parsed(UiParsedInstruction) => {
-                        warn!("Not support ui_instruction type: {:?}", UiParsedInstruction);
+                    Parsed(ui_parsed_instruction) => {
+                        warn!(
+                            "Not support ui_instruction type: {:?}",
+                            ui_parsed_instruction
+                        );
                         None
                     }
                 }
@@ -100,9 +94,7 @@ pub fn decode_encoded_block(encoded_block: EncodedBlock) -> Block {
                         Some(post_token_balances) => Some(
                             post_token_balances
                                 .into_iter()
-                                .map(|ui_ttb| {
-                                    UiTransactionTokenBalance_to_TransactionTokenBalance(ui_ttb)
-                                })
+                                .map(|ui_ttb| to_transaction_token_balance(ui_ttb))
                                 .collect(),
                         ),
                         None => None,
@@ -112,9 +104,7 @@ pub fn decode_encoded_block(encoded_block: EncodedBlock) -> Block {
                         Some(pre_token_balances) => Some(
                             pre_token_balances
                                 .into_iter()
-                                .map(|ui_ttb| {
-                                    UiTransactionTokenBalance_to_TransactionTokenBalance(ui_ttb)
-                                })
+                                .map(|ui_ttb| to_transaction_token_balance(ui_ttb))
                                 .collect(),
                         ),
                         None => None,
@@ -125,7 +115,7 @@ pub fn decode_encoded_block(encoded_block: EncodedBlock) -> Block {
                         .unwrap()
                         .iter()
                         .map(|ui_inner_instruction| {
-                            UiInnerInstructions_to_UiInstructions(ui_inner_instruction.clone())
+                            to_ui_instructions(ui_inner_instruction.clone())
                         })
                         .collect(),
                 );

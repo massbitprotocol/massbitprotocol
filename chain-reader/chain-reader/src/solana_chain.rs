@@ -2,21 +2,19 @@ use crate::{
     grpc_stream::stream_mod::{ChainType, DataType, GenericDataProto},
     CONFIG,
 };
-use log::{debug, error, info, warn, Level};
+use log::{debug, info};
 use massbit_chain_solana::data_type::{
     get_list_log_messages_from_encoded_block, SolanaEncodedBlock as Block,
 };
 use solana_client::{pubsub_client::PubsubClient, rpc_client::RpcClient};
 use solana_transaction_status::UiTransactionEncoding;
 use std::error::Error;
-use std::sync::Mutex;
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
-    thread,
-    time::{Duration, Instant},
+    time::Instant,
 };
 use tokio::sync::broadcast;
 

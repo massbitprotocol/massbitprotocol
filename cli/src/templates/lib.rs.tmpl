@@ -53,7 +53,13 @@ impl {{ chain_type|title }}Handler for {{ chain_type|title }}HandlerAdapter {
     fn handle_log_messages(&self, log_messages: &solana_types::SolanaLogMessages) -> Result<(), Box<dyn Error>> {
         mapping::{{ handler.name }}(log_messages)
     }
+{% elif handler.kind == "ethereum/BlockHandler" and chain_type == "ethereum" %}
+    fn handle_block(&self, block: &ethereum_types::EthereumBlock) -> Result<(), Box<dyn Error>> {
+        mapping::{{ handler.name }}(block)
+    }
+
 {%- endif -%}
+
 {% endfor %}
 }
 {%- endfor -%}
