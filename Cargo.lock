@@ -3273,6 +3273,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "env_logger 0.8.4",
+ "lazy_static",
  "log",
  "log4rs",
 ]

@@ -1,36 +1,24 @@
-use chrono::Local;
-use env_logger::Builder;
-use log::LevelFilter;
-use log4rs::append::file::FileAppender;
-use log4rs::config::{Appender, Config, Root};
-use log4rs::encode::pattern::PatternEncoder;
+use crate::helper::{default_logging, log_to_file};
+use lazy_static::lazy_static;
+use log::Level::Info;
+use std::env;
 
 /**
-*** The objective of this file is to setup logger writing to file
+*** The file is to setup logger to either:
+*** - write to file
+*** - output to console
+*** The default option if RUST_LOG is not specified is INFO logging
 **/
-use std::io::Write;
-pub fn init_logger() {
-    Builder::new()
-        .format(|buf, record| {
-            writeln!(
-                buf,
-                "{} [{}] - {}",
-                Local::now().format("%Y-%m-%dT%H:%M:%S"),
-                record.level(),
-                record.args()
-            )
-        })
-        .filter(None, LevelFilter::Info);
-    // .init();
+lazy_static! {
+    static ref LOG_OPTION: String = env::var("RUST_LOG").unwrap_or(String::from("default")); // If not defined, assume it's INFO
+}
 
-    let date = chrono::Utc::now();
-    let logfile = FileAppender::builder()
-        .encoder(Box::new(PatternEncoder::default()))
-        .build(format!("log/{}.log", date)) // set the file name based on the current date
-        .unwrap();
-    let config = Config::builder()
-        .appender(Appender::builder().build("logfile", Box::new(logfile)))
-        .build(Root::builder().appender("logfile").build(LevelFilter::Info))
-        .unwrap();
-    log4rs::init_config(config).unwrap();
+pub fn init_logger(file_name: &String) {
+    if &*LOG_OPTION == "file" {
+        log_to_file(file_name);
+    } else if &*LOG_OPTION == "default" {
+        default_logging();
+    } else {
+        env_logger::init();
+    }
 }
