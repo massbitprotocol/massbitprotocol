@@ -47,3 +47,5 @@ output.xml
 report.html
 e2e-test/robot*
 e2e-test/bin*
+
+log/
