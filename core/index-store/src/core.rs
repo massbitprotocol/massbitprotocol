@@ -74,7 +74,6 @@ pub trait Store: Sync + Send {
 }
 impl Store for IndexStore {
     fn save(&mut self, _entity_name: String, mut _data: GenericMap) {
-        log::info!("{} entity is inserting...", _entity_name); // TODO: We should pass the indexer ID here so we can grep the log based on that ID
         match self.buffer.get_mut(_entity_name.as_str()) {
             //Create buffer for first call
             None => {
