@@ -18,7 +18,7 @@ lazy_static! {
 }
 
 pub async fn get_schema_ipfs(hash: &String) -> String {
-    log::info!("[Index Manager IPFS] Downloading Schema from IPFS");
+    log::info!("Downloading Schema from IPFS");
     let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await;
 
@@ -34,20 +34,17 @@ pub async fn get_schema_ipfs(hash: &String) -> String {
 
     match res {
         Ok(_) => {
-            log::info!("[Index Manager IPFS] Write Schema file to storage successfully");
+            log::info!("Write Schema file to storage successfully");
             file_name
         }
         Err(err) => {
-            panic!(
-                "[Index Manager IPFS] Could not write Schema file to storage {:#?}",
-                err
-            )
+            panic!("Could not write Schema file to storage {:#?}", err)
         }
     }
 }
 
 pub async fn get_query_ipfs(ipfs_model_hash: &String) -> String {
-    log::info!("[Index Manager IPFS] Downloading Raw Query from IPFS");
+    log::info!("Downloading Raw Query from IPFS");
     let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await;
 
@@ -78,14 +75,11 @@ pub async fn get_mapping_ipfs(hash: &String) -> String {
 
     match res {
         Ok(_) => {
-            log::info!("[Index Manager IPFS] Write SO file to storage successfully");
+            log::info!("Write SO file to storage successfully");
             file_name
         }
         Err(err) => {
-            panic!(
-                "[Index Manager IPFS] Could not write SO file to storage {:#?}",
-                err
-            )
+            panic!("Could not write SO file to storage {:#?}", err)
         }
     }
 }
@@ -106,14 +100,11 @@ pub async fn get_config_ipfs(hash: &String) -> String {
 
     match res {
         Ok(_) => {
-            log::info!("[Index Manager IPFS] Write project.yaml to storage successfully");
+            log::info!("Write project.yaml to storage successfully");
             file_name
         }
         Err(err) => {
-            panic!(
-                "[Index Manager IPFS] Could not write project.yaml to storage {:#?}",
-                err
-            )
+            panic!("Could not write project.yaml to storage {:#?}", err)
         }
     }
 }
