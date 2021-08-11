@@ -30,3 +30,8 @@ test-run-all-and-up:
 test-init:
 	@echo "Installing all the dependencies for E2E tests ..."
 	pip install robotframework robotframework-requests robotframework-databaselibrary psycopg2 rpaframework
+
+create-list-user-example-json-file:
+	@echo "Create list user examples json file ..."
+	cd user-example && python create_example_json.py
+

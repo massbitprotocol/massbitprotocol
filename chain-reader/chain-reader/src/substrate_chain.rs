@@ -1,6 +1,5 @@
 use crate::grpc_stream::stream_mod::{ChainType, DataType, GenericDataProto};
 use clap::App;
-use env_logger;
 use massbit_chain_substrate::data_type::{
     SubstrateBlock as Block, SubstrateEventRecord as EventRecord, SubstrateHeader as Header,
 };
@@ -13,7 +12,7 @@ use tokio::sync::broadcast;
 
 #[cfg(feature = "std")]
 use codec::{Decode, Encode};
-use log::{debug, error, info, warn, Level};
+use log::{debug, error, info};
 use node_template_runtime::Block as OrgBlock;
 use node_template_runtime::Event;
 use std::env;
@@ -125,7 +124,7 @@ fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>) {
     let mut rx = chan.subscribe();
     tokio::spawn(async move {
         loop {
-            rx.recv().await;
+            let _ = rx.recv().await;
         }
     });
 }

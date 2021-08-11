@@ -1,14 +1,10 @@
-use log::{info, warn};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::error::Error;
 
-use web3::{
-    futures::{future, StreamExt},
-    types::{
-        Address, Block, BlockId, BlockNumber as Web3BlockNumber, Bytes, CallRequest, Filter,
-        FilterBuilder, Log, Transaction, TransactionReceipt, H256,
-    },
+use web3::types::{
+    Address, Block, BlockId, BlockNumber as Web3BlockNumber, Bytes, CallRequest, Filter,
+    FilterBuilder, Log, Transaction, TransactionReceipt, H256,
 };
 
 //***************** Ethereum data type *****************
@@ -16,7 +12,6 @@ pub type EthereumBlock = ExtBlock;
 // pub type EthereumTransaction = ExtTransaction;
 //***************** End Ethereum data type *****************
 
-type Number = u32;
 type Date = u64;
 pub type LightEthereumBlock = Block<Transaction>;
 

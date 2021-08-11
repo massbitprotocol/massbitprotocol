@@ -1,7 +1,7 @@
 use tokio::sync::{broadcast, mpsc};
 use tokio_stream::wrappers::ReceiverStream;
 
-use log::{debug, error, info, warn, Level};
+use log::info;
 use std::collections::HashMap;
 use stream_mod::{
     streamout_server::Streamout, ChainType, GenericDataProto, GetBlocksRequest, HelloReply,

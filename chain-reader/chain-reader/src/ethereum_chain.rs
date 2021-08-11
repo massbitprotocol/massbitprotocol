@@ -2,16 +2,11 @@ use crate::{
     grpc_stream::stream_mod::{ChainType, DataType, GenericDataProto},
     CONFIG,
 };
-use log::{debug, error, info, warn, Level};
+use log::info;
 use massbit_chain_ethereum::data_type::{EthereumBlock as Block, LightEthereumBlock};
-use std::error::Error;
-use std::{
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-    thread,
-    time::{Duration, Instant},
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
 };
 use tokio::sync::broadcast;
 use web3;
@@ -39,7 +34,6 @@ fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>) {
 pub async fn loop_get_block(chan: broadcast::Sender<GenericDataProto>) {
     info!("Start get block {:?}", CHAIN_TYPE);
     let config = CONFIG.chains.get(&CHAIN_TYPE).unwrap();
-    let json_rpc_url = config.url.clone();
     let websocket_url = config.ws.clone();
 
     info!("Init Ethereum adapter");
@@ -56,12 +50,11 @@ pub async fn loop_get_block(chan: broadcast::Sender<GenericDataProto>) {
     let mut sub = web3.eth_subscribe().subscribe_new_heads().await.unwrap();
     println!("Got subscription id: {:?}", sub.id());
 
-    let mut last_indexed_slot: Option<u64> = None;
     fix_one_thread_not_receive(&chan);
     loop {
         if exit.load(Ordering::Relaxed) {
             eprintln!("{}", "exit".to_string());
-            sub.unsubscribe().await;
+            sub.unsubscribe().await.expect("Cannot unsubscribe");
             break;
         }
         // Get wait for header from chain
