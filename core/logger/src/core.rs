@@ -14,9 +14,9 @@ lazy_static! {
 }
 
 pub fn init_logger(file_name: &String) {
-    if &*LOG_OPTION == "file" {
+    if &*LOG_OPTION.to_lowercase() == "file" {
         log_to_file(file_name);
-    } else if &*LOG_OPTION == "default" {
+    } else if &*LOG_OPTION.to_lowercase() == "default" {
         default_logging();
     } else {
         env_logger::init();
