@@ -4,7 +4,7 @@
  *** - output to console
  *** The default option if RUST_LOG is not specified is INFO logging
  **/
-use crate::helper::{default_logging, log_to_file, message};
+use crate::helper::{default_logging_with_level_info, log_to_file, message};
 use lazy_static::lazy_static;
 use log::Level::Info;
 use std::env;
@@ -21,7 +21,7 @@ pub fn init_logger(file_name: &String) -> String {
     }
 
     if RUST_LOG.to_lowercase().as_str() == "info" {
-        default_logging();
+        default_logging_with_level_info();
     } else {
         env_logger::init();
     }
