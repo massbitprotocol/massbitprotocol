@@ -8,6 +8,7 @@ use rand::{thread_rng, Rng};
 use serde_yaml::Value;
 use std::iter;
 // Massbit dependencies
+use crate::ipfs::{get_ipfs_file_by_hash, read_config_file};
 use crate::types::stream_mod::ChainType;
 
 pub fn get_chain_type(config: &Value) -> ChainType {

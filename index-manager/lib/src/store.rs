@@ -9,6 +9,7 @@ use diesel::{PgConnection, RunQueryDsl};
 use lazy_static::lazy_static;
 use std::fs::File;
 use std::io::Read;
+use std::path::PathBuf;
 use std::process::Command;
 use strum::AsStaticRef;
 
@@ -49,10 +50,16 @@ pub fn insert_new_indexer(
     };
 }
 
-pub fn migrate_with_ddl_gen_plugin(index_name: &String, schema: &String, config: &String) {
+pub fn migrate_with_ddl_gen_plugin(index_name: &String, schema: &PathBuf, config: &PathBuf) {
     log::debug!("[Index Manager Store] Index name: {}", index_name);
-    log::debug!("[Index Manager Store] Index schema: {}", schema);
-    log::debug!("[Index Manager Store] Index config: {}", config);
+    log::debug!(
+        "[Index Manager Store] Index schema: {:?}",
+        schema.clone().into_os_string().into_string()
+    );
+    log::debug!(
+        "[Index Manager Store] Index config: {:?}",
+        config.clone().into_os_string().into_string()
+    );
     let output = Command::new("cargo")
         .arg("run")
         .arg("--manifest-path")

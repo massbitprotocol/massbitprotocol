@@ -36,9 +36,16 @@ pub struct DetailParams {
 }
 
 pub struct IndexConfig {
-    pub config: String,
+    pub config: PathBuf,
     pub mapping: PathBuf,
-    pub schema: String,
+    pub schema: PathBuf,
+    pub identifier: IndexIdentifier,
+}
+
+pub struct IndexIdentifier {
+    pub name: String,
+    pub hash: String,
+    pub name_with_hash: String,
 }
 
 // This is inspired by the syncing status from eth https://ethereum.stackexchange.com/questions/69458/sync-status-of-ethereum-node

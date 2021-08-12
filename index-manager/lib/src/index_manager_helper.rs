@@ -10,15 +10,14 @@ use std::env;
 use std::error::Error;
 
 // Massbit dependencies
+use crate::config::{generate_random_hash, get_index_name};
 use crate::config_builder::IndexConfigIpfsBuilder;
 use crate::hasura::track_hasura_with_ddl_gen_plugin;
-use crate::ipfs::read_config_file;
+use crate::ipfs::{get_ipfs_file_by_hash, read_config_file};
 use crate::store::{
     create_indexers_table_if_not_exists, insert_new_indexer, migrate_with_ddl_gen_plugin,
 };
 use crate::types::{DeployParams, Indexer};
-//use crate::chain_reader::chain_reader_client_start;
-use crate::config::{generate_random_hash, get_index_name};
 use adapter::core::AdapterManager;
 
 lazy_static! {
@@ -32,13 +31,12 @@ lazy_static! {
 
 pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
     // Get user index mapping logic, query for migration and index's configurations
-    let index_random_hash = generate_random_hash();
     let index_config = IndexConfigIpfsBuilder::default()
-        .config(&index_random_hash, &params.config)
+        .config(&params.config)
         .await
-        .mapping(&index_random_hash, &params.mapping)
+        .mapping(&params.mapping)
         .await
-        .schema(&index_random_hash, &params.schema)
+        .schema(&params.schema)
         .await
         .build();
 
@@ -48,20 +46,29 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
     ));
 
     // Parse config file
-    let config = read_config_file(&index_config.config);
-    let index_name = format!("{}-{}", get_index_name(&config), generate_random_hash());
-
-    migrate_with_ddl_gen_plugin(&index_name, &index_config.schema, &index_config.config); // Create tables for the new index
-    track_hasura_with_ddl_gen_plugin(&index_name).await; // Track the newly created tables in hasura
+    let config_value = read_config_file(&index_config.config);
+    migrate_with_ddl_gen_plugin(
+        &index_config.identifier.name_with_hash,
+        &index_config.schema,
+        &index_config.config,
+    ); // Create tables for the new index
+    track_hasura_with_ddl_gen_plugin(&index_config.identifier.name_with_hash).await; // Track the newly created tables in hasura
     create_indexers_table_if_not_exists(&connection); // Create indexers table so we can keep track of the indexers status. TODO: Refactor as part of ddl gen plugin
-    insert_new_indexer(&connection, &index_name, &config); // Create a new indexer so we can keep track of it's status
+    insert_new_indexer(
+        &connection,
+        &index_config.identifier.name_with_hash,
+        &config_value,
+    ); // Create a new indexer so we can keep track of it's status
 
     // Chain Reader Client Configuration to subscribe and get latest block from Chain Reader Server
-    //chain_reader_client_start(&config, &index_config.mapping).await;
     log::info!("Load library from {:?}", &index_config.mapping);
     let mut adapter = AdapterManager::new();
     adapter
-        .init(&index_name, &config, &index_config.mapping)
+        .init(
+            &index_config.identifier.name_with_hash,
+            &config_value,
+            &index_config.mapping,
+        )
         .await;
     Ok(())
 }

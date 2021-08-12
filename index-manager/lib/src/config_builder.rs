@@ -5,8 +5,10 @@
 // Generic dependencies
 use std::path::PathBuf;
 // Massbit dependencies
-use crate::ipfs::{get_config_ipfs, get_mapping_ipfs, get_schema_ipfs};
-use crate::types::IndexConfig;
+use crate::config::generate_random_hash;
+use crate::ipfs::{get_ipfs_file_by_hash, read_config_file};
+use crate::types::{IndexConfig, IndexIdentifier};
+use adapter::setting::get_index_name;
 
 /**
 *** Builder Pattern
@@ -20,44 +22,59 @@ use crate::types::IndexConfig;
 *** Reference: https://rust-unofficial.github.io/patterns/patterns/creational/builder.html
 **/
 pub struct IndexConfigIpfsBuilder {
-    schema: String,
-    config: String,
+    schema: PathBuf,
+    config: PathBuf,
     mapping: PathBuf,
+    hash: String,
 }
 
 impl Default for IndexConfigIpfsBuilder {
     fn default() -> IndexConfigIpfsBuilder {
         IndexConfigIpfsBuilder {
-            schema: Default::default(),
-            config: Default::default(),
+            schema: "".to_string().parse().unwrap(),
+            config: "".to_string().parse().unwrap(),
             mapping: "".to_string().parse().unwrap(),
+            hash: generate_random_hash(),
         }
     }
 }
 
 impl IndexConfigIpfsBuilder {
-    pub async fn mapping(mut self, file_name: &String, mapping: &String) -> IndexConfigIpfsBuilder {
-        let mapping_name = get_mapping_ipfs(file_name, mapping).await;
-        let mapping_file = ["./", &mapping_name].join("");
-        self.mapping = PathBuf::from(mapping_file.to_string());
+    pub async fn mapping(mut self, mapping: &String) -> IndexConfigIpfsBuilder {
+        let file = &format!("{}{}", self.hash, ".so");
+        let mut mapping = get_ipfs_file_by_hash(file, mapping).await;
+        let mapping = ["./", &mapping].join("");
+        self.mapping = PathBuf::from(mapping.to_string());
         self
     }
 
-    pub async fn config(mut self, file_name: &String, config: &String) -> IndexConfigIpfsBuilder {
-        self.config = get_config_ipfs(file_name, config).await;
+    pub async fn config(mut self, config: &String) -> IndexConfigIpfsBuilder {
+        let file = &format!("{}{}", self.hash, ".yaml");
+        let config = get_ipfs_file_by_hash(file, config).await;
+        self.config = PathBuf::from(config);
         self
     }
 
-    pub async fn schema(mut self, file_name: &String, schema: &String) -> IndexConfigIpfsBuilder {
-        self.schema = get_schema_ipfs(file_name, schema).await;
+    pub async fn schema(mut self, schema: &String) -> IndexConfigIpfsBuilder {
+        let file = &format!("{}{}", self.hash, ".graphql");
+        let schema = get_ipfs_file_by_hash(file, schema).await;
+        self.schema = PathBuf::from(schema);
         self
     }
 
     pub fn build(self) -> IndexConfig {
+        let config = read_config_file(&self.config);
+        let name = get_index_name(&config);
+
         IndexConfig {
             schema: self.schema,
             config: self.config,
             mapping: self.mapping,
+            identifier: IndexIdentifier {
+                name: name.clone(),
+                hash: self.hash.clone(),
+                name_with_hash: format!("{}-{}", name, self.hash),
+            },
         }
     }
 }
