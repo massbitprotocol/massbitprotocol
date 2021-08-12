@@ -12,12 +12,10 @@ use std::error::Error;
 // Massbit dependencies
 use crate::config::{generate_random_hash, get_index_name};
 use crate::config_builder::IndexConfigIpfsBuilder;
+use crate::ddl_gen::run_ddl_gen;
 use crate::hasura::track_hasura_with_ddl_gen_plugin;
 use crate::ipfs::{get_ipfs_file_by_hash, read_config_file};
-use crate::store::{
-    create_indexers_table_if_not_exists, insert_new_indexer, migrate_with_ddl_gen_plugin,
-};
-use crate::types::{DeployParams, Indexer};
+use crate::types::{DeployParams, IndexStore, Indexer};
 use adapter::core::AdapterManager;
 
 lazy_static! {
@@ -47,18 +45,14 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
 
     // Parse config file
     let config_value = read_config_file(&index_config.config);
-    migrate_with_ddl_gen_plugin(
-        &index_config.identifier.name_with_hash,
-        &index_config.schema,
-        &index_config.config,
-    ); // Create tables for the new index
-    track_hasura_with_ddl_gen_plugin(&index_config.identifier.name_with_hash).await; // Track the newly created tables in hasura
-    create_indexers_table_if_not_exists(&connection); // Create indexers table so we can keep track of the indexers status. TODO: Refactor as part of ddl gen plugin
-    insert_new_indexer(
+
+    run_ddl_gen(&index_config).await;
+    IndexStore::create_indexers_table_if_not_exists(&connection);
+    IndexStore::insert_new_indexer(
         &connection,
         &index_config.identifier.name_with_hash,
         &config_value,
-    ); // Create a new indexer so we can keep track of it's status
+    );
 
     // Chain Reader Client Configuration to subscribe and get latest block from Chain Reader Server
     log::info!("Load library from {:?}", &index_config.mapping);
@@ -80,7 +74,7 @@ pub async fn list_handler_helper() -> Result<Vec<Indexer>, Box<dyn Error>> {
         "Error connecting to {}",
         *DATABASE_CONNECTION_STRING
     ));
-    create_indexers_table_if_not_exists(&connection);
+    IndexStore::create_indexers_table_if_not_exists(&connection);
 
     // User postgre lib for easy query
     let client =

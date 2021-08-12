@@ -55,3 +55,5 @@ pub enum IndexStatus {
     Syncing, // This mean our index is not caught up to the latest block yet. We don't support this field yet
     False,   // Meaning that the index is not running
 }
+
+pub struct IndexStore {}
