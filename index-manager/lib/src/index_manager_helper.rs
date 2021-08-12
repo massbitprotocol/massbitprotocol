@@ -5,7 +5,6 @@
 // Generic dependencies
 use diesel::{Connection, PgConnection};
 use lazy_static::lazy_static;
-use postgres::{Connection as PostgreConnection, TlsMode};
 use std::env;
 use std::error::Error;
 
@@ -38,21 +37,14 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
         .await
         .build();
 
-    let connection = PgConnection::establish(&DATABASE_CONNECTION_STRING).expect(&format!(
-        "Error connecting to {}",
-        *DATABASE_CONNECTION_STRING
-    ));
-
     // Parse config file
     let config_value = read_config_file(&index_config.config);
 
+    // Create tables for the new index and track them in hasura
     run_ddl_gen(&index_config).await;
-    IndexStore::create_indexers_table_if_not_exists(&connection);
-    IndexStore::insert_new_indexer(
-        &connection,
-        &index_config.identifier.name_with_hash,
-        &config_value,
-    );
+
+    // Create a new indexer so we can keep track of it's status
+    IndexStore::insert_new_indexer(&index_config.identifier.name_with_hash, &config_value);
 
     // Chain Reader Client Configuration to subscribe and get latest block from Chain Reader Server
     log::info!("Load library from {:?}", &index_config.mapping);
@@ -69,29 +61,6 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
 
 // Return indexer list
 pub async fn list_handler_helper() -> Result<Vec<Indexer>, Box<dyn Error>> {
-    // Create indexers table if it doesn't exists. We should do this with migration at the start.
-    let connection = PgConnection::establish(&DATABASE_CONNECTION_STRING).expect(&format!(
-        "Error connecting to {}",
-        *DATABASE_CONNECTION_STRING
-    ));
-    IndexStore::create_indexers_table_if_not_exists(&connection);
-
-    // User postgre lib for easy query
-    let client =
-        PostgreConnection::connect(DATABASE_CONNECTION_STRING.clone(), TlsMode::None).unwrap();
-    let mut indexers: Vec<Indexer> = Vec::new();
-
-    for row in &client
-        .query("SELECT id, network, name FROM indexers", &[])
-        .unwrap()
-    {
-        let indexer = Indexer {
-            id: row.get(0),
-            network: row.get(1),
-            name: row.get(2),
-        };
-        indexers.push(indexer);
-    }
-
+    let indexers = IndexStore::get_indexer_list();
     Ok(indexers)
 }
