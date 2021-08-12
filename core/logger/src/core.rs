@@ -15,12 +15,12 @@ lazy_static! {
 }
 
 pub fn init_logger(file_name: &String) -> String {
-    if &*RUST_LOG_TYPE.to_lowercase() == "file" {
+    if RUST_LOG_TYPE.to_lowercase().as_str() == "file" {
         log_to_file(file_name, &RUST_LOG);
         return message(&RUST_LOG_TYPE, &RUST_LOG);
     }
 
-    if &*RUST_LOG.to_lowercase() == "info" {
+    if RUST_LOG.to_lowercase().as_str() == "info" {
         default_logging();
     } else {
         env_logger::init();
