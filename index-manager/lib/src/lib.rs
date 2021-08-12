@@ -10,5 +10,6 @@ pub mod config_builder;
 pub mod ipfs;
 pub mod store;
 
+pub mod adapter;
 pub mod ddl_gen;
 pub mod types;

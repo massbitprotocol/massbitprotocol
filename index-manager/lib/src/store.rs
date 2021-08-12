@@ -15,7 +15,8 @@ use std::process::Command;
 use strum::AsStaticRef;
 
 // Massbit dependencies
-use crate::types::{IndexStatus, IndexStore, Indexer};
+use crate::ipfs::read_config_file;
+use crate::types::{IndexConfig, IndexStatus, IndexStore, Indexer};
 
 lazy_static! {
     static ref INDEXER_MIGRATION_FILE: String =
@@ -44,15 +45,18 @@ impl IndexStore {
     }
 
     // Create a new indexer so we can keep track of it's status
-    pub fn insert_new_indexer(id: &String, project_config: &serde_yaml::Value) {
+    pub fn insert_new_indexer(index_config: &IndexConfig) {
         IndexStore::create_indexers_table_if_not_exists();
         let connection = PgConnection::establish(&DATABASE_CONNECTION_STRING).expect(&format!(
             "Error connecting to {}",
             *DATABASE_CONNECTION_STRING
         ));
 
-        let network = project_config["dataSources"][0]["kind"].as_str().unwrap();
-        let name = project_config["dataSources"][0]["name"].as_str().unwrap();
+        let id = &index_config.identifier.name_with_hash;
+        let config_value = read_config_file(&index_config.config);
+
+        let network = config_value["dataSources"][0]["kind"].as_str().unwrap();
+        let name = config_value["dataSources"][0]["name"].as_str().unwrap();
 
         let add_new_indexer = format!(
             "INSERT INTO indexers(id, name, network, index_status) VALUES ('{}','{}','{}', '{}');",

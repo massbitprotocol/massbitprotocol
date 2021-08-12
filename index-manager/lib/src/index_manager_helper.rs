@@ -9,6 +9,7 @@ use std::env;
 use std::error::Error;
 
 // Massbit dependencies
+use crate::adapter::adapter_init;
 use crate::config::{generate_random_hash, get_index_name};
 use crate::config_builder::IndexConfigIpfsBuilder;
 use crate::ddl_gen::run_ddl_gen;
@@ -37,25 +38,15 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
         .await
         .build();
 
-    // Parse config file
-    let config_value = read_config_file(&index_config.config);
-
     // Create tables for the new index and track them in hasura
     run_ddl_gen(&index_config).await;
 
     // Create a new indexer so we can keep track of it's status
-    IndexStore::insert_new_indexer(&index_config.identifier.name_with_hash, &config_value);
+    IndexStore::insert_new_indexer(&index_config);
 
-    // Chain Reader Client Configuration to subscribe and get latest block from Chain Reader Server
-    log::info!("Load library from {:?}", &index_config.mapping);
-    let mut adapter = AdapterManager::new();
-    adapter
-        .init(
-            &index_config.identifier.name_with_hash,
-            &config_value,
-            &index_config.mapping,
-        )
-        .await;
+    // Start the adapter
+    adapter_init(&index_config).await;
+
     Ok(())
 }
 
