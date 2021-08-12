@@ -9,7 +9,7 @@ use lazy_static::lazy_static;
 use log::Level::Info;
 use std::env;
 
-lazystatic! {
+lazy_static! {
     static ref RUST_LOG: String = env::var("RUST_LOG").unwrap_or(String::from("info")); // If not specified, assume logging level is INFO
     static ref RUST_LOG_TYPE: String = env::var("RUST_LOG_TYPE").unwrap_or(String::from("console")); // If not specified, assume we're logging to console
 }
