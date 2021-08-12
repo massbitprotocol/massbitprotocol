@@ -21,6 +21,7 @@ dependencies = [
  "lazy_static",
  "libloading 0.7.0",
  "log",
+ "massbit-chain-ethereum",
  "massbit-chain-solana",
  "massbit-chain-substrate",
  "paste 1.0.5",

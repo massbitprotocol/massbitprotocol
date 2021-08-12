@@ -5,7 +5,7 @@ use uuid::Uuid;
 pub fn handle_block(block: &EthereumBlock) -> Result<(), Box<dyn std::error::Error>> {
     //println!("[SO File] Received Ethereum Block");
     let id = Uuid::new_v4().to_simple().to_string();
-    let block = Block {
+    let block = EthereumBlockTable {
         id,
         block_hash: block.block.hash.clone().unwrap().to_string(),
         block_height: block.block.number.clone().unwrap().as_u64() as i64,

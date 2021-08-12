@@ -9,7 +9,7 @@ use web3::types::{
 
 //***************** Ethereum data type *****************
 pub type EthereumBlock = ExtBlock;
-// pub type EthereumTransaction = ExtTransaction;
+pub type EthereumTransaction = ExtTransaction;
 //***************** End Ethereum data type *****************
 
 type Date = u64;
@@ -22,7 +22,14 @@ pub struct ExtBlock {
     pub version: String,
     pub timestamp: Date,
     pub block: LightEthereumBlock,
-    pub receipts: Vec<TransactionReceipt>,
+    pub receipts: Vec<Option<TransactionReceipt>>,
+}
+
+pub struct ExtTransaction {
+    pub version: String,
+    pub timestamp: Date,
+    pub transaction: Transaction,
+    pub receipt: Option<TransactionReceipt>,
 }
 
 pub fn decode(payload: &mut Vec<u8>) -> Result<EthereumBlock, Box<dyn Error>> {

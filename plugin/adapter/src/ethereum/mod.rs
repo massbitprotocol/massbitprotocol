@@ -19,6 +19,7 @@ impl MessageHandler for EthereumHandlerProxy {
                     &block.block.hash.unwrap()
                 );
                 self.handler.handle_block(&block);
+
                 Ok(())
             }
             _ => {

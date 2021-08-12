@@ -20,13 +20,14 @@ lazy_static! {
                 ws: "".to_string(),
             }),
             (ChainType::Solana,ChainConfig{
-                // url: "https://api.mainnet-beta.solana.com".to_string(),
                 ws: "wss://api.mainnet-beta.solana.com".to_string(),
                 url: "https://mainnet-beta-solana.massbit.io".to_string(),
             }),
             (ChainType::Ethereum,ChainConfig{
-                ws: "wss://main-light.eth.linkpool.io/ws".to_string(),
-                url: "https://main-light.eth.linkpool.io".to_string(),
+                //ws: "wss://main-light.eth.linkpool.io/ws".to_string(),
+                //url: "https://main-light.eth.linkpool.io".to_string(),
+                ws: "wss://bsc-ws-node.nariox.org:443".to_string(),
+                url: "https://bsc-dataseed.binance.org".to_string(),
             }),
         ].iter().cloned().collect(),
         url: "0.0.0.0:50051".to_string(),
