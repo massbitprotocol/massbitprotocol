@@ -17,7 +17,7 @@ lazy_static! {
     static ref GENERATED_FOLDER: String = String::from("index-manager/generated/");
 }
 
-pub async fn get_schema_ipfs(hash: &String) -> String {
+pub async fn get_schema_ipfs(file_name: &String, hash: &String) -> String {
     log::info!("Downloading Schema from IPFS");
     let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await;
@@ -29,7 +29,7 @@ pub async fn get_schema_ipfs(hash: &String) -> String {
         .unwrap()
         .to_vec();
 
-    let file_name = [&*GENERATED_FOLDER, hash, ".graphql"].join("");
+    let file_name = [GENERATED_FOLDER.as_str(), file_name, ".graphql"].join("");
     let res = fs::write(&file_name, file_bytes); // Add logger and says that write file successfully
 
     match res {
@@ -59,7 +59,7 @@ pub async fn get_query_ipfs(ipfs_model_hash: &String) -> String {
     String::from(raw_query)
 }
 
-pub async fn get_mapping_ipfs(hash: &String) -> String {
+pub async fn get_mapping_ipfs(file_name: &String, hash: &String) -> String {
     let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await; // Refactor to use lazy load
 
@@ -70,7 +70,7 @@ pub async fn get_mapping_ipfs(hash: &String) -> String {
         .unwrap()
         .to_vec();
 
-    let file_name = [&*GENERATED_FOLDER, hash, ".so"].join("");
+    let file_name = [GENERATED_FOLDER.as_str(), file_name, ".so"].join("");
     let res = fs::write(&file_name, file_bytes); // Add logger and says that write file successfully
 
     match res {
@@ -84,7 +84,7 @@ pub async fn get_mapping_ipfs(hash: &String) -> String {
     }
 }
 
-pub async fn get_config_ipfs(hash: &String) -> String {
+pub async fn get_config_ipfs(file_name: &String, hash: &String) -> String {
     let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await; // Refactor to use lazy load
 
@@ -95,7 +95,7 @@ pub async fn get_config_ipfs(hash: &String) -> String {
         .unwrap()
         .to_vec();
 
-    let file_name = [&*GENERATED_FOLDER, hash, ".yaml"].join("");
+    let file_name = [GENERATED_FOLDER.as_str(), file_name, ".yaml"].join("");
     let res = fs::write(&file_name, file_bytes); // Add logger and says that write file successfully
 
     match res {

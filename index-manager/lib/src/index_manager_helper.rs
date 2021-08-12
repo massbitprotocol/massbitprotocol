@@ -32,12 +32,13 @@ lazy_static! {
 
 pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
     // Get user index mapping logic, query for migration and index's configurations
+    let index_random_hash = generate_random_hash();
     let index_config = IndexConfigIpfsBuilder::default()
-        .config(params.config)
+        .config(&index_random_hash, &params.config)
         .await
-        .mapping(params.mapping)
+        .mapping(&index_random_hash, &params.mapping)
         .await
-        .schema(params.schema)
+        .schema(&index_random_hash, &params.schema)
         .await
         .build();
 

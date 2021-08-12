@@ -3,9 +3,9 @@ use futures::executor::block_on;
 use futures::future::FutureExt;
 use futures::{StreamExt, TryFutureExt};
 /**
-*** Objective of this file is to create a server with API endpoints.
-*** No business logic should be put here
-**/
+ *** Objective of this file is to create a server with API endpoints.
+ *** No business logic should be put here
+ **/
 // Generic dependencies
 use jsonrpc_http_server::{
     jsonrpc_core,
@@ -13,11 +13,12 @@ use jsonrpc_http_server::{
     ServerBuilder,
 };
 
+use tokio02_spawn::core::abort_on_panic;
+use tokio02_spawn::core::tokio02_spawn;
+
 // Massbit dependencies
 use crate::index_manager_helper::{list_handler_helper, loop_blocks};
 use crate::types::DeployParams;
-use tokio02_spawn::core::abort_on_panic;
-use tokio02_spawn::core::tokio02_spawn;
 
 #[allow(dead_code)]
 pub struct IndexManager {

@@ -36,20 +36,20 @@ impl Default for IndexConfigIpfsBuilder {
 }
 
 impl IndexConfigIpfsBuilder {
-    pub async fn mapping(mut self, mapping: String) -> IndexConfigIpfsBuilder {
-        let mapping_name = get_mapping_ipfs(&mapping).await;
+    pub async fn mapping(mut self, file_name: &String, mapping: &String) -> IndexConfigIpfsBuilder {
+        let mapping_name = get_mapping_ipfs(file_name, mapping).await;
         let mapping_file = ["./", &mapping_name].join("");
         self.mapping = PathBuf::from(mapping_file.to_string());
         self
     }
 
-    pub async fn config(mut self, config: String) -> IndexConfigIpfsBuilder {
-        self.config = get_config_ipfs(&config).await;
+    pub async fn config(mut self, file_name: &String, config: &String) -> IndexConfigIpfsBuilder {
+        self.config = get_config_ipfs(file_name, config).await;
         self
     }
 
-    pub async fn schema(mut self, schema: String) -> IndexConfigIpfsBuilder {
-        self.schema = get_schema_ipfs(&schema).await;
+    pub async fn schema(mut self, file_name: &String, schema: &String) -> IndexConfigIpfsBuilder {
+        self.schema = get_schema_ipfs(file_name, schema).await;
         self
     }
 

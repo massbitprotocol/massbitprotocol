@@ -1,3 +1,4 @@
+use crate::types::IndexStatus;
 /**
 *** Objective of this file is to write to databases that are related to indexer
 *** like: indexer list, indexer detail, ...
@@ -9,6 +10,7 @@ use lazy_static::lazy_static;
 use std::fs::File;
 use std::io::Read;
 use std::process::Command;
+use strum::AsStaticRef;
 
 lazy_static! {
     static ref INDEXER_MIGRATION_FILE: String =
@@ -30,8 +32,11 @@ pub fn insert_new_indexer(
     let name = project_config["dataSources"][0]["name"].as_str().unwrap();
 
     let add_new_indexer = format!(
-        "INSERT INTO indexers(id, name, network) VALUES ('{}','{}','{}');",
-        id, name, network
+        "INSERT INTO indexers(id, name, network, index_status) VALUES ('{}','{}','{}', '{}');",
+        id,
+        name,
+        network,
+        IndexStatus::Synced.as_static().to_lowercase()
     );
     let result = diesel::sql_query(add_new_indexer).execute(connection);
     match result {
