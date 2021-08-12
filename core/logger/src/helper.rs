@@ -29,7 +29,7 @@ pub fn log_to_file(file_name: &String, log_level: &String) {
 /**
  *** If RUST_LOG level is empty, logger won't be printing anything so we need this custom function to init the logger
  **/
-pub fn default_logging() {
+pub fn default_logging_with_level_info() {
     Builder::new()
         .format(|buf, record| {
             writeln!(
