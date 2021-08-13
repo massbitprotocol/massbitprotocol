@@ -47,5 +47,8 @@ output.xml
 report.html
 e2e-test/robot*
 e2e-test/bin*
-
 log/
+
+code-compiler/stub-wasm/node_modules
+code-compiler/stub-wasm/build
+code-compiler/stub-wasm/generated
