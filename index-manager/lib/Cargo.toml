@@ -24,6 +24,8 @@ reqwest = "0.10.8"
 postgres = "0.15"
 lazy_static = "1.2.0"
 rand = "0.8.4"
+strum_macros = "0.21.1"
+strum = "0.21.0"
 
 # Massbit dependencies
 ipfs-client = { path = "../../core/ipfs-client" }

@@ -1,4 +1,4 @@
-type Transaction @entity {
+type SolanaTransactionTs @entity {
     id: ID!
     signature: String!
     fee: BigInt!

@@ -3,9 +3,9 @@ use futures::executor::block_on;
 use futures::future::FutureExt;
 use futures::{StreamExt, TryFutureExt};
 /**
-*** Objective of this file is to create a server with API endpoints.
-*** No business logic should be put here
-**/
+ *** Objective of this file is to create a server with API endpoints.
+ *** No business logic should be put here
+ **/
 // Generic dependencies
 use jsonrpc_http_server::{
     jsonrpc_core,
@@ -14,8 +14,12 @@ use jsonrpc_http_server::{
 };
 
 // Massbit dependencies
-use crate::index_manager_helper::{list_handler_helper, loop_blocks};
-use crate::types::DeployParams;
+use crate::adapter::adapter_init;
+use crate::config_builder::IndexConfigIpfsBuilder;
+use crate::index_manager_helper::{
+    list_handler_helper, restart_all_existing_index_helper, start_new_index,
+};
+use crate::types::{DeployParams, IndexStore};
 use tokio02_spawn::core::abort_on_panic;
 use tokio02_spawn::core::tokio02_spawn;
 
@@ -26,6 +30,7 @@ pub struct IndexManager {
 
 impl IndexManager {
     pub fn serve(http_addr: String) -> jsonrpc_http_server::Server {
+        log::info!("Server is starting");
         // Use mpsc channel to spawn tokio 0.2 because json-rpc-http-server crate is not updated to tokio 0.2
         let mut handler = IoHandler::with_compatibility(Compatibility::Both);
         let (task_sender, task_receiver) =
@@ -62,12 +67,17 @@ impl IndexManager {
             .expect("Unable to start RPC server");
         server
     }
+
+    pub async fn restart_all_existing_index() {
+        log::info!("Restarting all existing index");
+        restart_all_existing_index_helper().await;
+    }
 }
 
 async fn deploy_handler(params: DeployParams) -> Result<Value, jsonrpc_core::Error> {
     #[allow(unused_must_use)]
     tokio::spawn(async move {
-        loop_blocks(params).await; // Start streaming and indexing blocks
+        start_new_index(params).await; // Start streaming and indexing blocks
     });
     Ok(serde_json::to_value("Deploy index success").expect("Unable to deploy new index"))
 }

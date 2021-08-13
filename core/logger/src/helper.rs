@@ -26,10 +26,7 @@ pub fn log_to_file(file_name: &String, log_level: &String) {
     log4rs::init_config(config).unwrap();
 }
 
-/**
- *** If RUST_LOG level is empty, logger won't be printing anything so we need this custom function to init the logger
- **/
-pub fn default_logging_with_level_info() {
+pub fn log_to_console(log_level: &String) {
     Builder::new()
         .format(|buf, record| {
             writeln!(
@@ -41,7 +38,7 @@ pub fn default_logging_with_level_info() {
                 record.args(),
             )
         })
-        .filter(None, LevelFilter::Info)
+        .filter(None, log_level.parse().unwrap())
         .init();
 }
 
