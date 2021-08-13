@@ -6,6 +6,8 @@ pub mod ethereum_chain;
 pub mod grpc_stream;
 pub mod solana_chain;
 pub mod substrate_chain;
+pub mod transport;
+pub use self::transport::Transport;
 
 use command::{ChainConfig, Config};
 use grpc_stream::stream_mod::ChainType;

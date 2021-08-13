@@ -1,10 +1,14 @@
+use crate::Transport;
 use crate::{
     grpc_stream::stream_mod::{ChainType, DataType, GenericDataProto},
     CONFIG,
 };
-use log::{info, warn};
-use massbit_chain_ethereum::data_type::{EthereumBlock as Block, LightEthereumBlock};
-use std::hash::Hash;
+use futures::stream;
+use futures::{Future, Stream};
+use futures03::{self, compat::Future01CompatExt};
+use log::info;
+use massbit_chain_ethereum::data_type::EthereumBlock as Block;
+use std::collections::HashMap;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
@@ -12,11 +16,9 @@ use std::sync::{
 use tokio::sync::broadcast;
 use tokio::time::{sleep, Duration};
 use web3;
-use web3::api::SubscriptionStream;
-use web3::transports::{Http, WebSocket};
-use web3::types::BlockHeader;
+use web3::transports::Batch;
 use web3::{
-    futures::{future, StreamExt},
+    futures::future,
     types::{
         Address, Block as EthBlock, BlockId, BlockNumber as Web3BlockNumber, Bytes, CallRequest,
         Filter, FilterBuilder, Log, Transaction, TransactionReceipt, H256,
@@ -29,11 +31,6 @@ const CHAIN_TYPE: ChainType = ChainType::Ethereum;
 const PULLING_INTERVAL: u64 = 200;
 const USE_WEBSOCKET: bool = true;
 
-enum Web3Connection {
-    http(Web3<Http>),
-    ws(Web3<WebSocket>),
-}
-
 fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>) {
     // Todo: More clean solution for broadcast channel
     let mut rx = chan.subscribe();
@@ -44,25 +41,17 @@ fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>) {
     });
 }
 
-async fn fetch_receipt_from_ethereum_client(
-    web3_http: &Web3<Http>,
-    transaction_hash: &H256,
-) -> Result<TransactionReceipt, Box<dyn std::error::Error + Send + Sync + 'static>> {
-    match web3_http.eth().transaction_receipt(*transaction_hash).await {
-        Ok(Some(receipt)) => Ok(receipt),
-        Ok(None) => Err("Could not find transaction receipt".into()),
-        Err(error) => Err(format!("Failed to fetch transaction receipt: {:?}", error).into()),
-    }
-}
-
-async fn wait_for_new_block_http(web3_http: &Web3<Http>, got_block_number: Option<u64>) -> u64 {
+async fn wait_for_new_block_http(
+    web3_http: &Web3<Transport>,
+    got_block_number: Option<u64>,
+) -> u64 {
     loop {
-        let block_header = web3_http.eth().block(Web3BlockNumber::Latest.into()).await;
+        let block_header = web3_http.eth().block(Web3BlockNumber::Latest.into()).wait();
         if let Ok(Some(block_header)) = block_header {
             let latest_block_number = block_header.number.unwrap().as_u64();
             if let None = got_block_number {
                 return latest_block_number;
-            } else if (latest_block_number > got_block_number.unwrap()) {
+            } else if latest_block_number > got_block_number.unwrap() {
                 return latest_block_number;
             }
         }
@@ -70,33 +59,102 @@ async fn wait_for_new_block_http(web3_http: &Web3<Http>, got_block_number: Optio
     }
 }
 
-async fn wait_for_new_block_ws(
-    sub: &mut SubscriptionStream<WebSocket, BlockHeader>,
-    got_block_number: Option<u64>,
-) -> u64 {
-    let mut latest_block_number = 0;
-    // Wait for new block
-    sub.take(1)
-        .for_each(|x| {
-            println!("Got: {:?}", x);
-            latest_block_number = x.unwrap().number.unwrap().as_u64();
-            future::ready(())
-        })
-        .await;
-    latest_block_number
-}
+// Todo: add subscribe for get new block
+// async fn wait_for_new_block_ws(
+//     sub: &mut SubscriptionStream<WebSocket, BlockHeader>,
+//     got_block_number: Option<u64>,
+// ) -> u64 {
+//     let mut latest_block_number = 0;
+//     // Wait for new block
+//     sub.take(1)
+//         .for_each(|x| {
+//             println!("Got: {:?}", x);
+//             latest_block_number = x.number.unwrap().as_u64();
+//             Ok(())
+//         })
+//         .wait()
+//         .unwrap();
+//
+//     if got_block_number == None || got_block_number.unwrap() < latest_block_number {
+//         latest_block_number
+//     } else {
+//         got_block_number.unwrap()
+//     }
+// }
 
-async fn get_receipts(
-    web3_http: &Web3<Http>,
-    transactions: &Vec<Transaction>,
-) -> Vec<TransactionReceipt> {
-    let mut receipts = Vec::new();
-    for transaction in transactions {
-        let res_receipt = fetch_receipt_from_ethereum_client(web3_http, &transaction.hash).await;
-        if let Ok(receipt) = res_receipt {
-            receipts.push(receipt);
-        }
-    }
+pub async fn get_receipts(
+    block: &EthBlock<Transaction>,
+    web3: &Web3<Transport>,
+) -> HashMap<H256, TransactionReceipt> {
+    let block = block.clone();
+    let batching_web3 = Web3::new(Batch::new(web3.transport().clone()));
+
+    let receipt_futures = block
+        .transactions
+        .iter()
+        .map(|tx| {
+            let tx_hash = tx.hash;
+            // Todo: add check error (as in commented code)
+            batching_web3
+                .eth()
+                .transaction_receipt(tx_hash)
+                // .from_err()
+                // .map_err(MyIngestorError::Unknown)
+                .and_then(move |receipt_opt| {
+                    Ok(receipt_opt.unwrap())
+                    //     .ok_or_else(move || {
+                    //     // No receipt was returned.
+                    //     //
+                    //     // This can be because the Ethereum node no longer
+                    //     // considers this block to be part of the main chain,
+                    //     // and so the transaction is no longer in the main
+                    //     // chain.  Nothing we can do from here except give up
+                    //     // trying to ingest this block.
+                    //     //
+                    //     // This could also be because the receipt is simply not
+                    //     // available yet.  For that case, we should retry until
+                    //     // it becomes available.
+                    //     MyIngestorError::BlockUnavailable(block_hash)
+                    // })
+                })
+                .and_then(move |receipt| {
+                    // Parity nodes seem to return receipts with no block hash
+                    // when a transaction is no longer in the main chain, so
+                    // treat that case the same as a receipt being absent
+                    // entirely.
+                    // let receipt_block_hash = receipt
+                    //     .block_hash
+                    //     .ok_or_else(|| MyIngestorError::BlockUnavailable(block_hash))?;
+                    //
+                    // // Check if receipt is for the right block
+                    // if receipt_block_hash != block_hash {
+                    //     // If the receipt came from a different block, then the
+                    //     // Ethereum node no longer considers this block to be
+                    //     // in the main chain.  Nothing we can do from here
+                    //     // except give up trying to ingest this block.
+                    //     // There is no way to get the transaction receipt from
+                    //     // this block.
+                    //     Err(MyIngestorError::BlockUnavailable(block_hash))
+                    // } else {
+                    //     Ok((tx_hash, receipt))
+                    // }
+                    Ok((tx_hash, receipt))
+                })
+        })
+        .collect::<Vec<_>>();
+
+    let my_receipts = batching_web3
+        .transport()
+        .submit_batch()
+        // .from_err()
+        // .map_err(MyIngestorError::Unknown)
+        .and_then(move |_| stream::futures_ordered(receipt_futures).collect())
+        .compat()
+        .await;
+    let receipts = my_receipts
+        .unwrap()
+        .into_iter()
+        .collect::<HashMap<H256, TransactionReceipt>>();
 
     receipts
 }
@@ -107,38 +165,22 @@ pub async fn loop_get_block(chan: broadcast::Sender<GenericDataProto>) {
     let exit = Arc::new(AtomicBool::new(false));
     let config = CONFIG.chains.get(&CHAIN_TYPE).unwrap();
     let websocket_url = config.ws.clone();
-    let transport = web3::transports::WebSocket::new(websocket_url.as_str())
-        .await
-        .expect("Cannot connect websocket url for {:?}!");
-
-    let mut web3_ws = web3::Web3::new(transport);
     let http_url = config.url.clone();
-    let transport =
-        web3::transports::Http::new(http_url.as_str()).expect("Cannot connect http url for {:?}!");
 
-    let web3_http = web3::Web3::new(transport);
+    let (transport_event_loop, transport) = match USE_WEBSOCKET {
+        false => Transport::new_rpc(&http_url, Default::default()),
+        true => Transport::new_ws(&websocket_url),
+    };
+    std::mem::forget(transport_event_loop);
 
-    let mut sub = web3_ws.eth_subscribe().subscribe_new_heads().await.unwrap();
-    let mut version;
-    if USE_WEBSOCKET {
-        println!("Got subscription id: {:?}", sub.id());
-        // Get version
-        version = web3_ws
-            .net()
-            .version()
-            .await
-            .unwrap_or("Cannot get version".to_string());
-    } else {
-        // Get version
-        version = web3_http
-            .net()
-            .version()
-            .await
-            .unwrap_or("Cannot get version".to_string());
-    }
+    let web3 = Web3::new(transport);
 
-    // let mut sub = web3.eth_subscribe().subscribe_new_heads().await.unwrap();
-    // println!("Got subscription id: {:?}", sub.id());
+    // Get version
+    let version = web3
+        .net()
+        .version()
+        .wait()
+        .unwrap_or("Cannot get version".to_string());
 
     fix_one_thread_not_receive(&chan);
     let mut got_block_number = None;
@@ -147,12 +189,8 @@ pub async fn loop_get_block(chan: broadcast::Sender<GenericDataProto>) {
             eprintln!("{}", "exit".to_string());
             break;
         }
-        let mut latest_block_number;
-        if USE_WEBSOCKET {
-            latest_block_number = wait_for_new_block_ws(&mut sub, got_block_number).await;
-        } else {
-            latest_block_number = wait_for_new_block_http(&web3_http, got_block_number).await;
-        }
+
+        let latest_block_number = wait_for_new_block_http(&web3, got_block_number).await;
 
         if got_block_number == None {
             got_block_number = Some(latest_block_number - 1);
@@ -168,36 +206,33 @@ pub async fn loop_get_block(chan: broadcast::Sender<GenericDataProto>) {
         for block_number in (got_block_number.unwrap() + 1)..(latest_block_number + 1) {
             let clone_version = version.clone();
             let chan_clone = chan.clone();
-            let mut clone_web3_http = web3_http.clone();
-            let mut clone_web3_ws = web3_ws.clone();
-
+            let clone_web3 = web3.clone();
             tokio::spawn(async move {
                 // Get block
                 info!("Getting ETHEREUM block {}", block_number);
-                let mut block;
-                if USE_WEBSOCKET {
-                    block = clone_web3_ws
-                        .eth()
-                        .block_with_txs(BlockId::Number(Web3BlockNumber::from(block_number)))
-                        .await;
-                } else {
-                    block = clone_web3_http
-                        .eth()
-                        .block_with_txs(BlockId::Number(Web3BlockNumber::from(block_number)))
-                        .await;
-                }
+                // Get receipts
+                let block = clone_web3
+                    .eth()
+                    .block_with_txs(BlockId::Number(Web3BlockNumber::from(block_number)))
+                    .wait();
 
                 if let Ok(Some(block)) = block {
                     //println!("Got ETHEREUM Block {:?}",block);
                     // Convert to generic
                     let block_hash = block.hash.clone().unwrap().to_string();
+                    // Get receipts
+                    let receipts = get_receipts(&block, &clone_web3).await;
+                    info!(
+                        "Got ETHEREUM {} receipts of block: {}",
+                        receipts.len(),
+                        block_number
+                    );
 
                     let eth_block = Block {
                         version: clone_version.clone(),
                         timestamp: block.timestamp.as_u64(),
                         block,
-                        // Todo: Add receipts. Now hardcode empty.
-                        receipts: vec![],
+                        receipts,
                     };
 
                     let generic_data_proto =
