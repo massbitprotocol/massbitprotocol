@@ -57,6 +57,14 @@ impl {{ chain_type|title }}Handler for {{ chain_type|title }}HandlerAdapter {
     fn handle_block(&self, block: &ethereum_types::EthereumBlock) -> Result<(), Box<dyn Error>> {
         mapping::{{ handler.name }}(block)
     }
+{% elif handler.kind == "ethereum/TransactionHandler" and chain_type == "ethereum" %}
+    fn handle_transaction(&self, transaction: &ethereum_types::EthereumTransaction) -> Result<(), Box<dyn Error>> {
+        mapping::{{ handler.name }}(transaction)
+    }
+{% elif handler.kind == "ethereum/EventHandler" and chain_type == "ethereum" %}
+    fn handle_event(&self, event: &ethereum_types::EthereumEvent) -> Result<(), Box<dyn Error>> {
+        mapping::{{ handler.name }}(event)
+    }
 
 {%- endif -%}
 

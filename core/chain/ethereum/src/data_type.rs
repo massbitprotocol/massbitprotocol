@@ -34,6 +34,6 @@ pub struct ExtTransaction {
 }
 
 pub fn decode(payload: &mut Vec<u8>) -> Result<EthereumBlock, Box<dyn Error>> {
-    let decode_block: EthereumBlock = serde_json::from_slice(&payload).unwrap();
-    Ok(decode_block)
+    let block: EthereumBlock = serde_json::from_slice(&payload).unwrap();
+    Ok(block)
 }
