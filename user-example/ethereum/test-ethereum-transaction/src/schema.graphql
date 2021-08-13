@@ -1,0 +1,9 @@
+type EthereumTransactionTable @entity {
+    id: ID!
+    block_number: BigInt!
+    transaction_hash: String!
+    timestamp: String!
+    receipt: String!
+}
+
+
