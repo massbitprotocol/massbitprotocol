@@ -1,0 +1,26 @@
+specVersion: 0.0.2
+description: Gravatar for Ethereum
+repository: https://github.com/graphprotocol/example-subgraph
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum/contract
+    name: StandardToken
+    network: testnet
+    source:
+      address: '0x124818053F511a1BAAe5ad753E3526B9CAA433ab'
+      abi: StandardToken
+      startBlock: 9000000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.4
+      language: wasm/assemblyscript
+      entities:
+        - Gravatar
+      abis:
+        - name: StandardToken
+          file: ./abis/StandardToken.json
+      eventHandlers:
+        - event: Approval(indexed address,indexed address,uint256)
+          handler: handleTransfer
+      file: ./src/mapping.ts
