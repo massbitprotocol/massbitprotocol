@@ -209,7 +209,7 @@ def compile_wasm_handler():
 
     return {
                "status": "success",
-               "payload": "",
+               "payload": hash,
            }, 200
 
 
