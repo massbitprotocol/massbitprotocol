@@ -8,10 +8,9 @@ pub fn handle_block(block: &SolanaBlock) -> Result<(), Box<dyn std::error::Error
 pub fn handle_transaction(
     transaction: &SolanaTransaction,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    //println!("[SO File] Received Solana Transaction");
     // Create ID
     let transaction_id = Uuid::new_v4().to_simple().to_string();
-    let transaction_solana_ts = SolanaTransaction {
+    let transaction_solana_ts = SolanaTransactionTs {
         id: transaction_id,
         block_number: transaction.block_number as i64,
         fee: transaction.transaction.meta.clone().unwrap().fee as i64,

@@ -3,7 +3,6 @@ use massbit_chain_solana::data_type::{SolanaBlock, SolanaLogMessages, SolanaTran
 use uuid::Uuid;
 
 pub fn handle_block(block: &SolanaBlock) -> Result<(), Box<dyn std::error::Error>> {
-    //println!("[SO File] Received Solana Block");
     let id = Uuid::new_v4().to_simple().to_string();
     let block = SolanaBlockTs {
         id,
