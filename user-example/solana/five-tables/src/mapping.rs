@@ -7,7 +7,7 @@ pub fn handle_block(block: &solana_types::SolanaBlock) -> Result<(), Box<dyn Err
     // Create ID
     let block_id = Uuid::new_v4().to_simple().to_string();
     // Create Block
-    let block_ts = SolanaBlockForFiveTableExample {
+    let block_ts = FiveTableBlock {
         id: block_id.clone(),
         block_number: block.block.block_height.unwrap() as i64,
         block_hash: block.block.blockhash.to_string(),
@@ -21,7 +21,7 @@ pub fn handle_block(block: &solana_types::SolanaBlock) -> Result<(), Box<dyn Err
         let transaction_id = Uuid::new_v4().to_simple().to_string();
 
         let meta = transaction.meta.clone().unwrap();
-        let transaction_ts = SolanaTransactionForFiveTableExample {
+        let transaction_ts = FiveTableTransaction {
             id: transaction_id.clone(),
             signatures: transaction
                 .transaction

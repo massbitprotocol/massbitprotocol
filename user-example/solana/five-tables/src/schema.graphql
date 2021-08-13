@@ -1,4 +1,4 @@
-type SolanaBlockForFiveTableExample @entity {
+type FiveTableBlock @entity {
     id: ID!
     block_number: BigInt!
     block_hash: String!
@@ -7,7 +7,7 @@ type SolanaBlockForFiveTableExample @entity {
     success_rate: BigDecimal!
 }
 
-type SolanaTransactionForFiveTableExample @entity {
+type FiveTableTransaction @entity {
     id: ID!
     signatures: String!
     timestamp: BigInt!
