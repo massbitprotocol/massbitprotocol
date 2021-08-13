@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 use std::error::Error;
 
+use std::collections::HashMap;
 use web3::types::{
     Address, Block, BlockId, BlockNumber as Web3BlockNumber, Bytes, CallRequest, Filter,
     FilterBuilder, Log, Transaction, TransactionReceipt, H256,
@@ -22,7 +23,7 @@ pub struct ExtBlock {
     pub version: String,
     pub timestamp: Date,
     pub block: LightEthereumBlock,
-    pub receipts: Vec<Option<TransactionReceipt>>,
+    pub receipts: HashMap<H256, TransactionReceipt>,
 }
 
 pub struct ExtTransaction {
