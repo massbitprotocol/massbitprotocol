@@ -12,9 +12,9 @@ ${CODE_COMPILER}  http://localhost:5000
 ${INDEX_MANAGER}  http://localhost:3000
 
 *** Test Cases ***
-#####################
-# Test-solana-block #
-#####################
+######################
+## Test-solana-block #
+######################
 Deploy test-solana-block, then check if data was inserted into DB
     # Configuration
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
@@ -145,8 +145,8 @@ Deploy test-solana-five-tables, then check if data was inserted into DB
     Delete Table If Exists  transaction_instruction
     Delete Table If Exists  transaction_account
     Delete Table If Exists  instruction_detail
-    Delete Table If Exists  solana_transaction_for_five_table_example
-    Delete Table If Exists  solana_block_for_five_table_example
+    Delete Table If Exists  five_table_block
+    Delete Table If Exists  five_table_transaction
 
     # Compile request
     ${object} =  Read Index Example  ../../user-example/solana/five-tables/src
@@ -174,8 +174,8 @@ Deploy test-solana-five-tables, then check if data was inserted into DB
     Check If Exists In Database  SELECT * FROM transaction_instruction FETCH FIRST ROW ONLY
     Check If Exists In Database  SELECT * FROM transaction_account FETCH FIRST ROW ONLY
     Check If Exists In Database  SELECT * FROM instruction_detail FETCH FIRST ROW ONLY
-    Check If Exists In Database  SELECT * FROM solana_transaction_for_five_table_example FETCH FIRST ROW ONLY
-    Check If Exists In Database  SELECT * FROM solana_block_for_five_table_example FETCH FIRST ROW ONLY
+    Check If Exists In Database  SELECT * FROM five_table_block FETCH FIRST ROW ONLY
+    Check If Exists In Database  SELECT * FROM five_table_transaction FETCH FIRST ROW ONLY
 
 
 #############################
