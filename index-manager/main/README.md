@@ -21,3 +21,11 @@ RUST_LOG=debug cargo run --bin index-manager-main
 ```shell
 INDEX_MANAGER_RESTART_INDEX=true cargo run --bin index-manager-main
 ```
+
+## Changelog (For developers)
+13-8-2021
+
+Add support for `hash` field so we can keep track them as identifier for the index's config. 
+We don't use any migration engine yet so please delete the following table and restart the index manager 
+(The index manager will automatically re-create the tables)
+- indexers
