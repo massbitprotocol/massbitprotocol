@@ -4,12 +4,9 @@ use logger::core::init_logger;
 
 #[tokio::main]
 async fn main() {
-    // Logger
     let res = init_logger(&String::from("index-manager"));
-    println!("{}", res); // Printing where the logger will output the log
-    log::info!("Application started");
-
-    // Start Index Manager Server
+    println!("{}", res);
+    IndexManager::restart_all_existing_index().await;
     let server = IndexManager::serve("0.0.0.0:3030".to_string());
     server.wait();
 }

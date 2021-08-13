@@ -26,6 +26,7 @@ pub struct Indexer {
     pub id: String,
     pub network: String,
     pub name: String,
+    pub hash: String,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS indexers
     description varchar,
     repo varchar,
     index_status varchar,
-    index_data_ref varchar,
+    hash varchar,
     v_id serial
     constraint indexers_pk
     primary key

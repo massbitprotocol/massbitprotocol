@@ -59,11 +59,12 @@ impl IndexStore {
         let name = config_value["dataSources"][0]["name"].as_str().unwrap();
 
         let add_new_indexer = format!(
-            "INSERT INTO indexers(id, name, network, index_status) VALUES ('{}','{}','{}', '{}');",
+            "INSERT INTO indexers(id, name, network, index_status, hash) VALUES ('{}','{}','{}', '{}', '{}');",
             id,
             name,
             network,
-            IndexStatus::Synced.as_static().to_lowercase()
+            IndexStatus::Synced.as_static().to_lowercase(),
+            index_config.identifier.hash,
         );
         let result = diesel::sql_query(add_new_indexer).execute(&connection);
         match result {
@@ -132,13 +133,14 @@ impl IndexStore {
         let mut indexers: Vec<Indexer> = Vec::new();
 
         for row in &client
-            .query("SELECT id, network, name FROM indexers", &[])
+            .query("SELECT id, network, name, hash FROM indexers", &[])
             .unwrap()
         {
             let indexer = Indexer {
                 id: row.get(0),
                 network: row.get(1),
                 name: row.get(2),
+                hash: row.get(3),
             };
             indexers.push(indexer);
         }

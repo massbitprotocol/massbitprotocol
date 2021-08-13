@@ -1,22 +1,24 @@
+use std::env;
+use std::error::Error;
+
 /**
-*** Objective of this file is to create a new index with some configs before passing them to plugin manager
-*** Also provide some endpoints to get the index's detail
-**/
+ *** Objective of this file is to create a new index with some configs before passing them to plugin manager
+ *** Also provide some endpoints to get the index's detail
+ **/
 // Generic dependencies
 use diesel::{Connection, PgConnection};
 use lazy_static::lazy_static;
-use std::env;
-use std::error::Error;
+
+use adapter::core::AdapterManager;
 
 // Massbit dependencies
 use crate::adapter::adapter_init;
 use crate::config::{generate_random_hash, get_index_name};
-use crate::config_builder::IndexConfigIpfsBuilder;
+use crate::config_builder::{IndexConfigIpfsBuilder, IndexConfigLocalBuilder};
 use crate::ddl_gen::run_ddl_gen;
 use crate::hasura::track_hasura_with_ddl_gen_plugin;
 use crate::ipfs::{get_ipfs_file_by_hash, read_config_file};
 use crate::types::{DeployParams, IndexStore, Indexer};
-use adapter::core::AdapterManager;
 
 lazy_static! {
     static ref CHAIN_READER_URL: String =
@@ -27,7 +29,7 @@ lazy_static! {
         env::var("IPFS_ADDRESS").unwrap_or(String::from("0.0.0.0:5001"));
 }
 
-pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
+pub async fn start_new_index(params: DeployParams) -> Result<(), Box<dyn Error>> {
     // Get user index mapping logic, query for migration and index's configurations
     let index_config = IndexConfigIpfsBuilder::default()
         .config(&params.config)
@@ -44,9 +46,33 @@ pub async fn loop_blocks(params: DeployParams) -> Result<(), Box<dyn Error>> {
     // Create a new indexer so we can keep track of it's status
     IndexStore::insert_new_indexer(&index_config);
 
-    // Start the adapter
+    // Start the adapter for the index
     adapter_init(&index_config).await;
 
+    Ok(())
+}
+
+pub async fn restart_all_existing_index_helper() -> Result<(), Box<dyn Error>> {
+    let indexers = IndexStore::get_indexer_list();
+
+    if indexers.len() == 0 {
+        log::info!("No index found");
+        return Ok(());
+    }
+
+    for indexer in indexers {
+        tokio::spawn(async move {
+            let index_config = IndexConfigLocalBuilder::default()
+                .config(&indexer.hash)
+                .await
+                .mapping(&indexer.hash)
+                .await
+                .schema(&indexer.hash)
+                .await
+                .build();
+            adapter_init(&index_config).await;
+        });
+    }
     Ok(())
 }
 
