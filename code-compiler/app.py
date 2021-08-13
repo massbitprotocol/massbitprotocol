@@ -149,6 +149,15 @@ def compile_handler():
                "payload": hash,
            }, 200
 
+@app.route("/compile/wasm", methods=['POST'])
+@cross_origin()
+def compile_handler():
+
+    return {
+               "status": "success",
+               "payload": "",
+           }, 200
+
 
 @app.route("/compile/status/<id>", methods=['GET'])
 @cross_origin()
