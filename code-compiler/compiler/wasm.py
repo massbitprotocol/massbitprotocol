@@ -1,3 +1,4 @@
+import json
 import urllib.parse
 import os
 import subprocess
@@ -5,7 +6,6 @@ import threading
 import ipfshttpclient
 import requests
 from distutils.dir_util import copy_tree
-
 from helper.helper import write_to_disk
 
 
@@ -37,25 +37,22 @@ class WasmCodegenAndBuild(threading.Thread):
 def compile_wasm(data, hash):
     # Create new folder
     generated_folder = "generated/" + hash
-    os.mkdir(generated_folder)
-    os.mkdir(generated_folder + "/src")
-    os.mkdir(generated_folder + "/abis")
 
     # URL-decode the data
-    mapping = urllib.parse.unquote_plus(data["mapping.ts"])  # We currently support uploading 1 mapping file only
+    mapping = data["mapping"]
+    abis = data["abis"]
     subgraph = urllib.parse.unquote_plus(data["subgraph.yaml"])
     schema = urllib.parse.unquote_plus(data["schema.graphql"])
-    abis = urllib.parse.unquote_plus(data["abis"])
-    project_name = urllib.parse.unquote_plus(data["project_name"])
-
-    # Populating stub data
-    copy_tree("stub-wasm", os.path.join(generated_folder))
+    package = urllib.parse.unquote_plus(data["package.json"])
 
     # Save the formatted data from request to disk, ready for compiling
-    write_to_disk(generated_folder + "/src/mapping.ts", mapping)
-    write_to_disk(generated_folder + "/subgraph.yaml", subgraph)
-    write_to_disk(generated_folder + "/schema.graphql", schema)
-    write_to_disk(generated_folder + "/abis/" + project_name + ".json", abis)
+    for file_name in mapping:
+        write_to_disk(os.path.join(generated_folder, "src", file_name), urllib.parse.unquote_plus(mapping[file_name]))
+    for file_name in abis:
+        write_to_disk(os.path.join(generated_folder, "abis", file_name), urllib.parse.unquote_plus(abis[file_name]))
+    write_to_disk(os.path.join(generated_folder, "subgraph.yaml"), subgraph)
+    write_to_disk(os.path.join(generated_folder, "schema.graphql"), schema)
+    write_to_disk(os.path.join(generated_folder, "package.json"), package)
 
     # Codegen & Build
     print("Generating code + compiling for: " + hash + ". This will take a while!")
@@ -68,11 +65,11 @@ def compile_wasm(data, hash):
 def deploy_wasm(data):
     # Parse the data
     compilation_id = urllib.parse.unquote_plus(data["compilation_id"])
-    project_name = urllib.parse.unquote_plus(data["project_name"])
+    wasm = urllib.parse.unquote_plus(data["wasm"])
 
     # Get the files path from generated/hash folder
     project = os.path.join("./generated", compilation_id, "subgraph.yaml")
-    mapping = os.path.join("./generated", compilation_id, "build", project_name, project_name + ".wasm")
+    mapping = os.path.join("./generated", compilation_id, "build", wasm, wasm + ".wasm")
     schema = os.path.join("./generated", compilation_id, "schema.graphql")
 
     # Uploading files to IPFS

@@ -73,10 +73,6 @@ class CargoGenAndBuild(threading.Thread):
 def compile_so(data, hash):
     generated_folder = "generated/" + hash
 
-    # Create new folder
-    os.mkdir(generated_folder)
-    os.mkdir(generated_folder + "/src")
-
     # URL-decode the data
     mapping = urllib.parse.unquote_plus(data["mapping.rs"])
     project = urllib.parse.unquote_plus(data["project.yaml"])

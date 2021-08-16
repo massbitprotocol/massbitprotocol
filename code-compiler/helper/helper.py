@@ -1,4 +1,6 @@
+import errno
 import random
+import os
 from shutil import copyfile
 
 
@@ -11,6 +13,14 @@ def write_to_disk(file, data):
     :param data: (String) raw data. Any data with "\ n" will be created as newline
     :return: (String) ok
     """
+    # Auto create folder parent folder if not exists
+    if not os.path.exists(os.path.dirname(file)):
+        try:
+            os.makedirs(os.path.dirname(file))
+        except OSError as exc:  # Guard against race condition
+            if exc.errno != errno.EEXIST:
+                raise
+
     f = open(file, "w+")
     f.write(data)
     return "ok"
