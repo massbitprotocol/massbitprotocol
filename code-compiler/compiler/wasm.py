@@ -39,15 +39,15 @@ def compile_wasm(data, hash):
     generated_folder = "generated/" + hash
 
     # URL-decode the data
-    mapping = data["mapping"]
+    mappings = data["mappings"]
     abis = data["abis"]
     subgraph = urllib.parse.unquote_plus(data["subgraph.yaml"])
     schema = urllib.parse.unquote_plus(data["schema.graphql"])
     package = urllib.parse.unquote_plus(data["package.json"])
 
     # Save the formatted data from request to disk, ready for compiling
-    for file_name in mapping:
-        write_to_disk(os.path.join(generated_folder, "src", file_name), urllib.parse.unquote_plus(mapping[file_name]))
+    for file_name in mappings:
+        write_to_disk(os.path.join(generated_folder, "src", file_name), urllib.parse.unquote_plus(mappings[file_name]))
     for file_name in abis:
         write_to_disk(os.path.join(generated_folder, "abis", file_name), urllib.parse.unquote_plus(abis[file_name]))
     write_to_disk(os.path.join(generated_folder, "subgraph.yaml"), subgraph)

@@ -12,15 +12,15 @@ ${CODE_COMPILER}  http://localhost:5000
 ${INDEX_MANAGER}  http://localhost:3000
 
 *** Test Cases ***
-#######################
-# Test-ethereum-block #
-#######################
-Compile and Deploy Test Ethereum Block
+############################
+# Test-ethereum-block WASM #
+############################
+Compile and Deploy WASM Test Ethereum Block
     # Configuration
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
     # Compile request
-    ${object} =  Read Wasm Example  ../../user-example/ethereum/wasm/test-block  src
+    ${object} =  Read Wasm Example  ../../user-example/ethereum/wasm/test-block  default
     ${compile_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/compile/wasm
     ...  ${object}
@@ -40,15 +40,15 @@ Compile and Deploy Test Ethereum Block
     ...  ${json}
     Should be equal  ${deploy_res["status"]}  success
 
-#######################
-# Test-ethereum-event #
-#######################
-Compile and Deploy Test Ethereum Event
+############################
+# Test-ethereum-event WASM #
+############################
+Compile and Deploy WASM Test Ethereum Event
     # Configuration
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
     # Compile request
-    ${object} =  Read Wasm Example  ../../user-example/ethereum/wasm/test-event  src
+    ${object} =  Read Wasm Example  ../../user-example/ethereum/wasm/test-event  default
     ${compile_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/compile/wasm
     ...  ${object}
@@ -69,33 +69,33 @@ Compile and Deploy Test Ethereum Event
     Should be equal  ${deploy_res["status"]}  success
 
 
-###################
-## Test-quickswap #
-###################
-#Compile and Deploy Test Ethereum Event
-#    # Configuration
-#    Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
-#
-#    # Compile request
-#    ${object} =  Read Wasm Example  ../../user-example/ethereum/wasm/quickswap  src/mappings
-#    ${compile_res}=  Request.Post Request
-#    ...  ${CODE_COMPILER}/compile/wasm
-#    ...  ${object}
-#    Should be equal  ${compile_res["status"]}  success
-#
-#    # Compile status
-#    Wait Until Keyword Succeeds
-#    ...  60x
-#    ...  10 sec
-#    ...  Pooling Status
-#    ...  ${compile_res["payload"]}
-#
-#    # Deploy
-#    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}", "model": "Factory"}
-#    ${deploy_res}=  Request.Post Request
-#    ...  ${CODE_COMPILER}/deploy/wasm
-#    ...  ${json}
-#    Should be equal  ${deploy_res["status"]}  success
+#######################
+# Test-quickswap WASM #
+#######################
+Compile and Deploy WASM Test Quickswap
+    # Configuration
+    Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
+
+    # Compile request
+    ${object} =  Read Wasm Example  ../../user-example/ethereum/wasm/quickswap  mappings
+    ${compile_res}=  Request.Post Request
+    ...  ${CODE_COMPILER}/compile/wasm
+    ...  ${object}
+    Should be equal  ${compile_res["status"]}  success
+
+    # Compile status
+    Wait Until Keyword Succeeds
+    ...  60x
+    ...  10 sec
+    ...  Pooling Status
+    ...  ${compile_res["payload"]}
+
+    # Deploy
+    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}", "model": "Factory"}
+    ${deploy_res}=  Request.Post Request
+    ...  ${CODE_COMPILER}/deploy/wasm
+    ...  ${json}
+    Should be equal  ${deploy_res["status"]}  success
 
 ###################
 # Helper Function #

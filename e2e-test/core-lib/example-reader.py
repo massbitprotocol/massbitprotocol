@@ -1,6 +1,7 @@
 import urllib.parse
 import os
 
+
 def read_so_example(path):
     # Read mapping.rs
     mapping_file = open(os.path.join(path, "mapping.rs"))
@@ -26,13 +27,13 @@ def read_so_example(path):
     return payload
 
 
-def read_wasm_example(path, mapping_path):
+def read_wasm_example(path, custom_mapping_path):
     """
     Read wasm example from user-examples
 
     :param path: (String) path to the example folder
 
-    :param mapping_path: (String) path to the mapping folder in side of the example folder
+    :param custom_mapping_path: (String) path to the mapping folder in side of the example folder
     :return: (Dict) Payload for calling to /compile/wasm endpoint
     """
     # Read abis
@@ -45,13 +46,22 @@ def read_wasm_example(path, mapping_path):
         f.close()
 
     # Read mapping
-    mapping_files = os.listdir(os.path.join(path, mapping_path))
     mapping_dict = {}
-    for name in mapping_files:
-        f = open(os.path.join(path, mapping_path, name))
-        content = urllib.parse.quote_plus(f.read())
-        mapping_dict[name] = content
-        f.close()
+
+    if custom_mapping_path == 'default':  # Read in /src if custom_mapping_path is none
+        mapping_files = os.listdir(os.path.join(path, "src"))
+        for name in mapping_files:
+            f = open(os.path.join(path, "src", name))
+            content = urllib.parse.quote_plus(f.read())
+            mapping_dict[name] = content
+            f.close()
+    else:  # Read in /src/[custom_mapping_path]
+        mapping_files = os.listdir(os.path.join(path, "src", custom_mapping_path))
+        for name in mapping_files:
+            f = open(os.path.join(path, "src", custom_mapping_path, name))
+            content = urllib.parse.quote_plus(f.read())
+            mapping_dict[custom_mapping_path + '/' + name] = content
+            f.close()
 
     # Read subgraph.yaml
     subgraph_file = open(os.path.join(path, "subgraph.yaml"))
@@ -70,7 +80,7 @@ def read_wasm_example(path, mapping_path):
 
     payload = {
         "abis": abis_dict,
-        "mapping": mapping_dict,
+        "mappings": mapping_dict,
         "subgraph.yaml": subgraph,
         "schema.graphql": schema,
         "package.json": package,
