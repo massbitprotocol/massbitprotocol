@@ -11,7 +11,6 @@ use std::path::PathBuf;
 lazy_static! {
     static ref MIGRATION_FOLDER: String = String::from("./migrations");
     static ref HASURA_PAYLOAD: String = String::from("hasura_queries.json");
-    static ref COMPONENT_NAME: String = String::from("[Index Manger Hasura Helper]");
 }
 
 // Check if there are two folder with the same name in the migration folder
@@ -25,8 +24,8 @@ pub fn assert_no_duplicated_index(index_name: &String) {
         }
         if flag >= 2 {
             panic!(
-                "{} Index Name already exists in the folder: {}. Plugin hasura won't run",
-                &*COMPONENT_NAME, &*MIGRATION_FOLDER
+                "Index Name already exists in the folder: {}. Plugin hasura won't run",
+                &*MIGRATION_FOLDER
             )
         }
     }
@@ -39,11 +38,7 @@ pub fn get_hasura_payload_folder(index_name: &String) -> PathBuf {
     for path in paths {
         let f_name = path.as_ref().unwrap().file_name().into_string().unwrap(); // Get all the file name in the folder
         if f_name.contains(index_name) {
-            log::info!(
-                "{} Found the migration folder of index: {}",
-                &*COMPONENT_NAME,
-                &index_name
-            );
+            log::info!("Found the migration folder of index: {}", &index_name);
             res = path.unwrap().path();
         };
     }
@@ -57,17 +52,13 @@ pub fn get_hasura_payload(folder: &PathBuf) -> String {
     for path in paths {
         let f_name = path.as_ref().unwrap().file_name().into_string().unwrap(); // Get all the file name in the folder
         if f_name.contains(&*HASURA_PAYLOAD) {
-            log::info!(
-                "{} Found the hasura payload: {}",
-                &*COMPONENT_NAME,
-                &*HASURA_PAYLOAD
-            );
+            log::info!("Found the hasura payload: {}", &*HASURA_PAYLOAD);
             let mut file = File::open(path.unwrap().path()).unwrap();
             let mut content = String::new();
             file.read_to_string(&mut content).unwrap(); // Getting the file content to string
             res = content;
         };
     }
-    log::info!("{} Payload: {}", &*COMPONENT_NAME, &res);
+    log::info!("Payload: {}", &res);
     res
 }

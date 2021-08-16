@@ -1,4 +1,4 @@
-type Block @entity {
+type FiveTableBlock @entity {
     id: ID!
     block_number: BigInt!
     block_hash: String!
@@ -7,12 +7,12 @@ type Block @entity {
     success_rate: BigDecimal!
 }
 
-type Transaction @entity {
+type FiveTableTransaction @entity {
     id: ID!
     signatures: String!
     timestamp: BigInt!
     fee: BigInt!
-    block: Block!
+    block: FiveTableBlock!
     block_number: BigInt!
     success: Boolean!
 }
@@ -24,7 +24,7 @@ type TransactionAccount @entity {
     pos_balance: BigInt!
     change_balance: BigInt!
     is_program: Boolean!
-    transaction_own: Transaction!
+    transaction_own: FiveTableTransaction!
     inner_account_index: BigInt!
 }
 
@@ -36,7 +36,7 @@ type InstructionDetail @entity {
 
 type TransactionInstruction @entity {
     id: ID!
-    transaction_own: Transaction!
+    transaction_own: FiveTableTransaction!
     inner_account_index: BigInt!
     instruction_detail: InstructionDetail!
 

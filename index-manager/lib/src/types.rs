@@ -4,6 +4,7 @@
 // Generic dependencies
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use strum_macros::AsStaticStr;
 
 // Massbit dependencies
 pub use stream_mod::{
@@ -25,6 +26,7 @@ pub struct Indexer {
     pub id: String,
     pub network: String,
     pub name: String,
+    pub hash: String,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -35,7 +37,24 @@ pub struct DetailParams {
 }
 
 pub struct IndexConfig {
-    pub config: String,
+    pub config: PathBuf,
     pub mapping: PathBuf,
-    pub schema: String,
+    pub schema: PathBuf,
+    pub identifier: IndexIdentifier,
 }
+
+pub struct IndexIdentifier {
+    pub name: String,
+    pub hash: String,
+    pub name_with_hash: String,
+}
+
+// This is inspired by the syncing status from eth https://ethereum.stackexchange.com/questions/69458/sync-status-of-ethereum-node
+#[derive(Clone, Debug, PartialEq, AsStaticStr)]
+pub enum IndexStatus {
+    Synced,  // Meaning that the index is running
+    Syncing, // This mean our index is not caught up to the latest block yet. We don't support this field yet
+    False,   // Meaning that the index is not running
+}
+
+pub struct IndexStore {}
