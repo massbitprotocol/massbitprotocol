@@ -51,7 +51,7 @@ def read_index_example_ethereum(path, project_name):
         "mapping.ts": mapping,
         "subgraph.yaml": subgraph,
         "schema.graphql": schema,
-        "project_name": project_name
+        "package.json"
     }
     print(payload)
     return payload

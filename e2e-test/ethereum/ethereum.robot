@@ -34,7 +34,7 @@ Compile and Deploy Test Ethereum Block
     ...  ${compile_res["payload"]}
 
     # Deploy
-    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}", "project_name": "MasterChef"}
+    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}", "model": "MasterChef"}
     ${deploy_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/deploy/wasm
     ...  ${json}
@@ -62,7 +62,7 @@ Compile and Deploy Test Ethereum Block
 #    ...  ${compile_res["payload"]}
 #
 #    # Deploy
-#    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}", "project_name": "StandardToken"}
+#    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}", "model": "StandardToken"}
 #    ${deploy_res}=  Request.Post Request
 #    ...  ${CODE_COMPILER}/deploy/wasm
 #    ...  ${json}
@@ -91,7 +91,7 @@ Compile and Deploy Test Ethereum Block
 #    ...  ${compile_res["payload"]}
 #
 #    # Deploy
-#    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}", "project_name": "Factory"}
+#    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}", "model": "Factory"}
 #    ${deploy_res}=  Request.Post Request
 #    ...  ${CODE_COMPILER}/deploy/wasm
 #    ...  ${json}
