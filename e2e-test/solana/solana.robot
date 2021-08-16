@@ -26,7 +26,7 @@ Deploy test-solana-block, then check if data was inserted into DB
     # Compile request
     ${object} =  Read Index Example  ../../user-example/solana/test-solana-block/src
     ${compile_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/compile
+    ...  ${CODE_COMPILER}/compile/so
     ...  ${object}
     Should be equal  ${compile_res["status"]}  success
 
@@ -66,7 +66,7 @@ Deploy test-solana-transaction, then check if data was inserted into DB
     # Compile request
     ${object} =  Read Index Example  ../../user-example/solana/test-solana-transaction/src
     ${compile_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/compile
+    ...  ${CODE_COMPILER}/compile/so
     ...  ${object}
     Should be equal  ${compile_res["status"]}  success
 
@@ -106,7 +106,7 @@ Deploy test-solana-log-messages, then check if data was inserted into DB
     # Compile request
     ${object} =  Read Index Example  ../../user-example/solana/test-solana-log-messages/src
     ${compile_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/compile
+    ...  ${CODE_COMPILER}/compile/so
     ...  ${object}
     Should be equal  ${compile_res["status"]}  success
 
@@ -151,7 +151,7 @@ Deploy test-solana-five-tables, then check if data was inserted into DB
     # Compile request
     ${object} =  Read Index Example  ../../user-example/solana/five-tables/src
     ${compile_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/compile
+    ...  ${CODE_COMPILER}/compile/so
     ...  ${object}
     Should be equal  ${compile_res["status"]}  success
 
@@ -196,7 +196,7 @@ Deploy test-solana-index-serum, then check if data was inserted into DB
     # Compile request
     ${object} =  Read Index Example  ../../user-example/solana/index-serum/src
     ${compile_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/compile
+    ...  ${CODE_COMPILER}/compile/so
     ...  ${object}
     Should be equal  ${compile_res["status"]}  success
 

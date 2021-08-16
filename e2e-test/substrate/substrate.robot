@@ -26,7 +26,7 @@ Deploy test-block, then check if data was inserted into DB
     # Compile request
     ${object} =  Read Index Example  ../../user-example/substrate/test-block/src
     ${compile_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/compile
+    ...  ${CODE_COMPILER}/compile/so
     ...  ${object}
     Should be equal  ${compile_res["status"]}  success
 
@@ -65,7 +65,7 @@ Deploy test-event, then check if data was inserted into DB
     # Compile request
     ${object} =  Read Index Example  ../../user-example/substrate/test-event/src
     ${compile_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/compile
+    ...  ${CODE_COMPILER}/compile/so
     ...  ${object}
     Should be equal  ${compile_res["status"]}  success
 
@@ -104,7 +104,7 @@ Deploy test-extrinsic, then check if data was inserted into DB
     # Compile request
     ${object} =  Read Index Example  ../../user-example/substrate/test-extrinsic/src
     ${compile_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/compile
+    ...  ${CODE_COMPILER}/compile/so
     ...  ${object}
     Should be equal  ${compile_res["status"]}  success
 
