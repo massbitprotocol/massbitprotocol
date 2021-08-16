@@ -1,5 +1,8 @@
 import urllib.parse
 import os
+from os import listdir
+from os.path import isfile, join
+
 
 def read_index_example(path):
     # Read mapping.rs
@@ -27,31 +30,39 @@ def read_index_example(path):
 
 def read_index_example_ethereum(path, project_name):
     # Read abis
-    abis_file = open(os.path.join(path, "abis", project_name + ".json"))
-    abis = urllib.parse.quote_plus(abis_file.read())
-    abis_file.close()
+    # abis_file = open(os.path.join(path, "abis", project_name + ".json"))
+    # abis = urllib.parse.quote_plus(abis_file.read())
+    # abis_file.close()
 
-    # Read mapping.rs
-    mapping_file = open(os.path.join(path, "src", "mapping.ts"))
-    mapping = urllib.parse.quote_plus(mapping_file.read())
-    mapping_file.close()
+    # for file_name in mapping:
+    #     write_to_disk(os.path.join(generated_folder, "src", file_name), urllib.parse.unquote_plus(mapping[file_name]))
+    # onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
 
-    # Read subgraph.yaml
-    subgraph_file = open(os.path.join(path, "subgraph.yaml"))
-    subgraph = urllib.parse.quote_plus(subgraph_file.read())
-    subgraph_file.close()
+    arr = os.listdir(path)
+    print(arr)
 
-    # Read schema.graphql
-    schema_file = open(os.path.join(path, "schema.graphql"))
-    schema = urllib.parse.quote_plus(schema_file.read())
-    schema_file.close()
 
-    payload = {
-        "abis": abis,
-        "mapping.ts": mapping,
-        "subgraph.yaml": subgraph,
-        "schema.graphql": schema,
-        "package.json"
-    }
-    print(payload)
-    return payload
+    # # Read mapping.rs
+    # mapping_file = open(os.path.join(path, "src", "mapping.ts"))
+    # mapping = urllib.parse.quote_plus(mapping_file.read())
+    # mapping_file.close()
+    #
+    # # Read subgraph.yaml
+    # subgraph_file = open(os.path.join(path, "subgraph.yaml"))
+    # subgraph = urllib.parse.quote_plus(subgraph_file.read())
+    # subgraph_file.close()
+    #
+    # # Read schema.graphql
+    # schema_file = open(os.path.join(path, "schema.graphql"))
+    # schema = urllib.parse.quote_plus(schema_file.read())
+    # schema_file.close()
+    #
+    # payload = {
+    #     "abis": abis,
+    #     "mapping.ts": mapping,
+    #     "subgraph.yaml": subgraph,
+    #     "schema.graphql": schema,
+    #     "package.json"
+    # }
+    # print(payload)
+    # return payload

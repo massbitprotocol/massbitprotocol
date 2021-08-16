@@ -20,7 +20,7 @@ Compile and Deploy Test Ethereum Block
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
     # Compile request
-    ${object} =  Read Index Example Ethereum  ../../user-example/ethereum/test-block  MasterChef
+    ${object} =  Read Index Example Ethereum  ../../user-example/ethereum/wasm/test-block  MasterChef
     ${compile_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/compile/wasm
     ...  ${object}
@@ -48,7 +48,7 @@ Compile and Deploy Test Ethereum Block
 #    Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 #
 #    # Compile request
-#    ${object} =  Read Index Example Ethereum  ../../user-example/ethereum/test-event  StandardToken
+#    ${object} =  Read Index Example Ethereum  ../../user-example/ethereum/wasm/test-event  StandardToken
 #    ${compile_res}=  Request.Post Request
 #    ...  ${CODE_COMPILER}/compile/wasm
 #    ...  ${object}
@@ -77,7 +77,7 @@ Compile and Deploy Test Ethereum Block
 #    Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 #
 #    # Compile request
-#    ${object} =  Read Index Example Ethereum  ../../user-example/ethereum/quickswap  StandardToken
+#    ${object} =  Read Index Example Ethereum  ../../user-example/ethereum/wasm/quickswap  StandardToken
 #    ${compile_res}=  Request.Post Request
 #    ...  ${CODE_COMPILER}/compile/wasm
 #    ...  ${object}
