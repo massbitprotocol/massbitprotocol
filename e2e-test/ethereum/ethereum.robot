@@ -40,33 +40,62 @@ Compile and Deploy Test Ethereum Block
     ...  ${json}
     Should be equal  ${deploy_res["status"]}  success
 
-#######################
-# Test-ethereum-event #
-#######################
-Compile and Deploy Test Ethereum Event
-    # Configuration
-    Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
-
-    # Compile request
-    ${object} =  Read Index Example Ethereum  ../../user-example/ethereum/test-event  StandardToken
-    ${compile_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/compile/wasm
-    ...  ${object}
-    Should be equal  ${compile_res["status"]}  success
-
-    # Compile status
-    Wait Until Keyword Succeeds
-    ...  60x
-    ...  10 sec
-    ...  Pooling Status
-    ...  ${compile_res["payload"]}
-
-    # Deploy
-    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}", "project_name": "StandardToken"}
-    ${deploy_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/deploy/wasm
-    ...  ${json}
-    Should be equal  ${deploy_res["status"]}  success
+########################
+## Test-ethereum-event #
+########################
+#Compile and Deploy Test Ethereum Event
+#    # Configuration
+#    Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
+#
+#    # Compile request
+#    ${object} =  Read Index Example Ethereum  ../../user-example/ethereum/test-event  StandardToken
+#    ${compile_res}=  Request.Post Request
+#    ...  ${CODE_COMPILER}/compile/wasm
+#    ...  ${object}
+#    Should be equal  ${compile_res["status"]}  success
+#
+#    # Compile status
+#    Wait Until Keyword Succeeds
+#    ...  60x
+#    ...  10 sec
+#    ...  Pooling Status
+#    ...  ${compile_res["payload"]}
+#
+#    # Deploy
+#    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}", "project_name": "StandardToken"}
+#    ${deploy_res}=  Request.Post Request
+#    ...  ${CODE_COMPILER}/deploy/wasm
+#    ...  ${json}
+#    Should be equal  ${deploy_res["status"]}  success
+#
+#
+###################
+## Test-quickswap #
+###################
+#Compile and Deploy Test Ethereum Event
+#    # Configuration
+#    Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
+#
+#    # Compile request
+#    ${object} =  Read Index Example Ethereum  ../../user-example/ethereum/quickswap  StandardToken
+#    ${compile_res}=  Request.Post Request
+#    ...  ${CODE_COMPILER}/compile/wasm
+#    ...  ${object}
+#    Should be equal  ${compile_res["status"]}  success
+#
+#    # Compile status
+#    Wait Until Keyword Succeeds
+#    ...  60x
+#    ...  10 sec
+#    ...  Pooling Status
+#    ...  ${compile_res["payload"]}
+#
+#    # Deploy
+#    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}", "project_name": "Factory"}
+#    ${deploy_res}=  Request.Post Request
+#    ...  ${CODE_COMPILER}/deploy/wasm
+#    ...  ${json}
+#    Should be equal  ${deploy_res["status"]}  success
 
 ###################
 # Helper Function #
