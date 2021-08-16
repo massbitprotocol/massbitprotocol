@@ -65,11 +65,11 @@ def compile_wasm(data, hash):
 def deploy_wasm(data):
     # Parse the data
     compilation_id = urllib.parse.unquote_plus(data["compilation_id"])
-    wasm = urllib.parse.unquote_plus(data["wasm"])
+    model = urllib.parse.unquote_plus(data["model"])
 
     # Get the files path from generated/hash folder
     project = os.path.join("./generated", compilation_id, "subgraph.yaml")
-    mapping = os.path.join("./generated", compilation_id, "build", wasm, wasm + ".wasm")
+    mapping = os.path.join("./generated", compilation_id, "build", model, model + ".wasm")
     schema = os.path.join("./generated", compilation_id, "schema.graphql")
 
     # Uploading files to IPFS
@@ -85,7 +85,7 @@ def deploy_wasm(data):
 
     # Uploading to IPFS result
     print("project.yaml: " + config_res['Hash'])
-    print(project_name + ".wasm: " + mapping_res['Hash'])
+    print(model + ".wasm: " + mapping_res['Hash'])
     print("schema.graphql: " + schema_res['Hash'])
 
     # Uploading IPFS files to Index Manager
