@@ -1,10 +1,7 @@
 import urllib.parse
 import os
-from os import listdir
-from os.path import isfile, join
 
-
-def read_index_example(path):
+def read_so_example(path):
     # Read mapping.rs
     mapping_file = open(os.path.join(path, "mapping.rs"))
     mapping = urllib.parse.quote_plus(mapping_file.read())
@@ -28,41 +25,55 @@ def read_index_example(path):
     print(payload)
     return payload
 
-def read_index_example_ethereum(path, project_name):
+
+def read_wasm_example(path, mapping_path):
+    """
+    Read wasm example from user-examples
+
+    :param path: (String) path to the example folder
+
+    :param mapping_path: (String) path to the mapping folder in side of the example folder
+    :return: (Dict) Payload for calling to /compile/wasm endpoint
+    """
     # Read abis
-    # abis_file = open(os.path.join(path, "abis", project_name + ".json"))
-    # abis = urllib.parse.quote_plus(abis_file.read())
-    # abis_file.close()
+    abis_files = os.listdir(os.path.join(path, "abis"))
+    abis_dict = {}
+    for name in abis_files:
+        f = open(os.path.join(path, "abis", name))
+        content = urllib.parse.quote_plus(f.read())
+        abis_dict[name] = content
+        f.close()
 
-    # for file_name in mapping:
-    #     write_to_disk(os.path.join(generated_folder, "src", file_name), urllib.parse.unquote_plus(mapping[file_name]))
-    # onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
+    # Read mapping
+    mapping_files = os.listdir(os.path.join(path, mapping_path))
+    mapping_dict = {}
+    for name in mapping_files:
+        f = open(os.path.join(path, mapping_path, name))
+        content = urllib.parse.quote_plus(f.read())
+        mapping_dict[name] = content
+        f.close()
 
-    arr = os.listdir(path)
-    print(arr)
+    # Read subgraph.yaml
+    subgraph_file = open(os.path.join(path, "subgraph.yaml"))
+    subgraph = urllib.parse.quote_plus(subgraph_file.read())
+    subgraph_file.close()
 
+    # Read schema.graphql
+    schema_file = open(os.path.join(path, "schema.graphql"))
+    schema = urllib.parse.quote_plus(schema_file.read())
+    schema_file.close()
 
-    # # Read mapping.rs
-    # mapping_file = open(os.path.join(path, "src", "mapping.ts"))
-    # mapping = urllib.parse.quote_plus(mapping_file.read())
-    # mapping_file.close()
-    #
-    # # Read subgraph.yaml
-    # subgraph_file = open(os.path.join(path, "subgraph.yaml"))
-    # subgraph = urllib.parse.quote_plus(subgraph_file.read())
-    # subgraph_file.close()
-    #
-    # # Read schema.graphql
-    # schema_file = open(os.path.join(path, "schema.graphql"))
-    # schema = urllib.parse.quote_plus(schema_file.read())
-    # schema_file.close()
-    #
-    # payload = {
-    #     "abis": abis,
-    #     "mapping.ts": mapping,
-    #     "subgraph.yaml": subgraph,
-    #     "schema.graphql": schema,
-    #     "package.json"
-    # }
-    # print(payload)
-    # return payload
+    # Read package.json
+    package_file = open(os.path.join(path, "package.json"))
+    package = urllib.parse.quote_plus(package_file.read())
+    package_file.close()
+
+    payload = {
+        "abis": abis_dict,
+        "mapping": mapping_dict,
+        "subgraph.yaml": subgraph,
+        "schema.graphql": schema,
+        "package.json": package,
+    }
+    print(payload)
+    return payload

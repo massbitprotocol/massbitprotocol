@@ -20,7 +20,7 @@ Compile and Deploy Test Ethereum Block
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
     # Compile request
-    ${object} =  Read Index Example Ethereum  ../../user-example/ethereum/wasm/test-block  MasterChef
+    ${object} =  Read Wasm Example  ../../user-example/ethereum/wasm/test-block  src
     ${compile_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/compile/wasm
     ...  ${object}
@@ -40,35 +40,35 @@ Compile and Deploy Test Ethereum Block
     ...  ${json}
     Should be equal  ${deploy_res["status"]}  success
 
-########################
-## Test-ethereum-event #
-########################
-#Compile and Deploy Test Ethereum Event
-#    # Configuration
-#    Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
-#
-#    # Compile request
-#    ${object} =  Read Index Example Ethereum  ../../user-example/ethereum/wasm/test-event  StandardToken
-#    ${compile_res}=  Request.Post Request
-#    ...  ${CODE_COMPILER}/compile/wasm
-#    ...  ${object}
-#    Should be equal  ${compile_res["status"]}  success
-#
-#    # Compile status
-#    Wait Until Keyword Succeeds
-#    ...  60x
-#    ...  10 sec
-#    ...  Pooling Status
-#    ...  ${compile_res["payload"]}
-#
-#    # Deploy
-#    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}", "model": "StandardToken"}
-#    ${deploy_res}=  Request.Post Request
-#    ...  ${CODE_COMPILER}/deploy/wasm
-#    ...  ${json}
-#    Should be equal  ${deploy_res["status"]}  success
-#
-#
+#######################
+# Test-ethereum-event #
+#######################
+Compile and Deploy Test Ethereum Event
+    # Configuration
+    Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
+
+    # Compile request
+    ${object} =  Read Wasm Example  ../../user-example/ethereum/wasm/test-event  src
+    ${compile_res}=  Request.Post Request
+    ...  ${CODE_COMPILER}/compile/wasm
+    ...  ${object}
+    Should be equal  ${compile_res["status"]}  success
+
+    # Compile status
+    Wait Until Keyword Succeeds
+    ...  60x
+    ...  10 sec
+    ...  Pooling Status
+    ...  ${compile_res["payload"]}
+
+    # Deploy
+    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}", "model": "StandardToken"}
+    ${deploy_res}=  Request.Post Request
+    ...  ${CODE_COMPILER}/deploy/wasm
+    ...  ${json}
+    Should be equal  ${deploy_res["status"]}  success
+
+
 ###################
 ## Test-quickswap #
 ###################
@@ -77,7 +77,7 @@ Compile and Deploy Test Ethereum Block
 #    Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 #
 #    # Compile request
-#    ${object} =  Read Index Example Ethereum  ../../user-example/ethereum/wasm/quickswap  StandardToken
+#    ${object} =  Read Wasm Example  ../../user-example/ethereum/wasm/quickswap  src/mappings
 #    ${compile_res}=  Request.Post Request
 #    ...  ${CODE_COMPILER}/compile/wasm
 #    ...  ${object}
