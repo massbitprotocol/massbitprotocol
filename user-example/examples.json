@@ -51,6 +51,11 @@
             "schema.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/ethereum/test-ethereum-block/src/schema.graphql",
             "mapping.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/ethereum/test-ethereum-block/src/mapping.rs",
             "project.yaml": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/ethereum/test-ethereum-block/src/project.yaml"
+        },
+        "test-ethereum-transaction": {
+            "schema.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/ethereum/test-ethereum-transaction/src/schema.graphql",
+            "mapping.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/ethereum/test-ethereum-transaction/src/mapping.rs",
+            "project.yaml": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/ethereum/test-ethereum-transaction/src/project.yaml"
         }
     }
 }
