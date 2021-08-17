@@ -1,11 +1,9 @@
 import os
 import json
 import os.path
-from os import path
 import urllib.parse
 
-git_path = "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/"
-user_example_folder = "user-example"
+# Global variables
 result_file = "examples.json"
 
 
@@ -13,7 +11,6 @@ def get_dirs(path):
     dirs = next(os.walk(path))[1]
     # Remove hidden dirs
     dirs = [d for d in dirs if d[0] != "."]
-
     return dirs
 
 
@@ -53,7 +50,7 @@ if __name__ == '__main__':
                     dir_json[chain][type][example]["isWasmFile"] = "false"  # Default is SO file
                     chain_and_type_and_example_and_folder = os.path.join(chain_and_type_and_example, folder)
 
-                    # Lazily add a check here to UI doesn't have to traverse to get the type 
+                    # Lazily add a check here to UI doesn't have to traverse to get the type
                     if type == "wasm":
                         dir_json[chain][type][example]["isWasmFile"] = "true"
 
