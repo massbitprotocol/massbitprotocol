@@ -25,7 +25,7 @@ Deploy test-ethereum-block, then check if data was inserted into DB
     Delete Table If Exists  ethereum_block_table
 
     # Compile request
-    ${object} =  Read Index Example  ../../user-example/ethereum/so/test-ethereum-block/src
+    ${object} =  Read So Example  ../../user-example/ethereum/so/test-ethereum-block
     ${compile_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/compile/so
     ...  ${object}
@@ -65,7 +65,7 @@ Deploy test-ethereum-transaction, then check if data was inserted into DB
     Delete Table If Exists  ethereum_transaction_table
 
     # Compile request
-    ${object} =  Read Index Example  ../../user-example/ethereum/so/test-ethereum-transaction/src
+    ${object} =  Read So Example  ../../user-example/ethereum/so/test-ethereum-transaction
     ${compile_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/compile/so
     ...  ${object}
