@@ -40,7 +40,7 @@ Deploy test-block, then check if data was inserted into DB
     # Deploy
     ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}"}
     ${deploy_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/deploy
+    ...  ${CODE_COMPILER}/deploy/so
     ...  ${json}
     Should be equal  ${deploy_res["status"]}  success
 
@@ -79,7 +79,7 @@ Deploy test-event, then check if data was inserted into DB
     # Deploy
     ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}"}
     ${deploy_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/deploy
+    ...  ${CODE_COMPILER}/deploy/so
     ...  ${json}
     Should be equal  ${deploy_res["status"]}  success
 
@@ -118,7 +118,7 @@ Deploy test-extrinsic, then check if data was inserted into DB
     # Deploy
     ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}"}
     ${deploy_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/deploy
+    ...  ${CODE_COMPILER}/deploy/so
     ...  ${json}
     Should be equal  ${deploy_res["status"]}  success
 

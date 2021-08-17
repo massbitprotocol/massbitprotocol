@@ -49,7 +49,7 @@ def compile_status_handler(deployment_hash):
            }, 200
 
 
-@app.route("/deploy", methods=['POST'])
+@app.route("/deploy/so", methods=['POST'])
 @cross_origin()
 def deploy_handler():
     data = request.json

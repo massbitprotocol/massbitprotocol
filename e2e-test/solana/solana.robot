@@ -40,7 +40,7 @@ Deploy test-solana-block, then check if data was inserted into DB
     # Deploy
     ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}"}
     ${deploy_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/deploy
+    ...  ${CODE_COMPILER}/deploy/so
     ...  ${json}
     Should be equal  ${deploy_res["status"]}  success
 
@@ -80,7 +80,7 @@ Deploy test-solana-transaction, then check if data was inserted into DB
     # Deploy
     ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}"}
     ${deploy_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/deploy
+    ...  ${CODE_COMPILER}/deploy/so
     ...  ${json}
     Should be equal  ${deploy_res["status"]}  success
 
@@ -120,7 +120,7 @@ Deploy test-solana-log-messages, then check if data was inserted into DB
     # Deploy
     ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}"}
     ${deploy_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/deploy
+    ...  ${CODE_COMPILER}/deploy/so
     ...  ${json}
     Should be equal  ${deploy_res["status"]}  success
     sleep  20 seconds  # Wait for indexing
@@ -165,7 +165,7 @@ Deploy test-solana-five-tables, then check if data was inserted into DB
     # Deploy
     ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}"}
     ${deploy_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/deploy
+    ...  ${CODE_COMPILER}/deploy/so
     ...  ${json}
     Should be equal  ${deploy_res["status"]}  success
 
@@ -210,7 +210,7 @@ Deploy test-solana-index-serum, then check if data was inserted into DB
     # Deploy
     ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}"}
     ${deploy_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/deploy
+    ...  ${CODE_COMPILER}/deploy/so
     ...  ${json}
     Should be equal  ${deploy_res["status"]}  success
 
