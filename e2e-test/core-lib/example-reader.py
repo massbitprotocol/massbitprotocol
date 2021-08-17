@@ -4,7 +4,7 @@ import os
 
 def read_so_example(path):
     # Read mapping.rs
-    mapping_file = open(os.path.join(path, "mapping.rs"))
+    mapping_file = open(os.path.join(path, "src", "mapping.rs"))
     mapping = urllib.parse.quote_plus(mapping_file.read())
     mapping_file.close()
 

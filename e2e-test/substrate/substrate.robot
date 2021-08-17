@@ -24,7 +24,7 @@ Deploy test-block, then check if data was inserted into DB
     Delete Table If Exists  substrate_block
 
     # Compile request
-    ${object} =  Read So Example  ../../user-example/substrate/test-block/src
+    ${object} =  Read So Example  ../../user-example/substrate/so/test-block
     ${compile_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/compile/so
     ...  ${object}
@@ -63,7 +63,7 @@ Deploy test-event, then check if data was inserted into DB
     Delete Table If Exists  substrate_event
 
     # Compile request
-    ${object} =  Read So Example  ../../user-example/substrate/test-event/src
+    ${object} =  Read So Example  ../../user-example/substrate/so/test-event
     ${compile_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/compile/so
     ...  ${object}
@@ -102,7 +102,7 @@ Deploy test-extrinsic, then check if data was inserted into DB
     Delete Table If Exists  substrate_extrinsic
 
     # Compile request
-    ${object} =  Read So Example  ../../user-example/substrate/test-extrinsic/src
+    ${object} =  Read So Example  ../../user-example/substrate/so/test-extrinsic
     ${compile_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/compile/so
     ...  ${object}

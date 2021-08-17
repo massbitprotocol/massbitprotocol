@@ -24,7 +24,7 @@ Deploy test-solana-block, then check if data was inserted into DB
     Delete Table If Exists  solana_block_ts
 
     # Compile request
-    ${object} =  Read So Example  ../../user-example/solana/test-solana-block/src
+    ${object} =  Read So Example  ../../user-example/solana/so/test-solana-block
     ${compile_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/compile/so
     ...  ${object}
@@ -64,7 +64,7 @@ Deploy test-solana-transaction, then check if data was inserted into DB
     Delete Table If Exists  solana_transaction_ts
 
     # Compile request
-    ${object} =  Read So Example  ../../user-example/solana/test-solana-transaction/src
+    ${object} =  Read So Example  ../../user-example/solana/so/test-solana-transaction
     ${compile_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/compile/so
     ...  ${object}
@@ -104,7 +104,7 @@ Deploy test-solana-log-messages, then check if data was inserted into DB
     Delete Table If Exists  solana_log_messages_ts
 
     # Compile request
-    ${object} =  Read So Example  ../../user-example/solana/test-solana-log-messages/src
+    ${object} =  Read So Example  ../../user-example/solana/so/test-solana-log-messages
     ${compile_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/compile/so
     ...  ${object}
@@ -149,7 +149,7 @@ Deploy test-solana-five-tables, then check if data was inserted into DB
     Delete Table If Exists  five_table_transaction
 
     # Compile request
-    ${object} =  Read So Example  ../../user-example/solana/five-tables/src
+    ${object} =  Read So Example  ../../user-example/solana/so/five-tables
     ${compile_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/compile/so
     ...  ${object}
@@ -194,7 +194,7 @@ Deploy test-solana-index-serum, then check if data was inserted into DB
     Delete Table If Exists  serum_block
 
     # Compile request
-    ${object} =  Read So Example  ../../user-example/solana/index-serum/src
+    ${object} =  Read So Example  ../../user-example/solana/so/index-serum
     ${compile_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/compile/so
     ...  ${object}

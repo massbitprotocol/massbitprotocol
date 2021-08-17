@@ -1,11 +1,9 @@
-import json
 import urllib.parse
 import os
 import subprocess
 import threading
 import ipfshttpclient
 import requests
-from distutils.dir_util import copy_tree
 from helper.helper import write_to_disk
 
 
