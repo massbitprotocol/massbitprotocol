@@ -1,61 +1,61 @@
 {
-    "substrate": {
-        "test-extrinsic": {
-            "schema.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/substrate/test-extrinsic/src/schema.graphql",
-            "mapping.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/substrate/test-extrinsic/src/mapping.rs",
-            "project.yaml": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/substrate/test-extrinsic/src/project.yaml"
+    "ethereum": {
+        "test-ethereum-block": {
+            "lib.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/ethereum/test-ethereum-block/src/lib.rs",
+            "mapping.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/ethereum/test-ethereum-block/src/mapping.rs",
+            "models.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/ethereum/test-ethereum-block/src/models.rs",
+            "project.yaml": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/ethereum/test-ethereum-block/src/project.yaml",
+            "schema.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/ethereum/test-ethereum-block/src/schema.graphql"
         },
-        "test-block": {
-            "schema.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/substrate/test-block/src/schema.graphql",
-            "mapping.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/substrate/test-block/src/mapping.rs",
-            "project.yaml": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/substrate/test-block/src/project.yaml"
-        },
-        "test-event": {
-            "schema.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/substrate/test-event/src/schema.graphql",
-            "mapping.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/substrate/test-event/src/mapping.rs",
-            "project.yaml": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/substrate/test-event/src/project.yaml"
+        "test-ethereum-transaction": {
+            "mapping.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/ethereum/test-ethereum-transaction/src/mapping.rs",
+            "project.yaml": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/ethereum/test-ethereum-transaction/src/project.yaml",
+            "schema.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/ethereum/test-ethereum-transaction/src/schema.graphql"
         }
     },
     "solana": {
+        "five-tables": {
+            "mapping.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/five-tables/src/mapping.rs",
+            "project.yaml": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/five-tables/src/project.yaml",
+            "schema.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/five-tables/src/schema.graphql"
+        },
         "index-serum": {
-            "query.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/index-serum/src/query.graphql",
-            "schema.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/index-serum/src/schema.graphql",
             "mapping.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/index-serum/src/mapping.rs",
-            "project.yaml": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/index-serum/src/project.yaml"
+            "project.yaml": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/index-serum/src/project.yaml",
+            "query.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/index-serum/src/query.graphql",
+            "schema.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/index-serum/src/schema.graphql"
         },
         "test-solana-block": {
-            "schema.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-block/src/schema.graphql",
             "mapping.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-block/src/mapping.rs",
-            "project.yaml": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-block/src/project.yaml"
-        },
-        "test-solana-transaction": {
-            "schema.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-transaction/src/schema.graphql",
-            "mapping.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-transaction/src/mapping.rs",
-            "project.yaml": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-transaction/src/project.yaml"
+            "project.yaml": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-block/src/project.yaml",
+            "schema.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-block/src/schema.graphql"
         },
         "test-solana-log-messages": {
-            "schema.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-log-messages/src/schema.graphql",
             "mapping.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-log-messages/src/mapping.rs",
-            "project.yaml": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-log-messages/src/project.yaml"
+            "project.yaml": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-log-messages/src/project.yaml",
+            "schema.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-log-messages/src/schema.graphql"
         },
-        "five-tables": {
-            "schema.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/five-tables/src/schema.graphql",
-            "mapping.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/five-tables/src/mapping.rs",
-            "project.yaml": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/five-tables/src/project.yaml"
+        "test-solana-transaction": {
+            "mapping.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-transaction/src/mapping.rs",
+            "project.yaml": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-transaction/src/project.yaml",
+            "schema.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/solana/test-solana-transaction/src/schema.graphql"
         }
     },
-    "ethereum": {
-        "test-ethereum-block": {
-            "models.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/ethereum/test-ethereum-block/src/models.rs",
-            "lib.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/ethereum/test-ethereum-block/src/lib.rs",
-            "schema.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/ethereum/test-ethereum-block/src/schema.graphql",
-            "mapping.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/ethereum/test-ethereum-block/src/mapping.rs",
-            "project.yaml": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/ethereum/test-ethereum-block/src/project.yaml"
+    "substrate": {
+        "test-block": {
+            "mapping.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/substrate/test-block/src/mapping.rs",
+            "project.yaml": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/substrate/test-block/src/project.yaml",
+            "schema.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/substrate/test-block/src/schema.graphql"
         },
-        "test-ethereum-transaction": {
-            "schema.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/ethereum/test-ethereum-transaction/src/schema.graphql",
-            "mapping.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/ethereum/test-ethereum-transaction/src/mapping.rs",
-            "project.yaml": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/ethereum/test-ethereum-transaction/src/project.yaml"
+        "test-event": {
+            "mapping.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/substrate/test-event/src/mapping.rs",
+            "project.yaml": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/substrate/test-event/src/project.yaml",
+            "schema.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/substrate/test-event/src/schema.graphql"
+        },
+        "test-extrinsic": {
+            "mapping.rs": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/substrate/test-extrinsic/src/mapping.rs",
+            "project.yaml": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/substrate/test-extrinsic/src/project.yaml",
+            "schema.graphql": "https://raw.githubusercontent.com/massbitprotocol/massbitprotocol/main/user-example/substrate/test-extrinsic/src/schema.graphql"
         }
     }
 }
