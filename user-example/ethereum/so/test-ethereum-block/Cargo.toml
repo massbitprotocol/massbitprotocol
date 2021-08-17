@@ -12,11 +12,11 @@ structmap-derive = "0.1.5"
 chrono = "0.4.19"
 uuid = { version = "0.8", features = ["serde", "v4"] }
 # Massbit dependencies
-adapter = { path = "../../../plugin/adapter" }
-massbit-chain-substrate = { path = "../../../core/chain/substrate" }
-massbit-chain-solana = { path = "../../../core/chain/solana" }
-massbit-chain-ethereum = { path = "../../../core/chain/ethereum" }
-index-store = { path = "../../../core/index-store" }
+adapter = { path = "../../../../plugin/adapter" }
+massbit-chain-substrate = { path = "../../../../core/chain/substrate" }
+massbit-chain-solana = { path = "../../../../core/chain/solana" }
+massbit-chain-ethereum = { path = "../../../../core/chain/ethereum" }
+index-store = { path = "../../../../core/index-store" }
 
 [lib]
 crate-type = ["cdylib"]

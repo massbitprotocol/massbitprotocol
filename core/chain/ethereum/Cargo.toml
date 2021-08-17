@@ -15,7 +15,8 @@ bs58 = "0.4.0"
 ############# Ethereum
 [dependencies.web3]
 package = "web3"
-git = "https://github.com/tomusdrw/rust-web3.git"
+#git = "https://github.com/tomusdrw/rust-web3.git"
+git = "https://github.com/graphprotocol/rust-web3"
 branch = "master"
 
 ############# End Ethereum

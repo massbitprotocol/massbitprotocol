@@ -1,0 +1,13 @@
+schema:
+  file: ./schema.graphql
+
+dataSources:
+  - kind: ethereum
+    name: Ethereum-Transaction
+    network: https://data-seed-prebsc-1-s1.binance.org:8545/
+    mapping:
+      language: rust
+      handlers:
+        - handler: handleTransaction
+          kind: ethereum/TransactionHandler
+

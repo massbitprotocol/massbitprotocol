@@ -15,6 +15,8 @@ test-run-all:
 	cd e2e-test/substrate && robot substrate.robot
 	@echo "Running solana tests ..."
 	cd e2e-test/solana && robot solana.robot
+	@echo "Running ethereum tests ..."
+	cd e2e-test/ethereum && robot ethereum.robot
 
 test-run-all-and-up:
 	@echo "Run all services"
@@ -30,3 +32,8 @@ test-run-all-and-up:
 test-init:
 	@echo "Installing all the dependencies for E2E tests ..."
 	pip install robotframework robotframework-requests robotframework-databaselibrary psycopg2 rpaframework
+
+create-list-user-example-json-file:
+	@echo "Create list user examples json file ..."
+	cd user-example && python create_example_json.py
+
