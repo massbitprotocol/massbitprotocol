@@ -49,7 +49,13 @@ if __name__ == '__main__':
                 for folder in get_dirs(chain_and_type_and_example):  # substrate/so/test-block/src or substrate/so/test-block/abis  ...
                     dir_json[chain][type][example][folder] = {}
                     dir_json[chain][type][example]["src"] = {}  # Set this up for quickswap
+                    dir_json[chain][type][example]["configs"] = {}  # Set this up to put the package.json, schema.graphql. project.yaml inside
+                    dir_json[chain][type][example]["isWasmFile"] = "false"  # Default is SO file
                     chain_and_type_and_example_and_folder = os.path.join(chain_and_type_and_example, folder)
+
+                    # Lazily add a check here to UI doesn't have to traverse to get the type 
+                    if type == "wasm":
+                        dir_json[chain][type][example]["isWasmFile"] = "true"
 
                     # Go 1 deeper level to find the mappings of quickswap  # ethereum/wasm/quickswap/src/mappings/...
                     if "quickswap" in chain_and_type_and_example_and_folder:
@@ -64,7 +70,7 @@ if __name__ == '__main__':
                 # Find files (project.yaml, schema.graphql, package.json...) in the example
                 for file in get_file(chain_and_type_and_example):
                     chain_and_type_and_example_and_file = os.path.join(chain_and_type_and_example, file)
-                    dir_json[chain][type][example][file] = read_file_content(chain_and_type_and_example_and_file)
+                    dir_json[chain][type][example]["configs"][file] = read_file_content(chain_and_type_and_example_and_file)
 
     print(json.dumps(dir_json, indent=4, sort_keys=True))
     with open(result_file, 'w') as fp:
