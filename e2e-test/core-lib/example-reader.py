@@ -19,9 +19,13 @@ def read_so_example(path):
     schema_file.close()
 
     payload = {
-        "mapping.rs": mapping,
-        "project.yaml": project,
-        "schema.graphql": schema
+        "mappings": {
+            "mapping.rs": mapping,
+        },
+        "configs": {
+            "project.yaml": project,
+            "schema.graphql": schema
+        }
     }
     print(payload)
     return payload
@@ -81,9 +85,11 @@ def read_wasm_example(path, custom_mapping_path):
     payload = {
         "abis": abis_dict,
         "mappings": mapping_dict,
-        "subgraph.yaml": subgraph,
-        "schema.graphql": schema,
-        "package.json": package,
+        "configs": {
+            "subgraph.yaml": subgraph,
+            "schema.graphql": schema,
+            "package.json": package
+        }
     }
     print(payload)
     return payload

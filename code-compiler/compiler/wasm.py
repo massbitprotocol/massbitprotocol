@@ -41,9 +41,9 @@ def compile_wasm(data, hash):
     # URL-decode the data
     mappings = data["mappings"]
     abis = data["abis"]
-    subgraph = urllib.parse.unquote_plus(data["subgraph.yaml"])
-    schema = urllib.parse.unquote_plus(data["schema.graphql"])
-    package = urllib.parse.unquote_plus(data["package.json"])
+    subgraph = urllib.parse.unquote_plus(data["configs"]["subgraph.yaml"])
+    schema = urllib.parse.unquote_plus(data["configs"]["schema.graphql"])
+    package = urllib.parse.unquote_plus(data["configs"]["package.json"])
 
     # Save the formatted data from request to disk, ready for compiling
     for file_name in mappings:

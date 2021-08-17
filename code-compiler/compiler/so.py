@@ -78,9 +78,9 @@ def compile_so(data, hash):
     os.mkdir(generated_folder + "/src")
 
     # URL-decode the data
-    mapping = urllib.parse.unquote_plus(data["mapping.rs"])
-    project = urllib.parse.unquote_plus(data["project.yaml"])
-    schema = urllib.parse.unquote_plus(data["schema.graphql"])
+    mapping = urllib.parse.unquote_plus(data["mappings"]["mapping.rs"])
+    project = urllib.parse.unquote_plus(data["configs"]["project.yaml"])
+    schema = urllib.parse.unquote_plus(data["configs"]["schema.graphql"])
 
     # Populating stub data
     populate_stub(generated_folder, "Cargo.lock")
