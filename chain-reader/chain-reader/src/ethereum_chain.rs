@@ -13,6 +13,7 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
 };
+use std::time::Instant;
 use tokio::sync::broadcast;
 use tokio::time::{sleep, Duration};
 use web3;
@@ -81,6 +82,38 @@ async fn wait_for_new_block_http(
 //         got_block_number.unwrap()
 //     }
 // }
+
+pub fn get_logs(
+    web3: &Web3<Transport>,
+    from: Web3BlockNumber,
+    to: Web3BlockNumber,
+) -> Result<Vec<Log>, web3::Error> {
+    let log_filter: Filter = FilterBuilder::default()
+        .from_block(from)
+        .to_block(to)
+        //.address(filter.contracts.clone())
+        //.topics(Some(filter.event_signatures.clone()), None, None, None)
+        .build();
+
+    let now = Instant::now();
+    // Request logs from client
+    let logs = web3
+        .eth()
+        .logs(log_filter.clone())
+        .then(move |result| {
+            if result.is_err() {
+                println!("error: {:#?}", result);
+            } else {
+                println!("success getting log: {:#?}", result);
+            }
+            result
+        })
+        .wait();
+    let elapsed = now.elapsed();
+    println!("Elapsed getting log: {:.2?}", elapsed);
+
+    logs
+}
 
 pub async fn get_receipts(
     block: &EthBlock<Transaction>,
@@ -227,12 +260,20 @@ pub async fn loop_get_block(chan: broadcast::Sender<GenericDataProto>) {
                         receipts.len(),
                         block_number
                     );
+                    // Get logs
+                    let logs = get_logs(
+                        &clone_web3,
+                        Web3BlockNumber::from(block_number),
+                        Web3BlockNumber::from(block_number),
+                    )
+                    .unwrap();
 
                     let eth_block = Block {
                         version: clone_version.clone(),
                         timestamp: block.timestamp.as_u64(),
                         block,
                         receipts,
+                        logs,
                     };
 
                     let generic_data_proto =

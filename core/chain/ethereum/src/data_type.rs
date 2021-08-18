@@ -11,6 +11,7 @@ use web3::types::{
 //***************** Ethereum data type *****************
 pub type EthereumBlock = ExtBlock;
 pub type EthereumTransaction = ExtTransaction;
+pub type EthereumEvent = ExtEvent;
 //***************** End Ethereum data type *****************
 
 type Date = u64;
@@ -24,6 +25,7 @@ pub struct ExtBlock {
     pub timestamp: Date,
     pub block: LightEthereumBlock,
     pub receipts: HashMap<H256, TransactionReceipt>,
+    pub logs: Vec<Log>,
 }
 
 pub struct ExtTransaction {
@@ -31,6 +33,12 @@ pub struct ExtTransaction {
     pub timestamp: Date,
     pub transaction: Transaction,
     pub receipt: Option<TransactionReceipt>,
+}
+
+pub struct ExtEvent {
+    pub version: String,
+    pub timestamp: Date,
+    pub logs: Vec<Log>,
 }
 
 pub fn decode(payload: &mut Vec<u8>) -> Result<EthereumBlock, Box<dyn Error>> {

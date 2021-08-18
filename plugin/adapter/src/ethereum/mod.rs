@@ -1,10 +1,16 @@
 use crate::core::{AdapterError, MessageHandler};
 pub use crate::stream_mod::{DataType, GenericDataProto};
 use libloading::Library;
-use massbit_chain_ethereum::data_type::{decode, EthereumBlock, EthereumTransaction};
+use massbit_chain_ethereum::data_type::{
+    decode, EthereumBlock, EthereumEvent, EthereumTransaction,
+};
 use std::{error::Error, sync::Arc};
 
-crate::prepare_adapter!(Ethereum, { handle_block: EthereumBlock, handle_transaction: EthereumTransaction});
+crate::prepare_adapter!(Ethereum, {
+    handle_block: EthereumBlock,
+    handle_transaction: EthereumTransaction,
+    handle_event: EthereumEvent
+});
 
 impl MessageHandler for EthereumHandlerProxy {
     fn handle_message(&self, data: &mut GenericDataProto) -> Result<(), Box<dyn Error>> {
@@ -28,6 +34,14 @@ impl MessageHandler for EthereumHandlerProxy {
                     };
                     self.handler.handle_transaction(&transaction);
                 }
+
+                // Create event
+                let event = EthereumEvent {
+                    version: block.version.clone(),
+                    timestamp: block.timestamp,
+                    logs: block.logs.clone(),
+                };
+                self.handler.handle_event(&event);
 
                 Ok(())
             }
