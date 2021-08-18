@@ -22,8 +22,11 @@ lazy_static! {
                 ws: "".to_string(),
             }),
             (ChainType::Solana,ChainConfig{
+                // ws: "wss://api.mainnet-beta.solana.com".to_string(),
+                // url: "https://mainnet-beta-solana.massbit.io".to_string(),
                 ws: "wss://api.mainnet-beta.solana.com".to_string(),
-                url: "https://mainnet-beta-solana.massbit.io".to_string(),
+                url: "https://api.mainnet-beta.solana.com".to_string(),
+
             }),
             (ChainType::Ethereum,ChainConfig{
                 //ws: "wss://main-light.eth.linkpool.io/ws".to_string(),

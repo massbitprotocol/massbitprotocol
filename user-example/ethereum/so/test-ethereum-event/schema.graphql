@@ -1,0 +1,9 @@
+type EthereumEventTable @entity {
+    id: ID!
+    block_number: BigInt!
+    transaction_hash: String!
+    address: String!
+    log_type: String!
+}
+
+

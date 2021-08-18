@@ -807,6 +807,7 @@ dependencies = [
  "jsonrpc-core 14.2.0",
  "lazy_static",
  "log 0.4.14",
+ "logger",
  "massbit-chain-ethereum",
  "massbit-chain-solana",
  "massbit-chain-substrate",

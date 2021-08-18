@@ -160,7 +160,7 @@ pub async fn loop_get_block_and_extrinsic(chan: broadcast::Sender<GenericDataPro
 
 pub fn get_node_url_from_cli() -> String {
     let yml = load_yaml!("cli.yml");
-    let matches = App::from_yaml(yml).get_matches();
+    let matches = App::from(yml).get_matches();
 
     let node_server = match env::var("NODE_SERVER") {
         Ok(connection) => connection, // Configuration from docker-compose environment

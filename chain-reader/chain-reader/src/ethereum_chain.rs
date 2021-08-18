@@ -6,7 +6,7 @@ use crate::{
 use futures::stream;
 use futures::{Future, Stream};
 use futures03::{self, compat::Future01CompatExt};
-use log::info;
+use log::{debug, info};
 use massbit_chain_ethereum::data_type::EthereumBlock as Block;
 use std::collections::HashMap;
 use std::sync::{
@@ -102,15 +102,15 @@ pub fn get_logs(
         .logs(log_filter.clone())
         .then(move |result| {
             if result.is_err() {
-                println!("error: {:#?}", result);
+                debug!("error: {:#?}", result);
             } else {
-                println!("success getting log: {:#?}", result);
+                debug!("success getting log: {:#?}", result);
             }
             result
         })
         .wait();
     let elapsed = now.elapsed();
-    println!("Elapsed getting log: {:.2?}", elapsed);
+    debug!("Elapsed getting log: {:.2?}", elapsed);
 
     logs
 }

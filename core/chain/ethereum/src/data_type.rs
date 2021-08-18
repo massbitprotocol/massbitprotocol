@@ -41,6 +41,16 @@ pub struct ExtEvent {
     pub logs: Vec<Log>,
 }
 
+// pub struct Event {
+//     pub address: Address,
+//     pub logIndex: i64,
+//     pub transactionLogIndex: i64,
+//     pub logType: Option<String>,
+//     pub block: Block,
+//     pub transaction: Transaction,
+//     pub parameters: Array<EventParam>,
+// }
+
 pub fn decode(payload: &mut Vec<u8>) -> Result<EthereumBlock, Box<dyn Error>> {
     let block: EthereumBlock = serde_json::from_slice(&payload).unwrap();
     Ok(block)

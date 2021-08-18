@@ -1,3 +1,5 @@
+use clap::{App, Arg};
+
 use crate::stream_mod::{
     streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
 };
@@ -34,11 +36,12 @@ pub async fn print_blocks(
         end_block_number: 1,
         chain_type: chain_type as i32,
     };
+    println!("Creating Stream ...");
     let mut stream = client
         .list_blocks(Request::new(get_blocks_request))
         .await?
         .into_inner();
-
+    println!("Waitting for data...");
     while let Some(data) = stream.message().await? {
         let mut data = data as GenericDataProto;
         info!(
@@ -144,11 +147,38 @@ pub async fn print_blocks(
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     env_logger::init();
-    println!("Start client");
     info!("Waiting for chain-reader");
 
+    let matches = App::new("Client")
+        .version("1.0")
+        .about("Client for test chain-reader")
+        .arg(
+            Arg::with_name("type")
+                .short("c")
+                .long("chain-type")
+                .value_name("type")
+                .help("Sets chain type")
+                .takes_value(true),
+        )
+        .get_matches();
+
+    let chain_type = matches.value_of("type").unwrap_or("ethereum");
     let client = StreamoutClient::connect(URL).await.unwrap();
-    print_blocks(client, ChainType::Ethereum).await;
+    println!("Match {:?}", matches);
+    match chain_type {
+        "substrate" => {
+            info!("Run client: {}", chain_type);
+            print_blocks(client, ChainType::Substrate).await;
+        }
+        "solana" => {
+            info!("Run client: {}", chain_type);
+            print_blocks(client, ChainType::Solana).await;
+        }
+        _ => {
+            info!("Run client: {}", chain_type);
+            print_blocks(client, ChainType::Ethereum).await;
+        }
+    };
 
     Ok(())
 }
