@@ -1,0 +1,6 @@
+type StandardToken @entity {
+  id: ID!
+  to: String!
+  from: String!
+  value: BigInt!
+}
