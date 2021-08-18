@@ -7,10 +7,11 @@ use lazy_static::lazy_static;
 use std::path::PathBuf;
 
 // Massbit dependencies
-use crate::config::generate_random_hash;
+use crate::config::{
+    generate_mapping_file_name, generate_random_hash, get_index_name, get_mapping_language,
+};
 use crate::ipfs::{get_ipfs_file_by_hash, read_config_file};
 use crate::types::{IndexConfig, IndexIdentifier};
-use adapter::setting::get_index_name;
 
 lazy_static! {
     static ref GENERATED_FOLDER: String = String::from("index-manager/generated/");
@@ -53,8 +54,14 @@ impl Default for IndexConfigIpfsBuilder {
 
 impl IndexConfigIpfsBuilder {
     pub async fn mapping(mut self, mapping: &String) -> IndexConfigIpfsBuilder {
-        let file = &format!("{}{}", self.hash, ".so");
-        let mut mapping = get_ipfs_file_by_hash(file, mapping).await;
+        assert_eq!(
+            self.config.as_os_str().is_empty(),
+            false,
+            "Config should be provided before mapping and schema"
+        );
+        let config_value = read_config_file(&self.config);
+        let file = generate_mapping_file_name(&config_value, &self.hash);
+        let mut mapping = get_ipfs_file_by_hash(&file, mapping).await;
         let mapping = ["./", &mapping].join("");
         self.mapping = PathBuf::from(mapping.to_string());
         self

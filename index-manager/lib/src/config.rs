@@ -25,6 +25,13 @@ pub fn get_index_name(config: &Value) -> String {
     String::from(index_name)
 }
 
+pub fn get_mapping_language(config: &Value) -> String {
+    let mapping_language = config["dataSources"][0]["mapping"]["language"]
+        .as_str()
+        .unwrap();
+    String::from(mapping_language)
+}
+
 // Random hash for every new index so it will be unique
 pub fn generate_random_hash() -> String {
     let mut rng = thread_rng();
@@ -34,4 +41,13 @@ pub fn generate_random_hash() -> String {
         .take(20)
         .collect();
     chars
+}
+
+// Generate mapping file type based on the config value
+pub fn generate_mapping_file_name(config: &Value, hash: &String) -> String {
+    if get_mapping_language(config).to_string().contains("wasm") {
+        format!("{}{}", hash, ".wasm")
+    } else {
+        format!("{}{}", hash, ".so")
+    }
 }
