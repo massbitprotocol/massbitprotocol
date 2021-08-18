@@ -24,7 +24,7 @@ def get_file(path):
 
 def read_file_content(path):
     file = open(path)
-    content = urllib.parse.quote_plus(file.read())
+    content = urllib.parse.quote(file.read())
     file.close()
     return content
 
