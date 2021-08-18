@@ -1,0 +1,24 @@
+specVersion: 0.0.2
+description: MasterChef for Ethereum
+repository: https://github.com/graphprotocol/example-subgraph
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum/contract
+    name: MasterChef
+    network: testnet
+    source:
+      address: '0xf73D010412Fb5835C310728F0Ba1b7DFDe88379A'
+      abi: MasterChef
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.4
+      language: wasm/assemblyscript
+      entities:
+        - MasterChefModel
+      abis:
+        - name: MasterChef
+          file: ./abis/MasterChef.json
+      blockHandlers:
+        - handler: handleBlock
+      file: ./src/mapping.ts

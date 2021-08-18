@@ -24,9 +24,9 @@ Deploy test-block, then check if data was inserted into DB
     Delete Table If Exists  substrate_block
 
     # Compile request
-    ${object} =  Read Index Example  ../../user-example/substrate/test-block/src
+    ${object} =  Read So Example  ../../user-example/substrate/so/test-block
     ${compile_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/compile
+    ...  ${CODE_COMPILER}/compile/so
     ...  ${object}
     Should be equal  ${compile_res["status"]}  success
 
@@ -40,7 +40,7 @@ Deploy test-block, then check if data was inserted into DB
     # Deploy
     ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}"}
     ${deploy_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/deploy
+    ...  ${CODE_COMPILER}/deploy/so
     ...  ${json}
     Should be equal  ${deploy_res["status"]}  success
 
@@ -63,9 +63,9 @@ Deploy test-event, then check if data was inserted into DB
     Delete Table If Exists  substrate_event
 
     # Compile request
-    ${object} =  Read Index Example  ../../user-example/substrate/test-event/src
+    ${object} =  Read So Example  ../../user-example/substrate/so/test-event
     ${compile_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/compile
+    ...  ${CODE_COMPILER}/compile/so
     ...  ${object}
     Should be equal  ${compile_res["status"]}  success
 
@@ -79,7 +79,7 @@ Deploy test-event, then check if data was inserted into DB
     # Deploy
     ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}"}
     ${deploy_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/deploy
+    ...  ${CODE_COMPILER}/deploy/so
     ...  ${json}
     Should be equal  ${deploy_res["status"]}  success
 
@@ -102,9 +102,9 @@ Deploy test-extrinsic, then check if data was inserted into DB
     Delete Table If Exists  substrate_extrinsic
 
     # Compile request
-    ${object} =  Read Index Example  ../../user-example/substrate/test-extrinsic/src
+    ${object} =  Read So Example  ../../user-example/substrate/so/test-extrinsic
     ${compile_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/compile
+    ...  ${CODE_COMPILER}/compile/so
     ...  ${object}
     Should be equal  ${compile_res["status"]}  success
 
@@ -118,7 +118,7 @@ Deploy test-extrinsic, then check if data was inserted into DB
     # Deploy
     ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}"}
     ${deploy_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/deploy
+    ...  ${CODE_COMPILER}/deploy/so
     ...  ${json}
     Should be equal  ${deploy_res["status"]}  success
 

@@ -29,7 +29,7 @@ use web3::{
 // Check https://github.com/tokio-rs/prost for enum converting in rust protobuf
 const CHAIN_TYPE: ChainType = ChainType::Ethereum;
 const PULLING_INTERVAL: u64 = 200;
-const USE_WEBSOCKET: bool = true;
+const USE_WEBSOCKET: bool = false;
 
 fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>) {
     // Todo: More clean solution for broadcast channel

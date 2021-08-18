@@ -31,6 +31,8 @@ lazy_static! {
 
 pub async fn start_new_index(params: DeployParams) -> Result<(), Box<dyn Error>> {
     // Get user index mapping logic, query for migration and index's configurations
+    // TODO: Parse the config so we know what type of mapping are we dealing with
+    // TODO: Add a new struct for mapping value
     let index_config = IndexConfigIpfsBuilder::default()
         .config(&params.config)
         .await
