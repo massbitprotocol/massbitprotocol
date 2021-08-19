@@ -41,7 +41,7 @@ pub async fn print_blocks(
 
     while let Some(data) = stream.message().await? {
         let mut data = data as GenericDataProto;
-        info!(
+        println!(
             "Received chain: {:?}, data block = {:?}, hash = {:?}, data type = {:?}",
             ChainType::from_i32(data.chain_type).unwrap(),
             data.block_number,
@@ -148,7 +148,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     info!("Waiting for chain-reader");
 
     let client = StreamoutClient::connect(URL).await.unwrap();
-    print_blocks(client, ChainType::Ethereum).await;
-
+    //print_blocks(client, ChainType::Ethereum).await;
+    print_blocks(client, ChainType::Solana).await;
     Ok(())
 }

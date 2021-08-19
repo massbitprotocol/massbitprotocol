@@ -23,6 +23,7 @@ const BATCH_SIZE: usize = 1000;
 const PERIOD: u128 = 500; //Period to insert in ms
 
 type ArcVec = Arc<Mutex<Vec<GenericMap>>>;
+#[derive(Clone)]
 struct TableBuffer {
     data: ArcVec,
     last_store: u128,
@@ -62,6 +63,7 @@ impl TableBuffer {
         res
     }
 }
+#[derive(Clone)]
 pub struct IndexStore {
     pub connection_string: String,
     buffer: HashMap<String, TableBuffer>,

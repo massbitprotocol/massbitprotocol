@@ -1,0 +1,68 @@
+[package]
+name = "massbit-runtime-wasm"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0"
+async-trait = "0.1.50"
+atomic_refcell = "0.1.7"
+bigdecimal = { version = "0.1.0", features = ["serde"] }
+chrono = "0.4.19"
+#ethabi = "12.0.0"
+http = "0.2.3"
+Inflector = "0.11.3"
+ethabi = { git = "https://github.com/graphprotocol/ethabi.git", branch = "master" }
+diesel                  = { version = "1.4.7", features = ["postgres", "serde_json", "numeric", "r2d2", "chrono"] }
+futures                 = "0.1.21"
+futures03               = { version = "0.3.1", package = "futures", features = ["compat"] }
+hex                     = "0.4.3"
+isatty                  = "0.1.9"
+itertools               = "0.10.1"
+#graph = { path = "../../graph" }
+#graph-graphql = { path = "../../graphql" }
+bs58                    = "0.4.0"
+diesel_derives          = "1.4"
+massbit-runtime-derive  = { path = "../derive" }
+massbit-chain-ethereum  = { path = "../../../core/chain/ethereum"}
+index-store             = { path = "../../../core/index-store" }
+
+lazy_static = "1.4"
+uuid = { version = "0.8.1", features = ["v4"] }
+strum = "0.21.0"
+strum_macros = "0.21.1"
+wasmtime                = "0.27.0"
+wasmparser              = "0.80.0"
+defer = "0.1"
+never = "0.1"
+num-bigint              = { version = "^0.2.6", features = ["serde"] }
+num-traits              = "0.2.14"
+priority-queue          = "0.7.0"
+prometheus              = "0.12.0"
+rand                    = "0.8.4"
+reqwest = { version = "0.10", features = ["json", "stream", "trust-dns-resolver"] }
+semver                  = "1.0"
+serde                   = { version = "1.0.126", features = ["rc"] }
+serde_derive            = "1.0.125"
+serde_json              = { version = "1.0", features = ["arbitrary_precision"] }
+serde_yaml              = "0.8"
+slog                    = { version = "2.7.0", features = ["release_max_level_trace", "max_level_trace"] }
+slog-async = "2.5.0"
+slog-envlogger = "2.1.0"
+slog-term = "2.7.0"
+stable-hash = { git = "https://github.com/graphprotocol/stable-hash" }
+thiserror               = "1.0.25"
+tiny-keccak             = "1.5.0"
+tokio = { version = "0.2.25", features = ["stream", "rt-threaded", "rt-util", "blocking", "time", "sync", "macros", "test-util", "net"] }
+#web3                    = "0.17.0"
+web3 = { git = "https://github.com/graphprotocol/rust-web3", branch = "master" }
+#[dependencies.graph]
+#package = "graph"
+#git = "https://github.com/graphprotocol/graph-node"
+
+#[dependencies.web3]
+#package = "web3"
+#git = "https://github.com/graphprotocol/rust-web3"
+#branch = "master"

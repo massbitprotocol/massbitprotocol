@@ -6,9 +6,14 @@ use crate::setting::*;
 pub use crate::stream_mod::{
     streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
 };
-pub use crate::{handle_message, HandlerProxyType, PluginRegistrar};
+pub use crate::{handle_rust_mapping, HandlerProxyType, PluginRegistrar};
 use index_store::core::{IndexStore, Store};
 use lazy_static::lazy_static;
+//use massbit_runtime_wasm::chain::ethereum::Chain;
+//use massbit_runtime_wasm::indexer::manifest::{Mapping, MappingBlockHandler};
+//use massbit_runtime_wasm::module::WasmInstance;
+
+use massbit_chain_solana::data_type::{decode, SolanaEncodedBlock};
 use std::{
     alloc::System, collections::HashMap, env, error::Error, ffi::OsStr, fmt, path::PathBuf,
     sync::Arc,
@@ -148,9 +153,10 @@ impl AdapterManager {
                     data.block_hash,
                     DataType::from_i32(data.data_type).unwrap()
                 );
+                let encoded_block: SolanaEncodedBlock = decode(&mut data.payload).unwrap();
                 if let Some(adapter_name) = get_chain_name(&config) {
                     if let Some(handler_proxy) = adapter_handler.handler_proxies.get(adapter_name) {
-                        match handle_message(handler_proxy, &mut data) {
+                        match handle_rust_mapping(handler_proxy, &mut data) {
                             Err(err) => {
                                 log::error!("{} Error while handle received message", err);
                             }
@@ -173,7 +179,19 @@ impl AdapterManager {
 // General trait for handling message,
 // every adapter proxies must implement this trait
 pub trait MessageHandler {
-    fn handle_message(&self, message: &mut GenericDataProto) -> Result<(), Box<dyn Error>>;
+    fn handle_rust_mapping(&self, message: &mut GenericDataProto) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
+    /*
+    fn handle_wasm_mapping(
+        &self,
+        wasm_instance: &mut WasmInstance<Chain>,
+        mapping: &Mapping,
+        message: &mut GenericDataProto,
+    ) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
+     */
 }
 #[derive(Debug)]
 pub struct AdapterError(String);
