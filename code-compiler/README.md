@@ -9,7 +9,7 @@
 ## API
 Endpoint: /compile/so
 - Method: POST
-- Updated on: 16/8/2021
+- Updated on: 19/8/2021
 - Description: to make a new a request building a SO file, we need the URL encoded data of:
   - mapping.rs
   - project.yaml
@@ -17,9 +17,13 @@ Endpoint: /compile/so
 - Payload:
 ```json
 {
-  "mapping.rs": "",
-  "models.rs": "",
-  "project.yaml": ""
+  "mappings": {
+      "mapping.rs": ""
+  },
+  "configs": {
+      "models.rs": "",
+      "project.yaml": ""
+  }
 }
 ```
 - Result: 
@@ -76,10 +80,10 @@ Endpoint: /deploy/so
 
 Endpoint: /compile/wasm
 - Method: POST
-- Updated on: 16/8/2021
+- Updated on: 19/8/2021
 - Description: to make a new a request to build WASM files, we need the URL encoded data of:
-  - abis: { filename1.json: "", filename2.json: "" }
-  - mappings: { filename1.json: "", filename2.json: "" }
+  - abis
+  - mappings
   - subgraph.yaml
   - schema.graphql
   - package.json
@@ -95,9 +99,12 @@ Endpoint: /compile/wasm
     "mappings/file1.ts": "",
     "file2.ts": ""
   },
-  "subgraph.yaml": "A",
-  "schema.graphql": "",
-  "package.json": ""
+  "configs": {
+     "subgraph.yaml": "A",
+     "schema.graphql": "",
+     "package.json": "",
+     "model": "WASM_FILE_NAME"
+  }
 }
 ```
 
@@ -113,13 +120,16 @@ Endpoint: /compile/wasm
 ---
 Endpoint: /deploy/wasm
 - Method: POST
-- Updated on: 16/8/2021
+- Updated on: 19/8/2021
 - Description:
-  - Endpoint to deploy .SO file
+  - Endpoint to deploy .WASM file
+  - Params:
+    - model: is the name of the generated wasm file, because we can compile to multiple wasm, so we need to specify the wasm name we want to deploy
+    - compilation_id: the id we get from /compile/wasm endpoint
 - Payload:
 ```json
 {
-  "model": "modelName",
+  "model": "WASM_FILE_NAME",
   "compilation_id": "ad9d2a02ca227bc4932bee6c5aeb1480"
 }
 ```
