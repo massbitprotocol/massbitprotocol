@@ -115,7 +115,7 @@ Compile and Deploy WASM Test Ethereum Block
     ...  ${compile_res["payload"]}
 
     # Deploy
-    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}", "model": "MasterChef"}
+    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}", "configs":{"model":"MasterChef"}}
     ${deploy_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/deploy/wasm
     ...  ${json}
@@ -143,7 +143,7 @@ Compile and Deploy WASM Test Ethereum Event
     ...  ${compile_res["payload"]}
 
     # Deploy
-    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}", "model": "StandardToken"}
+    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}", "configs":{"model":"StandardToken"}}
     ${deploy_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/deploy/wasm
     ...  ${json}
@@ -172,7 +172,7 @@ Compile and Deploy WASM Test Quickswap
     ...  ${compile_res["payload"]}
 
     # Deploy
-    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}", "model": "Factory"}
+    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}", "configs":{"model":"Factory"}}
     ${deploy_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/deploy/wasm
     ...  ${json}
