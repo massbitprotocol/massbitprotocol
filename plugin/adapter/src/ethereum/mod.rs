@@ -1,16 +1,16 @@
 use crate::core::{AdapterError, MessageHandler};
 pub use crate::stream_mod::{DataType, GenericDataProto};
-//use crate::EthereumWasmHandlerProxy;
+use crate::EthereumWasmHandlerProxy;
 use libloading::Library;
 use massbit_chain_ethereum::data_type::{decode, EthereumBlock, EthereumTransaction};
-//use massbit_runtime_wasm::chain::ethereum::{trigger::MappingTrigger, Chain};
-//use massbit_runtime_wasm::indexer::manifest::{Mapping, MappingBlockHandler};
-//use massbit_runtime_wasm::module::WasmInstance;
+use massbit_runtime_wasm::chain::ethereum::{trigger::MappingTrigger, Chain};
+use massbit_runtime_wasm::indexer::manifest::{Mapping, MappingBlockHandler};
+use massbit_runtime_wasm::module::WasmInstance;
 
 use std::{error::Error, sync::Arc};
 
 crate::prepare_adapter!(Ethereum, { handle_block: EthereumBlock, handle_transaction: EthereumTransaction});
-/*
+
 impl MessageHandler for EthereumWasmHandlerProxy {
     fn handle_wasm_mapping(
         &self,
@@ -24,7 +24,6 @@ impl MessageHandler for EthereumWasmHandlerProxy {
             Some(DataType::Block) => {
                 mapping.event_handlers.iter().for_each(|handler| {
                     let block_ext: EthereumBlock = decode(&mut data.payload).unwrap();
-                    log::info!("Block {:?}", &block_ext.block);
                     let block_handler = MappingBlockHandler {
                         handler: handler.handler.clone(),
                         filter: None,
@@ -55,7 +54,7 @@ impl MessageHandler for EthereumWasmHandlerProxy {
         Ok(())
     }
 }
-*/
+
 impl MessageHandler for EthereumHandlerProxy {
     fn handle_rust_mapping(&self, data: &mut GenericDataProto) -> Result<(), Box<dyn Error>> {
         //println!("GenericDataProto{:?}", data);

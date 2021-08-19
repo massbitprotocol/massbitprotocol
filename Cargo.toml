@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "plugin/runtime/wasm",
     "chain-reader/chain-reader",
     "mock",
     "core/chain/substrate",
@@ -7,7 +8,7 @@ members = [
     "core/chain/ethereum",
     "index-manager/main",
     "plugin/adapter",
-    "plugin/test-plugin",
+    #"plugin/test-plugin",
     "cli"
 ]
 exclude = ["code-compiler/generated"]

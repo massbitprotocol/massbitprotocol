@@ -8,7 +8,12 @@ pub use host::HostMetrics;
 pub mod runtime;
 pub mod task_spawn;
 pub use task_spawn::{
-    block_on, spawn, spawn_allow_panic, spawn_blocking, spawn_blocking_allow_panic, spawn_thread,
+    block_on,
+    spawn,
+    spawn_allow_panic,
+    spawn_blocking,
+    spawn_blocking_allow_panic,
+    //spawn_thread,
 };
 pub mod util;
 pub mod prelude {

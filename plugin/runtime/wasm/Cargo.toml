@@ -7,7 +7,7 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0"
-async-trait = "0.1.50"
+async-trait = "0.1.48"
 atomic_refcell = "0.1.7"
 bigdecimal = { version = "0.1.0", features = ["serde"] }
 chrono = "0.4.19"
@@ -45,17 +45,21 @@ rand                    = "0.8.4"
 reqwest = { version = "0.10", features = ["json", "stream", "trust-dns-resolver"] }
 semver                  = "1.0"
 serde                   = { version = "1.0.126", features = ["rc"] }
-serde_derive            = "1.0.125"
-serde_json              = { version = "1.0", features = ["arbitrary_precision"] }
+#causes runtime error dueto conflict feature from chain-reader
+#serde_json              = { version = "1.0", features = ["arbitrary_precision"] }
+#serde                   = { version = "1.0", optional = false }
+serde_json              = { version = "1.0", optional = false }
 serde_yaml              = "0.8"
+serde_derive            = "1.0.125"
 slog                    = { version = "2.7.0", features = ["release_max_level_trace", "max_level_trace"] }
 slog-async = "2.5.0"
 slog-envlogger = "2.1.0"
 slog-term = "2.7.0"
 stable-hash = { git = "https://github.com/graphprotocol/stable-hash" }
-thiserror               = "1.0.25"
+thiserror               = { version = "1.0", optional =false }
 tiny-keccak             = "1.5.0"
-tokio = { version = "0.2.25", features = ["stream", "rt-threaded", "rt-util", "blocking", "time", "sync", "macros", "test-util", "net"] }
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "sync", "time"] }
+#tokio = { version = "0.2.25", features = ["stream", "rt-threaded", "rt-util", "blocking", "time", "sync", "macros", "test-util", "net"] }
 #web3                    = "0.17.0"
 web3 = { git = "https://github.com/graphprotocol/rust-web3", branch = "master" }
 #[dependencies.graph]

@@ -55,9 +55,11 @@ pub fn block_on<T>(f: impl Future03<Output = T>) -> T {
     tokio::runtime::Handle::current().block_on(f)
 }
 
+/*
 /// Spawns a thread with access to the tokio runtime. Panics if the thread cannot be spawned.
 pub fn spawn_thread(name: String, f: impl 'static + FnOnce() + Send) {
     let conf = std::thread::Builder::new().name(name);
     let runtime = tokio::runtime::Handle::current();
     conf.spawn(move || runtime.enter(f)).unwrap();
 }
+ */

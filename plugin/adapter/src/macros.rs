@@ -113,7 +113,7 @@ macro_rules! create_adapters {
                 }
                 )*
             }
-
+            /*
             pub fn handle_rust_mapping(proxy_type: &HandlerProxyType, message : &mut GenericDataProto) -> Result<(), Box<dyn Error>> {
                 match proxy_type {
                     $(
@@ -123,10 +123,11 @@ macro_rules! create_adapters {
                     )*
                 }
             }
+             */
         }
     }
 }
-/*
+
 #[macro_export]
 macro_rules! create_wasm_adapters {
     ($($adapter:ident),*) => {
@@ -182,6 +183,7 @@ macro_rules! create_wasm_adapters {
                     }
                 }
             }
+            /*
             pub fn handle_wasm_mapping(
                     proxy_type: &WasmHandlerProxyType,
                     wasm_instance: &mut WasmInstance<Chain>,
@@ -196,10 +198,10 @@ macro_rules! create_wasm_adapters {
                     )*
                 }
             }
+             */
         }
     }
 }
- */
 
 /*
 #[macro_export]

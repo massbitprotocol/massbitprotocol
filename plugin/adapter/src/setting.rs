@@ -6,8 +6,10 @@
 use serde_yaml::Value;
 // Massbit dependencies
 use crate::stream_mod::ChainType;
-//use massbit_runtime_wasm::chain::ethereum::data_source::DataSource;
+use massbit_runtime_wasm::chain::ethereum::data_source::DataSource;
 
+//use massbit_runtime_wasm::chain::ethereum::data_source::DataSource;
+/*
 pub fn get_chain_type(config: &Value) -> ChainType {
     let chain_type = match config["dataSources"][0]["kind"].as_str().unwrap() {
         "substrate" => ChainType::Substrate,
@@ -17,7 +19,7 @@ pub fn get_chain_type(config: &Value) -> ChainType {
     };
     chain_type
 }
-/*
+*/
 pub fn get_chain_type(datasource: &DataSource) -> ChainType {
     match datasource.kind.as_str() {
         "substrate" => ChainType::Substrate,
@@ -26,7 +28,7 @@ pub fn get_chain_type(datasource: &DataSource) -> ChainType {
         _ => ChainType::Substrate, // If not provided, assume it's substrate network
     }
 }
- */
+
 pub fn get_chain_name(config: &Value) -> Option<&str> {
     config["dataSources"][0]["kind"].as_str()
 }
