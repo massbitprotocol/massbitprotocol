@@ -6,9 +6,18 @@ use crate::{
     grpc_stream::stream_mod::{streamout_server::StreamoutServer, ChainType},
     CONFIG,
 };
+use anyhow::Result;
+use lazy_static::lazy_static;
 use std::collections::HashMap;
 use tokio::sync::broadcast;
 use tonic::transport::Server;
+
+lazy_static! {
+    static ref HTTP_PORT: u64 = std::env::var("HTTP_PORT")
+        .unwrap_or("50051".into())
+        .parse::<u64>()
+        .expect("invalid HTTP_PORT env var");
+}
 
 #[derive(Clone, Debug)]
 pub struct Config {
@@ -22,7 +31,7 @@ pub struct ChainConfig {
     pub ws: String,
 }
 
-pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+pub async fn run() -> Result<()> {
     // Broadcast Channel
     let mut chans = HashMap::new();
 
@@ -66,15 +75,11 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
         }
     }
 
-    // Run StreamoutServer
-    let stream_service = StreamService { chans: chans };
-
-    let addr = CONFIG.url.parse()?;
+    let stream_service = StreamService { chans };
     Server::builder()
         .add_service(StreamoutServer::new(stream_service))
-        .serve(addr)
+        .serve(format!(":{}", *HTTP_PORT).parse()?)
         .await?;
 
-    // End
     Ok(())
 }
