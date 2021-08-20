@@ -1,6 +1,7 @@
 use crate::models::*;
 use massbit_chain_substrate::data_type as substrate_types;
 use massbit_chain_solana::data_type as solana_types;
+use massbit_chain_ethereum::data_type as ethereum_types;
 use std::error::Error;
 {% for handler in handlers -%}
 {%- if handler.kind == "substrate/BlockHandler" %}
@@ -25,6 +26,18 @@ pub fn {{handler.name}}(transaction: &solana_types::SolanaTransaction) -> Result
 }
 {% elif handler.kind == "solana/LogMessagesHandler" %}
 pub fn {{handler.name}}(log_messages: &solana_types::SolanaLogMessages) -> Result<(), Box<dyn Error>> {
+    todo!();
+}
+{% elif handler.kind == "ethereum/BlockHandler" %}
+pub fn {{handler.name}}(block: &ethereum_types::EthereumBlock) -> Result<(), Box<dyn Error>> {
+    todo!();
+}
+{% elif handler.kind == "ethereum/TransactionHandler" %}
+pub fn {{handler.name}}(transaction: &ethereum_types::EthereumTransaction) -> Result<(), Box<dyn Error>> {
+    todo!();
+}
+{% elif handler.kind == "ethereum/EventHandler" %}
+pub fn {{handler.name}}(event: &ethereum_types::EthereumEvent) -> Result<(), Box<dyn Error>> {
     todo!();
 }
 {%- endif -%}
