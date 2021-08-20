@@ -3,6 +3,7 @@ use crate::{
     grpc_stream::stream_mod::{ChainType, DataType, GenericDataProto},
     CONFIG,
 };
+use anyhow::Error;
 use futures::stream;
 use futures::{Future, Stream};
 use futures03::{self, compat::Future01CompatExt};
@@ -14,6 +15,7 @@ use std::sync::{
     Arc,
 };
 use std::time::Instant;
+use thiserror::Error;
 use tokio::sync::broadcast;
 use tokio::time::{sleep, Duration};
 use web3;
@@ -31,6 +33,18 @@ use web3::{
 const CHAIN_TYPE: ChainType = ChainType::Ethereum;
 const PULLING_INTERVAL: u64 = 200;
 const USE_WEBSOCKET: bool = false;
+
+#[derive(Error, Debug)]
+pub enum IngestorError {
+    /// The Ethereum node does not know about this block for some reason, probably because it
+    /// disappeared in a chain reorg.
+    #[error("Block data unavailable, block was likely uncled (block hash = {0:?})")]
+    BlockUnavailable(H256),
+
+    /// An unexpected error occurred.
+    #[error("Ingestor error: {0}")]
+    Unknown(Error),
+}
 
 fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>) {
     // Todo: More clean solution for broadcast channel
@@ -120,6 +134,7 @@ pub async fn get_receipts(
     web3: &Web3<Transport>,
 ) -> HashMap<H256, TransactionReceipt> {
     let block = block.clone();
+    let block_hash = block.hash.unwrap();
     let batching_web3 = Web3::new(Batch::new(web3.transport().clone()));
 
     let receipt_futures = block
@@ -127,51 +142,48 @@ pub async fn get_receipts(
         .iter()
         .map(|tx| {
             let tx_hash = tx.hash;
-            // Todo: add check error (as in commented code)
             batching_web3
                 .eth()
                 .transaction_receipt(tx_hash)
-                // .from_err()
-                // .map_err(MyIngestorError::Unknown)
+                .from_err()
+                .map_err(IngestorError::Unknown)
                 .and_then(move |receipt_opt| {
-                    Ok(receipt_opt.unwrap())
-                    //     .ok_or_else(move || {
-                    //     // No receipt was returned.
-                    //     //
-                    //     // This can be because the Ethereum node no longer
-                    //     // considers this block to be part of the main chain,
-                    //     // and so the transaction is no longer in the main
-                    //     // chain.  Nothing we can do from here except give up
-                    //     // trying to ingest this block.
-                    //     //
-                    //     // This could also be because the receipt is simply not
-                    //     // available yet.  For that case, we should retry until
-                    //     // it becomes available.
-                    //     MyIngestorError::BlockUnavailable(block_hash)
-                    // })
+                    receipt_opt.ok_or_else(move || {
+                        // No receipt was returned.
+                        //
+                        // This can be because the Ethereum node no longer
+                        // considers this block to be part of the main chain,
+                        // and so the transaction is no longer in the main
+                        // chain.  Nothing we can do from here except give up
+                        // trying to ingest this block.
+                        //
+                        // This could also be because the receipt is simply not
+                        // available yet.  For that case, we should retry until
+                        // it becomes available.
+                        IngestorError::BlockUnavailable(block_hash)
+                    })
                 })
                 .and_then(move |receipt| {
                     // Parity nodes seem to return receipts with no block hash
                     // when a transaction is no longer in the main chain, so
                     // treat that case the same as a receipt being absent
                     // entirely.
-                    // let receipt_block_hash = receipt
-                    //     .block_hash
-                    //     .ok_or_else(|| MyIngestorError::BlockUnavailable(block_hash))?;
-                    //
-                    // // Check if receipt is for the right block
-                    // if receipt_block_hash != block_hash {
-                    //     // If the receipt came from a different block, then the
-                    //     // Ethereum node no longer considers this block to be
-                    //     // in the main chain.  Nothing we can do from here
-                    //     // except give up trying to ingest this block.
-                    //     // There is no way to get the transaction receipt from
-                    //     // this block.
-                    //     Err(MyIngestorError::BlockUnavailable(block_hash))
-                    // } else {
-                    //     Ok((tx_hash, receipt))
-                    // }
-                    Ok((tx_hash, receipt))
+                    let receipt_block_hash = receipt
+                        .block_hash
+                        .ok_or_else(|| IngestorError::BlockUnavailable(block_hash))?;
+
+                    // Check if receipt is for the right block
+                    if receipt_block_hash != block_hash {
+                        // If the receipt came from a different block, then the
+                        // Ethereum node no longer considers this block to be
+                        // in the main chain.  Nothing we can do from here
+                        // except give up trying to ingest this block.
+                        // There is no way to get the transaction receipt from
+                        // this block.
+                        Err(IngestorError::BlockUnavailable(block_hash))
+                    } else {
+                        Ok((tx_hash, receipt))
+                    }
                 })
         })
         .collect::<Vec<_>>();
@@ -179,13 +191,13 @@ pub async fn get_receipts(
     let my_receipts = batching_web3
         .transport()
         .submit_batch()
-        // .from_err()
-        // .map_err(MyIngestorError::Unknown)
+        .from_err()
+        .map_err(IngestorError::Unknown)
         .and_then(move |_| stream::futures_ordered(receipt_futures).collect())
         .compat()
         .await;
     let receipts = my_receipts
-        .unwrap()
+        .unwrap_or(Vec::new())
         .into_iter()
         .collect::<HashMap<H256, TransactionReceipt>>();
 
@@ -266,7 +278,7 @@ pub async fn loop_get_block(chan: broadcast::Sender<GenericDataProto>) {
                         Web3BlockNumber::from(block_number),
                         Web3BlockNumber::from(block_number),
                     )
-                    .unwrap();
+                    .unwrap_or(Vec::new());
 
                     let eth_block = Block {
                         version: clone_version.clone(),

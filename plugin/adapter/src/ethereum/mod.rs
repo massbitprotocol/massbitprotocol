@@ -2,7 +2,7 @@ use crate::core::{AdapterError, MessageHandler};
 pub use crate::stream_mod::{DataType, GenericDataProto};
 use libloading::Library;
 use massbit_chain_ethereum::data_type::{
-    decode, EthereumBlock, EthereumEvent, EthereumTransaction,
+    decode, get_events, EthereumBlock, EthereumEvent, EthereumTransaction,
 };
 use std::{error::Error, sync::Arc};
 
@@ -25,7 +25,7 @@ impl MessageHandler for EthereumHandlerProxy {
                     &block.block.hash.unwrap()
                 );
                 self.handler.handle_block(&block);
-                for origin_transaction in block.block.transactions {
+                for origin_transaction in block.block.transactions.clone() {
                     let transaction = EthereumTransaction {
                         version: block.version.clone(),
                         timestamp: block.timestamp,
@@ -36,12 +36,11 @@ impl MessageHandler for EthereumHandlerProxy {
                 }
 
                 // Create event
-                let event = EthereumEvent {
-                    version: block.version.clone(),
-                    timestamp: block.timestamp,
-                    logs: block.logs.clone(),
-                };
-                self.handler.handle_event(&event);
+                let events = get_events(&block);
+                for event in events {
+                    log::debug!("Do event handler: Event address {:?}", &event.event.address);
+                    self.handler.handle_event(&event);
+                }
 
                 Ok(())
             }

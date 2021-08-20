@@ -28,6 +28,8 @@ test-run-all-and-up:
 	cd e2e-test/substrate && robot substrate.robot
 	@echo "Running solana tests ..."
 	cd e2e-test/solana && robot solana.robot
+	@echo "Running ethereum tests ..."
+	cd e2e-test/ethereum && robot ethereum.robot
 
 test-init:
 	@echo "Installing all the dependencies for E2E tests ..."

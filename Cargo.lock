@@ -968,6 +968,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "const_fn_assert"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "27d614f23f34f7b5165a77dc1591f497e2518f9cec4b4f4b92bfc4dc6cf7a190"
+
+[[package]]
 name = "constant_time_eq"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1525,6 +1531,19 @@ dependencies = [
 
 [[package]]
 name = "ethabi"
+version = "12.0.0-graph"
+source = "git+https://github.com/graphprotocol/ethabi.git?branch=master#35977d1ce69d4c2db652c502d70e4e53a7aa9897"
+dependencies = [
+ "ethereum-types",
+ "rustc-hex",
+ "serde",
+ "serde_json",
+ "tiny-keccak 1.5.0",
+ "uint 0.8.5",
+]
+
+[[package]]
+name = "ethabi"
 version = "12.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "052a565e3de82944527d6d10a465697e6bb92476b772ca7141080c901f6a63c6"
@@ -1651,6 +1670,12 @@ dependencies = [
  "parity-scale-codec 2.1.1",
  "parking_lot 0.11.1",
 ]
+
+[[package]]
+name = "firestorm"
+version = "0.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "31586bda1b136406162e381a3185a506cdfc1631708dd40cba2f6628d8634499"
 
 [[package]]
 name = "fixed-hash"
@@ -2594,6 +2619,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ibig"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61c5022ee7f7a2feb0bd2fdc4b8ec882cd14903cebf33e7c1847e3f3a282f8b7"
+dependencies = [
+ "cfg-if 1.0.0",
+ "const_fn_assert",
+ "num-traits",
+ "rand 0.8.4",
+ "static_assertions",
+]
+
+[[package]]
 name = "idna"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3049,6 +3087,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
+name = "leb128"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3576a87f2ba00f6f106fdfcd16db1d698d648a26ad8e0573cad8537c3c362d2a"
+
+[[package]]
 name = "libc"
 version = "0.2.98"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3341,11 +3385,15 @@ checksum = "3e2e65a1a2e43cfcb47a895c4c8b10d1f4a61097f9f254f183aee60cad9c651d"
 name = "massbit-chain-ethereum"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "bs58 0.4.0",
  "env_logger 0.9.0",
+ "ethabi 12.0.0-graph",
+ "hex 0.4.3",
  "log 0.4.14",
  "serde",
  "serde_json",
+ "stable-hash",
  "web3",
 ]
 
@@ -7167,6 +7215,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "stable-hash"
+version = "0.3.1"
+source = "git+https://github.com/graphprotocol/stable-hash#752463958b369506845e89da8b831430146c61d1"
+dependencies = [
+ "blake3",
+ "firestorm",
+ "ibig",
+ "lazy_static",
+ "leb128",
+ "num-traits",
+]
+
+[[package]]
 name = "stable_deref_trait"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8718,7 +8779,7 @@ dependencies = [
  "arrayvec 0.5.2",
  "base64 0.12.3",
  "derive_more",
- "ethabi",
+ "ethabi 12.0.0",
  "ethereum-types",
  "futures 0.1.31",
  "hyper 0.12.36",

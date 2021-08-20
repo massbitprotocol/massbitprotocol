@@ -4,7 +4,10 @@ use crate::stream_mod::{
     streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
 };
 use log::{debug, info, warn, Level};
-use massbit_chain_ethereum::data_type::{decode as ethereum_decode, EthereumBlock};
+use massbit_chain_ethereum::{
+    data_type::{decode as ethereum_decode, get_events, EthereumBlock, EthereumEvent},
+    trigger::{EthereumBlockData, EthereumTransactionData},
+};
 use massbit_chain_solana::data_type::{
     convert_solana_encoded_block_to_solana_block, decode as solana_decode, SolanaEncodedBlock,
     SolanaLogMessages, SolanaTransaction,
@@ -19,10 +22,15 @@ use tonic::{
 pub mod stream_mod {
     tonic::include_proto!("chaindata");
 }
+use anyhow::Context;
+use massbit_chain_ethereum::trigger::EthereumEventData;
+use massbit_chain_ethereum::types::LightEthereumBlockExt;
 use massbit_chain_substrate::data_type::{decode, get_extrinsics_from_block};
+use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Instant;
+use web3::types::{Transaction, U256};
 
 const URL: &str = "http://127.0.0.1:50051";
 
@@ -130,6 +138,10 @@ pub async fn print_blocks(
                         "Recieved ETHREUM BLOCK with Block number: {}",
                         &block.block.number.unwrap().as_u64()
                     );
+                    let events = get_events(&block);
+                    for event in events {
+                        debug!("Ethereum Event address: {:?}", event.event.address);
+                    }
                 }
                 _ => {
                     warn!("Not support this type in Ethereum");
