@@ -20,7 +20,7 @@ services:
     ports:
       - "9944:9944"
     restart: always
-    command: bash -c "./target/release/node-template purge-chain --dev && ./target/release/node-template --dev --ws-external"
+    command: bash -c "./target/release/node-template purge-chain --dev -y && ./target/release/node-template --dev --ws-external"
     
   hasura:
     image: hasura/graphql-engine:v2.0.1

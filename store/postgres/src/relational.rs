@@ -49,8 +49,8 @@ use graph::prelude::{
 use crate::block_range::{BLOCK_RANGE_COLUMN, BLOCK_UNVERSIONED};
 pub use crate::catalog::Catalog;
 use crate::entities::STRING_PREFIX_SIZE;
-use graph_graphql::graphql_parser::query::Type;
 use anyhow::Error;
+use graph_graphql::graphql_parser::query::Type;
 
 lazy_static! {
     /// Experimental: a list of fully qualified table names that contain
@@ -169,7 +169,7 @@ impl fmt::Display for SqlName {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum IdType {
     String,
-    Bytes
+    Bytes,
 }
 
 impl TryFrom<&s::ObjectType> for IdType {
@@ -511,15 +511,21 @@ impl Layout {
     ///
     /// Gen Migration: up.sql and down.sql
     ///
-    pub fn gen_migration(&self) -> Result<(String,String), fmt::Error> {
+    pub fn gen_migration(&self) -> Result<(String, String), fmt::Error> {
         let mut up_sql = String::new();
         let mut down_sql = String::new();
         // Output enums first
-        self.enums.iter().for_each(|(name, values)|{
+        self.enums.iter().for_each(|(name, values)| {
             let name = SqlName::from(name.as_str());
-            writeln!(up_sql, "create type {} as enum ({});",
-                    name.quoted(),
-                    values.iter().map(|val|{val.clone()}).collect::<Vec<String>>().join(",")
+            writeln!(
+                up_sql,
+                "create type {} as enum ({});",
+                name.quoted(),
+                values
+                    .iter()
+                    .map(|val| { val.clone() })
+                    .collect::<Vec<String>>()
+                    .join(",")
             );
             writeln!(down_sql, "drop type {};", name.quoted());
         });
@@ -528,7 +534,7 @@ impl Layout {
         let mut tables = self.tables.values().collect::<Vec<_>>();
         tables.sort_by_key(|table| table.position);
         // Output 'create table' statements for all tables
-        tables.iter().for_each(|table|{
+        tables.iter().for_each(|table| {
             table.gen_migration(&mut up_sql, &mut down_sql, self);
         });
         Ok((up_sql, down_sql))
@@ -966,8 +972,7 @@ impl From<IdType> for ColumnType {
     fn from(id_type: IdType) -> Self {
         match id_type {
             IdType::Bytes => ColumnType::BytesId,
-            IdType::String => ColumnType::String
-            //IdType::BigInt => ColumnType::BigInt
+            IdType::String => ColumnType::String, //IdType::BigInt => ColumnType::BigInt
         }
     }
 }
@@ -1341,7 +1346,7 @@ impl Table {
             out,
             "\n        {vid}                  bigserial primary key,\
              \n        {block_range}          int4range not null);\n",
-        //exclude using gist   (id with =, {block_range} with &&)\n);\n",
+            //exclude using gist   (id with =, {block_range} with &&)\n);\n",
             vid = VID_COLUMN,
             block_range = BLOCK_RANGE_COLUMN
         )?;
@@ -1424,8 +1429,9 @@ impl Table {
             match method {
                 "gist" => {
                     println!("Currenty not support gist in db, improve later");
-                },
-                _ => { write!(
+                }
+                _ => {
+                    write!(
                     out,
                     "create index attr_{table_index}_{column_index}_{table_name}_{column_name}\n    on \"{table_name}\" using {method}({index_expr});\n",
                     table_index = self.position,
@@ -1438,7 +1444,6 @@ impl Table {
                 )?;
                 }
             }
-
         }
         writeln!(out)
     }
@@ -1454,7 +1459,7 @@ impl Table {
             //layout.catalog.namespace,
             self.name.quoted()
         )?;
-        let mut constraints : Vec<String> = Vec::new();
+        let mut constraints: Vec<String> = Vec::new();
         for (i, column) in self.columns.iter().enumerate() {
             if i > 0 {
                 write!(up, ",\n");
@@ -1462,17 +1467,24 @@ impl Table {
             write!(up, "    ")?;
             if column.is_primary_key() {
                 write!(up, "    ")?;
-                write!(up, "{:20} {} PRIMARY KEY", column.name.quoted(), column.sql_type())?;
+                write!(
+                    up,
+                    "{:20} {} PRIMARY KEY",
+                    column.name.quoted(),
+                    column.sql_type()
+                )?;
             } else {
                 column.as_ddl(up)?;
             }
             /*
              * 2021-07-29
              * vuviettai: don't add constraint, this cause ForeignKeyViolation when insert data
+             * 2021-08-19
+             * hughie: don't create the constraint for list, we only need to setup the constraint from child to parent or it might cause a loop
              */
 
-            if column.is_reference() {
-                constraints.push(format!("CONSTRAINT fk_{column_name} FOREIGN KEY({column_name}) REFERENCES {reference}({reference_id})",
+            if column.is_reference() && !column.is_list() {
+                constraints.push(format!("CONSTRAINT fk_{column_name} FOREIGN KEY(\"{column_name}\") REFERENCES \"{reference}\"({reference_id})",
                                          reference = named_type(&column.field_type).to_snake_case(),
                                          reference_id = &PRIMARY_KEY_COLUMN.to_owned(),
                                          column_name = column.name));
@@ -1581,8 +1593,11 @@ impl Table {
             };
             match method {
                 "gist" => {
-                    println!("Currently not support gist with column {}, improve later", column.name.to_string());
-                },
+                    println!(
+                        "Currently not support gist with column {}, improve later",
+                        column.name.to_string()
+                    );
+                }
                 _ => {
                     writeln!(
                         up,

@@ -21,13 +21,15 @@ test-run-all:
 test-run-all-and-up:
 	@echo "Run all services"
 	bash run.sh
-	sleep 5;
+	sleep 10;
 	@echo "Running health check tests ..."
 	cd e2e-test/health-check && robot health-check.robot || true
 	@echo "Running substrate tests ..."
 	cd e2e-test/substrate && robot substrate.robot
 	@echo "Running solana tests ..."
 	cd e2e-test/solana && robot solana.robot
+	@echo "Running ethereum tests ..."
+	cd e2e-test/ethereum && robot ethereum.robot
 
 test-init:
 	@echo "Installing all the dependencies for E2E tests ..."

@@ -165,16 +165,19 @@ pub fn generate_ddl(raw: &str, catalog: &str, output_dir: &str) -> Result<(), Bo
                 .iter()
                 .filter(|col| col.is_reference())
                 .for_each(|column|{
-                    hasura_relations.push(serde_json::json!({
-                        "type": "create_object_relationship",
-                        "args": {
-                            "table": table.name.as_str(),
-                            "name": relational::named_type(&column.field_type),
-                            "using" : {
-                                "foreign_key_constraint_on" : column.name.as_str()
+                    if !column.is_list() { // Don't create relationship for child table because if it's type is array the parent already has the foreign key constraint (I think)
+                        hasura_relations.push(serde_json::json!({
+                            "type": "create_object_relationship",
+                            "args": {
+                                "table": table.name.as_str(),
+                                "name": format!("{}_{}",relational::named_type(&column.field_type),column.name.as_str()), // This is be a unique identifier to avoid the problem: An entity can have multiple reference to another entity. Example: Pair Entity (token0: Token!, token1: Token!)
+                                "using" : {
+                                    "foreign_key_constraint_on" : column.name.as_str()
+                                }
                             }
-                        }
-                    }));
+                        }));
+                    }
+
                     hasura_down_relations.push(serde_json::json!({
                         "type": "drop_relationship",
                         "args": {
@@ -184,19 +187,23 @@ pub fn generate_ddl(raw: &str, catalog: &str, output_dir: &str) -> Result<(), Bo
                         }
                     }));
                     let ref_table = relational::named_type(&column.field_type).to_snake_case();
-                    hasura_relations.push(serde_json::json!({
-                        "type": "create_array_relationship",
-                        "args": {
-                            "name": table.name.as_str(),
-                            "table": ref_table.clone(),
-                            "using" : {
-                                "foreign_key_constraint_on" : {
-                                    "table": table.name.as_str(),
-                                    "column": column.name.as_str()
+
+                    if !column.is_list() { // Don't create relationship for child table because if it's type is array the parent already has the foreign key constraint (I think)
+                        hasura_relations.push(serde_json::json!({
+                            "type": "create_array_relationship",
+                            "args": {
+                                "name": format!("{}_{}",table.name.as_str(),column.name.as_str()), // This is be a unique identifier to avoid the problem: An entity can have multiple reference to another entity. Example: Pair Entity (token0: Token!, token1: Token!)
+                                "table": ref_table.clone(),
+                                "using" : {
+                                    "foreign_key_constraint_on" : {
+                                        "table": table.name.as_str(),
+                                        "column": column.name.as_str()
+                                    }
                                 }
                             }
-                        }
-                    }));
+                        }));
+                    }
+
                     hasura_down_relations.push(serde_json::json!({
                         "type": "drop_relationship",
                         "args": {

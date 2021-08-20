@@ -228,10 +228,10 @@ fn flush_entity(table_name: &String, _buffer: &Vec<GenericMap>, conn: &PgConnect
             }
             Err(err) => {
                 log::error!(
-                    "{} Error {:?} while insert query {:?}.",
+                    "{} Error {:?} while insert into table: {:?}.",
                     &*COMPONENT_NAME,
                     err,
-                    query.as_str()
+                    table_name
                 );
             }
         }

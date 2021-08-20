@@ -1,8 +1,13 @@
+use clap::{App, Arg};
+
 use crate::stream_mod::{
     streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
 };
 use log::{debug, info, warn, Level};
-use massbit_chain_ethereum::data_type::{decode as ethereum_decode, EthereumBlock};
+use massbit_chain_ethereum::{
+    data_type::{decode as ethereum_decode, get_events, EthereumBlock, EthereumEvent},
+    trigger::{EthereumBlockData, EthereumTransactionData},
+};
 use massbit_chain_solana::data_type::{
     convert_solana_encoded_block_to_solana_block, decode as solana_decode, SolanaEncodedBlock,
     SolanaLogMessages, SolanaTransaction,
@@ -17,10 +22,15 @@ use tonic::{
 pub mod stream_mod {
     tonic::include_proto!("chaindata");
 }
+use anyhow::Context;
+use massbit_chain_ethereum::trigger::EthereumEventData;
+use massbit_chain_ethereum::types::LightEthereumBlockExt;
 use massbit_chain_substrate::data_type::{decode, get_extrinsics_from_block};
+use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Instant;
+use web3::types::{Transaction, U256};
 
 const URL: &str = "http://127.0.0.1:50051";
 
@@ -34,11 +44,12 @@ pub async fn print_blocks(
         end_block_number: 1,
         chain_type: chain_type as i32,
     };
+    println!("Creating Stream ...");
     let mut stream = client
         .list_blocks(Request::new(get_blocks_request))
         .await?
         .into_inner();
-
+    println!("Waitting for data...");
     while let Some(data) = stream.message().await? {
         let mut data = data as GenericDataProto;
         println!(
@@ -127,6 +138,10 @@ pub async fn print_blocks(
                         "Recieved ETHREUM BLOCK with Block number: {}",
                         &block.block.number.unwrap().as_u64()
                     );
+                    let events = get_events(&block);
+                    for event in events {
+                        debug!("Ethereum Event address: {:?}", event.event.address);
+                    }
                 }
                 _ => {
                     warn!("Not support this type in Ethereum");
@@ -144,11 +159,38 @@ pub async fn print_blocks(
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     env_logger::init();
-    println!("Start client");
     info!("Waiting for chain-reader");
 
+    let matches = App::new("Client")
+        .version("1.0")
+        .about("Client for test chain-reader")
+        .arg(
+            Arg::with_name("type")
+                .short("c")
+                .long("chain-type")
+                .value_name("type")
+                .help("Sets chain type")
+                .takes_value(true),
+        )
+        .get_matches();
+
+    let chain_type = matches.value_of("type").unwrap_or("ethereum");
     let client = StreamoutClient::connect(URL).await.unwrap();
-    //print_blocks(client, ChainType::Ethereum).await;
-    print_blocks(client, ChainType::Solana).await;
+    println!("Match {:?}", matches);
+    match chain_type {
+        "substrate" => {
+            info!("Run client: {}", chain_type);
+            print_blocks(client, ChainType::Substrate).await;
+        }
+        "solana" => {
+            info!("Run client: {}", chain_type);
+            print_blocks(client, ChainType::Solana).await;
+        }
+        _ => {
+            info!("Run client: {}", chain_type);
+            print_blocks(client, ChainType::Ethereum).await;
+        }
+    };
+
     Ok(())
 }

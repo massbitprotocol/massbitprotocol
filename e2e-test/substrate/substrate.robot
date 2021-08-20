@@ -46,7 +46,7 @@ Deploy test-block, then check if data was inserted into DB
 
     # Check that there is a table with data in it
     Wait Until Keyword Succeeds
-    ...  10x
+    ...  20x
     ...  5 sec
     ...  Pooling Database Data
     ...  SELECT * FROM substrate_block FETCH FIRST ROW ONLY
@@ -85,7 +85,7 @@ Deploy test-event, then check if data was inserted into DB
 
     # Check that there is a table with data in it
     Wait Until Keyword Succeeds
-    ...  10x
+    ...  20x
     ...  5 sec
     ...  Pooling Database Data
     ...  SELECT * FROM substrate_event FETCH FIRST ROW ONLY
@@ -124,7 +124,7 @@ Deploy test-extrinsic, then check if data was inserted into DB
 
     # Check that there is a table with data in it
     Wait Until Keyword Succeeds
-    ...  10x
+    ...  20x
     ...  5 sec
     ...  Pooling Database Data
     ...  SELECT * FROM substrate_extrinsic FETCH FIRST ROW ONLY

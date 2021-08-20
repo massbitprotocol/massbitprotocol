@@ -63,7 +63,7 @@ def compile_wasm(data, hash):
 def deploy_wasm(data):
     # Parse the data
     compilation_id = urllib.parse.unquote_plus(data["compilation_id"])
-    model = urllib.parse.unquote_plus(data["model"])
+    model = urllib.parse.unquote_plus(data["configs"]["model"])
 
     # Get the files path from generated/hash folder
     project = os.path.join("./generated", compilation_id, "subgraph.yaml")

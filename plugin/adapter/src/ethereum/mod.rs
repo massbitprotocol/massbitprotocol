@@ -2,14 +2,20 @@ use crate::core::{AdapterError, MessageHandler};
 pub use crate::stream_mod::{DataType, GenericDataProto};
 use crate::EthereumWasmHandlerProxy;
 use libloading::Library;
-use massbit_chain_ethereum::data_type::{decode, EthereumBlock, EthereumTransaction};
+use massbit_chain_ethereum::data_type::{
+    decode, get_events, EthereumBlock, EthereumEvent, EthereumTransaction,
+};
 use massbit_runtime_wasm::chain::ethereum::{trigger::MappingTrigger, Chain};
 use massbit_runtime_wasm::indexer::manifest::{Mapping, MappingBlockHandler};
 use massbit_runtime_wasm::module::WasmInstance;
 
 use std::{error::Error, sync::Arc};
 
-crate::prepare_adapter!(Ethereum, { handle_block: EthereumBlock, handle_transaction: EthereumTransaction});
+crate::prepare_adapter!(Ethereum, {
+    handle_block: EthereumBlock,
+    handle_transaction: EthereumTransaction,
+    handle_event: EthereumEvent
+});
 
 impl MessageHandler for EthereumWasmHandlerProxy {
     fn handle_wasm_mapping(
@@ -68,7 +74,7 @@ impl MessageHandler for EthereumHandlerProxy {
                     &block.block.hash.unwrap()
                 );
                 self.handler.handle_block(&block);
-                for origin_transaction in block.block.transactions {
+                for origin_transaction in block.block.transactions.clone() {
                     let transaction = EthereumTransaction {
                         version: block.version.clone(),
                         timestamp: block.timestamp,
@@ -76,6 +82,13 @@ impl MessageHandler for EthereumHandlerProxy {
                         transaction: origin_transaction,
                     };
                     self.handler.handle_transaction(&transaction);
+                }
+
+                // Create event
+                let events = get_events(&block);
+                for event in events {
+                    log::debug!("Do event handler: Event address {:?}", &event.event.address);
+                    self.handler.handle_event(&event);
                 }
 
                 Ok(())
