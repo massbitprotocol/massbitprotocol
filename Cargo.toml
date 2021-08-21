@@ -5,13 +5,12 @@ members = [
     "core/chain/substrate",
     "core/chain/solana",
     "core/chain/ethereum",
+    "core/chain/graph-ethereum",
     "index-manager/main",
     "plugin/adapter",
     "plugin/test-plugin",
     "cli",
-    "chain/ethereum",
 ]
-#exclude = ["code-compiler/generated", "chain/ethereum"]
 exclude = ["code-compiler/generated"]
 
 [patch.crates-io]
