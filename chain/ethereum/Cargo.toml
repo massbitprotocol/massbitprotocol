@@ -7,10 +7,6 @@ edition = "2018"
 name = "graphql"
 path = "src/lib.rs"
 
-[[bin]]
-name = "graphql"
-path = "src/main.rs"
-
 [dependencies]
 chrono = "0.4"
 futures = "0.1.21"

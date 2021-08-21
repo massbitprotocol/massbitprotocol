@@ -842,6 +842,7 @@ dependencies = [
  "clap 2.33.3",
  "dotenv",
  "env_logger 0.9.0",
+ "ethereum-graphnode",
  "frame-system",
  "futures 0.1.31",
  "futures 0.3.16",
