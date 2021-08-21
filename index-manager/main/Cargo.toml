@@ -8,9 +8,37 @@ edition = "2018"
 [dependencies]
 tokio = {version = "1.2.0", features = ["full"]} # Required by Tonic
 log = "0.4.0"
-env_logger = "0.8.4"
 lazy_static = "1.2.0"
+slog = { version = "2.7.0", features = ["release_max_level_trace", "max_level_trace"] }
+clap = "2.33.3"
+env_logger = "0.9.0"
+git-testament = "0.2"
+graphql-parser = {git="https://github.com/graphql-rust/graphql-parser", rev="45167b53e9533c331298683577ba8df7e43480ac"}
+futures = { version = "0.3.1", features = ["compat"] }
+url = "2.2.1"
+crossbeam-channel = "0.5.1"
+regex = "1.5.4"
+serde = { version = "1.0.126", features = ["derive", "rc"] }
+serde_regex = "1.1.0"
+structopt = { version = "0.3.22", features = ["wrap_help"] }
+toml = "0.5.7"
+shellexpand = "2.1.0"
+diesel = "1.4.7"
+fail = "0.4"
+http = "0.1.21" # must be compatible with the version rust-web3 uses
 
 # Massbit dependencies
 index-manager-lib = { path = "../lib" }
 logger = { path = "../../core/logger" }
+graph-chain-ethereum = { path = "../../core/chain/graph-ethereum" }
+[dependencies.graph]
+package = "graph"
+git = "https://github.com/massbitprotocol/massbit-graph-node"
+[dependencies.graph-core]
+package = "graph-core"
+git = "https://github.com/massbitprotocol/massbit-graph-node"
+[dependencies.graph-store-postgres]
+package = "graph-store-postgres"
+git = "https://github.com/massbitprotocol/massbit-graph-node"
+
+

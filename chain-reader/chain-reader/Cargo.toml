@@ -45,7 +45,6 @@ rand = "0.7"
 massbit-chain-substrate = { path = "../../core/chain/substrate" }
 massbit-chain-solana = { path = "../../core/chain/solana" }
 massbit-chain-ethereum = { path = "../../core/chain/ethereum" }
-graph-chain-ethereum = { path = "../../core/chain/graph-ethereum" }
 
 [dependencies.substrate-api-client]
 git = "https://github.com/scs/substrate-api-client.git"

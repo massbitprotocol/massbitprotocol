@@ -3,9 +3,9 @@ name = "graph-chain-ethereum"
 version = "0.23.1"
 edition = "2018"
 
-[lib]
-name = "graphql"
-path = "src/lib.rs"
+#[lib]
+#name = "graphql"
+#path = "src/lib.rs"
 
 [dependencies]
 chrono = "0.4"

@@ -847,7 +847,6 @@ dependencies = [
  "futures 0.3.16",
  "futures-core",
  "futures-util",
- "graph-chain-ethereum 0.23.1",
  "hex 0.4.3",
  "http 0.1.21",
  "jsonrpc-core 14.2.0",
@@ -3535,12 +3534,32 @@ dependencies = [
 name = "index-manager-main"
 version = "0.1.0"
 dependencies = [
- "env_logger 0.8.4",
+ "clap 2.33.3",
+ "crossbeam-channel",
+ "diesel",
+ "env_logger 0.9.0",
+ "fail",
+ "futures 0.3.16",
+ "git-testament",
+ "graph",
+ "graph-chain-ethereum 0.23.1",
+ "graph-core",
+ "graph-store-postgres",
+ "graphql-parser",
+ "http 0.1.21",
  "index-manager-lib",
  "lazy_static",
  "log 0.4.14",
  "logger",
+ "regex",
+ "serde",
+ "serde_regex",
+ "shellexpand",
+ "slog",
+ "structopt",
  "tokio 1.9.0",
+ "toml",
+ "url 2.2.2",
 ]
 
 [[package]]
