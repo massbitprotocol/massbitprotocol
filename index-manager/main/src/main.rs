@@ -46,6 +46,7 @@ use store_builder::StoreBuilder;
 use graph::cheap_clone::CheapClone;
 use futures::TryFutureExt;
 use slog::Logger;
+use graph::data::subgraph::SubgraphManifest;
 
 lazy_static! {
     // Restart all the indexes when the indexer manager is restarted is still a new feature.
@@ -55,17 +56,42 @@ lazy_static! {
 
 #[tokio::main]
 async fn main() {
-    println!("Testingg");
+    // Configs Link Resolver
     let opt = opt::Opt::from_args();
     let logger = logger(opt.debug);
     let ipfs_clients: Vec<_> = create_ipfs_clients(&logger, &opt.ipfs);
-
     let resolver = Arc::new(LinkResolver::from(ipfs_clients));
-    let mapping = mapping.resolve(&*resolver, logger).await.unwrap();
 
-    // let contract_abi = mapping
-    //     .find_abi(&source.abi)
-    //     .with_context(|| format!("data source `{}`", name)).unwrap();
+    // Config Chains
+
+    // Get SubgraphManifest
+    let manifest: SubgraphManifest<C> = {
+        let mut manifest = SubgraphManifest::resolve_from_raw(
+            deployment.hash.cheap_clone(),
+            manifest,
+            // Allow for infinite retries for subgraph definition files.
+            &resolver.as_ref().clone().with_retries(),
+            &logger,
+        )
+            .await
+            .context("Failed to resolve subgraph from IPFS").unwrap();
+
+        let data_sources = load_dynamic_data_sources::<C>(
+            store.clone(),
+            logger.clone(),
+            manifest.templates.clone(),
+        )
+            .await
+            .context("Failed to load dynamic data sources").unwrap();
+        // Add dynamic data sources to the subgraph
+        manifest.data_sources.extend(data_sources);
+        manifest
+    };
+
+    
+    // Get mapping
+    // let mapping = mapping.resolve(&*resolver, logger).await.unwrap();
+    // DataSource::from_manifest(kind, network, name, source, mapping, context)
 
 
 
