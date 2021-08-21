@@ -45,7 +45,7 @@ use config::Config;
 use store_builder::StoreBuilder;
 use graph::cheap_clone::CheapClone;
 use futures::TryFutureExt;
-use env_logger::Logger;
+use slog::Logger;
 
 lazy_static! {
     // Restart all the indexes when the indexer manager is restarted is still a new feature.
@@ -59,11 +59,14 @@ async fn main() {
     let opt = opt::Opt::from_args();
     let logger = logger(opt.debug);
     let ipfs_clients: Vec<_> = create_ipfs_clients(&logger, &opt.ipfs);
-    
-    let link_resolver = Arc::new(LinkResolver::from(ipfs_clients));
-    let contract_abi = mapping
-        .find_abi(&source.abi)
-        .with_context(|| format!("data source `{}`", name)).unwrap();
+
+    let resolver = Arc::new(LinkResolver::from(ipfs_clients));
+    let mapping = mapping.resolve(&*resolver, logger).await.unwrap();
+
+    // let contract_abi = mapping
+    //     .find_abi(&source.abi)
+    //     .with_context(|| format!("data source `{}`", name)).unwrap();
+
 
 
 
