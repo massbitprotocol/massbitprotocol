@@ -8,8 +8,10 @@ members = [
     "index-manager/main",
     "plugin/adapter",
     "plugin/test-plugin",
-    "cli"
+    "cli",
+    "chain/ethereum",
 ]
+#exclude = ["code-compiler/generated", "chain/ethereum"]
 exclude = ["code-compiler/generated"]
 
 [patch.crates-io]

@@ -1,0 +1,64 @@
+[package]
+name = "ethereum-graphnode"
+version = "0.23.1"
+edition = "2018"
+
+[lib]
+name = "graphql"
+path = "src/lib.rs"
+
+[[bin]]
+name = "graphql"
+path = "src/main.rs"
+
+[dependencies]
+chrono = "0.4"
+futures = "0.1.21"
+http = "0.1.21" # must be compatible with the version rust-web3 uses
+jsonrpc-core = "14.2.0"
+lazy_static = "1.2.0"
+mockall = "0.9.1"
+state_machine_future = "0.2"
+serde = "1.0"
+dirs-next = "2.0"
+anyhow = "1.0"
+tiny-keccak = "1.5.0"
+hex = "0.4.3"
+semver = "1.0.3"
+# master contains changes such as
+# https://github.com/paritytech/ethabi/pull/140, which upstream does not want
+# and we should try to implement on top of ethabi instead of inside it, and
+# tuple support which isn't upstreamed yet. For now, we shall deviate from
+# ethabi, but long term we want to find a way to drop our fork.
+ethabi = { git = "https://github.com/graphprotocol/ethabi.git", branch = "master" }
+# We have a couple custom patches to web3.
+web3 = { git = "https://github.com/graphprotocol/rust-web3", branch = "master" }
+itertools = "0.10.0"
+
+# 21-8-2021: Hughie Custom Import
+[dependencies.graph]
+package = "graph"
+git = "https://github.com/massbitprotocol/massbit-graph-node"
+[dependencies.graph-runtime-derive]
+package = "graph-runtime-derive"
+git = "https://github.com/massbitprotocol/massbit-graph-node"
+[dependencies.graph-runtime-wasm]
+package = "graph-runtime-wasm"
+git = "https://github.com/massbitprotocol/massbit-graph-node"
+
+####################
+# Dev Dependencies #
+####################
+[dev-dependencies]
+diesel = { version = "1.4.7", features = ["postgres", "serde_json", "numeric", "r2d2"] }
+pretty_assertions = "0.7.2"
+
+# 21-8-2021: Hughie Custom Import
+[dependencies.graph-core]
+package = "graph-core"
+git = "https://github.com/massbitprotocol/massbit-graph-node"
+[dependencies.graph-store-postgres]
+package = "graph-store-postgres"
+git = "https://github.com/massbitprotocol/massbit-graph-node"
+[dependencies.test-store]
+git = "https://github.com/massbitprotocol/massbit-graph-node"
