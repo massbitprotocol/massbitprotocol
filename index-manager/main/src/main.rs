@@ -56,46 +56,49 @@ lazy_static! {
 
 #[tokio::main]
 async fn main() {
-    // Configs Link Resolver
+    // Configs Opt, IPFS Client, Link Resolver
+    // Reference from: graph-node node/src/main.rs
     let opt = opt::Opt::from_args();
     let logger = logger(opt.debug);
     let ipfs_clients: Vec<_> = create_ipfs_clients(&logger, &opt.ipfs);
     let resolver = Arc::new(LinkResolver::from(ipfs_clients));
 
     // Config Chains
+    // Reference from: ...
 
     // Get SubgraphManifest
-    let manifest: SubgraphManifest<C> = {
-        let mut manifest = SubgraphManifest::resolve_from_raw(
-            deployment.hash.cheap_clone(),
-            manifest,
-            // Allow for infinite retries for subgraph definition files.
-            &resolver.as_ref().clone().with_retries(),
-            &logger,
-        )
-            .await
-            .context("Failed to resolve subgraph from IPFS").unwrap();
+    // Reference from: graph-node core/src/subgraph/instance_manager.rs
+    // let manifest: SubgraphManifest<C> = {
+    //     let mut manifest = SubgraphManifest::resolve_from_raw(
+    //         deployment.hash.cheap_clone(),
+    //         manifest,
+    //         // Allow for infinite retries for subgraph definition files.
+    //         &resolver.as_ref().clone().with_retries(),
+    //         &logger,
+    //     )
+    //         .await
+    //         .context("Failed to resolve subgraph from IPFS").unwrap();
+    //
+    //     let data_sources = load_dynamic_data_sources::<C>(
+    //         store.clone(),
+    //         logger.clone(),
+    //         manifest.templates.clone(),
+    //     )
+    //         .await
+    //         .context("Failed to load dynamic data sources").unwrap();
+    //     // Add dynamic data sources to the subgraph
+    //     manifest.data_sources.extend(data_sources);
+    //     manifest
+    // };
 
-        let data_sources = load_dynamic_data_sources::<C>(
-            store.clone(),
-            logger.clone(),
-            manifest.templates.clone(),
-        )
-            .await
-            .context("Failed to load dynamic data sources").unwrap();
-        // Add dynamic data sources to the subgraph
-        manifest.data_sources.extend(data_sources);
-        manifest
-    };
 
-    
     // Get mapping
-    // let mapping = mapping.resolve(&*resolver, logger).await.unwrap();
+    // Reference from: core/chain/graph-ethereum/src/data_source.rs
+    let mapping = mapping.resolve(&*resolver, logger).await.unwrap();
     // DataSource::from_manifest(kind, network, name, source, mapping, context)
 
 
-
-
+    
     let res = init_logger(&String::from("index-manager"));
     println!("{}", res); // Print log output type
 
