@@ -101,6 +101,6 @@ def deploy_wasm(data):
                                 mapping_res['Hash'],
                                 schema_res['Hash']
                             ],
-                            'id': 1,
+                            'id': '1',
                         })
     print(res.json())

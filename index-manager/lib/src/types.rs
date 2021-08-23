@@ -14,6 +14,7 @@ pub mod stream_mod {
     tonic::include_proto!("chaindata");
 }
 
+// The order of params is important to correctly map the API request to this struct
 #[derive(Clone, Debug, Deserialize)]
 pub struct DeployParams {
     pub config: String,
@@ -36,6 +37,8 @@ pub struct DetailParams {
     pub ipfs_mapping_hash: String,
 }
 
+// The IndexConfig is built from DeployParams
+// IndexConfig should let us know the location where the configs are stored
 pub struct IndexConfig {
     pub config: PathBuf,
     pub mapping: PathBuf,
