@@ -12,4 +12,5 @@ pub mod store;
 
 pub mod adapter;
 pub mod ddl_gen;
-pub mod types;
+pub mod type_index;
+pub mod type_request;

@@ -11,7 +11,8 @@ use crate::config::{
     generate_mapping_name_and_type, generate_random_hash, get_index_name, get_mapping_language,
 };
 use crate::ipfs::{get_ipfs_file_by_hash, read_config_file};
-use crate::types::{Abi, IndexConfig, IndexIdentifier};
+use crate::type_index::{IndexConfig, IndexIdentifier, Abi};
+use crate::type_request::DeployAbi;
 
 lazy_static! {
     static ref GENERATED_FOLDER: String = String::from("index-manager/generated");
@@ -38,7 +39,7 @@ pub struct IndexConfigIpfsBuilder {
     schema: PathBuf,
     config: PathBuf,
     mapping: PathBuf,
-    abi: PathBuf,
+    abi: Vec<Abi>,
     hash: String,
 }
 
@@ -65,45 +66,43 @@ impl IndexConfigIpfsBuilder {
         );
         let config_value = read_config_file(&self.config);
         let file_name = generate_mapping_name_and_type(&config_value);
-        let mapping = get_ipfs_file_by_hash(&file_name, &self.hash, mapping).await;
-        self.mapping = PathBuf::from(&mapping);
+        self.mapping = get_ipfs_file_by_hash(&file_name, &self.hash, mapping).await;
         self
     }
 
     // Call to IPFS and download config to local storage
     pub async fn config(mut self, config: &String) -> IndexConfigIpfsBuilder {
-        let config = get_ipfs_file_by_hash(
+        self.config = get_ipfs_file_by_hash(
             &String::from("project.yaml"),
             &self.hash,
             config,
         ).await;
-        self.config = PathBuf::from(&config);
         self
     }
 
     // Call to IPFS and download schema to local storage
     pub async fn schema(mut self, schema: &String) -> IndexConfigIpfsBuilder {
-        let schema = get_ipfs_file_by_hash(
+        self.schema = get_ipfs_file_by_hash(
             &String::from("schema.graphql"),
             &self.hash,
             schema,
         ).await;
-        self.schema = PathBuf::from(&schema);
         self
     }
 
     // Call to IPFS and download ABIs to local storage
-    pub async fn abi(mut self, abi: &Option<Vec<Abi>>) -> IndexConfigIpfsBuilder {
+    pub async fn abi(mut self, abi: Option<Vec<DeployAbi>>) -> IndexConfigIpfsBuilder {
         match abi {
             Some(v) => {
-                for object in v {
-                    let abi = get_ipfs_file_by_hash(&object.name, &self.hash, &object.hash).await;
-                    self.abi = PathBuf::from(&abi)
-                }
+                self.abi = build_abi(v, &self.hash).await;
+                self
             }
-            None => println!(".SO mapping or this index type doesn't support ABIs"),
+            None => {
+                println!(".SO mapping or this index type doesn't support ABIs");
+                self.abi = vec![];
+                self
+            },
         }
-        self
     }
 
     pub fn build(self) -> IndexConfig {
@@ -114,7 +113,7 @@ impl IndexConfigIpfsBuilder {
             schema: self.schema,
             config: self.config,
             mapping: self.mapping,
-            abi: Default::default(),
+            abi: Option::Some(self.abi),
             identifier: IndexIdentifier {
                 name: name.clone(),
                 hash: self.hash.clone(),
@@ -181,4 +180,20 @@ impl IndexConfigLocalBuilder {
             },
         }
     }
+}
+
+
+/******** Helper Functions **********/
+// Build a new ABI struct from DeployABI
+// Call to IPFS to and save the ABI files to local storage
+async fn build_abi(abi_list: Vec<DeployAbi>, folder_name: &String) -> Vec<Abi>{
+    let mut new_abi_list: Vec<Abi> = vec![];
+    for deploy_abi in abi_list {
+        let abi = Abi {
+            name: deploy_abi.name.clone(),
+            path: get_ipfs_file_by_hash(&deploy_abi.name, folder_name, &deploy_abi.hash).await
+        };
+        new_abi_list.push(abi);
+    }
+    new_abi_list
 }

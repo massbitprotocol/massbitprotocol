@@ -1,5 +1,5 @@
 use crate::hasura::track_hasura_with_ddl_gen_plugin;
-use crate::types::{IndexConfig, IndexStore};
+use crate::type_index::{IndexConfig, IndexStore};
 
 pub async fn run_ddl_gen(index_config: &IndexConfig) {
     // Create tables for the new index
