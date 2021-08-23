@@ -136,7 +136,8 @@ def deploy_so(data):
                             'params': [
                                 config_res['Hash'],
                                 so_res['Hash'],
-                                schema_res['Hash']
+                                schema_res['Hash'],
+                                []
                             ],
                             'id': '1',
                         })
