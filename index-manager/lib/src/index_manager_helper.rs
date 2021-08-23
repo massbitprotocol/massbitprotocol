@@ -18,7 +18,8 @@ use crate::config_builder::{IndexConfigIpfsBuilder, IndexConfigLocalBuilder};
 use crate::ddl_gen::run_ddl_gen;
 use crate::hasura::track_hasura_with_ddl_gen_plugin;
 use crate::ipfs::{get_ipfs_file_by_hash, read_config_file};
-use crate::types::{DeployParams, IndexStore, Indexer};
+use crate::type_index::{IndexStore, Indexer};
+use crate::type_request::DeployParams;
 
 lazy_static! {
     static ref CHAIN_READER_URL: String =
@@ -30,9 +31,6 @@ lazy_static! {
 }
 
 pub async fn start_new_index(params: DeployParams) -> Result<(), Box<dyn Error>> {
-    // Get user index mapping logic, query for migration and index's configurations
-    // TODO: Parse the config so we know what type of mapping are we dealing with
-    // TODO: Add a new struct for mapping value
     let index_config = IndexConfigIpfsBuilder::default()
         .config(&params.config)
         .await
@@ -40,7 +38,7 @@ pub async fn start_new_index(params: DeployParams) -> Result<(), Box<dyn Error>>
         .await
         .schema(&params.schema)
         .await
-        .abi(&params.abi)
+        .abi(params.abi)
         .await
         .build();
 

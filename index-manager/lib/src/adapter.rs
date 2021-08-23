@@ -1,5 +1,5 @@
 use crate::ipfs::read_config_file;
-use crate::types::IndexConfig;
+use crate::type_index::IndexConfig;
 use adapter::core::AdapterManager;
 use std::error::Error;
 
