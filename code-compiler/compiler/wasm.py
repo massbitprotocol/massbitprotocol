@@ -4,7 +4,7 @@ import subprocess
 import threading
 import ipfshttpclient
 import requests
-from helper.helper import write_to_disk
+from helper.helper import write_to_disk, get_abi_files, upload_abi_to_ipfs
 
 
 class WasmCodegenAndBuild(threading.Thread):
@@ -56,7 +56,6 @@ def compile_wasm(data, hash):
     print("Generating code + compiling for: " + hash + ". This will take a while!")
     wasm_codegen_and_build = WasmCodegenAndBuild(generated_folder)
     wasm_codegen_and_build.start()
-
     return hash
 
 
@@ -69,6 +68,7 @@ def deploy_wasm(data):
     project = os.path.join("./generated", compilation_id, "subgraph.yaml")
     mapping = os.path.join("./generated", compilation_id, "build", model, model + ".wasm")
     schema = os.path.join("./generated", compilation_id, "schema.graphql")
+    abi = get_abi_files(compilation_id)
 
     # Uploading files to IPFS
     if os.environ.get('IPFS_URL'):
@@ -80,11 +80,14 @@ def deploy_wasm(data):
     config_res = client.add(project)
     mapping_res = client.add(mapping)
     schema_res = client.add(schema)
+    abi_res = upload_abi_to_ipfs(client, abi)
 
     # Uploading to IPFS result
-    print("project.yaml: " + config_res['Hash'])
-    print(model + ".wasm: " + mapping_res['Hash'])
-    print("schema.graphql: " + schema_res['Hash'])
+    print("project.yaml: {}".format(config_res['Hash']))
+    print(model + ".wasm: {}".format(mapping_res['Hash']))
+    print("schema.graphql: {}".format(schema_res['Hash']))
+    for abi_object in abi_res:
+        print('{}: {}'.format(abi_object["name"], abi_object["hash"]))
 
     # Uploading IPFS files to Index Manager
     if os.environ.get('INDEX_MANAGER_URL'):
@@ -99,7 +102,8 @@ def deploy_wasm(data):
                             'params': [
                                 config_res['Hash'],
                                 mapping_res['Hash'],
-                                schema_res['Hash']
+                                schema_res['Hash'],
+                                abi_res
                             ],
                             'id': '1',
                         })

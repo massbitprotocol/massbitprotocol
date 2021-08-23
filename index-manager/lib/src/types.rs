@@ -20,6 +20,13 @@ pub struct DeployParams {
     pub config: String,
     pub mapping: String,
     pub schema: String,
+    pub abi: Option<Vec<Abi>>,  // .SO doesn't support uploading ABIs yet, only .WASM need the ABIs
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct Abi {
+    pub name: String,
+    pub hash: String,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
