@@ -15,7 +15,7 @@ use std::path::PathBuf;
 lazy_static! {
     static ref IPFS_ADDRESS: String =
         env::var("IPFS_ADDRESS").unwrap_or(String::from("0.0.0.0:5001"));
-    static ref GENERATED_FOLDER: String = String::from("index-manager/generated/");
+    static ref GENERATED_FOLDER: String = String::from("index-manager/generated");
 }
 
 pub async fn get_ipfs_file_by_hash(file_name: &String, folder_name: &String, ipfs_hash: &String) -> String {
