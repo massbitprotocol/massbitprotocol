@@ -50,6 +50,7 @@ pub struct IndexConfig {
     pub config: PathBuf,
     pub mapping: PathBuf,
     pub schema: PathBuf,
+    pub abi: Option<Vec<PathBuf>>, // .SO doesn't support uploading ABIs yet, only .WASM need the ABIs
     pub identifier: IndexIdentifier,
 }
 

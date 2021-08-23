@@ -40,6 +40,8 @@ pub async fn start_new_index(params: DeployParams) -> Result<(), Box<dyn Error>>
         .await
         .schema(&params.schema)
         .await
+        .abi(&params.abi)
+        .await
         .build();
 
     // Create tables for the new index and track them in hasura

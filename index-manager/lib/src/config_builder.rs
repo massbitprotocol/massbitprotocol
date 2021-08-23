@@ -1,33 +1,33 @@
-use lazy_static::lazy_static;
 /**
-*** Objective of this file, is to build the IndexConfig from the user's Index Request
-*** It will connect to IPFS to get the files and save them to storage
-**/
+ *** Objective of this file, is to build the IndexConfig from the user's Index Request
+ *** It will connect to IPFS to get the files and save them to storage
+ **/
 // Generic dependencies
 use std::path::PathBuf;
+use lazy_static::lazy_static;
 
 // Massbit dependencies
 use crate::config::{
-    generate_mapping_file_name, generate_random_hash, get_index_name, get_mapping_language,
+    generate_mapping_name_and_type, generate_random_hash, get_index_name, get_mapping_language,
 };
 use crate::ipfs::{get_ipfs_file_by_hash, read_config_file};
-use crate::types::{IndexConfig, IndexIdentifier};
+use crate::types::{Abi, IndexConfig, IndexIdentifier};
 
 lazy_static! {
-    static ref GENERATED_FOLDER: String = String::from("index-manager/generated/");
+    static ref GENERATED_FOLDER: String = String::from("index-manager/generated");
 }
 
 /**
-*** Builder Pattern
-*** Real example: https://github.com/graphprotocol/rust-web3/blob/3aac17f719b99494793111fd00a4505fe4670ca2/src/types/log.rs#L103
-*** Advantages:
-***  - Separates methods for building from other methods.
-***  - Prevents proliferation of constructors
-***  - Can be used for one-liner initialisation as well as more complex construction.
-*** Note:
-***  - I think this is useful when there's too many complex check that needs to be done and we want to hide it from the main logic
-*** Reference: https://rust-unofficial.github.io/patterns/patterns/creational/builder.html
-**/
+ *** Builder Pattern
+ *** Real example: https://github.com/graphprotocol/rust-web3/blob/3aac17f719b99494793111fd00a4505fe4670ca2/src/types/log.rs#L103
+ *** Advantages:
+ ***  - Separates methods for building from other methods.
+ ***  - Prevents proliferation of constructors
+ ***  - Can be used for one-liner initialisation as well as more complex construction.
+ *** Note:
+ ***  - I think this is useful when there's too many complex check that needs to be done and we want to hide it from the main logic
+ *** Reference: https://rust-unofficial.github.io/patterns/patterns/creational/builder.html
+ **/
 /*******************************************************************************
   IndexConfigIpfsBuilder
 
@@ -38,21 +38,25 @@ pub struct IndexConfigIpfsBuilder {
     schema: PathBuf,
     config: PathBuf,
     mapping: PathBuf,
+    abi: PathBuf,
     hash: String,
 }
 
 impl Default for IndexConfigIpfsBuilder {
     fn default() -> IndexConfigIpfsBuilder {
         IndexConfigIpfsBuilder {
-            schema: "".to_string().parse().unwrap(),
-            config: "".to_string().parse().unwrap(),
-            mapping: "".to_string().parse().unwrap(),
+            schema: Default::default(),
+            config: Default::default(),
+            mapping: Default::default(),
+            abi: Default::default(),
             hash: generate_random_hash(),
         }
     }
 }
 
 impl IndexConfigIpfsBuilder {
+    // Call to IPFS and download mapping to local storage
+    // Mapping file type is decided by the self.config value
     pub async fn mapping(mut self, mapping: &String) -> IndexConfigIpfsBuilder {
         assert_eq!(
             self.config.as_os_str().is_empty(),
@@ -60,24 +64,45 @@ impl IndexConfigIpfsBuilder {
             "Config should be provided before mapping and schema"
         );
         let config_value = read_config_file(&self.config);
-        let file = generate_mapping_file_name(&config_value, &self.hash);
-        let mut mapping = get_ipfs_file_by_hash(&file, mapping).await;
-        let mapping = ["./", &mapping].join("");
-        self.mapping = PathBuf::from(mapping.to_string());
+        let file_name = generate_mapping_name_and_type(&config_value);
+        let mapping = get_ipfs_file_by_hash(&file_name, &self.hash, mapping).await;
+        self.mapping = PathBuf::from(&mapping);
         self
     }
 
+    // Call to IPFS and download config to local storage
     pub async fn config(mut self, config: &String) -> IndexConfigIpfsBuilder {
-        let file = &format!("{}{}", self.hash, ".yaml");
-        let config = get_ipfs_file_by_hash(file, config).await;
-        self.config = PathBuf::from(config);
+        let config = get_ipfs_file_by_hash(
+            &String::from("project.yaml"),
+            &self.hash,
+            config,
+        ).await;
+        self.config = PathBuf::from(&config);
         self
     }
 
+    // Call to IPFS and download schema to local storage
     pub async fn schema(mut self, schema: &String) -> IndexConfigIpfsBuilder {
-        let file = &format!("{}{}", self.hash, ".graphql");
-        let schema = get_ipfs_file_by_hash(file, schema).await;
-        self.schema = PathBuf::from(schema);
+        let schema = get_ipfs_file_by_hash(
+            &String::from("schema.graphql"),
+            &self.hash,
+            schema,
+        ).await;
+        self.schema = PathBuf::from(&schema);
+        self
+    }
+
+    // Call to IPFS and download ABIs to local storage
+    pub async fn abi(mut self, abi: &Option<Vec<Abi>>) -> IndexConfigIpfsBuilder {
+        match abi {
+            Some(v) => {
+                for object in v {
+                    let abi = get_ipfs_file_by_hash(&object.name, &self.hash, &object.hash).await;
+                    self.abi = PathBuf::from(&abi)
+                }
+            }
+            None => println!(".SO mapping or this index type doesn't support ABIs"),
+        }
         self
     }
 
@@ -89,6 +114,7 @@ impl IndexConfigIpfsBuilder {
             schema: self.schema,
             config: self.config,
             mapping: self.mapping,
+            abi: Default::default(),
             identifier: IndexIdentifier {
                 name: name.clone(),
                 hash: self.hash.clone(),
@@ -107,9 +133,9 @@ impl IndexConfigIpfsBuilder {
 impl Default for IndexConfigLocalBuilder {
     fn default() -> IndexConfigLocalBuilder {
         IndexConfigLocalBuilder {
-            schema: "".to_string().parse().unwrap(),
-            config: "".to_string().parse().unwrap(),
-            mapping: "".to_string().parse().unwrap(),
+            schema: Default::default(),
+            config: Default::default(),
+            mapping: Default::default(),
             hash: generate_random_hash(),
         }
     }
@@ -146,6 +172,7 @@ impl IndexConfigLocalBuilder {
             schema: self.schema,
             config: self.config,
             mapping: self.mapping,
+            abi: Default::default(),
             identifier: IndexIdentifier {
                 // TODO: populate with the value from the indexer query result
                 name: Default::default(),

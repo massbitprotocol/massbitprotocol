@@ -44,10 +44,10 @@ pub fn generate_random_hash() -> String {
 }
 
 // Generate mapping file type based on the config value
-pub fn generate_mapping_file_name(config: &Value, hash: &String) -> String {
+pub fn generate_mapping_name_and_type(config: &Value) -> String {
     if get_mapping_language(config).to_string().contains("wasm") {
-        format!("{}{}", hash, ".wasm")
+        String::from("mapping.wasm")
     } else {
-        format!("{}{}", hash, ".so")
+        String::from("mapping.so")
     }
 }
