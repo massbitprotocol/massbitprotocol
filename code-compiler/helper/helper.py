@@ -73,3 +73,51 @@ def check_compile_status(deployment_hash):
     print("Found " + status + ".txt file in " + generated_folder)
     payload = file.read()
     return status, payload
+
+
+def get_file(path):
+    """
+    Look for files in a folder
+
+    :param path: (String) Path to the directory where we want to get all the file names inside
+    :return: (Array) File names
+    """
+    files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
+    # Remove hidden files
+    files = [f for f in files if f[0] != "."]
+    return files
+
+
+def get_abi_files(compilation_id):
+    """
+    Build a new array of abi object from the /generated/hash/abis folder
+
+    :param compilation_id: (String) Hash Identifier of the new index. It's also the name of the folders in the generated folder
+    :return: (Array) ABI file objects (name of the file, path to the file)
+    """
+    abi = []
+    for file_name in get_file(os.path.join("./generated", compilation_id, "abis")):
+        abi_object = {
+            "name": file_name,
+            "path": os.path.join("./generated", compilation_id, "abis", file_name)
+        }
+        abi.append(abi_object)
+    return abi
+
+
+def upload_abi_to_ipfs(client, abi):
+    """
+    Upload abi files to IPFS and build a new abi object for ease of access
+
+    :param client: IPFS Client
+    :param abi: ABI Objects (name, hash)
+    :return: (Array) ABI file objects (name of the file, path to the file, hash of the IPFS upload result)
+    """
+    abi_new = []
+    for abi_object in abi:
+        # Upload to IPFS
+        res = client.add(abi_object["path"])
+        # Build a new abi object with more attribute
+        abi_object["hash"] = res["Hash"]
+        abi_new.append(abi_object)
+    return abi

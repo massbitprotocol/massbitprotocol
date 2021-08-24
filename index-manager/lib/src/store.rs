@@ -16,7 +16,7 @@ use strum::AsStaticRef;
 
 // Massbit dependencies
 use crate::ipfs::read_config_file;
-use crate::types::{IndexConfig, IndexStatus, IndexStore, Indexer};
+use crate::type_index::{IndexConfig, IndexStatus, IndexStore, Indexer};
 
 lazy_static! {
     static ref INDEXER_MIGRATION_FILE: String =
