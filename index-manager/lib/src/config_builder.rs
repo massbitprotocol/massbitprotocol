@@ -130,49 +130,40 @@ impl IndexConfigIpfsBuilder {
         //     "ABI should be provided before calling this function"
         // );
 
-        // Map Schema
-        // Write schema to file
-        // let mut config_value = read_config_file(&self.config);
-
-
+        // Get the config as serde mapping
         let mut project_config_string = String::new();
         let mut f = File::open(&self.config).expect("Unable to open file"); // Refactor: Config to download config file from IPFS instead of just reading from local
         f.read_to_string(&mut project_config_string)
             .expect("Unable to read string"); // Get raw query
-        // let mut config_value: serde_yaml::Value = serde_yaml::from_str(&project_config_string).unwrap();
         let mut config_mapping: serde_yaml::Mapping = serde_yaml::from_str(&project_config_string).unwrap();
-        // config_mapping.insert(Value::from("schema"), Value::from("b"));
-
-        let mut fulltext_fields = BTreeMap::new();
-        fulltext_fields.insert("name".to_string(), vec!["search".to_string()]);
-        config_mapping.insert(Value::from("file"), Value::from("b"));
 
 
-        // load_and_set_user_name(&mut module, "herobrine", "Brine-O");
-        // let mut fulltext_entities = BTreeMap::new();
-        // let mut fulltext_fields = BTreeMap::new();
-        // fulltext_fields.insert("name".to_string(), vec!["search".to_string()]);
-        // fulltext_entities.insert("User".to_string(), fulltext_fields);
+        // Add IPFS Schema Hash to schema
+        let mut i = serde_yaml::Mapping::new();
+        let mut s = serde_yaml::Mapping::new();
+        i.insert(Value::from("/".to_string()), Value::String(["/ipfs/", &params.schema].join("")));
+        s.insert(Value::from("file".to_string()), Value::from(i));
+        config_mapping.insert(Value::from("schema"), Value::from(s));
 
 
+
+
+
+        // Add IPFS ABIs Hash to datasources and template
+        // TODO
+        let mut config_value = read_config_file(&self.config);
+        // config_mapping.insert(Value::from("test_value"),config_value["dataSources"][0]["mapping"].clone());
+
+
+
+
+
+
+
+        // Write to file with config
         let content = serde_yaml::to_string(&config_mapping).unwrap();
         let file_path = [GENERATED_FOLDER.as_str(), &self.hash, "subgraph.yaml"].join("/");
         let res = fs::write(file_path.clone(), content);
-
-        // let mut map = BTreeMap::new();
-        // map.insert("x".to_string(), 1.0);
-        // map.insert("y".to_string(), 2.0);
-        // config_value["schema"]["file"] = serde_yaml::from_str("42").unwrap();
-        // config_value["schema"]["file"][0] = Value::String(["/ipfs/", &params.schema].join(""));
-        // let content = serde_yaml::to_string(&config_value).unwrap();
-        // let file_path = [GENERATED_FOLDER.as_str(), &self.hash, "subgraph.yaml"].join("/");
-        // let res = fs::write(file_path.clone(), content);
-
-        // Map API (datasources / template)
-        // TODO
-
-        // Delete mapping / file
-        // TODO
 
         self.subgraph = "".parse().unwrap();
         self
