@@ -36,11 +36,11 @@ impl MessageHandler for EthereumHandlerProxy {
                 }
 
                 // Create event
-                let events = get_events(&block);
-                for event in events {
-                    log::debug!("Do event handler: Event address {:?}", &event.event.address);
-                    self.handler.handle_event(&event);
-                }
+                // let events = get_events(&block);
+                // for event in events {
+                //     log::debug!("Do event handler: Event address {:?}", &event.event.address);
+                //     self.handler.handle_event(&event);
+                // }
 
                 Ok(())
             }

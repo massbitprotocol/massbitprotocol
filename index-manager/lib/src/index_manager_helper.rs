@@ -17,7 +17,7 @@ use crate::config::{generate_random_hash, get_index_name};
 use crate::config_builder::{IndexConfigIpfsBuilder, IndexConfigLocalBuilder};
 use crate::ddl_gen::run_ddl_gen;
 use crate::hasura::track_hasura_with_ddl_gen_plugin;
-use crate::ipfs::{get_ipfs_file_by_hash, read_config_file};
+use crate::ipfs::{download_ipfs_file_by_hash, read_config_file};
 use crate::type_index::{IndexStore, Indexer};
 use crate::type_request::DeployParams;
 
@@ -38,18 +38,22 @@ pub async fn start_new_index(params: DeployParams) -> Result<(), Box<dyn Error>>
         .await
         .schema(&params.schema)
         .await
-        .abi(params.abi)
+        .abi(params.clone().abi)
+        .await
+        .generate_subgraph(&params)
         .await
         .build();
 
-    // Create tables for the new index and track them in hasura
-    run_ddl_gen(&index_config).await;
 
-    // Create a new indexer so we can keep track of it's status
-    IndexStore::insert_new_indexer(&index_config);
 
-    // Start the adapter for the index
-    adapter_init(&index_config).await;
+    // // Create tables for the new index and track them in hasura
+    // run_ddl_gen(&index_config).await;
+    //
+    // // Create a new indexer so we can keep track of it's status
+    // IndexStore::insert_new_indexer(&index_config);
+    //
+    // // Start the adapter for the index
+    // adapter_init(&index_config).await;
 
     Ok(())
 }

@@ -38,6 +38,7 @@ pub struct IndexConfig {
     pub schema: PathBuf,
     pub abi: Option<Vec<Abi>>, // .SO doesn't support uploading ABIs yet, only .WASM need the ABIs
     pub identifier: IndexIdentifier,
+    pub subgraph: PathBuf,
 }
 
 // Identifier of the IndexConfig is an helper to easily access the hash of the index, and index's file name
