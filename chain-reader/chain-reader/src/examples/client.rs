@@ -3,16 +3,56 @@ use clap::{App, Arg};
 use crate::stream_mod::{
     streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
 };
+use graph::data::subgraph::UnresolvedSubgraphManifest;
+use graph::ipfs_client::IpfsClient;
+use graph_core::LinkResolver;
 use log::{debug, info, warn, Level};
-use massbit_chain_ethereum::{
-    data_type::{decode as ethereum_decode, get_events, EthereumBlock, EthereumEvent},
-    trigger::{EthereumBlockData, EthereumTransactionData},
+use massbit_chain_ethereum::data_type::{
+    decode as ethereum_decode, get_events, EthereumBlock, EthereumEvent,
 };
 use massbit_chain_solana::data_type::{
     convert_solana_encoded_block_to_solana_block, decode as solana_decode, SolanaEncodedBlock,
     SolanaLogMessages, SolanaTransaction,
 };
 use massbit_chain_substrate::data_type::{SubstrateBlock, SubstrateEventRecord};
+
+use graph::data::schema::{Schema, SchemaImportError, SchemaValidationError};
+use graph::data::store::Entity;
+use graph::prelude::{anyhow, async_trait, CheapClone, DeploymentHash, Logger as GraphLogger};
+use graph::{blockchain::DataSource as _, data::graphql::TryFromValue};
+use graph::{blockchain::DataSourceTemplate as _, data::query::QueryExecutionError};
+use graph::{
+    blockchain::{Blockchain, UnresolvedDataSource as _, UnresolvedDataSourceTemplate as _},
+    components::{
+        link_resolver::LinkResolver as LinkResolverTrait,
+        store::{DeploymentLocator, StoreError, SubgraphStore},
+    },
+};
+
+use graph::prelude::{impl_slog_value, q, BlockNumber, Deserialize, Serialize};
+use graph::util::ethereum::string_to_h256;
+
+use anyhow::Context;
+use graph::data::subgraph::{Link, SubgraphAssignmentProviderError, SubgraphManifestResolveError};
+use graph::log::logger;
+use graph_chain_ethereum::{
+    trigger::{EthereumBlockData, EthereumTransactionData},
+    Chain, DataSource, MappingTrigger,
+};
+use massbit_chain_ethereum::trigger::EthereumEventData;
+use massbit_chain_ethereum::types::LightEthereumBlockExt;
+use massbit_chain_substrate::data_type::{decode, get_extrinsics_from_block};
+use std::ops::Deref;
+use std::rc::Rc;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+use tokio_compat_02::FutureExt;
+use web3::types::{Transaction, U256};
+
+use env_logger::Logger;
+use graph::components::link_resolver::JsonValueStream;
+use serde_yaml::Value;
+use std::collections::HashMap;
 #[allow(unused_imports)]
 use tonic::{
     transport::{Channel, Server},
@@ -22,15 +62,6 @@ use tonic::{
 pub mod stream_mod {
     tonic::include_proto!("chaindata");
 }
-use anyhow::Context;
-use massbit_chain_ethereum::trigger::EthereumEventData;
-use massbit_chain_ethereum::types::LightEthereumBlockExt;
-use massbit_chain_substrate::data_type::{decode, get_extrinsics_from_block};
-use std::ops::Deref;
-use std::rc::Rc;
-use std::sync::Arc;
-use std::time::Instant;
-use web3::types::{Transaction, U256};
 
 const URL: &str = "http://127.0.0.1:50051";
 
@@ -107,8 +138,6 @@ pub async fn print_blocks(
                                 log_messages: log_messages.clone(),
                                 success: false,
                             };
-                            let rc_transaction = Arc::new(transaction.clone());
-
                             let log_messages = SolanaLogMessages {
                                 block_number: ((&block).block.block_height.unwrap() as u32),
                                 log_messages: log_messages.clone(),
@@ -138,22 +167,126 @@ pub async fn print_blocks(
                         "Recieved ETHREUM BLOCK with Block number: {}",
                         &block.block.number.unwrap().as_u64()
                     );
-                    let events = get_events(&block);
-                    for event in events {
-                        debug!("Ethereum Event address: {:?}", event.event.address);
+                    let file_hash =
+                        "/ipfs/QmVVrXLPKJYiXQqmR5LVmPTJBbYEQp4vgwve3hqXroHDp5".to_string();
+                    let data_sources: Vec<DataSource> = get_data_source(&file_hash).await.unwrap();
+                    for data_source in data_sources {
+                        println!("data_source: {:#?}", &data_source);
+                        let events = get_events(&block, data_source);
+
+                        for event in events {
+                            println!("Ethereum Event address: {:?}", &event.event.address);
+                        }
                     }
                 }
                 _ => {
                     warn!("Not support this type in Ethereum");
                 }
             },
-            _ => {
-                warn!("Not support this package chain-type");
-            }
         }
     }
 
     Ok(())
+}
+
+pub async fn create_ipfs_clients(ipfs_addresses: &Vec<String>) -> Vec<IpfsClient> {
+    // Parse the IPFS URL from the `--ipfs` command line argument
+    let ipfs_addresses: Vec<_> = ipfs_addresses
+        .iter()
+        .map(|uri| {
+            if uri.starts_with("http://") || uri.starts_with("https://") {
+                String::from(uri)
+            } else {
+                format!("http://{}", uri)
+            }
+        })
+        .collect();
+
+    ipfs_addresses
+        .into_iter()
+        .map(|ipfs_address| {
+            log::info!("Connecting to IPFS node");
+            let ipfs_client = match IpfsClient::new(&ipfs_address) {
+                Ok(ipfs_client) => ipfs_client,
+                Err(e) => {
+                    log::error!("Failed to create IPFS client {}", e);
+                    panic!("Could not connect to IPFS");
+                }
+            };
+
+            // let ipfs_test = ipfs_client.clone();
+            // Hughie: comment out the check for connection because there's an error with tokio spawm runtime
+            // We can use tokio02 spawn custom function to fix this problem
+
+            // #[allow(unused_must_use)]
+            // tokio::spawn(async move {
+            //     ipfs_test
+            //         .test()
+            //         .map_err(move |e| {
+            //             panic!("[Ipfs Client] Failed to connect to IPFS: {}", e);
+            //         })
+            //         .map_ok(move |_| {
+            //             log::info!("[Ipfs Client] Successfully connected to IPFS node");
+            //         }).await;
+            // });
+            ipfs_client
+        })
+        .collect()
+}
+
+async fn get_data_source(
+    file_hash: &String,
+) -> Result<Vec<DataSource>, SubgraphAssignmentProviderError> {
+    let logger = logger(true);
+    let ipfs_addresses = vec![String::from("0.0.0.0:5001")];
+    let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await;
+
+    // let mut resolver = TextResolver::default();
+    let file_bytes = ipfs_clients[0]
+        .cat_all(file_hash.to_string(), Duration::from_secs(10))
+        .compat()
+        .await
+        .unwrap()
+        .to_vec();
+
+    // Get raw manifest
+    let file = String::from_utf8(file_bytes)
+        //.map_err(|_| SubgraphAssignmentProviderError::ResolveError)
+        .unwrap();
+
+    println!("File: {}", file);
+
+    let raw: serde_yaml::Value = serde_yaml::from_str(&file).unwrap();
+
+    let mut raw_manifest = match raw {
+        serde_yaml::Value::Mapping(m) => m,
+        _ => panic!("Wrong type raw_manifest"),
+    };
+
+    // Inject the IPFS hash as the ID of the subgraph into the definition.
+    let id = "deployment_hash";
+    raw_manifest.insert(
+        serde_yaml::Value::from("id"),
+        serde_yaml::Value::from(id.to_string()),
+    );
+
+    //println!("raw_manifest: {:#?}", &raw_manifest);
+    // Parse the YAML data into an UnresolvedSubgraphManifest
+    let value: Value = raw_manifest.into();
+    //println!("value: {:#?}", &value);
+    let unresolved: UnresolvedSubgraphManifest<Chain> = serde_yaml::from_value(value).unwrap();
+    let resolver = Arc::new(LinkResolver::from(ipfs_clients));
+
+    debug!("Features {:?}", unresolved.features);
+    let manifest = unresolved
+        .resolve(&*resolver, &logger)
+        .compat()
+        .await
+        .map_err(SubgraphAssignmentProviderError::ResolveError)?;
+
+    println!("data_sources: {:#?}", &manifest.data_sources);
+
+    Ok(manifest.data_sources)
 }
 
 #[tokio::main]
@@ -180,15 +313,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     match chain_type {
         "substrate" => {
             info!("Run client: {}", chain_type);
-            print_blocks(client, ChainType::Substrate).await;
+            print_blocks(client, ChainType::Substrate).await?;
         }
         "solana" => {
             info!("Run client: {}", chain_type);
-            print_blocks(client, ChainType::Solana).await;
+            print_blocks(client, ChainType::Solana).await?;
         }
         _ => {
             info!("Run client: {}", chain_type);
-            print_blocks(client, ChainType::Ethereum).await;
+            print_blocks(client, ChainType::Ethereum).await?;
         }
     };
 
