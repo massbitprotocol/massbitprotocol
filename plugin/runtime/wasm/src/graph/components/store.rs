@@ -1,10 +1,10 @@
 use crate::graph::data::query::error::QueryExecutionError;
-use crate::graph::data::store::Entity;
 use crate::graph::prelude::CheapClone;
 use crate::graph::util::lfu_cache::LfuCache;
 use crate::prelude::serde::__private::fmt::Debug;
 use crate::prelude::Arc;
 use crate::stable_hash::{SequenceNumber, StableHash, StableHasher};
+use crate::store::Entity;
 use anyhow::Error;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};

@@ -1,6 +1,6 @@
 use crate::asc_abi::class;
 use crate::graph::runtime::{AscHeap, AscPtr, AscType, AscValue, DeterministicHostError};
-use anyhow::anyhow;
+use massbit_common::prelude::anyhow::{self, anyhow};
 use massbit_runtime_derive::AscType;
 use semver::Version;
 use std::convert::TryInto as _;

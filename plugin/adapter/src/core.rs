@@ -3,42 +3,49 @@ pub use crate::stream_mod::{
     streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
 };
 pub use crate::{HandlerProxyType, PluginRegistrar, WasmHandlerProxyType};
+use futures::future;
 use index_store::core::Store;
 use lazy_static::lazy_static;
 use libloading::Library;
 use massbit_runtime_wasm::chain::ethereum::Chain;
 use massbit_runtime_wasm::graph::components::metrics::stopwatch::StopwatchMetrics;
 use massbit_runtime_wasm::graph::HostMetrics;
-use massbit_runtime_wasm::host_exports::HostExports;
+use massbit_runtime_wasm::host_exports::{create_mock_ethereum_call, HostExports};
 use massbit_runtime_wasm::indexer::manifest::{Mapping, MappingBlockHandler};
 use massbit_runtime_wasm::indexer::types::BlockPtr;
 use massbit_runtime_wasm::indexer::{manifest, IndexerState};
-use massbit_runtime_wasm::store::IndexStore;
+use massbit_runtime_wasm::store::{EntityCache, ModificationsAndCache, PostgresIndexStore};
 //use massbit_runtime_wasm::manifest::{DataSource, DataSourceTemplate, Mapping, TemplateSource};
 //use massbit_chain_ethereum::data_type::{decode, EthereumBlock, EthereumTransaction};
 use massbit_chain_solana::data_type::{
     convert_solana_encoded_block_to_solana_block, decode as solana_decode, SolanaEncodedBlock,
     SolanaLogMessages, SolanaTransaction,
 };
+use massbit_common::prelude::anyhow::{self, Context};
 use massbit_runtime_wasm::chain::ethereum::data_source::{DataSource, DataSourceTemplate};
+use massbit_runtime_wasm::chain::ethereum::network::EthereumNetworkAdapters;
+use massbit_runtime_wasm::chain::ethereum::runtime::runtime_adapter::RuntimeAdapter;
 use massbit_runtime_wasm::chain::ethereum::trigger::MappingTrigger;
-use massbit_runtime_wasm::graph::components::store::{
-    EntityKey, EntityType, StoreError, WritableStore,
+use massbit_runtime_wasm::graph::cheap_clone::CheapClone;
+use massbit_runtime_wasm::indexer::blockchain::{
+    DataSource as DataSourceTrait, HostFn, RuntimeAdapter as RuntimeAdapterTrait,
 };
-use massbit_runtime_wasm::graph::data::query::error::QueryExecutionError;
-use massbit_runtime_wasm::graph::data::store::Entity;
-use massbit_runtime_wasm::indexer::blockchain::DataSource as DataSourceTrait;
 use massbit_runtime_wasm::indexer::manifest::TemplateSource;
 use massbit_runtime_wasm::mapping::{MappingContext, ValidModule};
 use massbit_runtime_wasm::mock::MockMetricsRegistry;
 use massbit_runtime_wasm::module::WasmInstance;
-use massbit_runtime_wasm::prelude::anyhow::Context;
-use massbit_runtime_wasm::prelude::serde::__private::TryFrom;
-use massbit_runtime_wasm::prelude::{anyhow, Logger, Version};
+//use massbit_runtime_wasm::prelude::serde::__private::TryFrom;
+use massbit_common::prelude::serde::__private::TryFrom;
+use massbit_runtime_wasm::prelude::{Logger, Version};
+use massbit_runtime_wasm::store::{
+    error::QueryExecutionError, Entity, EntityKey, EntityType, StoreError, WritableStore,
+};
+use massbit_runtime_wasm::util::lfu_cache::LfuCache;
 use massbit_runtime_wasm::{slog, store};
 use serde_yaml::Value;
 use slog::o;
 use std::collections::BTreeMap;
+use std::sync::Mutex;
 use std::time::Instant;
 use std::{
     alloc::System, collections::HashMap, env, error::Error, ffi::OsStr, fmt, path::PathBuf,
@@ -113,7 +120,7 @@ impl<'a> AdapterManager<'a> {
 */
 
 pub struct AdapterManager {
-    store: Option<IndexStore>,
+    store: Option<PostgresIndexStore>,
     libs: HashMap<String, Arc<Library>>,
     map_handlers: HashMap<String, AdapterHandler>,
 }
@@ -148,6 +155,23 @@ impl AdapterManager {
                 .collect::<Vec<DataSource>>(),
             _ => Vec::default(),
         };
+        let templates = match config["templates"].as_sequence() {
+            Some(seqs) => seqs
+                .iter()
+                .map(|tpl| {
+                    DataSourceTemplate::try_from(tpl)
+                        .with_context(|| {
+                            format!(
+                                "Failed to create datasource from value `{:?}`, invalid address provided",
+                                tpl
+                            )
+                        })
+                        .unwrap()
+                })
+                .collect::<Vec<DataSourceTemplate>>(),
+            _ => Vec::default(),
+        };
+        let templates = Arc::new(templates);
         //Todo: Currently adapter only works with one datasource
         match data_sources.get(0) {
             Some(datasource) => {
@@ -174,7 +198,7 @@ impl AdapterManager {
                 );
                 match datasource.mapping.language.as_str() {
                     "wasm/assemblyscript" => {
-                        self.handle_wasm_mapping(hash, datasource, mapping, &mut stream)
+                        self.handle_wasm_mapping(hash, datasource, templates, mapping, &mut stream)
                             .await
                     }
                     //Default use rust
@@ -187,39 +211,136 @@ impl AdapterManager {
             _ => Ok(()),
         }
     }
-    /// Load a plugin library
-    /// A plugin library **must** be implemented using the
-    /// [`model::adapter_declaration!()`] macro. Trying manually implement
-    /// a plugin without going through that macro will result in undefined
-    /// behaviour.
-    pub async unsafe fn load<P: AsRef<OsStr>>(
+    async fn handle_wasm_mapping<P: AsRef<OsStr>>(
         &mut self,
         indexer_hash: &String,
-        library_path: P,
+        datasource: &DataSource,
+        templates: Arc<Vec<DataSourceTemplate>>,
+        mapping_path: P,
+        stream: &mut Streaming<GenericDataProto>,
     ) -> Result<(), Box<dyn Error>> {
-        let lib = Arc::new(Library::new(library_path)?);
-        // inject store to plugin
-        let store = &mut self.store;
-        match store {
-            Some(store) => {
-                lib.get::<*mut Option<&dyn Store>>(b"STORE\0")?
-                    .write(Some(store));
+        log::info!("Load wasm file from {:?}", mapping_path.as_ref());
+        let valid_module = Arc::new(ValidModule::from_file(mapping_path.as_ref()).unwrap());
+        log::info!(
+            "Import wasm file {:?} successfully with modules {:?}",
+            mapping_path.as_ref(),
+            &valid_module.import_name_to_modules
+        );
+        let store = Arc::new(PostgresIndexStore::new(DATABASE_CONNECTION_STRING.as_str()).await);
+        /*
+        let start = Instant::now();
+        let clone_store = Arc::clone(&store);
+        let mut wasm_instance = self
+            .load_wasm(
+                indexer_hash,
+                datasource,
+                clone_store,
+                Arc::clone(&valid_module),
+            )
+            .unwrap();
+        log::info!(
+            "{} Create wasm instance finished in {:?}",
+            &*COMPONENT_NAME,
+            start.elapsed()
+        );
+        */
+        log::info!("{} Start mapping using wasm binary", &*COMPONENT_NAME);
+        let adapter_name = datasource
+            .kind
+            .split("/")
+            .collect::<Vec<&str>>()
+            .get(0)
+            .unwrap()
+            .to_string();
+        let handler_proxy = Arc::new(WasmHandlerProxyType::create_proxy(
+            &adapter_name,
+            Arc::clone(&valid_module),
+        ));
+        let mut wasm_adapter = WasmAdapter::new(indexer_hash.clone(), Arc::clone(&valid_module));
+        wasm_adapter
+            .handler_proxies
+            .insert(adapter_name.clone(), Arc::clone(&handler_proxy));
+        let mapping: &Mapping = datasource.mapping();
+        while let Some(mut data) = stream.message().await? {
+            let data_type = DataType::from_i32(data.data_type).unwrap();
+            log::info!(
+                "{} Chain {:?} received data block = {:?}, hash = {:?}, data type = {:?}",
+                &*COMPONENT_NAME,
+                ChainType::from_i32(data.chain_type).unwrap(),
+                data.block_number,
+                data.block_hash,
+                data_type
+            );
+
+            let start = Instant::now();
+            let mut wasm_instance = self
+                .load_wasm(
+                    indexer_hash,
+                    datasource,
+                    templates.clone(),
+                    store.clone(),
+                    //valid_module.cheap_clone(),
+                    Arc::clone(&valid_module),
+                )
+                .unwrap();
+            log::info!(
+                "{} Create wasm instance finished in {:?}",
+                &*COMPONENT_NAME,
+                start.elapsed()
+            );
+
+            let clone_proxy = Arc::clone(&handler_proxy);
+            if let Some(proxy) = &*clone_proxy {
+                match proxy.handle_wasm_mapping(&mut wasm_instance, mapping, &mut data) {
+                    Err(err) => {
+                        log::error!("{} Error while handle received message", err);
+                    }
+                    _ => {}
+                }
+                //let ref_mut = wasm_instance.instance_ctx.borrow_mut();
+                //let mut instance_ctx = ref_mut.as_ref().unwrap().ctx.state;
+                let state = wasm_instance.take_ctx().ctx.state;
+                let ModificationsAndCache {
+                    modifications: mods,
+                    entity_lfu_cache: cache,
+                } = state
+                    .entity_cache
+                    .as_modifications()
+                    .map_err(|e| StoreError::Unknown(e.into()))?;
+                // Transact entity modifications into the store
+                let started = Instant::now();
+                store.transact_block_operations(mods);
+                //.map(move |_| {
+                //    metrics.transaction.update_duration(started.elapsed());
+                //    block_ptr
+                //});
+                /*
+                future::result(
+                    store
+                        .transact_block_operations(
+                            block_ptr.clone(),
+                            modifications,
+                            stopwatch,
+                            Vec::new(),
+                            Vec::new(),
+                        )
+                        .map_err(|e| e.into())
+                        .map(move |_| {
+                            metrics.transaction.update_duration(started.elapsed());
+                            block_ptr
+                        }),
+                )
+                 */
             }
-            _ => {}
         }
-        let adapter_decl = lib
-            .get::<*mut AdapterDeclaration>(b"adapter_declaration\0")?
-            .read();
-        let mut registrar = AdapterHandler::new(indexer_hash.clone(), Arc::clone(&lib));
-        (adapter_decl.register)(&mut registrar);
-        self.map_handlers.insert(indexer_hash.clone(), registrar);
-        self.libs.insert(indexer_hash.clone(), lib);
         Ok(())
     }
+
     pub fn load_wasm(
         &mut self,
         indexer_hash: &String,
         datasource: &DataSource,
+        templates: Arc<Vec<DataSourceTemplate>>,
         store: Arc<dyn WritableStore>,
         valid_module: Arc<ValidModule>,
     ) -> Result<WasmInstance<Chain>, anyhow::Error> {
@@ -235,6 +356,7 @@ impl AdapterManager {
             indexer_hash.as_str(),
             stopwatch_metrics,
         ));
+        /*
         let templates = vec![DataSourceTemplate {
             kind: datasource.kind.clone(),
             name: datasource.name.clone(),
@@ -255,18 +377,34 @@ impl AdapterManager {
                 //link: Default::default(),
             },
         }];
-
+        */
         let network = datasource.network.clone().unwrap();
         let host_exports = HostExports::new(
             indexer_hash.as_str(),
             datasource,
             network,
-            Arc::new(templates),
+            Arc::clone(&templates),
             api_version,
             //Arc::new(graph_core::LinkResolver::from(IpfsClient::localhost())),
             //store,
         );
         //let store = store::IndexStore::new();
+        //check if wasm module use import ethereum.call
+        let host_fns: Vec<HostFn> = match valid_module.import_name_to_modules.get("ethereum.call") {
+            None => Vec::new(),
+            Some(_) => {
+                /*
+                let adapters = vec![];
+                let runtime_adapter = RuntimeAdapter {
+                    eth_adapters: Arc::new(EthereumNetworkAdapters { adapters }),
+                    call_cache: Arc::new(()),
+                };
+                runtime_adapter.host_fns(datasource)?
+                 */
+                vec![create_mock_ethereum_call(datasource)]
+            }
+        };
+        //datasource.mapping.requires_archive();
         let context = MappingContext {
             logger: Logger::root(slog::Discard, o!()),
             block_ptr: BlockPtr {
@@ -274,14 +412,14 @@ impl AdapterManager {
                 number: datasource.source.start_block,
             },
             host_exports: Arc::new(host_exports),
-            state: IndexerState::new(Arc::clone(&store), Default::default()),
-            /*
-            state: BlockState::new(store.writable(&deployment).unwrap(), Default::default()),
-            proof_of_indexing: None,
-            host_fns: Arc::new(Vec::new()),
-             */
+            state: IndexerState::new(store, Default::default()),
+
+            //state: BlockState::new(store.writable(&deployment).unwrap(), Default::default()),
+            //proof_of_indexing: None,
+            host_fns: Arc::new(host_fns),
         };
         let timeout = None;
+
         WasmInstance::from_valid_module_with_ctx(
             valid_module,
             context,
@@ -290,81 +428,6 @@ impl AdapterManager {
             //experimental_features,
         )
     }
-    async fn handle_wasm_mapping<P: AsRef<OsStr>>(
-        &mut self,
-        indexer_hash: &String,
-        datasource: &DataSource,
-        mapping_path: P,
-        stream: &mut Streaming<GenericDataProto>,
-    ) -> Result<(), Box<dyn Error>> {
-        log::info!("Load wasm file from {:?}", mapping_path.as_ref());
-        let valid_module = Arc::new(ValidModule::from_file(mapping_path.as_ref()).unwrap());
-        let mut wasm_adapter = WasmAdapter::new(indexer_hash.clone(), Arc::clone(&valid_module));
-        log::info!(
-            "Import wasm file {:?} successfully with modules {:?}",
-            mapping_path.as_ref(),
-            &valid_module.import_name_to_modules
-        );
-        let store = Arc::new(IndexStore::new(DATABASE_CONNECTION_STRING.as_str()).await);
-        /*
-        let mut wasm_instance = self
-            .load_wasm(indexer_hash, datasource, Arc::clone(&valid_module))
-            .unwrap();
-        */
-        log::info!("{} Start mapping using wasm binary", &*COMPONENT_NAME);
-        let adapter_name = datasource
-            .kind
-            .split("/")
-            .collect::<Vec<&str>>()
-            .get(0)
-            .unwrap()
-            .to_string();
-        let handler_proxy = Arc::new(WasmHandlerProxyType::create_proxy(
-            &adapter_name,
-            Arc::clone(&valid_module),
-        ));
-        wasm_adapter
-            .handler_proxies
-            .insert(adapter_name.clone(), Arc::clone(&handler_proxy));
-        let mapping: &Mapping = datasource.mapping();
-        while let Some(mut data) = stream.message().await? {
-            let data_type = DataType::from_i32(data.data_type).unwrap();
-            log::info!(
-                "{} Chain {:?} received data block = {:?}, hash = {:?}, data type = {:?}",
-                &*COMPONENT_NAME,
-                ChainType::from_i32(data.chain_type).unwrap(),
-                data.block_number,
-                data.block_hash,
-                data_type
-            );
-
-            let start = Instant::now();
-            let clone_store = Arc::clone(&store);
-            let mut wasm_instance = self
-                .load_wasm(
-                    indexer_hash,
-                    datasource,
-                    clone_store,
-                    Arc::clone(&valid_module),
-                )
-                .unwrap();
-            log::info!(
-                "{} Create wasm instance finished in {:?}",
-                &*COMPONENT_NAME,
-                start.elapsed()
-            );
-            let clone_proxy = Arc::clone(&handler_proxy);
-            if let Some(proxy) = &*clone_proxy {
-                match proxy.handle_wasm_mapping(&mut wasm_instance, mapping, &mut data) {
-                    Err(err) => {
-                        log::error!("{} Error while handle received message", err);
-                    }
-                    _ => {}
-                }
-            }
-        }
-        Ok(())
-    }
     async fn handle_rust_mapping<P: AsRef<OsStr>>(
         &mut self,
         indexer_hash: &String,
@@ -372,7 +435,7 @@ impl AdapterManager {
         mapping_path: P,
         stream: &mut Streaming<GenericDataProto>,
     ) -> Result<(), Box<dyn Error>> {
-        let store = IndexStore::new(DATABASE_CONNECTION_STRING.as_str()).await;
+        let store = PostgresIndexStore::new(DATABASE_CONNECTION_STRING.as_str()).await;
         self.store = Some(store);
         unsafe {
             match self.load(indexer_hash, mapping_path).await {
@@ -415,6 +478,35 @@ impl AdapterManager {
                 &indexer_hash
             );
         }
+        Ok(())
+    }
+    /// Load a plugin library
+    /// A plugin library **must** be implemented using the
+    /// [`model::adapter_declaration!()`] macro. Trying manually implement
+    /// a plugin without going through that macro will result in undefined
+    /// behaviour.
+    pub async unsafe fn load<P: AsRef<OsStr>>(
+        &mut self,
+        indexer_hash: &String,
+        library_path: P,
+    ) -> Result<(), Box<dyn Error>> {
+        let lib = Arc::new(Library::new(library_path)?);
+        // inject store to plugin
+        let store = &mut self.store;
+        match store {
+            Some(store) => {
+                lib.get::<*mut Option<&dyn Store>>(b"STORE\0")?
+                    .write(Some(store));
+            }
+            _ => {}
+        }
+        let adapter_decl = lib
+            .get::<*mut AdapterDeclaration>(b"adapter_declaration\0")?
+            .read();
+        let mut registrar = AdapterHandler::new(indexer_hash.clone(), Arc::clone(&lib));
+        (adapter_decl.register)(&mut registrar);
+        self.map_handlers.insert(indexer_hash.clone(), registrar);
+        self.libs.insert(indexer_hash.clone(), lib);
         Ok(())
     }
 }

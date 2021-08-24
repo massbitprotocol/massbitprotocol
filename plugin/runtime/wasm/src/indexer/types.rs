@@ -1,4 +1,4 @@
-use anyhow::anyhow;
+use massbit_common::prelude::anyhow::anyhow;
 use stable_hash::prelude::*;
 use stable_hash::utils::AsBytes;
 use std::convert::TryFrom;
@@ -6,8 +6,8 @@ use std::fmt::Write;
 use std::{fmt, str::FromStr};
 use web3::types::{Block, H256};
 
-use crate::graph::prelude::{BlockNumber, CheapClone};
-
+use crate::graph::prelude::CheapClone;
+use crate::store::BlockNumber;
 /// A simple marker for byte arrays that are really block hashes
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct BlockHash(pub Box<[u8]>);

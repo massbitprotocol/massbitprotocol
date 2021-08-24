@@ -1,24 +1,51 @@
-//pub mod adapter;
+pub mod adapter;
+pub mod capabilities;
 pub mod data_source;
-//pub mod network;
+pub mod ethereum_adapter;
+pub mod network;
 pub mod runtime;
+pub mod transport;
 pub mod trigger;
 pub mod types;
 use crate::chain::ethereum::data_source::{UnresolvedDataSource, UnresolvedDataSourceTemplate};
+use crate::graph::prelude::LoggerFactory;
 use crate::graph::prelude::MetricsRegistry;
-use crate::graph::prelude::{BlockNumber, LoggerFactory};
-use crate::indexer::blockchain::{Blockchain, IngestorError};
+use crate::indexer::blockchain::{Block, Blockchain, IngestorError};
 use crate::indexer::types::BlockPtr;
 use crate::prelude::{Arc, Logger};
-use async_trait::async_trait;
+use crate::store::model::BlockNumber;
+
+pub use adapter::{
+    EthereumAdapter as EthereumAdapterTrait, EthereumContractCall, EthereumContractCallError,
+};
+/*
+pub use adapter::{
+    MockEthereumAdapter, ProviderEthRpcMetrics, SubgraphEthRpcMetrics, TriggerFilter,
+};
+ */
+pub use ethereum_adapter::EthereumAdapter;
+
+use crate::chain::ethereum::network::EthereumNetworkAdapters;
+use crate::chain::ethereum::types::{EthereumBlockWithCalls, LightEthereumBlockExt};
+use crate::graph::cheap_clone::CheapClone;
+use massbit_common::prelude::{
+    anyhow::Error,
+    async_trait::async_trait,
+    ethabi::{self, Address, Error as ABIError, Function, ParamType, Token},
+};
+
 use data_source::{DataSource, DataSourceTemplate};
+use thiserror::Error;
 use types::LightEthereumBlock;
+use web3::types::H256;
 
 pub struct Chain {
     logger_factory: LoggerFactory,
     name: String,
     registry: Arc<dyn MetricsRegistry>,
+    eth_adapters: Arc<EthereumNetworkAdapters>,
     ancestor_count: BlockNumber,
+    call_cache: Arc<dyn EthereumCallCache>,
     reorg_threshold: BlockNumber,
     is_ingestible: bool,
 }
@@ -35,9 +62,9 @@ impl Chain {
         //node_id: NodeId,
         registry: Arc<dyn MetricsRegistry>,
         //chain_store: Arc<dyn ChainStore>,
-        //call_cache: Arc<dyn EthereumCallCache>,
+        call_cache: Arc<dyn EthereumCallCache>,
         //subgraph_store: Arc<dyn SubgraphStore>,
-        //eth_adapters: EthereumNetworkAdapters,
+        eth_adapters: EthereumNetworkAdapters,
         //chain_head_update_listener: Arc<dyn ChainHeadUpdateListener>,
         ancestor_count: BlockNumber,
         reorg_threshold: BlockNumber,
@@ -48,13 +75,13 @@ impl Chain {
             name,
             //node_id,
             registry,
-            //eth_adapters: Arc::new(eth_adapters),
-
+            eth_adapters: Arc::new(eth_adapters),
             //chain_store,
             //call_cache,
             //subgraph_store,
             //chain_head_update_listener,
             ancestor_count,
+            call_cache,
             reorg_threshold,
             is_ingestible,
         }
@@ -72,8 +99,8 @@ impl Blockchain for Chain {
 
     type MappingTrigger = trigger::MappingTrigger;
     //type TriggerFilter = ();
-    //type NodeCapabilities = ();
-    //type RuntimeAdapter = ();
+    type NodeCapabilities = capabilities::NodeCapabilities;
+    type RuntimeAdapter = runtime::runtime_adapter::RuntimeAdapter;
 
     fn reorg_threshold() -> u32 {
         todo!()
@@ -92,7 +119,7 @@ impl Blockchain for Chain {
     }
      */
 }
-/*
+
 /// This is used in `EthereumAdapter::triggers_in_block`, called when re-processing a block for
 /// newly created data sources. This allows the re-processing to be reorg safe without having to
 /// always fetch the full block data.
@@ -138,4 +165,29 @@ impl Block for BlockFinality {
         }
     }
 }
-*/
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+/// A collection of attributes that (kind of) uniquely identify an Ethereum blockchain.
+pub struct EthereumNetworkIdentifier {
+    pub net_version: String,
+    pub genesis_block_hash: H256,
+}
+
+pub trait EthereumCallCache: Send + Sync + 'static {
+    /// Cached return value.
+    fn get_call(
+        &self,
+        contract_address: ethabi::Address,
+        encoded_call: &[u8],
+        block: BlockPtr,
+    ) -> Result<Option<Vec<u8>>, Error>;
+
+    // Add entry to the cache.
+    fn set_call(
+        &self,
+        contract_address: ethabi::Address,
+        encoded_call: &[u8],
+        block: BlockPtr,
+        return_value: &[u8],
+    ) -> Result<(), Error>;
+}

@@ -1,27 +1,42 @@
-use crate::error::DeterminismLevel;
-use crate::graph::data::store::{
-    scalar::{BigDecimal, BigInt},
-    Entity,
-};
-use crate::graph::runtime::{DeterministicHostError, HostExportError};
-use crate::indexer::IndexerState;
-use crate::module::IntoTrap;
-use crate::prelude::anyhow::{anyhow, Context};
-use crate::prelude::{slog::warn, Arc, Logger, Value, Version};
-use web3::types::H160;
-
-use crate::graph::cheap_clone::CheapClone;
-use crate::graph::components::metrics::stopwatch::StopwatchMetrics;
-use crate::graph::components::store::{BlockNumber, EntityKey, EntityType};
-use crate::indexer::blockchain::{Blockchain, DataSourceTemplate};
-use crate::indexer::manifest::{DataSource, DataSourceContext, DataSourceTemplateInfo};
-use ethabi::param_type::Reader;
-use ethabi::{decode, encode, Token};
-use never::Never;
-use slog::{b, info, record_static};
 use std::collections::HashMap;
 use std::str::FromStr;
+
+use massbit_common::prelude::{
+    anyhow::{anyhow, Context},
+    ethabi::param_type::Reader,
+    ethabi::{decode, encode, Token, Uint},
+    serde_json,
+};
+
+use never::Never;
+use slog::{b, info, record_static, trace};
 use wasmtime::Trap;
+use web3::types::H160;
+
+use crate::asc_abi::class::{AscEnumArray, EthereumValueKind};
+use crate::chain::ethereum::runtime::abi::{
+    AscUnresolvedContractCall, AscUnresolvedContractCall_0_0_4,
+};
+//use crate::chain::ethereum::EthereumContractCallError;
+use crate::chain::ethereum::data_source::DataSource;
+use crate::chain::ethereum::runtime::runtime_adapter::UnresolvedContractCall;
+use crate::error::DeterminismLevel;
+use crate::graph::cheap_clone::CheapClone;
+use crate::graph::components::metrics::stopwatch::StopwatchMetrics;
+use crate::graph::runtime::{asc_get, asc_new, AscPtr, DeterministicHostError, HostExportError};
+use crate::indexer::blockchain::{Blockchain, DataSourceTemplate, HostFn, HostFnCtx};
+use crate::indexer::manifest::{
+    DataSource as DataSourceTrait, DataSourceContext, DataSourceTemplateInfo, MappingABI,
+};
+use crate::indexer::types::BlockPtr;
+use crate::indexer::IndexerState;
+use crate::module::IntoTrap;
+use crate::prelude::{slog::warn, Arc, Logger, Version};
+use crate::store::scalar::{BigDecimal, BigInt};
+use crate::store::{model::BlockNumber, Entity, EntityKey, EntityType, Value};
+
+use std::sync::Mutex;
+use std::time::Instant;
 
 impl IntoTrap for HostExportError {
     fn determinism_level(&self) -> DeterminismLevel {
@@ -53,7 +68,7 @@ pub struct HostExports<C: Blockchain> {
 impl<C: Blockchain> HostExports<C> {
     pub fn new(
         indexer_id: &str,
-        data_source: &impl DataSource<C>,
+        data_source: &impl DataSourceTrait<C>,
         data_source_network: String,
         templates: Arc<Vec<C::DataSourceTemplate>>,
         api_version: Version,
@@ -109,8 +124,8 @@ impl<C: Blockchain> HostExports<C> {
             entity_type: EntityType::new(entity_type.clone()),
             entity_id: entity_id.clone(),
         };
-
-        Ok(state.entity_cache.get(&store_key)?)
+        let entity = state.get_entity(&store_key)?;
+        Ok(entity)
     }
 
     pub(crate) fn store_set(
@@ -165,8 +180,7 @@ impl<C: Blockchain> HostExports<C> {
         //Todo:: validate entity
         //let schema = self.store.input_schema(&self.subgraph_id)?;
         //let is_valid = validate_entity(&schema.document, &key, &entity).is_ok();
-        state.entity_cache.set(key.clone(), entity);
-
+        state.set_entity(key.clone(), entity);
         validation_section.end();
         // Validate the changes against the subgraph schema.
         // If the set of fields we have is already valid, avoid hitting the DB.
@@ -178,7 +192,7 @@ impl<C: Blockchain> HostExports<C> {
                 .get(&key)
                 .map_err(|e| HostExportError::Unknown(e.into()))?
                 .expect("we just stored this entity");
-            validate_entity(&schema.document, &key, &entity)?;
+            validate_entity(&schema.docuroment, &key, &entity)?;
         }
          */
         Ok(())
@@ -210,7 +224,7 @@ impl<C: Blockchain> HostExports<C> {
             entity_type: EntityType::new(entity_type),
             entity_id,
         };
-        state.entity_cache.remove(key);
+        state.remove_entity(key);
 
         Ok(())
     }
@@ -571,3 +585,178 @@ pub(crate) fn bytes_to_string(logger: &Logger, bytes: Vec<u8>) -> String {
     // characters, so trim trailing nulls.
     s.trim_end_matches('\u{0000}').to_string()
 }
+//mock ethereum.call
+pub fn create_mock_ethereum_call(datasource: &DataSource) -> HostFn {
+    HostFn {
+        name: "ethereum.call",
+        func: Arc::new(move |ctx, wasm_ptr| ethereum_call(ctx, wasm_ptr).map(|ptr| ptr.wasm_ptr())),
+    }
+}
+fn ethereum_call(
+    ctx: HostFnCtx<'_>,
+    wasm_ptr: u32,
+    //abis: &[Arc<MappingABI>],
+) -> Result<AscEnumArray<EthereumValueKind>, HostExportError> {
+    let call: UnresolvedContractCall = if ctx.heap.api_version() >= Version::new(0, 0, 4) {
+        asc_get::<_, AscUnresolvedContractCall_0_0_4, _>(ctx.heap, wasm_ptr.into())?
+    } else {
+        asc_get::<_, AscUnresolvedContractCall, _>(ctx.heap, wasm_ptr.into())?
+    };
+    //println!("Ethereum call: {:?}", &call);
+    let tokens = match call.function_name.as_str() {
+        "name" => vec![Token::String("name".to_string())],
+        "symbol" => vec![Token::String("F0X".to_string())],
+        "totalSupply" => vec![Token::Uint(Uint::from(rand::random::<u128>()))],
+        "decimals" => vec![Token::Uint(Uint::from(rand::random::<u8>()))],
+        _ => vec![],
+    };
+    Ok(asc_new(ctx.heap, tokens.as_slice())?)
+}
+/*
+/// function ethereum.call(call: SmartContractCall): Array<Token> | null
+fn ethereum_call(
+    eth_adapter: &EthereumAdapter,
+    call_cache: Arc<dyn EthereumCallCache>,
+    ctx: HostFnCtx<'_>,
+    wasm_ptr: u32,
+    abis: &[Arc<MappingABI>],
+) -> Result<AscEnumArray<EthereumValueKind>, HostExportError> {
+    // For apiVersion >= 0.0.4 the call passed from the mapping includes the
+    // function signature; subgraphs using an apiVersion < 0.0.4 don't pass
+    // the signature along with the call.
+    let call: UnresolvedContractCall = if ctx.heap.api_version() >= Version::new(0, 0, 4) {
+        asc_get::<_, AscUnresolvedContractCall_0_0_4, _>(ctx.heap, wasm_ptr.into())?
+    } else {
+        asc_get::<_, AscUnresolvedContractCall, _>(ctx.heap, wasm_ptr.into())?
+    };
+
+    let result = eth_call(
+        eth_adapter,
+        call_cache,
+        &ctx.logger,
+        &ctx.block_ptr,
+        call,
+        abis,
+    )?;
+    match result {
+        Some(tokens) => Ok(asc_new(ctx.heap, tokens.as_slice())?),
+        None => Ok(AscPtr::null()),
+    }
+}
+
+/// Returns `Ok(None)` if the call was reverted.
+fn eth_call(
+    eth_adapter: &EthereumAdapter,
+    call_cache: Arc<dyn EthereumCallCache>,
+    logger: &Logger,
+    block_ptr: &BlockPtr,
+    unresolved_call: UnresolvedContractCall,
+    abis: &[Arc<MappingABI>],
+) -> Result<Option<Vec<Token>>, HostExportError> {
+    let start_time = Instant::now();
+
+    // Obtain the path to the contract ABI
+    let contract = abis
+        .iter()
+        .find(|abi| abi.name == unresolved_call.contract_name)
+        .with_context(|| {
+            format!(
+                "Could not find ABI for contract \"{}\", try adding it to the 'abis' section \
+                     of the subgraph manifest",
+                unresolved_call.contract_name
+            )
+        })?
+        .contract
+        .clone();
+
+    let function = match unresolved_call.function_signature {
+        // Behavior for apiVersion < 0.0.4: look up function by name; for overloaded
+        // functions this always picks the same overloaded variant, which is incorrect
+        // and may lead to encoding/decoding errors
+        None => contract
+            .function(unresolved_call.function_name.as_str())
+            .with_context(|| {
+                format!(
+                    "Unknown function \"{}::{}\" called from WASM runtime",
+                    unresolved_call.contract_name, unresolved_call.function_name
+                )
+            })?,
+
+        // Behavior for apiVersion >= 0.0.04: look up function by signature of
+        // the form `functionName(uint256,string) returns (bytes32,string)`; this
+        // correctly picks the correct variant of an overloaded function
+        Some(ref function_signature) => contract
+            .functions_by_name(unresolved_call.function_name.as_str())
+            .with_context(|| {
+                format!(
+                    "Unknown function \"{}::{}\" called from WASM runtime",
+                    unresolved_call.contract_name, unresolved_call.function_name
+                )
+            })?
+            .iter()
+            .find(|f| function_signature == &f.signature())
+            .with_context(|| {
+                format!(
+                    "Unknown function \"{}::{}\" with signature `{}` \
+                         called from WASM runtime",
+                    unresolved_call.contract_name,
+                    unresolved_call.function_name,
+                    function_signature,
+                )
+            })?,
+    };
+
+    let call = EthereumContractCall {
+        address: unresolved_call.contract_address.clone(),
+        block_ptr: block_ptr.cheap_clone(),
+        function: function.clone(),
+        args: unresolved_call.function_args.clone(),
+    };
+
+    // Run Ethereum call in tokio runtime
+    let logger1 = logger.clone();
+    let call_cache = call_cache.clone();
+    let result = match crate::graph::block_on(
+        eth_adapter.contract_call(&logger1, call, call_cache).compat()
+    ) {
+        Ok(tokens) => Ok(Some(tokens)),
+        Err(EthereumContractCallError::Revert(reason)) => {
+            info!(logger, "Contract call reverted"; "reason" => reason);
+            Ok(None)
+        }
+
+        // Any error reported by the Ethereum node could be due to the block no longer being on
+        // the main chain. This is very unespecific but we don't want to risk failing a
+        // subgraph due to a transient error such as a reorg.
+        Err(EthereumContractCallError::Web3Error(e)) => Err(HostExportError::PossibleReorg(anyhow::anyhow!(
+                "Ethereum node returned an error when calling function \"{}\" of contract \"{}\": {}",
+                unresolved_call.function_name,
+                unresolved_call.contract_name,
+                e
+            ))),
+
+        // Also retry on timeouts.
+        Err(EthereumContractCallError::Timeout) => Err(HostExportError::PossibleReorg(anyhow::anyhow!(
+                "Ethereum node did not respond when calling function \"{}\" of contract \"{}\"",
+                unresolved_call.function_name,
+                unresolved_call.contract_name,
+            ))),
+
+        Err(e) => Err(HostExportError::Unknown(anyhow::anyhow!(
+                "Failed to call function \"{}\" of contract \"{}\": {}",
+                unresolved_call.function_name,
+                unresolved_call.contract_name,
+                e
+            ))),
+    };
+
+    trace!(logger, "Contract call finished";
+              "address" => &unresolved_call.contract_address.to_string(),
+              "contract" => &unresolved_call.contract_name,
+              "function" => &unresolved_call.function_name,
+              "function_signature" => &unresolved_call.function_signature,
+              "time" => format!("{}ms", start_time.elapsed().as_millis()));
+
+    result
+}
+*/

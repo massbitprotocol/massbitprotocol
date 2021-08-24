@@ -9,17 +9,21 @@ edition = "2018"
 
 [dependencies]
 #casey          =   "0.3.3"
-futures         = "0.3.16"
+ethabi          = { git = "https://github.com/graphprotocol/ethabi.git", branch = "master" }
+#futures         = "0.3.16"
+futures         = "0.1.21"
 paste           =   "1.0.5"
 libloading      =   "0.7.0"
 lazy_static     = "1.2.0"
 log             = "0.4.0"
 massbit-chain-substrate = { path = "../../core/chain/substrate" }
-massbit-chain-solana = { path = "../../core/chain/solana" }
-massbit-chain-ethereum = { path = "../../core/chain/ethereum" }
-index-store     = { path = "../../core/index-store" }
-massbit-runtime-wasm = {path = "../runtime/wasm" }
+massbit-chain-solana    = { path = "../../core/chain/solana" }
+massbit-chain-ethereum  = { path = "../../core/chain/ethereum" }
+index-store             = { path = "../../core/index-store" }
+massbit-runtime-wasm    = { path = "../runtime/wasm" }
+massbit-common          = { path = "../../core/common"}
 quote           =   "1.0.9"
+serde_regex     = "1.1.0"
 serde_yaml      =   "0.8"
 structmap       =   "0.1.5"
 #syn            =   "1.0.74"

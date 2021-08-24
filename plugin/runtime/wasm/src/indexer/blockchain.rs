@@ -2,16 +2,15 @@ pub use super::manifest::{
     DataSource, DataSourceTemplate, UnresolvedDataSource, UnresolvedDataSourceTemplate,
 };
 use super::types::{BlockHash, BlockPtr};
-use crate::graph::prelude::BlockNumber;
 use crate::graph::runtime::{AscHeap, AscPtr, DeterministicHostError, HostExportError};
 use crate::prelude::{slog::SendSyncRefUnwindSafeKV, Logger};
-use anyhow::Error;
-use async_trait::async_trait;
+use crate::store::BlockNumber;
+use massbit_common::prelude::{anyhow::Error, async_trait::async_trait};
 use std::sync::Arc;
 use std::{collections::BTreeMap, fmt::Debug};
 use std::{collections::HashMap, convert::TryFrom};
 
-use crate::mapping::HostFnCtx;
+use crate::graph::prelude::CheapClone;
 use thiserror::Error;
 use web3::types::H256;
 
@@ -60,7 +59,7 @@ pub trait MappingTrigger: Send + Sync {
         Box::new(slog::o! {})
     }
 }
-/*
+
 pub trait NodeCapabilities<C: Blockchain> {
     fn from_data_sources(data_sources: &[C::DataSource]) -> Self;
 }
@@ -78,7 +77,13 @@ pub trait TriggerFilter<C: Blockchain>: Default + Clone + Send + Sync {
 
     fn node_capabilities(&self) -> C::NodeCapabilities;
 }
- */
+
+pub struct HostFnCtx<'a> {
+    pub logger: Logger,
+    pub block_ptr: BlockPtr,
+    pub heap: &'a mut dyn AscHeap,
+}
+
 /// Host fn that receives one u32 argument and returns an u32.
 /// The name for an AS fuction is in the format `<namespace>.<function>`.
 #[derive(Clone)]
@@ -86,6 +91,16 @@ pub struct HostFn {
     pub name: &'static str,
     pub func: Arc<dyn Send + Sync + Fn(HostFnCtx, u32) -> Result<u32, HostExportError>>,
 }
+
+impl CheapClone for HostFn {
+    fn cheap_clone(&self) -> Self {
+        HostFn {
+            name: self.name,
+            func: self.func.cheap_clone(),
+        }
+    }
+}
+
 pub trait RuntimeAdapter<C: Blockchain>: Send + Sync {
     fn host_fns(&self, ds: &C::DataSource) -> Result<Vec<HostFn>, Error>;
 }
@@ -112,11 +127,11 @@ pub trait Blockchain: Debug + Sized + Send + Sync + 'static {
     /// Trigger filter used as input to the triggers adapter.
     //type TriggerFilter: TriggerFilter<Self>;
 
-    //type NodeCapabilities: NodeCapabilities<Self> + std::fmt::Display;
+    type NodeCapabilities: NodeCapabilities<Self> + std::fmt::Display;
 
     //type IngestorAdapter: IngestorAdapter<Self>;
 
-    //type RuntimeAdapter: RuntimeAdapter<Self>;
+    type RuntimeAdapter: RuntimeAdapter<Self>;
 
     fn reorg_threshold() -> u32;
     /*

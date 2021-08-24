@@ -16,7 +16,8 @@ dependencies = [
 name = "adapter"
 version = "0.1.0"
 dependencies = [
- "futures 0.3.16",
+ "ethabi 12.0.0-graph",
+ "futures 0.1.31",
  "index-store",
  "lazy_static",
  "libloading",
@@ -24,10 +25,12 @@ dependencies = [
  "massbit-chain-ethereum",
  "massbit-chain-solana",
  "massbit-chain-substrate",
+ "massbit-common",
  "massbit-runtime-wasm",
  "paste 1.0.5",
  "prost",
  "quote 1.0.9",
+ "serde_regex",
  "serde_yaml",
  "structmap",
  "tonic",
@@ -1471,6 +1474,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "difference"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "524cbf6897b527295dff137cec09ecf3a05f4fddffd7dfcd1585403449e74198"
+
+[[package]]
 name = "digest"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1542,6 +1551,12 @@ name = "dotenv"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77c90badedccf4105eca100756a0b1289e191f6fcbdadd3cee1d2f614f97da8f"
+
+[[package]]
+name = "downcast"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4bb454f0228b18c7f4c3b0ebbee346ed9c52e7443b0999cd543ff3571205701d"
 
 [[package]]
 name = "dtoa"
@@ -1935,6 +1950,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "float-cmp"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1267f4ac4f343772758f7b1bdcbe767c218bbab93bb432acbf5162bbf85a6c4"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1964,6 +1988,12 @@ dependencies = [
  "matches",
  "percent-encoding 2.1.0",
 ]
+
+[[package]]
+name = "fragile"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69a039c3498dc930fe810151a34ba0c1c70b02b8625035592e74432f678591f2"
 
 [[package]]
 name = "frame-benchmarking"
@@ -3101,7 +3131,7 @@ dependencies = [
  "serde",
  "serde_yaml",
  "tokio 0.2.25",
- "tokio-retry",
+ "tokio-retry 0.2.0",
  "tokio-stream",
 ]
 
@@ -3691,6 +3721,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "massbit-common"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "diesel",
+ "diesel_derives",
+ "diesel_transaction_handles",
+ "ethabi 12.0.0-graph",
+ "lazy_static",
+ "log 0.4.14",
+ "regex",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "serde_regex",
+ "serde_yaml",
+ "structmap",
+ "tokio 1.9.0",
+ "tokio-postgres",
+]
+
+[[package]]
 name = "massbit-runtime-derive"
 version = "0.23.1"
 dependencies = [
@@ -3705,25 +3758,26 @@ version = "0.1.0"
 dependencies = [
  "Inflector",
  "anyhow",
- "async-trait",
  "atomic_refcell",
+ "backtrace",
  "bigdecimal",
  "bs58 0.4.0",
  "chrono",
  "defer",
  "diesel",
  "diesel_derives",
- "ethabi 12.0.0-graph",
  "futures 0.1.31",
  "futures 0.3.16",
  "hex 0.4.3",
- "http 0.2.3",
+ "http 0.1.21",
  "index-store",
  "isatty",
  "itertools 0.10.1",
- "lazy_static",
+ "jsonrpc-core 14.2.0",
  "massbit-chain-ethereum",
+ "massbit-common",
  "massbit-runtime-derive",
+ "mockall",
  "never",
  "num-bigint",
  "num-traits",
@@ -3733,9 +3787,6 @@ dependencies = [
  "reqwest 0.10.10",
  "semver 1.0.3",
  "serde",
- "serde_derive",
- "serde_json",
- "serde_yaml",
  "slog",
  "slog-async",
  "slog-envlogger",
@@ -3746,6 +3797,8 @@ dependencies = [
  "thiserror",
  "tiny-keccak 1.5.0",
  "tokio 1.9.0",
+ "tokio-retry 0.3.0",
+ "url 2.2.2",
  "uuid",
  "wasmparser 0.80.0",
  "wasmtime",
@@ -4006,6 +4059,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "mockall"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "18d614ad23f9bb59119b8b5670a85c7ba92c5e9adf4385c81ea00c51c8be33d5"
+dependencies = [
+ "cfg-if 1.0.0",
+ "downcast",
+ "fragile",
+ "lazy_static",
+ "mockall_derive",
+ "predicates",
+ "predicates-tree",
+]
+
+[[package]]
+name = "mockall_derive"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5dd4234635bca06fc96c7368d038061e0aae1b00a764dc817e900dc974e3deea"
+dependencies = [
+ "cfg-if 1.0.0",
+ "proc-macro2 1.0.24",
+ "quote 1.0.9",
+ "syn 1.0.64",
+]
+
+[[package]]
 name = "more-asserts"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4184,6 +4264,12 @@ name = "nodrop"
 version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72ef4a56884ca558e5ddb05a1d1e7e1bfd9a68d9ed024c21704cc98872dae1bb"
+
+[[package]]
+name = "normalize-line-endings"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61807f77802ff30975e01f4f071c8ba10c022052f98b3294119f3e615d13e5be"
 
 [[package]]
 name = "ntapi"
@@ -5112,6 +5198,35 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ac25eee5a0582f45a67e837e350d784e7003bd29a5f460796772061ca49ffda"
 dependencies = [
  "vcpkg",
+]
+
+[[package]]
+name = "predicates"
+version = "1.0.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f49cfaf7fdaa3bfacc6fa3e7054e65148878354a5cfddcf661df4c851f8021df"
+dependencies = [
+ "difference",
+ "float-cmp",
+ "normalize-line-endings",
+ "predicates-core",
+ "regex",
+]
+
+[[package]]
+name = "predicates-core"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57e35a3326b75e49aa85f5dc6ec15b41108cf5aee58eabb1f274dd18b73c2451"
+
+[[package]]
+name = "predicates-tree"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d7dd0fd014130206c9352efbdc92be592751b2b9274dff685348341082c6ea3d"
+dependencies = [
+ "predicates-core",
+ "treeline",
 ]
 
 [[package]]
@@ -6167,6 +6282,16 @@ checksum = "799e97dc9fdae36a5c8b8f2cae9ce2ee9fdce2058c57a93e6099d919fd982f79"
 dependencies = [
  "itoa",
  "ryu",
+ "serde",
+]
+
+[[package]]
+name = "serde_regex"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8136f1a4ea815d7eac4101cfd0b16dc0cb5e1fe1b8609dfd728058656b7badf"
+dependencies = [
+ "regex",
  "serde",
 ]
 
@@ -8409,6 +8534,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokio-retry"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f57eb36ecbe0fc510036adff84824dd3c24bb781e21bfa67b69d556aa85214f"
+dependencies = [
+ "pin-project 1.0.5",
+ "rand 0.8.4",
+ "tokio 1.9.0",
+]
+
+[[package]]
 name = "tokio-rustls"
 version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8773,6 +8909,12 @@ name = "traitobject"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "efd1f82c56340fdf16f2a953d7bda4f8fdffba13d93b00844c25572110b26079"
+
+[[package]]
+name = "treeline"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7f741b240f1a48843f9b8e0444fb55fb2a4ff67293b50a9179dfd5ea67f8d41"
 
 [[package]]
 name = "trie-db"

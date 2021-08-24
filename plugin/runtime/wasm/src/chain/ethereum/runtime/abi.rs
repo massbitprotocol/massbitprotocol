@@ -1,16 +1,16 @@
+use super::runtime_adapter::UnresolvedContractCall;
 use crate::asc_abi::class::{
     Array, AscAddress, AscBigInt, AscEnum, AscH160, AscString, EthereumValueKind, Uint8Array,
+};
+use crate::chain::ethereum::trigger::{
+    EthereumBlockData, EthereumCallData, EthereumEventData, EthereumTransactionData,
 };
 use crate::graph::prelude::BigInt;
 use crate::graph::runtime::{
     asc_get, asc_new, AscHeap, AscIndexId, AscPtr, AscType, DeterministicHostError, FromAscObj,
     IndexForAscTypeId, ToAscObj,
 };
-
-//use super::runtime_adapter::UnresolvedContractCall;
-use crate::chain::ethereum::trigger::{
-    EthereumBlockData, EthereumCallData, EthereumEventData, EthereumTransactionData,
-};
+use massbit_common::prelude::{anyhow, ethabi};
 use massbit_runtime_derive::AscType;
 use semver::Version;
 use std::mem::size_of;
@@ -59,7 +59,7 @@ pub struct AscUnresolvedContractCall_0_0_4 {
 impl AscIndexId for AscUnresolvedContractCall_0_0_4 {
     const INDEX_ASC_TYPE_ID: IndexForAscTypeId = IndexForAscTypeId::SmartContractCall;
 }
-/*
+
 impl FromAscObj<AscUnresolvedContractCall_0_0_4> for UnresolvedContractCall {
     fn from_asc_obj<H: AscHeap + ?Sized>(
         asc_call: AscUnresolvedContractCall_0_0_4,
@@ -74,7 +74,7 @@ impl FromAscObj<AscUnresolvedContractCall_0_0_4> for UnresolvedContractCall {
         })
     }
 }
-*/
+
 #[repr(C)]
 #[derive(AscType)]
 pub struct AscUnresolvedContractCall {
@@ -83,7 +83,7 @@ pub struct AscUnresolvedContractCall {
     pub function_name: AscPtr<AscString>,
     pub function_args: AscPtr<Array<AscPtr<AscEnum<EthereumValueKind>>>>,
 }
-/*
+
 impl FromAscObj<AscUnresolvedContractCall> for UnresolvedContractCall {
     fn from_asc_obj<H: AscHeap + ?Sized>(
         asc_call: AscUnresolvedContractCall,
@@ -98,7 +98,7 @@ impl FromAscObj<AscUnresolvedContractCall> for UnresolvedContractCall {
         })
     }
 }
-*/
+
 #[repr(C)]
 #[derive(AscType)]
 pub(crate) struct AscEthereumBlock {

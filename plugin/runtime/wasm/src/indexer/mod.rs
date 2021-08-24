@@ -3,23 +3,29 @@ pub mod manifest;
 pub mod types;
 
 use crate::graph::cheap_clone::CheapClone;
-use crate::graph::components::store::{EntityCache, EntityKey, WritableStore};
-use crate::graph::data::store::Entity;
 use crate::graph::runtime::{AscHeap, AscPtr, DeterministicHostError};
-use crate::graph::util::lfu_cache::LfuCache;
 use crate::indexer::blockchain::Blockchain;
 use crate::indexer::manifest::{DataSourceTemplateInfo, Link};
 use crate::prelude::slog::SendSyncRefUnwindSafeKV;
-use crate::prelude::{impl_slog_value, Arc, Deserialize, Serialize, Version};
-use anyhow::{anyhow, ensure, Error};
-use lazy_static::lazy_static;
-use serde::de;
-use serde::ser;
-use serde_yaml;
+use crate::prelude::{impl_slog_value, Arc, Version};
+use crate::store::{
+    Entity, EntityCache, EntityKey, ModificationsAndCache, QueryExecutionError, StoreError,
+    WritableStore,
+};
+use crate::util::lfu_cache::LfuCache;
+use massbit_common::prelude::{
+    anyhow::{anyhow, ensure, Error},
+    lazy_static::lazy_static,
+    serde::{de, ser},
+    //Deserialize, Serialize},
+    serde_yaml,
+};
+
 use slog::{debug, info, Logger};
 use stable_hash::prelude::*;
 use std::fmt;
 use std::ops::Deref;
+use std::sync::Mutex;
 
 lazy_static! {
     static ref MAX_API_VERSION: Version = std::env::var("GRAPH_MAX_API_VERSION")
@@ -50,15 +56,92 @@ impl<C: Blockchain> IndexerState<C> {
             in_handler: false,
         }
     }
-    pub fn enter_handler(&mut self) {}
-    pub fn exit_handler(&mut self) {}
-    pub fn exit_handler_and_discard_changes_due_to_error(&mut self) {}
+
+    /*
+    pub fn extend(&mut self, other: IndexerState<C>) {
+        assert!(!other.in_handler);
+
+        let IndexerState {
+            entity_cache,
+            created_data_sources,
+            handler_created_data_sources,
+            in_handler,
+        } = self;
+
+        match in_handler {
+            true => handler_created_data_sources.extend(other.created_data_sources),
+            false => created_data_sources.extend(other.created_data_sources),
+        }
+        entity_cache
+            .lock()
+            .unwrap()
+            .extend(*other.entity_cache.lock().unwrap());
+    }
+    */
+    pub fn has_errors(&self) -> bool {
+        false
+    }
+
+    pub fn has_created_data_sources(&self) -> bool {
+        assert!(!self.in_handler);
+        !self.created_data_sources.is_empty()
+    }
+
+    pub fn drain_created_data_sources(&mut self) -> Vec<DataSourceTemplateInfo<C>> {
+        assert!(!self.in_handler);
+        std::mem::replace(&mut self.created_data_sources, Vec::new())
+    }
+
+    pub fn enter_handler(&mut self) {
+        assert!(!self.in_handler);
+        self.in_handler = true;
+        self.entity_cache.enter_handler()
+    }
+
+    pub fn exit_handler(&mut self) {
+        assert!(self.in_handler);
+        self.in_handler = false;
+        self.created_data_sources
+            .extend(self.handler_created_data_sources.drain(..));
+        self.entity_cache.exit_handler()
+    }
+
+    pub fn exit_handler_and_discard_changes_due_to_error(&mut self) {
+        assert!(self.in_handler);
+        self.in_handler = false;
+        self.handler_created_data_sources.clear();
+        self.entity_cache.exit_handler_and_discard_changes();
+        //self.deterministic_errors.push(e);
+    }
+
     pub fn push_created_data_source(&mut self, ds: DataSourceTemplateInfo<C>) {
         assert!(self.in_handler);
         self.handler_created_data_sources.push(ds);
     }
+    pub fn get_entity(&mut self, key: &EntityKey) -> Result<Option<Entity>, QueryExecutionError> {
+        self.entity_cache.get(key)
+    }
+    pub fn set_entity(&mut self, key: EntityKey, entity: Entity) {
+        self.entity_cache.set(key, entity);
+    }
+    pub fn remove_entity(&mut self, key: EntityKey) {
+        self.entity_cache.remove(key);
+    }
 }
-
+/*
+impl<C: Blockchain> IndexerState<C> {
+    pub fn flush_cache(&mut self) -> Result<(), QueryExecutionError> {
+        assert!(self.in_handler);
+        let ModificationsAndCache {
+            modifications: mods,
+            entity_lfu_cache: cache,
+        } = self.entity_cache.lock().unwrap().as_modifications()?;
+        //.map_err(|e| StoreError::Unknown(e.into()))?;
+        Ok(())
+        //.map_err(|e| BlockProcessingError::Unknown(e.into()))?;
+    }
+}
+*/
 // Note: This has a StableHash impl. Do not modify fields without a backward
 // compatible change to the StableHash impl (below)
 /// The IPFS hash used to identifiy a deployment externally, i.e., the

@@ -1,4 +1,5 @@
-use crate::graph::prelude::{BigDecimal, BigInt, EntityKey, EntityType, Value};
+use crate::graph::prelude::{BigDecimal, BigInt};
+use crate::store::{EntityKey, EntityType, Value};
 use std::mem;
 
 /// Estimate of how much memory a value consumes.
@@ -92,7 +93,7 @@ impl CacheWeight for BigInt {
     }
 }
 
-impl CacheWeight for crate::graph::data::store::scalar::Bytes {
+impl CacheWeight for crate::store::scalar::Bytes {
     fn indirect_weight(&self) -> usize {
         self.as_slice().len()
     }

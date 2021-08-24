@@ -1,8 +1,13 @@
 //use crate::graph::components::store::StoredDynamicDataSource;
-use crate::graph::prelude::{async_trait, BlockNumber, CheapClone};
-use anyhow::{anyhow, ensure, Context, Error};
-use ethabi::{Address, Event, Function, LogParam, ParamType, RawLog};
-use serde_derive::{Deserialize, Serialize};
+use crate::graph::prelude::CheapClone;
+use crate::store::model::BlockNumber;
+use massbit_common::prelude::{
+    anyhow::{self, anyhow, ensure, Context, Error},
+    async_trait::async_trait,
+    ethabi::{Address, Event, Function, LogParam, ParamType, RawLog},
+    serde_derive::{Deserialize, Serialize},
+    serde_json, serde_yaml,
+};
 use slog::{info, trace};
 use std::collections::BTreeMap;
 use std::str::FromStr;
@@ -18,7 +23,6 @@ use crate::graph::data::subgraph::{
 use super::trigger::{EthereumBlockTriggerType, EthereumTrigger, MappingTrigger};
 use super::Chain;
 use crate::chain::ethereum::types::{EthereumCall, LightEthereumBlock};
-use crate::graph::data::store::Entity;
 use crate::indexer::blockchain;
 use crate::indexer::blockchain::Blockchain;
 use crate::indexer::manifest::{
@@ -26,8 +30,9 @@ use crate::indexer::manifest::{
     MappingABI, MappingBlockHandler, MappingCallHandler, MappingEventHandler, Source,
     StoredDynamicDataSource, TemplateSource, UnresolvedMapping,
 };
-use crate::prelude::serde_yaml::Value;
 use crate::prelude::Logger;
+use crate::store::Entity;
+use massbit_common::prelude::serde_yaml::Value;
 use semver::Version;
 
 const API_VERSION_0_0_4: Version = Version::new(0, 0, 4);
@@ -806,6 +811,75 @@ pub struct BaseDataSourceTemplate<M> {
 
 pub type UnresolvedDataSourceTemplate = BaseDataSourceTemplate<UnresolvedMapping>;
 pub type DataSourceTemplate = BaseDataSourceTemplate<Mapping>;
+
+impl TryFrom<&serde_yaml::Value> for DataSourceTemplate {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &Value) -> Result<Self, anyhow::Error> {
+        let network = match &value["network"] {
+            Value::String(val) => Some(val.clone()),
+            _ => None,
+        };
+        //TemplateSource
+        let map: &Value = &value["source"];
+        let source = TemplateSource {
+            abi: map["abi"].as_str().unwrap_or("").to_string(),
+        };
+
+        let map = &value["mapping"];
+
+        let block_handlers = match map["blockHandlers"].as_sequence() {
+            Some(seqs) => seqs
+                .iter()
+                .map(|val| MappingBlockHandler {
+                    handler: val["handler"].as_str().unwrap().to_string(),
+                    filter: None,
+                })
+                .collect::<Vec<MappingBlockHandler>>(),
+            _ => Vec::default(),
+        };
+        let call_handlers = match map["callHandlers"].as_sequence() {
+            Some(seqs) => seqs
+                .iter()
+                .map(|val| MappingCallHandler {
+                    function: val["function"].as_str().unwrap().to_string(),
+                    handler: val["handler"].as_str().unwrap().to_string(),
+                })
+                .collect::<Vec<MappingCallHandler>>(),
+            _ => Vec::default(),
+        };
+        let event_handlers = match map["eventHandlers"].as_sequence() {
+            Some(seqs) => seqs
+                .iter()
+                .map(|val| MappingEventHandler {
+                    event: val["event"].as_str().unwrap().to_string(),
+                    topic0: None,
+                    handler: val["handler"].as_str().unwrap().to_string(),
+                })
+                .collect::<Vec<MappingEventHandler>>(),
+            _ => Vec::default(),
+        };
+        let mapping = Mapping {
+            kind: map["kind"].as_str().unwrap_or("").to_string(),
+            api_version: Version::new(0, 0, 4),
+            language: map["language"].as_str().unwrap_or("rust").to_string(),
+            entities: vec![],
+            abis: vec![],
+            block_handlers,
+            call_handlers,
+            event_handlers,
+            runtime: Arc::new(vec![]),
+            //link: Default::default(),
+        };
+        Ok(DataSourceTemplate {
+            kind: value["kind"].as_str().unwrap_or("").to_string(),
+            network,
+            name: value["name"].as_str().unwrap_or("").to_string(),
+            source,
+            mapping,
+        })
+    }
+}
 
 #[async_trait]
 impl blockchain::UnresolvedDataSourceTemplate<Chain> for UnresolvedDataSourceTemplate {

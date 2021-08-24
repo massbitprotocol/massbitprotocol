@@ -1,37 +1,14 @@
 use crate::graph::prelude::CheapClone;
 use crate::graph::runtime::AscHeap;
 use crate::host_exports::HostExports;
-use crate::indexer::blockchain::Blockchain;
+use crate::indexer::blockchain::{Blockchain, HostFn};
 use crate::indexer::types::BlockPtr;
 use crate::indexer::IndexerState;
 use crate::prelude::Logger;
 use std::collections::BTreeMap;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
-pub struct HostFnCtx<'a> {
-    pub logger: Logger,
-    //pub block_ptr: BlockPtr,
-    pub heap: &'a mut dyn AscHeap,
-}
-/*
-/// Host fn that receives one u32 argument and returns an u32.
-/// The name for an AS fuction is in the format `<namespace>.<function>`.
-#[derive(Clone)]
-pub struct HostFn {
-    pub name: &'static str,
-    pub func: Arc<dyn Send + Sync + Fn(HostFnCtx, u32) -> Result<u32, HostExportError>>,
-}
-
-impl CheapClone for HostFn {
-    fn cheap_clone(&self) -> Self {
-        HostFn {
-            name: self.name,
-            func: self.func.cheap_clone(),
-        }
-    }
-}
- */
 pub struct MappingRequest<C: Blockchain> {
     pub(crate) ctx: MappingContext<C>,
     pub(crate) trigger: C::MappingTrigger,
@@ -44,11 +21,11 @@ pub struct MappingContext<C: Blockchain> {
     pub block_ptr: BlockPtr,
     pub state: IndexerState<C>,
     //pub proof_of_indexing: SharedProofOfIndexing,
-    //pub host_fns: Arc<Vec<HostFn>>,
+    pub host_fns: Arc<Vec<HostFn>>,
 }
 
 impl<C: Blockchain> MappingContext<C> {
-    pub fn derive_with_empty_block_state(&self) -> Self {
+    pub fn derive_with_empty_state(&self) -> Self {
         MappingContext {
             logger: self.logger.cheap_clone(),
             host_exports: self.host_exports.cheap_clone(),
@@ -56,7 +33,7 @@ impl<C: Blockchain> MappingContext<C> {
             block_ptr: self.block_ptr.cheap_clone(),
             //state: BlockState::new(self.state.entity_cache.store.clone(), Default::default()),
             //proof_of_indexing: self.proof_of_indexing.cheap_clone(),
-            //host_fns: self.host_fns.cheap_clone(),
+            host_fns: self.host_fns.cheap_clone(),
         }
     }
 }

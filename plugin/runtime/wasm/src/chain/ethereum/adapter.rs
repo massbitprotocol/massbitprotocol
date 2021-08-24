@@ -1,6 +1,19 @@
-use anyhow::Error;
-use ethabi::{Error as ABIError, Function, ParamType, Token};
-use futures::Future;
+use super::capabilities::NodeCapabilities;
+use super::EthereumCallCache;
+use crate::chain::ethereum::types::{EthereumBlock, LightEthereumBlock};
+use crate::chain::ethereum::{data_source::DataSource, Chain, EthereumNetworkIdentifier};
+use crate::graph::components::metrics::{CounterVec, GaugeVec, HistogramVec};
+use crate::graph::prelude::*;
+use crate::indexer::blockchain::Blockchain as bc;
+use crate::indexer::types::BlockPtr;
+use crate::prelude::{Arc, Logger};
+use crate::store::BlockNumber;
+use futures::{Future, Stream};
+use massbit_common::prelude::{
+    anyhow::Error,
+    async_trait::async_trait,
+    ethabi::{self, Error as ABIError, Function, ParamType, Token},
+};
 use mockall::automock;
 use mockall::predicate::*;
 use std::cmp;
@@ -10,13 +23,6 @@ use std::marker::Unpin;
 use thiserror::Error;
 use tiny_keccak::keccak256;
 use web3::types::{Address, Block, Log, H256};
-
-use crate::graph::components::metrics::{CounterVec, GaugeVec, HistogramVec};
-use crate::graph::{components::ethereum::EthereumNetworkIdentifier, prelude::*};
-
-use crate::capabilities::NodeCapabilities;
-use crate::indexer::types::BlockPtr;
-use crate::{data_source::DataSource, Chain};
 
 pub type EventSignature = H256;
 pub type FunctionSelector = [u8; 4];
@@ -51,7 +57,7 @@ impl From<ABIError> for EthereumContractCallError {
         EthereumContractCallError::ABIError(e)
     }
 }
-
+/*
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
 enum LogFilterNode {
     Contract(Address),
@@ -86,7 +92,7 @@ impl fmt::Display for EthGetLogsFilter {
         }
     }
 }
-
+/*
 #[derive(Clone, Debug, Default)]
 pub struct TriggerFilter {
     pub(crate) log: EthereumLogFilter,
@@ -123,7 +129,7 @@ impl bc::TriggerFilter<Chain> for TriggerFilter {
         }
     }
 }
-
+*/
 #[derive(Clone, Debug, Default)]
 pub(crate) struct EthereumLogFilter {
     /// Log filters can be represented as a bipartite graph between contracts and events. An edge
@@ -461,7 +467,7 @@ impl EthereumBlockFilter {
         !self.contract_addresses.is_empty()
     }
 }
-
+*/
 #[derive(Clone)]
 pub struct ProviderEthRpcMetrics {
     request_duration: Box<HistogramVec>,
@@ -501,7 +507,7 @@ impl ProviderEthRpcMetrics {
         self.errors.with_label_values(vec![method].as_slice()).inc();
     }
 }
-
+/*
 #[derive(Clone)]
 pub struct SubgraphEthRpcMetrics {
     request_duration: Box<GaugeVec>,
@@ -542,7 +548,7 @@ impl SubgraphEthRpcMetrics {
         self.errors.with_label_values(vec![method].as_slice()).inc();
     }
 }
-
+*/
 /// Common trait for components that watch and manage access to Ethereum.
 ///
 /// Implementations may be implemented against an in-process Ethereum node
@@ -558,7 +564,7 @@ pub trait EthereumAdapter: Send + Sync + 'static {
     /// Ask the Ethereum node for some identifying information about the Ethereum network it is
     /// connected to.
     async fn net_identifiers(&self) -> Result<EthereumNetworkIdentifier, Error>;
-
+    /*
     /// Get the latest block, including full transactions.
     fn latest_block(
         &self,
@@ -634,7 +640,7 @@ pub trait EthereumAdapter: Send + Sync + 'static {
         logger: &Logger,
         block: &LightEthereumBlock,
     ) -> Box<dyn Future<Item = Vec<Option<Block<H256>>>, Error = Error> + Send>;
-
+    */
     /// Call the function of a smart contract.
     fn contract_call(
         &self,
@@ -643,7 +649,7 @@ pub trait EthereumAdapter: Send + Sync + 'static {
         cache: Arc<dyn EthereumCallCache>,
     ) -> Box<dyn Future<Item = Vec<Token>, Error = EthereumContractCallError> + Send>;
 }
-
+/*
 #[cfg(test)]
 mod tests {
     use super::EthereumCallFilter;
@@ -698,3 +704,4 @@ mod tests {
         );
     }
 }
+*/

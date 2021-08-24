@@ -1,6 +1,6 @@
-use crate::graph::prelude::BlockNumber;
+use crate::store::model::BlockNumber;
 
-use ethabi::LogParam;
+use massbit_common::prelude::ethabi::LogParam;
 use semver::Version;
 use slog::{o, SendSyncRefUnwindSafeKV};
 use std::convert::TryFrom;

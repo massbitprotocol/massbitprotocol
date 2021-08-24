@@ -6,11 +6,14 @@ use massbit_chain_ethereum::data_type::{
     decode, get_events, EthereumBlock, EthereumEvent, EthereumTransaction,
 };
 use massbit_runtime_wasm::chain::ethereum::{trigger::MappingTrigger, Chain};
-use massbit_runtime_wasm::indexer::manifest::{Mapping, MappingBlockHandler};
+use massbit_runtime_wasm::indexer::manifest::{Mapping, MappingBlockHandler, MappingEventHandler};
 use massbit_runtime_wasm::module::WasmInstance;
 
+use ethabi::{Address, LogParam, Token, Uint};
+use massbit_chain_ethereum::types::LightEthereumBlockExt;
+use massbit_runtime_wasm::chain::ethereum::trigger::MappingTrigger::Log;
+use std::str::FromStr;
 use std::{error::Error, sync::Arc};
-
 crate::prepare_adapter!(Ethereum, {
     handle_block: EthereumBlock,
     handle_transaction: EthereumTransaction,
@@ -25,21 +28,57 @@ impl MessageHandler for EthereumWasmHandlerProxy {
         data: &mut GenericDataProto,
     ) -> Result<(), Box<dyn Error>> {
         log::info!("{} call handle_wasm_mapping", &*COMPONENT_NAME);
-
         match DataType::from_i32(data.data_type) {
             Some(DataType::Block) => {
-                mapping.event_handlers.iter().for_each(|handler| {
-                    let block_ext: EthereumBlock = decode(&mut data.payload).unwrap();
-                    let block_handler = MappingBlockHandler {
-                        handler: handler.handler.clone(),
-                        filter: None,
-                    };
-                    let trigger = MappingTrigger::Block {
-                        block: Arc::new(block_ext.block),
-                        handler: block_handler,
-                    };
-                    wasm_instance.handle_trigger(trigger);
+                let eth_block: EthereumBlock = decode(&mut data.payload).unwrap();
+                let arc_block = Arc::new(eth_block.block);
+                let params = vec![
+                    LogParam {
+                        name: "token0".to_string(),
+                        value: Token::Address(
+                            Address::from_str("e0b7927c4af23765cb51314a0e0521a9645f0e2b").unwrap(),
+                        ),
+                    },
+                    LogParam {
+                        name: "token1".to_string(),
+                        value: Token::Address(
+                            Address::from_str("7fc66500c84a76ad7e9c93437bfc5ac33e2ddae0").unwrap(),
+                        ),
+                    },
+                    LogParam {
+                        name: "pair".to_string(),
+                        value: Token::Address(
+                            Address::from_str("7fc66500c84a76ad7e9c93437bfc5ac33e2ddbe0").unwrap(),
+                        ),
+                    },
+                    LogParam {
+                        name: "param3".to_string(),
+                        value: Token::Int(Uint::from(123)),
+                    },
+                ];
+                eth_block.logs.iter().for_each(|log| {
+                    if let Some(transaction) = arc_block.transaction_for_log(log) {
+                        let arc_log = Arc::new(log.clone());
+                        let arc_tran = Arc::new(transaction.clone());
+                        mapping.event_handlers.iter().for_each(|handler| {
+                            let trigger = MappingTrigger::Log {
+                                block: Arc::clone(&arc_block),
+                                transaction: Arc::clone(&arc_tran),
+                                log: Arc::clone(&arc_log),
+                                params: params.clone(),
+                                handler: handler.clone(),
+                            };
+                            wasm_instance.handle_trigger(trigger);
+                        });
+                    }
                 });
+
+                /*
+                let events = get_events(&eth_block);
+                for event in events {
+
+                }
+                 */
                 /*
                 for handler in mapping.block_handlers.iter() {
                     let block_ext: EthereumBlock = decode(&mut data.payload).unwrap();

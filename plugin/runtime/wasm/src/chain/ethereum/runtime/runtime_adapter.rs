@@ -1,11 +1,16 @@
 use std::{sync::Arc, time::Instant};
 
 use super::abi::{AscUnresolvedContractCall, AscUnresolvedContractCall_0_0_4};
+use crate::chain::ethereum::{
+    capabilities::NodeCapabilities, network::EthereumNetworkAdapters, EthereumAdapter,
+    EthereumAdapterTrait, EthereumContractCall, EthereumContractCallError,
+};
 use crate::graph::{
     cheap_clone::CheapClone,
     runtime::{asc_get, asc_new, AscIndexId, AscPtr, HostExportError, IndexForAscTypeId},
 };
-use crate::indexer::blockchain::{self, BlockPtr, HostFn, HostFnCtx};
+use crate::indexer::blockchain::{self, HostFn, HostFnCtx};
+
 /*
 use crate::{
     capabilities::NodeCapabilities, network::EthereumNetworkAdapters, Chain, DataSource,
@@ -13,11 +18,15 @@ use crate::{
 };
  */
 use crate::asc_abi::class::{AscEnumArray, EthereumValueKind};
-use crate::chain::ethereum::{Chain, DataSource};
+use crate::chain::ethereum::{Chain, DataSource, EthereumCallCache};
 use crate::graph;
 use crate::indexer::manifest::MappingABI;
-use anyhow::{Context, Error};
-use ethabi::{Address, Token};
+use crate::indexer::types::BlockPtr;
+use futures03::compat::Future01CompatExt;
+use massbit_common::prelude::{
+    anyhow::{Context, Error},
+    ethabi::{self, Address, Token},
+};
 use semver::Version;
 use slog::{info, trace, Logger};
 
@@ -80,7 +89,7 @@ fn ethereum_call(
         None => Ok(AscPtr::null()),
     }
 }
-/*
+
 /// Returns `Ok(None)` if the call was reverted.
 fn eth_call(
     eth_adapter: &EthereumAdapter,
@@ -196,7 +205,7 @@ fn eth_call(
 
     result
 }
-*/
+
 #[derive(Clone, Debug)]
 pub struct UnresolvedContractCall {
     pub contract_name: String,

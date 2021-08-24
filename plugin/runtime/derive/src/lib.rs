@@ -1,11 +1,9 @@
 #![recursion_limit = "128"]
 
 extern crate proc_macro;
-
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{Fields, Item, ItemEnum, ItemStruct};
-
 #[proc_macro_derive(AscType)]
 pub fn asc_type_derive(input: TokenStream) -> TokenStream {
     let item: Item = syn::parse(input).unwrap();

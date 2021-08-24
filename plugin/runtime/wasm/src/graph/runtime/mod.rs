@@ -9,7 +9,7 @@ mod asc_ptr;
 pub use asc_heap::{asc_get, asc_new, try_asc_get, AscHeap, FromAscObj, ToAscObj, TryFromAscObj};
 pub use asc_ptr::AscPtr;
 
-use anyhow::Error;
+use massbit_common::prelude::anyhow::Error;
 use semver::Version;
 use std::convert::TryInto;
 use std::fmt;

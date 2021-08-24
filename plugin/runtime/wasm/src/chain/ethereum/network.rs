@@ -1,11 +1,11 @@
-use anyhow::{anyhow, Error};
+use massbit_common::prelude::anyhow::{anyhow, Error};
 use rand::{self, seq::IteratorRandom};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-//use crate::adapter::EthereumAdapter as _;
-//use crate::capabilities::NodeCapabilities;
-//use crate::EthereumAdapter;
+use super::adapter::EthereumAdapter as _;
+use super::capabilities::NodeCapabilities;
+use super::EthereumAdapter;
 
 #[derive(Clone)]
 pub struct EthereumNetworkAdapter {
