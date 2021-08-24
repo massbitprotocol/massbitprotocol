@@ -10,14 +10,10 @@ use graph_chain_ethereum::trigger::{
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::sync::Arc;
-use web3::types::{
-    Address, Block, BlockId, BlockNumber as Web3BlockNumber, Bytes, CallRequest, Filter,
-    FilterBuilder, Log, Transaction, TransactionReceipt, H256, U256,
-};
+use web3::types::{Block, Log, Transaction, TransactionReceipt, H256, U256};
 
 use graph::blockchain::{Blockchain, DataSource as _};
 use graph::log::logger;
-use graph::prelude::Logger;
 use graph_chain_ethereum::chain::BlockFinality;
 use graph_chain_ethereum::{Chain, DataSource, MappingTrigger};
 
@@ -95,11 +91,11 @@ pub fn get_events(eth_block: &EthereumBlock, data_source: DataSource) -> Vec<Eth
 
             let params = match mapping_trigger {
                 Some(MappingTrigger::Log {
-                    block,
-                    transaction,
-                    log,
+                    block: _,
+                    transaction: _,
+                    log: _,
                     params,
-                    handler,
+                    handler: _,
                 }) => params,
                 _ => Vec::new(),
             };
