@@ -64,7 +64,7 @@ type SubgraphDeploymentAssignment @entity {
 
 type SubgraphManifest @entity {
     id: ID!
-    specVersion: String!
+    spec_version: String!
     description: String
     repository: String
     features: [String!]!

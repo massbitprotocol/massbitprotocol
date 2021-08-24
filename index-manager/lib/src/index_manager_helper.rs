@@ -38,22 +38,21 @@ pub async fn start_new_index(params: DeployParams) -> Result<(), Box<dyn Error>>
         .await
         .schema(&params.schema)
         .await
-        .abi(params.clone().abi)
+        .abi(params.abi)
         .await
-        .generate_subgraph(&params)
+        .subgraph(&params.subgraph)
         .await
         .build();
 
 
+    // Create tables for the new index and track them in hasura
+    run_ddl_gen(&index_config).await;
 
-    // // Create tables for the new index and track them in hasura
-    // run_ddl_gen(&index_config).await;
-    //
-    // // Create a new indexer so we can keep track of it's status
-    // IndexStore::insert_new_indexer(&index_config);
-    //
-    // // Start the adapter for the index
-    // adapter_init(&index_config).await;
+    // Create a new indexer so we can keep track of it's status
+    IndexStore::insert_new_indexer(&index_config);
+
+    // Start the adapter for the index
+    adapter_init(&index_config).await;
 
     Ok(())
 }

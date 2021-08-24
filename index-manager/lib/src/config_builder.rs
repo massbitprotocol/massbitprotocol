@@ -5,6 +5,7 @@
 // Generic dependencies
 use std::path::PathBuf;
 use lazy_static::lazy_static;
+use serde::Deserialize;
 
 // Massbit dependencies
 use crate::config::{
@@ -14,7 +15,7 @@ use crate::ipfs::{download_ipfs_file_by_hash, read_config_file};
 use crate::type_index::{IndexConfig, IndexIdentifier, Abi};
 use crate::type_request::{DeployAbi, DeployParams};
 use std::fs;
-use serde_yaml::Value;
+use serde_yaml::{Value};
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Read;
@@ -113,59 +114,12 @@ impl IndexConfigIpfsBuilder {
         }
     }
 
-    pub async fn generate_subgraph(mut self, params: &DeployParams) -> IndexConfigIpfsBuilder {
-        assert_eq!(
-            self.config.as_os_str().is_empty(),
-            false,
-            "Config should be provided before calling this function",
-        );
-        assert_eq!(
-            self.schema.as_os_str().is_empty(),
-            false,
-            "Schema should be provided before calling this function"
-        );
-        // assert_eq!(
-        //     self.abi.len(),
-        //     0,
-        //     "ABI should be provided before calling this function"
-        // );
-
-        // Get the config as serde mapping
-        let mut project_config_string = String::new();
-        let mut f = File::open(&self.config).expect("Unable to open file"); // Refactor: Config to download config file from IPFS instead of just reading from local
-        f.read_to_string(&mut project_config_string)
-            .expect("Unable to read string"); // Get raw query
-        let mut config_mapping: serde_yaml::Mapping = serde_yaml::from_str(&project_config_string).unwrap();
-
-
-        // Add IPFS Schema Hash to schema
-        let mut i = serde_yaml::Mapping::new();
-        let mut s = serde_yaml::Mapping::new();
-        i.insert(Value::from("/".to_string()), Value::String(["/ipfs/", &params.schema].join("")));
-        s.insert(Value::from("file".to_string()), Value::from(i));
-        config_mapping.insert(Value::from("schema"), Value::from(s));
-
-
-
-
-
-        // Add IPFS ABIs Hash to datasources and template
-        // TODO
-        let mut config_value = read_config_file(&self.config);
-        // config_mapping.insert(Value::from("test_value"),config_value["dataSources"][0]["mapping"].clone());
-
-
-
-
-
-
-
-        // Write to file with config
-        let content = serde_yaml::to_string(&config_mapping).unwrap();
-        let file_path = [GENERATED_FOLDER.as_str(), &self.hash, "subgraph.yaml"].join("/");
-        let res = fs::write(file_path.clone(), content);
-
-        self.subgraph = "".parse().unwrap();
+    pub async fn subgraph(mut self, subgraph: &String) -> IndexConfigIpfsBuilder {
+        self.subgraph = download_ipfs_file_by_hash(
+            &String::from("subgraph.yaml"),
+            &self.hash,
+            subgraph,
+        ).await;
         self
     }
 

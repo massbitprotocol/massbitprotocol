@@ -13,6 +13,7 @@ pub struct DeployParams {
     pub mapping: String,
     pub schema: String,
     pub abi: Option<Vec<DeployAbi>>,  // .SO doesn't support uploading ABIs yet, only .WASM need the ABIs
+    pub subgraph: String,
 }
 
 // User can upload multiple ABI files. So we need this object to get the abi's name and it's ipfs hash
