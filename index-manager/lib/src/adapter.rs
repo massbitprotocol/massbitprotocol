@@ -12,6 +12,7 @@ pub async fn adapter_init(index_config: &IndexConfig) -> Result<(), Box<dyn Erro
     if get_mapping_language(&config_value).to_string().contains("wasm") {
         log::info!("Handling .wasm file");
         // TODO: we have the datasource, now the handler can get the ethereum event
+
     } else {
         log::info!("Handling .so file");
         let mut adapter = AdapterManager::new();

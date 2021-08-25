@@ -224,9 +224,7 @@ async fn get_data_source(
 
     // Get raw manifest
     let file = String::from_utf8(file_bytes)
-        //.map_err(|_| SubgraphAssignmentProviderError::ResolveError)
         .unwrap();
-
     println!("File: {}", file);
 
     let raw: serde_yaml::Value = serde_yaml::from_str(&file).unwrap();
@@ -243,10 +241,8 @@ async fn get_data_source(
         serde_yaml::Value::from(id.to_string()),
     );
 
-    //println!("raw_manifest: {:#?}", &raw_manifest);
     // Parse the YAML data into an UnresolvedSubgraphManifest
     let value: Value = raw_manifest.into();
-    //println!("value: {:#?}", &value);
     let unresolved: UnresolvedSubgraphManifest<Chain> = serde_yaml::from_value(value).unwrap();
     let resolver = Arc::new(LinkResolver::from(ipfs_clients));
 
