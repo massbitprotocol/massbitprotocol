@@ -2,15 +2,15 @@ pub use super::manifest::{
     DataSource, DataSourceTemplate, UnresolvedDataSource, UnresolvedDataSourceTemplate,
 };
 use super::types::{BlockHash, BlockPtr};
-use crate::graph::runtime::{AscHeap, AscPtr, DeterministicHostError, HostExportError};
 use crate::prelude::{slog::SendSyncRefUnwindSafeKV, Logger};
-use crate::store::BlockNumber;
+//use crate::store::BlockNumber;
+use graph::runtime::{AscHeap, AscPtr, DeterministicHostError, HostExportError};
 use massbit_common::prelude::{anyhow::Error, async_trait::async_trait};
 use std::sync::Arc;
 use std::{collections::BTreeMap, fmt::Debug};
 use std::{collections::HashMap, convert::TryFrom};
 
-use crate::graph::prelude::CheapClone;
+use graph::prelude::CheapClone;
 use thiserror::Error;
 use web3::types::H256;
 

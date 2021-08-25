@@ -1,19 +1,19 @@
-use crate::asc_abi::class::*;
-use crate::graph::prelude::{BigDecimal, BigInt};
-use crate::graph::{
-    cheap_clone::CheapClone,
-    runtime::{
-        asc_get, asc_new, try_asc_get, AscHeap, AscPtr, DeterministicHostError, HostExportError,
-        IndexForAscTypeId,
-    },
-    HostMetrics,
-};
 use crate::host_exports;
-use crate::indexer::blockchain::Blockchain;
-use crate::mapping::{MappingContext, ValidModule};
-use crate::module::TimeoutStopwatch;
+use crate::mapping::MappingContext;
 use crate::prelude::{warn, Arc, Version};
 use crate::store;
+use graph::blockchain::Blockchain;
+use graph::prelude::{BigDecimal, BigInt, HostMetrics};
+use graph::{
+    prelude::CheapClone,
+    runtime::{
+        asc_get, asc_new, try_asc_get, AscHeap, AscPtr, AscValue, DeterministicHostError,
+        HostExportError, IndexForAscTypeId,
+    },
+};
+use graph_runtime_wasm::asc_abi::class::*;
+use graph_runtime_wasm::mapping::ValidModule;
+use graph_runtime_wasm::module::TimeoutStopwatch;
 use massbit_common::prelude::anyhow::{anyhow, Context};
 use never::Never;
 use std::rc::Rc;
@@ -24,6 +24,8 @@ use std::{
     time::{Duration, Instant},
 };
 use wasmtime::Memory;
+
+type AscJson = AscTypedMap<AscString, AscEnum<JsonValueKind>>;
 
 pub struct WasmInstanceContext<C: Blockchain> {
     // In the future there may be multiple memories, but currently there is only one memory per

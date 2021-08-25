@@ -1,4 +1,3 @@
-use crate::mapping::{MappingContext, ValidModule};
 use std::{
     cell::{RefCell, RefMut},
     rc::Rc,
@@ -9,34 +8,45 @@ use wasmtime::{Memory, Trap};
 pub mod context;
 pub mod into_wasm_ret;
 pub mod stopwatch;
-use crate::error::DeterminismLevel;
-use crate::graph::{
-    host::MappingError,
-    prelude::CheapClone,
-    runtime::{asc_new, AscHeap, AscPtr, DeterministicHostError, IndexForAscTypeId},
-    HostMetrics,
-};
 use crate::prelude::{error, Version};
 use crate::store;
 pub use context::WasmInstanceContext;
+use graph::{
+    blockchain::{Blockchain, HostFnCtx, MappingTrigger},
+    prelude::{CheapClone, HostMetrics, Value},
+    runtime::{
+        asc_new, AscHeap, AscPtr, DeterministicHostError, HostExportError, IndexForAscTypeId,
+    },
+};
+use graph_runtime_wasm::error::DeterminismLevel;
 pub use into_wasm_ret::IntoWasmRet;
 use massbit_common::prelude::{
     anyhow::{anyhow, Context, Error},
     serde_json,
 };
 
-use crate::graph::runtime::HostExportError;
-use crate::indexer::blockchain::{Blockchain, HostFnCtx, MappingTrigger};
-use crate::indexer::IndexerState;
+use crate::mapping::MappingContext;
+use graph::components::subgraph::MappingError;
+use graph::data::subgraph::schema::SubgraphError;
+use graph::prelude::DeploymentHash;
+use graph_runtime_wasm::module::TimeoutStopwatch;
+use graph_runtime_wasm::ValidModule;
 use std::sync::Mutex;
 use std::time::Instant;
-pub use stopwatch::TimeoutStopwatch;
 
 pub const TRAP_TIMEOUT: &str = "trap: interrupt";
 
 pub trait IntoTrap {
     fn determinism_level(&self) -> DeterminismLevel;
     fn into_trap(self) -> Trap;
+}
+impl IntoTrap for DeterministicHostError {
+    fn determinism_level(&self) -> DeterminismLevel {
+        DeterminismLevel::Deterministic
+    }
+    fn into_trap(self) -> Trap {
+        Trap::from(self.0)
+    }
 }
 /// Handle to a WASM instance, which is terminated if and only if this is dropped.
 pub struct WasmInstance<C: Blockchain> {
@@ -83,7 +93,7 @@ impl<C: Blockchain> WasmInstance<C> {
         mut self,
         handler_name: &str,
         value: &serde_json::Value,
-        user_data: &store::Value,
+        user_data: &graph::prelude::Value,
     ) -> Result<(), anyhow::Error> {
         let value = asc_new(&mut self, value)?;
         let user_data = asc_new(&mut self, user_data)?;
@@ -154,9 +164,10 @@ impl<C: Blockchain> WasmInstance<C> {
                 self.instance_ctx_mut().ctx.state.exit_handler();
                 //state.lock().unwrap().exit_handler();
                 return Err(MappingError::Unknown(Error::from(trap).context(format!(
-                    "Handler '{}' hit the timeout of '{}' seconds",
+                    "Handler '{}' hit the timeout",
+                    //"Handler '{}' hit the timeout of '{}' seconds",
                     handler,
-                    self.instance_ctx().timeout.unwrap().as_secs()
+                    //self.instance_ctx().timeout.unwrap().as_secs()
                 ))));
             }
             Err(trap) => {
@@ -192,20 +203,22 @@ impl<C: Blockchain> WasmInstance<C> {
                 "handler" => handler,
                 "error" => &message,
             );
-            /*
+
             let subgraph_error = SubgraphError {
-                subgraph_id: self.instance_ctx().ctx.host_exports.subgraph_id.clone(),
+                subgraph_id: DeploymentHash::new(
+                    self.instance_ctx().ctx.host_exports.indexer_hash.clone(),
+                )
+                .unwrap(),
                 message,
                 block_ptr: Some(self.instance_ctx().ctx.block_ptr.cheap_clone()),
                 handler: Some(handler.to_string()),
                 deterministic: true,
             };
-              */
             println!("Error {:?}", deterministic_error);
             self.instance_ctx_mut()
                 .ctx
                 .state
-                .exit_handler_and_discard_changes_due_to_error();
+                .exit_handler_and_discard_changes_due_to_error(subgraph_error);
         } else {
             self.instance_ctx_mut().ctx.state.exit_handler();
             //state.lock().unwrap().exit_handler();

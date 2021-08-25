@@ -1,5 +1,5 @@
-use crate::graph::ext::futures::FutureExtension;
 use futures03::{Future, FutureExt, TryFutureExt};
+use graph::ext::futures::FutureExtension;
 use slog::{debug, trace, warn, Logger};
 use std::fmt::Debug;
 use std::marker::PhantomData;

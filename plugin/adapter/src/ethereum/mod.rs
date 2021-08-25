@@ -1,17 +1,20 @@
 use crate::core::{AdapterError, MessageHandler};
 pub use crate::stream_mod::{DataType, GenericDataProto};
 use crate::EthereumWasmHandlerProxy;
+use ethabi::{Address, LogParam, Token, Uint};
+use graph::blockchain::DataSource as DataSourceTrait;
+use graph::components::ethereum::LightEthereumBlockExt;
+use graph::data::subgraph::Mapping;
+use graph_chain_ethereum::{
+    trigger::MappingTrigger, trigger::MappingTrigger::Log, Chain, DataSource,
+};
+//use graph_runtime_wasm::WasmInstance;
 use libloading::Library;
 use massbit_chain_ethereum::data_type::{
     decode, get_events, EthereumBlock, EthereumEvent, EthereumTransaction,
 };
-use massbit_runtime_wasm::chain::ethereum::{trigger::MappingTrigger, Chain};
-use massbit_runtime_wasm::indexer::manifest::{Mapping, MappingBlockHandler, MappingEventHandler};
-use massbit_runtime_wasm::module::WasmInstance;
-
-use ethabi::{Address, LogParam, Token, Uint};
-use massbit_chain_ethereum::types::LightEthereumBlockExt;
-use massbit_runtime_wasm::chain::ethereum::trigger::MappingTrigger::Log;
+use massbit_runtime_wasm::WasmInstance;
+//use massbit_runtime_wasm::module::WasmInstance;
 use std::str::FromStr;
 use std::{error::Error, sync::Arc};
 crate::prepare_adapter!(Ethereum, {
@@ -24,7 +27,7 @@ impl MessageHandler for EthereumWasmHandlerProxy {
     fn handle_wasm_mapping(
         &self,
         wasm_instance: &mut WasmInstance<Chain>,
-        mapping: &Mapping,
+        datasource: &DataSource,
         data: &mut GenericDataProto,
     ) -> Result<(), Box<dyn Error>> {
         log::info!("{} call handle_wasm_mapping", &*COMPONENT_NAME);
@@ -60,16 +63,20 @@ impl MessageHandler for EthereumWasmHandlerProxy {
                     if let Some(transaction) = arc_block.transaction_for_log(log) {
                         let arc_log = Arc::new(log.clone());
                         let arc_tran = Arc::new(transaction.clone());
-                        mapping.event_handlers.iter().for_each(|handler| {
-                            let trigger = MappingTrigger::Log {
-                                block: Arc::clone(&arc_block),
-                                transaction: Arc::clone(&arc_tran),
-                                log: Arc::clone(&arc_log),
-                                params: params.clone(),
-                                handler: handler.clone(),
-                            };
-                            wasm_instance.handle_trigger(trigger);
-                        });
+                        datasource
+                            .mapping()
+                            .event_handlers
+                            .iter()
+                            .for_each(|handler| {
+                                let trigger = MappingTrigger::Log {
+                                    block: Arc::clone(&arc_block),
+                                    transaction: Arc::clone(&arc_tran),
+                                    log: Arc::clone(&arc_log),
+                                    params: params.clone(),
+                                    handler: handler.clone(),
+                                };
+                                wasm_instance.handle_trigger(trigger);
+                            });
                     }
                 });
 
@@ -91,7 +98,11 @@ impl MessageHandler for EthereumWasmHandlerProxy {
                  */
             }
             Some(DataType::Event) => {
-                mapping.event_handlers.iter().for_each(|handler| {});
+                datasource
+                    .mapping()
+                    .event_handlers
+                    .iter()
+                    .for_each(|handler| {});
             }
             Some(DataType::Transaction) => {}
             _ => {}

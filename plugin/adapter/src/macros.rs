@@ -132,10 +132,15 @@ macro_rules! create_adapters {
 macro_rules! create_wasm_adapters {
     ($($adapter:ident),*) => {
         paste! {
-            use massbit_runtime_wasm::mapping::ValidModule;
-            use massbit_runtime_wasm::chain::ethereum::{trigger::MappingTrigger, Chain};
-            use massbit_runtime_wasm::indexer::manifest::{Mapping, MappingBlockHandler};
+            //use massbit_runtime_wasm::mapping::ValidModule;
+            use graph_chain_ethereum::{trigger::MappingTrigger, Chain, DataSource};
+            //use graph::data::subgraph::Mapping;
+            //use massbit_runtime_wasm::indexer::manifest::{Mapping, MappingBlockHandler};
             use massbit_runtime_wasm::module::WasmInstance;
+            use massbit_runtime_wasm::mapping::MappingContext;
+            use graph_runtime_wasm::ValidModule;
+            //use graph_runtime_wasm::{ValidModule, MappingContext, WasmInstance};
+
             $(
             pub struct [<$adapter WasmHandlerProxy>] {
                 pub wasm_module: Arc<ValidModule>,
@@ -171,13 +176,13 @@ macro_rules! create_wasm_adapters {
                 fn handle_wasm_mapping(
                     &self,
                     wasm_instance: &mut WasmInstance<Chain>,
-                    mapping: &Mapping,
+                    datasource: &DataSource,
                     message: &mut GenericDataProto
                 ) -> Result<(), Box<dyn Error>> {
                     match self {
                         $(
                         WasmHandlerProxyType::$adapter(proxy) => {
-                            proxy.handle_wasm_mapping(wasm_instance, mapping, message)
+                            proxy.handle_wasm_mapping(wasm_instance, datasource, message)
                         }
                         )*
                     }

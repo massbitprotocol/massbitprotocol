@@ -12,6 +12,7 @@ use quote::quote;
 use std::{error::Error, sync::Arc};
 pub mod bsc;
 pub mod ethereum;
+//pub mod ipfs;
 pub mod matic;
 pub mod solana;
 pub mod substrate;

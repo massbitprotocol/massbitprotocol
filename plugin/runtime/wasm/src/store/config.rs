@@ -1,5 +1,5 @@
-use crate::store::model::PRIMARY_SHARD;
-use crate::store::ShardName;
+use graph_store_postgres::PRIMARY_SHARD;
+//use crate::store::ShardName;
 use massbit_common::prelude::{
     anyhow::{anyhow, bail, Result},
     regex::Regex,

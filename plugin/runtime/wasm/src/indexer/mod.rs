@@ -1,18 +1,23 @@
 pub mod blockchain;
 pub mod manifest;
 pub mod types;
-
-use crate::graph::cheap_clone::CheapClone;
-use crate::graph::runtime::{AscHeap, AscPtr, DeterministicHostError};
 use crate::indexer::blockchain::Blockchain;
 use crate::indexer::manifest::{DataSourceTemplateInfo, Link};
 use crate::prelude::slog::SendSyncRefUnwindSafeKV;
-use crate::prelude::{impl_slog_value, Arc, Version};
+use crate::prelude::{Arc, Version};
+pub use graph::impl_slog_value;
+/*
 use crate::store::{
     Entity, EntityCache, EntityKey, ModificationsAndCache, QueryExecutionError, StoreError,
     WritableStore,
 };
-use crate::util::lfu_cache::LfuCache;
+ */
+//use crate::store::WritableStore;
+use graph::components::store::{EntityCache, EntityKey, WritableStore};
+use graph::components::subgraph::Entity;
+use graph::prelude::{CheapClone, QueryExecutionError};
+use graph::runtime::{AscHeap, AscPtr, DeterministicHostError};
+use graph::util::lfu_cache::LfuCache;
 use massbit_common::prelude::{
     anyhow::{anyhow, ensure, Error},
     lazy_static::lazy_static,
@@ -20,7 +25,6 @@ use massbit_common::prelude::{
     //Deserialize, Serialize},
     serde_yaml,
 };
-
 use slog::{debug, info, Logger};
 use stable_hash::prelude::*;
 use std::fmt;
@@ -33,7 +37,7 @@ lazy_static! {
         .and_then(|api_version_str| Version::parse(&api_version_str).ok())
         .unwrap_or(Version::new(0, 0, 4));
 }
-
+/*
 pub struct IndexerState<C: Blockchain> {
     pub entity_cache: EntityCache,
     created_data_sources: Vec<DataSourceTemplateInfo<C>>,
@@ -128,6 +132,7 @@ impl<C: Blockchain> IndexerState<C> {
         self.entity_cache.remove(key);
     }
 }
+ */
 /*
 impl<C: Blockchain> IndexerState<C> {
     pub fn flush_cache(&mut self) -> Result<(), QueryExecutionError> {

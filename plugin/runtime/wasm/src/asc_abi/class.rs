@@ -645,7 +645,7 @@ impl AscIndexId for AscBigDecimal {
 }
 
 #[repr(u32)]
-pub(crate) enum LogLevel {
+pub enum LogLevel {
     Critical,
     Error,
     Warning,

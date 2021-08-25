@@ -1,12 +1,12 @@
 use super::blockchain::Blockchain;
-use crate::graph::cheap_clone::CheapClone;
 use crate::prelude::{Arc, Logger, Version};
-use crate::store::web3_type::string_to_h256;
-use crate::store::{BlockNumber, Entity};
+//use crate::store::web3_type::string_to_h256;
+//use crate::store::{BlockNumber, Entity};
 use futures03::future::try_join;
 use futures03::stream::FuturesOrdered;
 use futures03::Stream;
 use futures03::TryStreamExt;
+use graph::prelude::CheapClone;
 use itertools::Itertools;
 use massbit_common::prelude::{
     anyhow::{self, anyhow, ensure, Error},
@@ -24,6 +24,9 @@ use massbit_common::prelude::{
 };
 use semver::VersionReq;
 
+use graph::components::store::BlockNumber;
+use graph::components::subgraph::Entity;
+use graph::util::ethereum::string_to_h256;
 use slog::info;
 use std::ops::Deref;
 use std::pin::Pin;

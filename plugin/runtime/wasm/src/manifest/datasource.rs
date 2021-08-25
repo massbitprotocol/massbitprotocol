@@ -1,21 +1,45 @@
-use super::{Mapping, MappingABI};
-use crate::chain::ethereum::Chain;
-use crate::graph::data::store::Entity;
-use crate::graph::prelude::BlockNumber;
-use crate::indexer::blockchain::{self, Blockchain};
-use crate::indexer::manifest::StoredDynamicDataSource;
-use crate::prelude::anyhow::Context;
-use crate::prelude::serde_yaml::Value;
-use crate::prelude::Error;
+//use super::{Mapping, MappingABI};
+//use crate::graph::data::store::Entity;
+//use crate::graph::prelude::BlockNumber;
+//use crate::indexer::blockchain::{self, Blockchain};
+//use crate::indexer::manifest::{DataSourceTemplateInfo, StoredDynamicDataSource};
+//use crate::prelude::anyhow::Context;
+//use crate::prelude::serde_yaml::Value;
+//use crate::prelude::Error;
+use graph::components::store::BlockNumber;
+use graph::components::subgraph::Entity;
+use graph::data::subgraph::{
+    Mapping, MappingABI, MappingBlockHandler, MappingCallHandler, MappingEventHandler, Source,
+    TemplateSource,
+};
+use graph::prelude::{ethabi::Contract, DataSourceTemplateInfo};
+use graph_chain_ethereum::Chain;
+use graph_chain_ethereum::{DataSource, DataSourceTemplate};
+use massbit_common::prelude::anyhow::Context;
+use massbit_common::prelude::ethabi::Address;
+use massbit_common::prelude::serde_derive::{Deserialize, Serialize};
+use massbit_common::prelude::serde_yaml;
+use massbit_common::prelude::serde_yaml::Value;
 use serde::de;
 use serde::de::DeserializeOwned;
-use serde_derive::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::default::Default;
 use std::str::FromStr;
-use std::{convert::TryFrom, sync::Arc};
-use web3::ethabi::Address;
+use std::sync::Arc;
+//use crate::indexer::manifest::{MappingBlockHandler, MappingEventHandler};
+use crate::prelude::Version;
 
+//use crate::indexer::manifest::DataSourceTemplateInfo;
+
+//use ethabi::Address;
 pub type DataSourceContext = Entity;
+
+pub trait FromValue<T, S> {
+    type Error;
+    fn try_from(value: &T) -> Result<S, Self::Error>;
+}
+
+/*
 #[derive(Clone, Debug, Hash, Eq, PartialEq, Deserialize)]
 pub struct Source {
     /// The contract address for the data source. We allow data sources
@@ -27,24 +51,82 @@ pub struct Source {
     #[serde(rename = "startBlock", default)]
     pub start_block: BlockNumber,
 }
-impl Source {
-    pub fn from_value(value: &serde_yaml::Value) -> Source {
+*/
+impl FromValue<serde_yaml::Value, Source> for Source {
+    type Error = anyhow::Error;
+    fn try_from(value: &serde_yaml::Value) -> Result<Source, Self::Error> {
         let address = match &value["address"] {
-            Value::String(addr) => Some(Address::from_str(addr).with_context(|| {
-                format!(
-                    "Failed to create address from value `{}`, invalid address provided",
-                    addr
-                )
-            })?),
+            Value::String(addr) => Some(
+                Address::from_str(addr.trim_start_matches("0x")).with_context(|| {
+                    format!(
+                        "Failed to create address from value `{}`, invalid address provided",
+                        addr
+                    )
+                })?,
+            ),
             _ => None,
         };
-        Source {
+        Ok(Source {
             address,
             abi: value["abi"].as_str().unwrap().to_string(),
             start_block: value["startBlock"].as_i64().unwrap() as i32,
-        }
+        })
     }
 }
+
+impl FromValue<serde_yaml::Value, MappingBlockHandler> for MappingBlockHandler {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &serde_yaml::Value) -> Result<MappingBlockHandler, Self::Error> {
+        Ok(MappingBlockHandler {
+            handler: value["handler"].as_str().unwrap().to_string(),
+            filter: None,
+        })
+    }
+}
+impl FromValue<serde_yaml::Value, MappingEventHandler> for MappingEventHandler {
+    type Error = anyhow::Error;
+
+    fn try_from(value: &serde_yaml::Value) -> Result<MappingEventHandler, Self::Error> {
+        Ok(MappingEventHandler {
+            event: value["event"].as_str().unwrap().to_string(),
+            topic0: None,
+            handler: value["handler"].as_str().unwrap().to_string(),
+        })
+    }
+}
+impl FromValue<serde_yaml::Value, Mapping> for Mapping {
+    type Error = anyhow::Error;
+    fn try_from(value: &serde_yaml::Value) -> Result<Mapping, Self::Error> {
+        let block_handlers = match value["blockHandlers"].as_sequence() {
+            Some(seqs) => seqs
+                .iter()
+                .map(|val| MappingBlockHandler::try_from(val).unwrap())
+                .collect::<Vec<MappingBlockHandler>>(),
+            _ => Vec::default(),
+        };
+        let event_handlers = match value["eventHandlers"].as_sequence() {
+            Some(seqs) => seqs
+                .iter()
+                .map(|val| MappingEventHandler::try_from(val).unwrap())
+                .collect::<Vec<MappingEventHandler>>(),
+            _ => Vec::default(),
+        };
+        Ok(Mapping {
+            kind: "".to_string(),
+            api_version: Version::new(0, 0, 4),
+            language: value["language"].as_str().unwrap().to_string(),
+            entities: vec![],
+            abis: vec![],
+            block_handlers,
+            call_handlers: vec![],
+            event_handlers,
+            runtime: Arc::new(vec![]),
+            link: Default::default(),
+        })
+    }
+}
+/*
 #[derive(Clone, Debug, Default, Hash, Eq, PartialEq, Deserialize)]
 pub struct TemplateSource {
     pub abi: String,
@@ -66,7 +148,8 @@ pub struct DataSourceTemplateInfo<C: Blockchain> {
     pub context: Option<DataSourceContext>,
     pub creation_block: BlockNumber,
 }
-
+ */
+/*
 /// Runtime representation of a data source.
 // Note: Not great for memory usage that this needs to be `Clone`, considering how there may be tens
 // of thousands of data sources in memory at once.
@@ -81,7 +164,11 @@ pub struct DataSource {
     pub creation_block: Option<BlockNumber>,
     pub contract_abi: Arc<MappingABI>,
 }
-impl DataSource {
+ */
+
+impl FromValue<serde_yaml::Value, DataSource> for DataSource {
+    type Error = anyhow::Error;
+    /*
     pub fn from_manifest(manifest: &serde_yaml::Value) -> Vec<DataSource> {
         let mut res: Vec<DataSource> = Vec::default();
         if let Some(seqs) = manifest["dataSources"].as_sequence() {
@@ -93,24 +180,99 @@ impl DataSource {
         }
         res
     }
-    pub fn from_value(value: &serde_yaml::Value) -> DataSource {
+     */
+    fn try_from(value: &serde_yaml::Value) -> Result<DataSource, Self::Error> {
         let datasource = DataSource {
             kind: value["kind"].as_str().unwrap().to_string(),
             network: None,
             name: value["name"].as_str().unwrap().to_string(),
-            source: Source::from_value(&value["source"]),
-            mapping: Mapping::from_value(&value["mapping"]),
+            source: Source::try_from(&value["source"])?,
+            mapping: Mapping::try_from(&value["mapping"])?,
             context: Arc::new(None),
             creation_block: None,
             contract_abi: Arc::new(MappingABI {
                 name: "".to_string(),
-                contract: Default::default(),
+                contract: Contract {
+                    constructor: None,
+                    functions: Default::default(),
+                    events: Default::default(),
+                    receive: false,
+                    fallback: false,
+                },
             }),
         };
-        datasource
+        Ok(datasource)
     }
 }
+impl FromValue<serde_yaml::Value, DataSourceTemplate> for DataSourceTemplate {
+    type Error = anyhow::Error;
 
+    fn try_from(value: &Value) -> Result<Self, anyhow::Error> {
+        let network = match &value["network"] {
+            Value::String(val) => Some(val.clone()),
+            _ => None,
+        };
+        //TemplateSource
+        let map: &Value = &value["source"];
+        let source = TemplateSource {
+            abi: map["abi"].as_str().unwrap_or("").to_string(),
+        };
+
+        let map = &value["mapping"];
+
+        let block_handlers = match map["blockHandlers"].as_sequence() {
+            Some(seqs) => seqs
+                .iter()
+                .map(|val| MappingBlockHandler {
+                    handler: val["handler"].as_str().unwrap().to_string(),
+                    filter: None,
+                })
+                .collect::<Vec<MappingBlockHandler>>(),
+            _ => Vec::default(),
+        };
+        let call_handlers = match map["callHandlers"].as_sequence() {
+            Some(seqs) => seqs
+                .iter()
+                .map(|val| MappingCallHandler {
+                    function: val["function"].as_str().unwrap().to_string(),
+                    handler: val["handler"].as_str().unwrap().to_string(),
+                })
+                .collect::<Vec<MappingCallHandler>>(),
+            _ => Vec::default(),
+        };
+        let event_handlers = match map["eventHandlers"].as_sequence() {
+            Some(seqs) => seqs
+                .iter()
+                .map(|val| MappingEventHandler {
+                    event: val["event"].as_str().unwrap().to_string(),
+                    topic0: None,
+                    handler: val["handler"].as_str().unwrap().to_string(),
+                })
+                .collect::<Vec<MappingEventHandler>>(),
+            _ => Vec::default(),
+        };
+        let mapping = Mapping {
+            kind: map["kind"].as_str().unwrap_or("").to_string(),
+            api_version: Version::new(0, 0, 4),
+            language: map["language"].as_str().unwrap_or("rust").to_string(),
+            entities: vec![],
+            abis: vec![],
+            block_handlers,
+            call_handlers,
+            event_handlers,
+            runtime: Arc::new(vec![]),
+            link: Default::default(),
+        };
+        Ok(DataSourceTemplate {
+            kind: value["kind"].as_str().unwrap_or("").to_string(),
+            network,
+            name: value["name"].as_str().unwrap_or("").to_string(),
+            source,
+            mapping,
+        })
+    }
+}
+/*
 impl TryFrom<DataSourceTemplateInfo<Chain>> for DataSource {
     type Error = anyhow::Error;
 
@@ -161,6 +323,8 @@ impl TryFrom<DataSourceTemplateInfo<Chain>> for DataSource {
         })
     }
 }
+*/
+/*
 impl blockchain::DataSource<Chain> for DataSource {
     fn mapping(&self) -> &crate::indexer::manifest::Mapping {
         todo!()
@@ -220,6 +384,7 @@ impl blockchain::DataSource<Chain> for DataSource {
         todo!()
     }
 }
+ */
 /// Deserialize an Address (with or without '0x' prefix).
 fn deserialize_address<'de, D>(deserializer: D) -> Result<Option<Address>, D::Error>
 where

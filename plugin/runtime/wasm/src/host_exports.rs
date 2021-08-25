@@ -13,28 +13,50 @@ use slog::{b, info, record_static, trace};
 use wasmtime::Trap;
 use web3::types::H160;
 
-use crate::asc_abi::class::{AscEnumArray, EthereumValueKind};
-use crate::chain::ethereum::runtime::abi::{
-    AscUnresolvedContractCall, AscUnresolvedContractCall_0_0_4,
+//use crate::asc_abi::class::{AscEnumArray, EthereumValueKind};
+//use crate::chain::ethereum::runtime::abi::{
+//    AscUnresolvedContractCall, AscUnresolvedContractCall_0_0_4,
+//};
+use graph::prelude::{
+    BigDecimal, BigInt, BlockNumber, CheapClone, DataSourceTemplateInfo, StopwatchMetrics, Value,
+};
+use graph::runtime::{asc_get, asc_new, AscPtr, DeterministicHostError, HostExportError};
+use graph_chain_ethereum::{
+    runtime::{
+        abi::{AscUnresolvedContractCall, AscUnresolvedContractCall_0_0_4},
+        runtime_adapter::UnresolvedContractCall,
+    },
+    DataSource,
+};
+use graph_runtime_wasm::{
+    asc_abi::class::{AscEnumArray, EthereumValueKind},
+    error::DeterminismLevel,
 };
 //use crate::chain::ethereum::EthereumContractCallError;
-use crate::chain::ethereum::data_source::DataSource;
-use crate::chain::ethereum::runtime::runtime_adapter::UnresolvedContractCall;
-use crate::error::DeterminismLevel;
+/*
+use crate::chain::ethereum::{
+    data_source::DataSource,
+    runtime::runtime_adapter::UnresolvedContractCall;
+ */
+/*
 use crate::graph::cheap_clone::CheapClone;
 use crate::graph::components::metrics::stopwatch::StopwatchMetrics;
 use crate::graph::runtime::{asc_get, asc_new, AscPtr, DeterministicHostError, HostExportError};
-use crate::indexer::blockchain::{Blockchain, DataSourceTemplate, HostFn, HostFnCtx};
-use crate::indexer::manifest::{
-    DataSource as DataSourceTrait, DataSourceContext, DataSourceTemplateInfo, MappingABI,
-};
-use crate::indexer::types::BlockPtr;
-use crate::indexer::IndexerState;
-use crate::module::IntoTrap;
+ */
 use crate::prelude::{slog::warn, Arc, Logger, Version};
-use crate::store::scalar::{BigDecimal, BigInt};
-use crate::store::{model::BlockNumber, Entity, EntityKey, EntityType, Value};
+use graph::blockchain::{
+    Blockchain, DataSource as DataSourceTrait, DataSourceTemplate, HostFn, HostFnCtx,
+};
+use graph::prelude::BlockPtr;
+//use crate::store::scalar::{BigDecimal, BigInt};
+//use crate::store::{model::BlockNumber, Entity, EntityKey, EntityType, Value};
 
+use crate::manifest::datasource::DataSourceContext;
+use graph::components::store::{EntityKey, EntityType};
+use graph::components::subgraph::{BlockState, Entity};
+use graph::data::subgraph::DeploymentHash;
+//use graph_runtime_wasm::module::IntoTrap;
+use crate::module::IntoTrap;
 use std::sync::Mutex;
 use std::time::Instant;
 
@@ -56,7 +78,7 @@ impl IntoTrap for HostExportError {
 }
 
 pub struct HostExports<C: Blockchain> {
-    pub indexer_id: String,
+    pub indexer_hash: String,
     pub api_version: Version,
     data_source_name: String,
     data_source_address: Vec<u8>,
@@ -67,14 +89,14 @@ pub struct HostExports<C: Blockchain> {
 
 impl<C: Blockchain> HostExports<C> {
     pub fn new(
-        indexer_id: &str,
+        indexer_hash: &str,
         data_source: &impl DataSourceTrait<C>,
         data_source_network: String,
         templates: Arc<Vec<C::DataSourceTemplate>>,
         api_version: Version,
     ) -> Self {
         Self {
-            indexer_id: String::from(indexer_id),
+            indexer_hash: String::from(indexer_hash),
             api_version: api_version.clone(),
             data_source_name: data_source.name().to_owned(),
             data_source_address: data_source.address().unwrap_or_default().to_owned(),
@@ -107,31 +129,30 @@ impl<C: Blockchain> HostExports<C> {
             _ => unreachable!(),
         };
         Err(DeterministicHostError(anyhow::anyhow!(
-            "Mapping aborted at {}, with {}",
-            location,
+            "Mapping aborted, with {}",
             message
         )))
     }
 
     pub(crate) fn store_get(
         &self,
-        state: &mut IndexerState<C>,
+        state: &mut BlockState<C>,
         entity_type: String,
         entity_id: String,
     ) -> Result<Option<Entity>, anyhow::Error> {
         let store_key = EntityKey {
-            indexer_id: self.indexer_id.clone(),
+            subgraph_id: DeploymentHash::new("_indexer").unwrap(),
             entity_type: EntityType::new(entity_type.clone()),
             entity_id: entity_id.clone(),
         };
-        let entity = state.get_entity(&store_key)?;
-        Ok(entity)
+        //let entity = state.get_entity(&store_key)?;
+        Ok(state.entity_cache.get(&store_key)?)
     }
 
     pub(crate) fn store_set(
         &self,
         logger: &Logger,
-        state: &mut IndexerState<C>,
+        state: &mut BlockState<C>,
         //proof_of_indexing: &SharedProofOfIndexing,
         entity_type: String,
         entity_id: String,
@@ -172,7 +193,7 @@ impl<C: Blockchain> HostExports<C> {
         id_insert_section.end();
         let validation_section = stopwatch.start_section("host_export_store_set__validation");
         let key = EntityKey {
-            indexer_id: self.indexer_id.clone(),
+            subgraph_id: DeploymentHash::new("_indexer").unwrap(),
             entity_type: EntityType::new(entity_type),
             entity_id,
         };
@@ -180,7 +201,8 @@ impl<C: Blockchain> HostExports<C> {
         //Todo:: validate entity
         //let schema = self.store.input_schema(&self.subgraph_id)?;
         //let is_valid = validate_entity(&schema.document, &key, &entity).is_ok();
-        state.set_entity(key.clone(), entity);
+        //state.set_entity(key.clone(), entity);
+        state.entity_cache.set(key.clone(), entity);
         validation_section.end();
         // Validate the changes against the subgraph schema.
         // If the set of fields we have is already valid, avoid hitting the DB.
@@ -201,7 +223,7 @@ impl<C: Blockchain> HostExports<C> {
     pub(crate) fn store_remove(
         &self,
         logger: &Logger,
-        state: &mut IndexerState<C>,
+        state: &mut BlockState<C>,
         //proof_of_indexing: &SharedProofOfIndexing,
         entity_type: String,
         entity_id: String,
@@ -220,11 +242,11 @@ impl<C: Blockchain> HostExports<C> {
         }
          */
         let key = EntityKey {
-            indexer_id: self.indexer_id.clone(),
+            subgraph_id: DeploymentHash::new(self.indexer_hash.to_string()).unwrap(),
             entity_type: EntityType::new(entity_type),
             entity_id,
         };
-        state.remove_entity(key);
+        state.entity_cache.remove(key);
 
         Ok(())
     }
@@ -450,7 +472,7 @@ impl<C: Blockchain> HostExports<C> {
     pub(crate) fn data_source_create(
         &self,
         logger: &Logger,
-        state: &mut IndexerState<C>,
+        state: &mut BlockState<C>,
         name: String,
         params: Vec<String>,
         context: Option<DataSourceContext>,
@@ -602,7 +624,7 @@ fn ethereum_call(
     } else {
         asc_get::<_, AscUnresolvedContractCall, _>(ctx.heap, wasm_ptr.into())?
     };
-    //println!("Ethereum call: {:?}", &call);
+    println!("Ethereum call: {:?}", &call);
     let tokens = match call.function_name.as_str() {
         "name" => vec![Token::String("name".to_string())],
         "symbol" => vec![Token::String("F0X".to_string())],

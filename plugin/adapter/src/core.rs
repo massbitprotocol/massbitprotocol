@@ -1,50 +1,50 @@
+//use super::ipfs::create_ipfs_clients;
 use crate::setting::*;
 pub use crate::stream_mod::{
     streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
 };
 pub use crate::{HandlerProxyType, PluginRegistrar, WasmHandlerProxyType};
 use futures::future;
+use graph::components::metrics::stopwatch::StopwatchMetrics;
+use graph::prelude::{
+    DeploymentHash, HostMetrics, LinkResolver as LinkResolverTrait, MetricsRegistry,
+};
+
+use graph::blockchain::{BlockHash, BlockPtr, DataSource as _};
+use graph::blockchain::{
+    DataSource as DataSourceTrait, HostFn, RuntimeAdapter as RuntimeAdapterTrait,
+};
+use graph::components::store::{ModificationsAndCache, StoreError, WritableStore};
+use graph::components::subgraph::BlockState;
+use graph::data::subgraph::{Mapping, TemplateSource};
+use graph::prelude::CheapClone;
+use graph::util::lfu_cache::LfuCache;
+use graph_chain_ethereum::Chain;
+use graph_chain_ethereum::{trigger::MappingTrigger, DataSource, DataSourceTemplate};
+use graph_core::LinkResolver;
+//use graph_runtime_wasm::{ExperimentalFeatures, HostExports, MappingContext};
+use graph_runtime_wasm::ValidModule;
 use index_store::core::Store;
 use lazy_static::lazy_static;
 use libloading::Library;
-use massbit_runtime_wasm::chain::ethereum::Chain;
-use massbit_runtime_wasm::graph::components::metrics::stopwatch::StopwatchMetrics;
-use massbit_runtime_wasm::graph::HostMetrics;
-use massbit_runtime_wasm::host_exports::{create_mock_ethereum_call, HostExports};
-use massbit_runtime_wasm::indexer::manifest::{Mapping, MappingBlockHandler};
-use massbit_runtime_wasm::indexer::types::BlockPtr;
-use massbit_runtime_wasm::indexer::{manifest, IndexerState};
-use massbit_runtime_wasm::store::{EntityCache, ModificationsAndCache, PostgresIndexStore};
-//use massbit_runtime_wasm::manifest::{DataSource, DataSourceTemplate, Mapping, TemplateSource};
-//use massbit_chain_ethereum::data_type::{decode, EthereumBlock, EthereumTransaction};
 use massbit_chain_solana::data_type::{
     convert_solana_encoded_block_to_solana_block, decode as solana_decode, SolanaEncodedBlock,
     SolanaLogMessages, SolanaTransaction,
 };
 use massbit_common::prelude::anyhow::{self, Context};
-use massbit_runtime_wasm::chain::ethereum::data_source::{DataSource, DataSourceTemplate};
-use massbit_runtime_wasm::chain::ethereum::network::EthereumNetworkAdapters;
-use massbit_runtime_wasm::chain::ethereum::runtime::runtime_adapter::RuntimeAdapter;
-use massbit_runtime_wasm::chain::ethereum::trigger::MappingTrigger;
-use massbit_runtime_wasm::graph::cheap_clone::CheapClone;
-use massbit_runtime_wasm::indexer::blockchain::{
-    DataSource as DataSourceTrait, HostFn, RuntimeAdapter as RuntimeAdapterTrait,
-};
-use massbit_runtime_wasm::indexer::manifest::TemplateSource;
-use massbit_runtime_wasm::mapping::{MappingContext, ValidModule};
+use massbit_runtime_wasm::ethereum_call::create_mock_ethereum_call;
+use massbit_runtime_wasm::manifest::datasource::*;
+use massbit_runtime_wasm::mapping::FromFile;
 use massbit_runtime_wasm::mock::MockMetricsRegistry;
-use massbit_runtime_wasm::module::WasmInstance;
-//use massbit_runtime_wasm::prelude::serde::__private::TryFrom;
-use massbit_common::prelude::serde::__private::TryFrom;
 use massbit_runtime_wasm::prelude::{Logger, Version};
-use massbit_runtime_wasm::store::{
-    error::QueryExecutionError, Entity, EntityKey, EntityType, StoreError, WritableStore,
-};
-use massbit_runtime_wasm::util::lfu_cache::LfuCache;
+use massbit_runtime_wasm::store::postgres::store_builder::*;
+use massbit_runtime_wasm::store::{PostgresIndexStore, SubgraphStore};
 use massbit_runtime_wasm::{slog, store};
+use massbit_runtime_wasm::{HostExports, MappingContext, WasmInstance};
 use serde_yaml::Value;
 use slog::o;
 use std::collections::BTreeMap;
+use std::path::Path;
 use std::sync::Mutex;
 use std::time::Instant;
 use std::{
@@ -58,8 +58,11 @@ const API_VERSION_0_0_5: Version = Version::new(0, 0, 5);
 lazy_static! {
     static ref CHAIN_READER_URL: String =
         env::var("CHAIN_READER_URL").unwrap_or(String::from("http://127.0.0.1:50051"));
+    static ref IPFS_ADDRESS: String =
+        env::var("IPFS_ADDRESS").unwrap_or(String::from("0.0.0.0:5001"));
     static ref DATABASE_CONNECTION_STRING: String = env::var("DATABASE_CONNECTION_STRING")
         .unwrap_or(String::from("postgres://graph-node:let-me-in@localhost"));
+    static ref GENERATED_FOLDER: String = String::from("index-manager/generated/");
     static ref COMPONENT_NAME: String = String::from("[Adapter-Manager]");
 }
 #[global_allocator]
@@ -138,6 +141,7 @@ impl AdapterManager {
         hash: &String,
         config: &Value,
         mapping: &PathBuf,
+        schema: &PathBuf,
     ) -> Result<(), Box<dyn Error>> {
         let data_sources = match config["dataSources"].as_sequence() {
             Some(seqs) => seqs
@@ -198,8 +202,15 @@ impl AdapterManager {
                 );
                 match datasource.mapping.language.as_str() {
                     "wasm/assemblyscript" => {
-                        self.handle_wasm_mapping(hash, datasource, templates, mapping, &mut stream)
-                            .await
+                        self.handle_wasm_mapping(
+                            hash,
+                            datasource,
+                            templates,
+                            mapping,
+                            schema,
+                            &mut stream,
+                        )
+                        .await
                     }
                     //Default use rust
                     _ => {
@@ -211,12 +222,13 @@ impl AdapterManager {
             _ => Ok(()),
         }
     }
-    async fn handle_wasm_mapping<P: AsRef<OsStr>>(
+    async fn handle_wasm_mapping<P: AsRef<Path>>(
         &mut self,
         indexer_hash: &String,
         datasource: &DataSource,
         templates: Arc<Vec<DataSourceTemplate>>,
         mapping_path: P,
+        schema_path: P,
         stream: &mut Streaming<GenericDataProto>,
     ) -> Result<(), Box<dyn Error>> {
         log::info!("Load wasm file from {:?}", mapping_path.as_ref());
@@ -226,7 +238,20 @@ impl AdapterManager {
             mapping_path.as_ref(),
             &valid_module.import_name_to_modules
         );
-        let store = Arc::new(PostgresIndexStore::new(DATABASE_CONNECTION_STRING.as_str()).await);
+        let store = Arc::new(create_store(
+            indexer_hash.as_str(),
+            DATABASE_CONNECTION_STRING.as_str(),
+            &schema_path,
+        ));
+        let registry = Arc::new(MockMetricsRegistry::new());
+        // Try to create IPFS clients for each URL specified in `--ipfs`
+        //let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
+        //let ipfs_clients = create_ipfs_clients(&ipfs_addresses);
+
+        // Convert the clients into a link resolver. Since we want to get past
+        // possible temporary DNS failures, make the resolver retry
+        //let link_resolver = Arc::new(LinkResolver::from(ipfs_clients));
+        //let store = Arc::new(PostgresIndexStore::new(DATABASE_CONNECTION_STRING.as_str()).await);
         /*
         let start = Instant::now();
         let clone_store = Arc::clone(&store);
@@ -260,9 +285,12 @@ impl AdapterManager {
         wasm_adapter
             .handler_proxies
             .insert(adapter_name.clone(), Arc::clone(&handler_proxy));
-        let mapping: &Mapping = datasource.mapping();
         while let Some(mut data) = stream.message().await? {
             let data_type = DataType::from_i32(data.data_type).unwrap();
+            let block_ptr_to = BlockPtr {
+                hash: BlockHash(data.block_hash.as_bytes().into()),
+                number: data.block_number as i32,
+            };
             log::info!(
                 "{} Chain {:?} received data block = {:?}, hash = {:?}, data type = {:?}",
                 &*COMPONENT_NAME,
@@ -281,6 +309,8 @@ impl AdapterManager {
                     store.clone(),
                     //valid_module.cheap_clone(),
                     Arc::clone(&valid_module),
+                    registry.clone(),
+                    //link_resolver.clone(),
                 )
                 .unwrap();
             log::info!(
@@ -288,10 +318,9 @@ impl AdapterManager {
                 &*COMPONENT_NAME,
                 start.elapsed()
             );
-
             let clone_proxy = Arc::clone(&handler_proxy);
             if let Some(proxy) = &*clone_proxy {
-                match proxy.handle_wasm_mapping(&mut wasm_instance, mapping, &mut data) {
+                match proxy.handle_wasm_mapping(&mut wasm_instance, datasource, &mut data) {
                     Err(err) => {
                         log::error!("{} Error while handle received message", err);
                     }
@@ -300,16 +329,35 @@ impl AdapterManager {
                 //let ref_mut = wasm_instance.instance_ctx.borrow_mut();
                 //let mut instance_ctx = ref_mut.as_ref().unwrap().ctx.state;
                 let state = wasm_instance.take_ctx().ctx.state;
+
                 let ModificationsAndCache {
                     modifications: mods,
+                    data_sources,
                     entity_lfu_cache: cache,
-                } = state
-                    .entity_cache
-                    .as_modifications()
-                    .map_err(|e| StoreError::Unknown(e.into()))?;
+                } = state.entity_cache.as_modifications().map_err(|e| {
+                    println!("Error {:?}", e);
+                    StoreError::Unknown(e.into())
+                })?;
+                println!("Finish mapping");
+                mods.iter().for_each(|entity| {
+                    println!("Entitiy {:?}", entity);
+                });
                 // Transact entity modifications into the store
-                let started = Instant::now();
-                store.transact_block_operations(mods);
+                if mods.len() > 0 {
+                    let started = Instant::now();
+                    let stopwatch = StopwatchMetrics::new(
+                        Logger::root(slog::Discard, o!()),
+                        DeploymentHash::new(indexer_hash.clone())?,
+                        registry.clone(),
+                    );
+                    store.transact_block_operations(
+                        block_ptr_to,
+                        mods,
+                        stopwatch,
+                        data_sources,
+                        vec![],
+                    );
+                }
                 //.map(move |_| {
                 //    metrics.transaction.update_duration(started.elapsed());
                 //    block_ptr
@@ -343,16 +391,17 @@ impl AdapterManager {
         templates: Arc<Vec<DataSourceTemplate>>,
         store: Arc<dyn WritableStore>,
         valid_module: Arc<ValidModule>,
+        registry: Arc<MockMetricsRegistry>,
+        //link_resolver: Arc<dyn LinkResolverTrait>,
     ) -> Result<WasmInstance<Chain>, anyhow::Error> {
         let api_version = API_VERSION_0_0_4.clone();
-        let metrics_registry = Arc::new(MockMetricsRegistry::new());
         let stopwatch_metrics = StopwatchMetrics::new(
             Logger::root(slog::Discard, o!()),
-            indexer_hash.clone(),
-            metrics_registry.clone(),
+            DeploymentHash::new("_indexer").unwrap(),
+            registry.clone(),
         );
         let host_metrics = Arc::new(HostMetrics::new(
-            metrics_registry,
+            registry.clone(),
             indexer_hash.as_str(),
             stopwatch_metrics,
         ));
@@ -378,15 +427,28 @@ impl AdapterManager {
             },
         }];
         */
-        let network = datasource.network.clone().unwrap();
+        let network = match &datasource.network {
+            None => String::from("ethereum"),
+            Some(val) => val.clone(),
+        };
+        /*
+        //graph HostExports
+        let host_exports = HostExports::new(
+            DeploymentHash::new(indexer_hash.clone()).unwrap(),
+            datasource,
+            network,
+            Arc::clone(&templates),
+            link_resolver,
+            //Arc::new(graph_core::LinkResolver::from(IpfsClient::localhost())),
+            Arc::new(SubgraphStore::new()),
+        );
+         */
         let host_exports = HostExports::new(
             indexer_hash.as_str(),
             datasource,
             network,
             Arc::clone(&templates),
             api_version,
-            //Arc::new(graph_core::LinkResolver::from(IpfsClient::localhost())),
-            //store,
         );
         //let store = store::IndexStore::new();
         //check if wasm module use import ethereum.call
@@ -412,9 +474,8 @@ impl AdapterManager {
                 number: datasource.source.start_block,
             },
             host_exports: Arc::new(host_exports),
-            state: IndexerState::new(store, Default::default()),
-
-            //state: BlockState::new(store.writable(&deployment).unwrap(), Default::default()),
+            //state: IndexerState::new(store, Default::default()),
+            state: BlockState::new(store, Default::default()),
             //proof_of_indexing: None,
             host_fns: Arc::new(host_fns),
         };
@@ -425,7 +486,9 @@ impl AdapterManager {
             context,
             host_metrics,
             timeout,
-            //experimental_features,
+            //ExperimentalFeatures {
+            //    allow_non_deterministic_ipfs: false,
+            //},
         )
     }
     async fn handle_rust_mapping<P: AsRef<OsStr>>(
@@ -435,7 +498,13 @@ impl AdapterManager {
         mapping_path: P,
         stream: &mut Streaming<GenericDataProto>,
     ) -> Result<(), Box<dyn Error>> {
-        let store = PostgresIndexStore::new(DATABASE_CONNECTION_STRING.as_str()).await;
+        //let store = PostgresIndexStore::new(DATABASE_CONNECTION_STRING.as_str()).await;
+        let empty_path = PathBuf::new();
+        let store = create_store(
+            indexer_hash.as_str(),
+            DATABASE_CONNECTION_STRING.as_str(),
+            &empty_path,
+        );
         self.store = Some(store);
         unsafe {
             match self.load(indexer_hash, mapping_path).await {
@@ -520,7 +589,7 @@ pub trait MessageHandler {
     fn handle_wasm_mapping(
         &self,
         wasm_instance: &mut WasmInstance<Chain>,
-        mapping: &Mapping,
+        datasource: &DataSource,
         message: &mut GenericDataProto,
     ) -> Result<(), Box<dyn Error>> {
         Ok(())

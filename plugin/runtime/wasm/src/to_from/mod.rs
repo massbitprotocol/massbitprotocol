@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::iter::FromIterator;
 
-use crate::graph::runtime::{
+use graph::runtime::{
     asc_get, asc_new, try_asc_get, AscHeap, AscIndexId, AscPtr, AscType, AscValue,
     DeterministicHostError, FromAscObj, ToAscObj, TryFromAscObj,
 };

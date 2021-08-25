@@ -1,5 +1,5 @@
-use crate::graph::components::metrics::{Collector, Counter, Gauge, Opts, PrometheusError};
-use crate::graph::prelude::MetricsRegistry as MetricsRegistryTrait;
+use graph::components::metrics::{Collector, Counter, Gauge, Opts, PrometheusError};
+use graph::prelude::MetricsRegistry as MetricsRegistryTrait;
 
 use std::collections::HashMap;
 

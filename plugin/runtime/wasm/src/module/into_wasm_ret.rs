@@ -1,4 +1,4 @@
-use crate::graph::runtime::AscPtr;
+use graph::runtime::AscPtr;
 use never::Never;
 use wasmtime::Trap;
 

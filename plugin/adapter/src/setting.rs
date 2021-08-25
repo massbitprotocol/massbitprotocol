@@ -6,7 +6,7 @@
 use serde_yaml::Value;
 // Massbit dependencies
 use crate::stream_mod::ChainType;
-use massbit_runtime_wasm::chain::ethereum::data_source::DataSource;
+use graph_chain_ethereum::DataSource;
 
 //use massbit_runtime_wasm::chain::ethereum::data_source::DataSource;
 /*

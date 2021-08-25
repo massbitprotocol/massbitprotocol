@@ -1,7 +1,6 @@
-use super::model::{Entity, EntityKey, EntityModification, EntityOp, EntityOperation, EntityType};
+//use super::model::{Entity, EntityKey, EntityModification, EntityOp, EntityOperation, EntityType};
 use super::{QueryExecutionError, WritableStore};
-use crate::util::cache_weight::CacheWeight;
-use crate::util::lfu_cache::LfuCache;
+use graph::util::{cache_weight::CacheWeight, lfu_cache::LfuCache};
 
 use crate::prelude::Arc;
 use massbit_common::prelude::serde::__private::fmt::Debug;

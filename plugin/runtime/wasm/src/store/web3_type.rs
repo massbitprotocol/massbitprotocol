@@ -1,6 +1,6 @@
 use super::model::{ToEntityId, Value};
 use crate::prelude::*;
-use crate::store::scalar;
+//use crate::store::scalar;
 use massbit_common::prelude::anyhow::{anyhow, Error};
 use std::convert::TryFrom;
 use std::str::FromStr;

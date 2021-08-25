@@ -9,7 +9,7 @@ use std::path::PathBuf;
 const QUICKSWAP_PATH: &str = r#"/home/viettai/Massbit/QuickSwap-subgraph"#;
 const WASM_FILE: &str = r#"build/Factory/Factory.wasm"#;
 const MANIFEST: &str = r#"subgraph.yaml"#;
-
+const SCHEMA: &str = r#"schema.graphql"#;
 use log::{debug, info, warn, Level};
 
 use std::rc::Rc;
@@ -23,12 +23,14 @@ pub async fn adapter_init(index_config: &IndexConfig) -> Result<(), Box<dyn Erro
     let config_value = read_config_file(&config_path);
     log::info!("Load library from {:?}", &index_config.mapping);
     let runtime_path = PathBuf::from(format!("{}/{}", QUICKSWAP_PATH, WASM_FILE).as_str());
+    let schema_path = PathBuf::from(format!("{}/{}", QUICKSWAP_PATH, SCHEMA).as_str());
     let mut adapter = AdapterManager::new();
     adapter
         .init(
             &index_config.identifier.name_with_hash,
             &config_value,
             &runtime_path,
+            &schema_path,
             //&index_config.mapping,
         )
         .await;

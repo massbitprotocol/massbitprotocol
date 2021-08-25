@@ -1,26 +1,48 @@
-use crate::graph::prelude::CheapClone;
-use crate::graph::runtime::AscHeap;
 use crate::host_exports::HostExports;
-use crate::indexer::blockchain::{Blockchain, HostFn};
-use crate::indexer::types::BlockPtr;
-use crate::indexer::IndexerState;
-use crate::prelude::Logger;
+use graph::blockchain::{Blockchain, HostFn, HostFnCtx};
+use graph::components::subgraph::BlockState;
+use graph::prelude::{BlockPtr, CheapClone, Logger};
+use graph::runtime::AscHeap;
+use graph_runtime_wasm::ValidModule;
+use massbit_common::prelude::anyhow;
+use massbit_common::prelude::anyhow::Error;
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
-pub struct MappingRequest<C: Blockchain> {
-    pub(crate) ctx: MappingContext<C>,
-    pub(crate) trigger: C::MappingTrigger,
-    //pub(crate) result_sender: Sender<Result<BlockState<C>, MappingError>>,
+pub trait FromFile {
+    fn from_file(file_path: impl AsRef<Path>) -> Result<ValidModule, anyhow::Error>;
+}
+impl FromFile for ValidModule {
+    fn from_file(file_path: impl AsRef<Path>) -> Result<ValidModule, Error> {
+        let engine = create_wasm_engine()?;
+        let module = wasmtime::Module::from_file(&engine, file_path)?;
+
+        let mut import_name_to_modules: BTreeMap<String, Vec<String>> = BTreeMap::new();
+
+        // Unwrap: Module linking is disabled.
+        for (name, module) in module
+            .imports()
+            .map(|import| (import.name().unwrap(), import.module()))
+        {
+            import_name_to_modules
+                .entry(name.to_string())
+                .or_default()
+                .push(module.to_string());
+        }
+
+        Ok(ValidModule {
+            module,
+            import_name_to_modules,
+        })
+    }
 }
 
 pub struct MappingContext<C: Blockchain> {
     pub logger: Logger,
     pub host_exports: Arc<HostExports<C>>,
     pub block_ptr: BlockPtr,
-    pub state: IndexerState<C>,
-    //pub proof_of_indexing: SharedProofOfIndexing,
+    pub state: BlockState<C>,
     pub host_fns: Arc<Vec<HostFn>>,
 }
 
@@ -29,14 +51,23 @@ impl<C: Blockchain> MappingContext<C> {
         MappingContext {
             logger: self.logger.cheap_clone(),
             host_exports: self.host_exports.cheap_clone(),
-            state: IndexerState::new(self.state.entity_cache.store.clone(), Default::default()),
+            //state: IndexerState::new(self.state.entity_cache.store.clone(), Default::default()),
             block_ptr: self.block_ptr.cheap_clone(),
-            //state: BlockState::new(self.state.entity_cache.store.clone(), Default::default()),
+            state: BlockState::new(self.state.entity_cache.store.clone(), Default::default()),
             //proof_of_indexing: self.proof_of_indexing.cheap_clone(),
             host_fns: self.host_fns.cheap_clone(),
         }
     }
 }
+
+/*
+pub struct MappingRequest<C: Blockchain> {
+    pub(crate) ctx: MappingContext<C>,
+    pub(crate) trigger: C::MappingTrigger,
+    //pub(crate) result_sender: Sender<Result<BlockState<C>, MappingError>>,
+}
+
+
 /// A pre-processed and valid WASM module, ready to be started as a WasmModule.
 pub struct ValidModule {
     pub module: wasmtime::Module,
@@ -99,7 +130,8 @@ impl ValidModule {
         })
     }
 }
-fn create_engine() -> Result<wasmtime::Engine, anyhow::Error> {
+*/
+fn create_wasm_engine() -> Result<wasmtime::Engine, anyhow::Error> {
     // We currently use Cranelift as a compilation engine. Cranelift is an optimizing compiler,
     // but that should not cause determinism issues since it adheres to the Wasm spec. Still we
     // turn off optional optimizations to be conservative.
