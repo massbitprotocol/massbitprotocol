@@ -143,6 +143,11 @@ def generate_new_config(project, schema_res, abi_res, config):
                     object = {'name': name, 'file': {'/': '/ipfs/' + abi_object["hash"]}}
                     dictionary['templates'][0]['mapping']['abis'][i] = object
 
+    # Remove .ts file in Link
+    del dictionary['templates'][0]['mapping']['file']
+    if 'templates' in dictionary:
+        del dictionary['templates'][0]['mapping']['file']
+
     # Write the new config to local
     file = open(config, "w")
     yaml.safe_dump(dictionary, file)
