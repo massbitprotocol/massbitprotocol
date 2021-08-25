@@ -1,8 +1,10 @@
 use anyhow::{Context, Error};
-use chain_reader::ethereum_chain::{get_logs, get_receipts};
-use chain_reader::Transport;
 use futures::future;
 use futures::prelude::*;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+
+// The graph
 use graph::blockchain::types::BlockPtr;
 use graph::blockchain::{BlockHash, HostFnCtx};
 use graph::cheap_clone::CheapClone;
@@ -19,14 +21,11 @@ use graph_chain_ethereum::runtime::abi::{
     AscUnresolvedContractCall, AscUnresolvedContractCall_0_0_4,
 };
 use graph_chain_ethereum::runtime::runtime_adapter::UnresolvedContractCall;
-use graph_chain_ethereum::{EthereumContractCall, EthereumContractCallError};
+use graph_chain_ethereum::{EthereumContractCall, EthereumContractCallError, Transport};
 use graph_runtime_wasm::asc_abi::class::{AscEnumArray, EthereumValueKind};
-use std::collections::HashMap;
-use std::str::FromStr;
-use std::sync::{Arc, Mutex};
+
+// Web3
 use std::time::Instant;
-use substrate_api_client::sp_runtime::traits::CheckedConversion;
-use thiserror::Error;
 use web3::api::Web3;
 use web3::types::{
     Address, Block, BlockId, BlockNumber as Web3BlockNumber, Bytes, CallRequest, Filter,
@@ -522,105 +521,4 @@ fn eth_call(
              format!("{}ms", start_time.elapsed().as_millis()));
 
     result
-}
-
-#[tokio::main]
-async fn main() {
-    env_logger::init();
-
-    let is_ws = false;
-
-    // let url_ws = "wss://main-light.eth.linkpool.io/ws";
-    //let url_ws = "wss://bsc-ws-node.nariox.org:443";
-    let url_ws = "wss://rpc-mainnet.matic.network";
-
-    // let url_http =  "https://main-light.eth.linkpool.io";
-    //let url_http = "https://bsc-dataseed.binance.org";
-    let url_http = "https://rpc-mainnet.matic.network";
-    //let url_http = "https://matic-mainnet.chainstacklabs.com";
-    //let url_http = "https://rpc-mainnet.maticvigil.com";
-
-    let (transport_event_loop, transport) = match is_ws {
-        false => Transport::new_rpc(&url_http, Default::default()),
-        true => Transport::new_ws(&url_ws),
-    };
-    std::mem::forget(transport_event_loop);
-    let web3 = Web3::new(transport);
-
-    /////////////////////// Create new adapter /////////////////////
-    let eth_adapter = SimpleEthereumAdapter {
-        url_hostname: Arc::new("hostname".to_string()),
-        provider: "provider".to_string(),
-        web3: Arc::new(web3.clone()),
-        supports_eip_1898: true, //Support RPC get block by block hash
-    };
-    //////////////////////// Run ethereum_call //////////////////////
-    let call_cache = Arc::new(Mutex::new(SimpleEthereumCallCache {
-        map: HashMap::new(),
-    }));
-    let log = logger(true);
-    let block = web3
-        .eth()
-        .block_with_txs(Web3BlockNumber::Latest.into())
-        .compat()
-        .await
-        .unwrap()
-        .unwrap();
-    println!("Got block: {:?}", block.hash.unwrap());
-
-    let block_ptr = BlockPtr {
-        hash: BlockHash::from(block.hash.unwrap()),
-        number: block.number.unwrap().as_u32() as i32,
-    };
-    let unresolved_call = UnresolvedContractCall {
-        contract_name: "ERC20".to_string(),
-        contract_address: H160::from_str("7fc66500c84a76ad7e9c93437bfc5ac33e2ddae0").unwrap(),
-        function_name: "decimals".to_string(),
-        function_signature: Some("decimals():(uint8)".to_string()),
-        function_args: Vec::new(),
-    };
-    //let abis =
-    let result = eth_call(&eth_adapter, call_cache, &block_ptr, unresolved_call, &[]);
-    println!("result: {:?}", result);
-
-    //////////////////////// Run get log test ////////////////////////
-    // let from = Web3BlockNumber::Latest;
-    // let to = Web3BlockNumber::Latest;
-    // println!("Got adapter");
-    // // Address of QuickSwap
-    // let address: H160 = H160::from_str("5757371414417b8C6CAad45bAeF941aBc7d3Ab32").unwrap();
-    // let mut addresses = Vec::new();
-    // addresses.push(address);
-    // // Create a log filter
-    // let log_filter: Filter = FilterBuilder::default()
-    //     .from_block(from.into())
-    //     .to_block(to.into())
-    //     .address(addresses)
-    //     //.topics(Some(filter.event_signatures.clone()), None, None, None)
-    //     .build();
-    //
-    // loop {
-    //     let logs = get_logs(&web3, from, to);
-    //     println!("Logs: {:?}", logs);
-    // }
-
-    // Test speed
-    for _ in 0..1 {
-        let block = web3
-            .eth()
-            .block_with_txs(Web3BlockNumber::Latest.into())
-            .compat()
-            .await
-            .unwrap()
-            .unwrap();
-        println!("Got block: {:?}", block.hash.unwrap());
-
-        let now = Instant::now();
-
-        let receipts = get_receipts(&block, &web3).await;
-        // println!("Receipts: {:#?}", receipts);
-        println!("Number of receipts: {:#?}", receipts.len());
-        let elapsed = now.elapsed();
-        println!("Elapsed: {:.2?}", elapsed);
-    }
 }

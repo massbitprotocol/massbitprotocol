@@ -7,7 +7,6 @@ authors = ["huy <anhhuy0501@gmail.com>"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-#futures         = { version = "0.3.16", optional = false, features = ["alloc"] }
 futures         = "0.1.31"
 http            = "0.1.21" # must be compatible with the version rust-web3 uses
 anyhow          = "1.0.42"
@@ -134,6 +133,12 @@ branch = "anhhuy0501-patch-add-pub"
 
 [dependencies.graph-core]
 package = "graph-core"
+git = "https://github.com/massbitprotocol/massbit-graph-node"
+#rev = "c87281e4d09a0b15b235646dc4b0ae5569da4be2"
+branch = "anhhuy0501-patch-add-pub"
+
+[dependencies.graph-runtime-wasm]
+package = "graph-runtime-wasm"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
 #rev = "c87281e4d09a0b15b235646dc4b0ae5569da4be2"
 branch = "anhhuy0501-patch-add-pub"
