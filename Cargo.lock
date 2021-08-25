@@ -2522,7 +2522,7 @@ dependencies = [
 [[package]]
 name = "graph"
 version = "0.23.1"
-source = "git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub#948563cc6b8aaf9e015c83a31c0edc516ccd6ab6"
+source = "git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub#187abd3e9b376d90e942c6254c9f1de8189750a0"
 dependencies = [
  "Inflector",
  "anyhow",
@@ -2578,7 +2578,7 @@ dependencies = [
 [[package]]
 name = "graph-chain-ethereum"
 version = "0.23.1"
-source = "git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub#948563cc6b8aaf9e015c83a31c0edc516ccd6ab6"
+source = "git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub#187abd3e9b376d90e942c6254c9f1de8189750a0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2604,7 +2604,7 @@ dependencies = [
 [[package]]
 name = "graph-core"
 version = "0.23.1"
-source = "git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub#948563cc6b8aaf9e015c83a31c0edc516ccd6ab6"
+source = "git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub#187abd3e9b376d90e942c6254c9f1de8189750a0"
 dependencies = [
  "async-trait",
  "atomic_refcell",
@@ -2626,7 +2626,7 @@ dependencies = [
 [[package]]
 name = "graph-graphql"
 version = "0.23.1"
-source = "git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub#948563cc6b8aaf9e015c83a31c0edc516ccd6ab6"
+source = "git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub#187abd3e9b376d90e942c6254c9f1de8189750a0"
 dependencies = [
  "Inflector",
  "anyhow",
@@ -2645,7 +2645,7 @@ dependencies = [
 [[package]]
 name = "graph-runtime-derive"
 version = "0.23.1"
-source = "git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub#948563cc6b8aaf9e015c83a31c0edc516ccd6ab6"
+source = "git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub#187abd3e9b376d90e942c6254c9f1de8189750a0"
 dependencies = [
  "anyhow",
  "quote 1.0.9",
@@ -2655,7 +2655,7 @@ dependencies = [
 [[package]]
 name = "graph-runtime-wasm"
 version = "0.23.1"
-source = "git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub#948563cc6b8aaf9e015c83a31c0edc516ccd6ab6"
+source = "git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub#187abd3e9b376d90e942c6254c9f1de8189750a0"
 dependencies = [
  "anyhow",
  "async-trait",

@@ -56,6 +56,7 @@ pub async fn start_new_index(params: DeployParams) -> Result<(), Box<dyn Error>>
         .await
         .build();
 
+    let data_sources: Vec<DataSource> = get_data_source(&params.subgraph).await.unwrap();
 
     // Create tables for the new index and track them in hasura
     run_ddl_gen(&index_config).await;
@@ -64,7 +65,7 @@ pub async fn start_new_index(params: DeployParams) -> Result<(), Box<dyn Error>>
     IndexStore::insert_new_indexer(&index_config);
 
     // Start the adapter for the index
-    adapter_init(&index_config).await;
+    adapter_init(&index_config, &data_sources).await;
 
     Ok(())
 }
@@ -87,7 +88,7 @@ pub async fn restart_all_existing_index_helper() -> Result<(), Box<dyn Error>> {
                 .schema(&indexer.hash)
                 .await
                 .build();
-            adapter_init(&index_config).await;
+            // adapter_init(&index_config).await;
         });
     }
     Ok(())
