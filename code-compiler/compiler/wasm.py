@@ -135,12 +135,13 @@ def generate_new_config(project, schema_res, abi_res, config):
                 dictionary['dataSources'][0]['mapping']['abis'][i] = object
 
     # Add IPFS hash for templates abis
-    for i in range(0, len(dictionary['templates'][0]['mapping']['abis'])):
-        name = dictionary['templates'][0]['mapping']['abis'][i]['name']
-        for abi_object in abi_res:
-            if name.lower() in abi_object["name"].lower():
-                object = {'name': name, 'file': {'/': '/ipfs/' + abi_object["hash"]}}
-                dictionary['templates'][0]['mapping']['abis'][i] = object
+    if dictionary['templates']:
+        for i in range(0, len(dictionary['templates'][0]['mapping']['abis'])):
+            name = dictionary['templates'][0]['mapping']['abis'][i]['name']
+            for abi_object in abi_res:
+                if name.lower() in abi_object["name"].lower():
+                    object = {'name': name, 'file': {'/': '/ipfs/' + abi_object["hash"]}}
+                    dictionary['templates'][0]['mapping']['abis'][i] = object
 
     # Write the new config to local
     file = open(config, "w")

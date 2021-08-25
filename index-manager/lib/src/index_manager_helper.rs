@@ -56,11 +56,13 @@ pub async fn start_new_index(params: DeployParams) -> Result<(), Box<dyn Error>>
         .await
         .build();
 
+    // TODO: Maybe break this into two different struct (So and Wasm) so we don't have to use Option
     let data_sources: Vec<DataSource> = match &params.subgraph {
         Some(v) => {
             get_data_source(v).await.unwrap()
         }
         None => {
+            println!(".SO mapping doesn't have parsed data source");
             vec![]
         }
     };
