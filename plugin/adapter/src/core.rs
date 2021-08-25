@@ -139,7 +139,7 @@ impl AdapterManager {
     pub async fn init(
         &mut self,
         hash: &String,
-        config: &Value,
+        //config: &Value,
         mapping: &PathBuf,
         schema: &PathBuf,
         manifest: &Option<SubgraphManifest<Chain>>,

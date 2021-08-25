@@ -25,17 +25,17 @@ pub async fn adapter_init(
 ) -> Result<(), Box<dyn Error>> {
     // Chain Reader Client Configuration to subscribe and get latest block from Chain Reader Server
     //let config_value = read_config_file(&index_config.config);
-    let config_path = PathBuf::from(format!("{}/{}", QUICKSWAP_PATH, MANIFEST).as_str());
-    let config_value = read_config_file(&config_path);
+    //let config_path = PathBuf::from(format!("{}/{}", QUICKSWAP_PATH, MANIFEST).as_str());
+    //let config_value = read_config_file(&config_path);
+    //let runtime_path = PathBuf::from(format!("{}/{}", QUICKSWAP_PATH, WASM_FILE).as_str());
+    //let schema_path = PathBuf::from(format!("{}/{}", QUICKSWAP_PATH, SCHEMA).as_str());
     log::info!("Load library from {:?}", &index_config.mapping);
-    let runtime_path = PathBuf::from(format!("{}/{}", QUICKSWAP_PATH, WASM_FILE).as_str());
-    let schema_path = PathBuf::from(format!("{}/{}", QUICKSWAP_PATH, SCHEMA).as_str());
     let mut adapter = AdapterManager::new();
     //assert_eq!(manifest.data_sources.len(), 1);
     adapter
         .init(
             &index_config.identifier.name_with_hash,
-            &config_value,
+            //&config_value,
             &index_config.mapping,
             &index_config.schema,
             manifest,
