@@ -4,7 +4,8 @@ import subprocess
 import threading
 import ipfshttpclient
 import requests
-from helper.helper import write_to_disk
+import yaml
+from helper.helper import write_to_disk, get_abi_files, upload_abi_to_ipfs
 
 
 class WasmCodegenAndBuild(threading.Thread):
@@ -56,7 +57,6 @@ def compile_wasm(data, hash):
     print("Generating code + compiling for: " + hash + ". This will take a while!")
     wasm_codegen_and_build = WasmCodegenAndBuild(generated_folder)
     wasm_codegen_and_build.start()
-
     return hash
 
 
@@ -69,6 +69,8 @@ def deploy_wasm(data):
     project = os.path.join("./generated", compilation_id, "subgraph.yaml")
     mapping = os.path.join("./generated", compilation_id, "build", model, model + ".wasm")
     schema = os.path.join("./generated", compilation_id, "schema.graphql")
+    config = os.path.join("./generated", compilation_id, "config.yaml")
+    abi = get_abi_files(compilation_id)
 
     # Uploading files to IPFS
     if os.environ.get('IPFS_URL'):
@@ -80,11 +82,20 @@ def deploy_wasm(data):
     config_res = client.add(project)
     mapping_res = client.add(mapping)
     schema_res = client.add(schema)
+    abi_res = upload_abi_to_ipfs(client, abi)
 
     # Uploading to IPFS result
-    print("project.yaml: " + config_res['Hash'])
-    print(model + ".wasm: " + mapping_res['Hash'])
-    print("schema.graphql: " + schema_res['Hash'])
+    print("subgraph.yaml: {}".format(config_res['Hash']))
+    print(model + ".wasm: {}".format(mapping_res['Hash']))
+    print("schema.graphql: {}".format(schema_res['Hash']))
+    for abi_object in abi_res:
+        print('{}: {}'.format(abi_object["name"], abi_object["hash"]))
+
+    # Generate the new config file based on the subgraph.yaml content and other file IPFS
+    generate_new_config(project, schema_res, abi_res, config)
+
+    # Upload the config to IPFS
+    config_res = client.add(config)
 
     # Uploading IPFS files to Index Manager
     if os.environ.get('INDEX_MANAGER_URL'):
@@ -99,8 +110,46 @@ def deploy_wasm(data):
                             'params': [
                                 config_res['Hash'],
                                 mapping_res['Hash'],
-                                schema_res['Hash']
+                                schema_res['Hash'],
+                                abi_res,
+                                config_res['Hash']
                             ],
-                            'id': 1,
+                            'id': '1',
                         })
     print(res.json())
+
+def generate_new_config(project, schema_res, abi_res, config):
+    # Generate new yaml config file
+    stream = open(project, 'r')
+    dictionary = yaml.safe_load(stream)
+
+    # Add IPFS hash for schema
+    dictionary['schema']['file'] = {'/': '/ipfs/' + schema_res['Hash']}
+
+    # Add IPFS hash for datasources abis
+    for i in range(0, len(dictionary['dataSources'][0]['mapping']['abis'])):
+        name = dictionary['dataSources'][0]['mapping']['abis'][i]['name']
+        for abi_object in abi_res:
+            if name.lower() in abi_object["name"].lower():
+                object = {'name': name, 'file': {'/': '/ipfs/' + abi_object["hash"]}}
+                dictionary['dataSources'][0]['mapping']['abis'][i] = object
+
+    # Add IPFS hash for templates abis
+    if 'templates' in dictionary:
+        for i in range(0, len(dictionary['templates'][0]['mapping']['abis'])):
+            name = dictionary['templates'][0]['mapping']['abis'][i]['name']
+            for abi_object in abi_res:
+                if name.lower() in abi_object["name"].lower():
+                    object = {'name': name, 'file': {'/': '/ipfs/' + abi_object["hash"]}}
+                    dictionary['templates'][0]['mapping']['abis'][i] = object
+
+    # This is a small hack, should be fix in the next MR
+    # Providing the file here with any hash so it doesn't return error when parsing the datasource in index-manager
+    dictionary['dataSources'][0]['mapping']['file'] = {'/': '/ipfs/' + schema_res['Hash']}
+    if 'templates' in dictionary:
+        dictionary['templates'][0]['mapping']['file'] = {'/': '/ipfs/' + schema_res['Hash']}
+
+    # Write the new config to local
+    file = open(config, "w")
+    yaml.safe_dump(dictionary, file)
+    file.close()

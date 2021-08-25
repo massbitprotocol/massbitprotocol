@@ -14,13 +14,7 @@ pub mod stream_mod {
     tonic::include_proto!("chaindata");
 }
 
-#[derive(Clone, Debug, Deserialize)]
-pub struct DeployParams {
-    pub config: String,
-    pub mapping: String,
-    pub schema: String,
-}
-
+// Indexer details that are extract right from the Database
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Indexer {
     pub id: String,
@@ -29,20 +23,25 @@ pub struct Indexer {
     pub hash: String,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-pub struct DetailParams {
-    pub index_name: String,
-    pub ipfs_config_hash: String,
-    pub ipfs_mapping_hash: String,
+// Normalized version of DeployAbi
+#[derive(Clone, Debug, Deserialize)]
+pub struct Abi {
+    pub name: String,
+    pub path: PathBuf,
 }
 
+// The IndexConfig is built from DeployParams
+// IndexConfig should let us know the location where the configs are stored
 pub struct IndexConfig {
     pub config: PathBuf,
     pub mapping: PathBuf,
     pub schema: PathBuf,
+    pub abi: Option<Vec<Abi>>, // .SO doesn't support uploading ABIs yet, only .WASM need the ABIs
     pub identifier: IndexIdentifier,
+    pub subgraph: PathBuf,
 }
 
+// Identifier of the IndexConfig is an helper to easily access the hash of the index, and index's file name
 pub struct IndexIdentifier {
     pub name: String,
     pub hash: String,

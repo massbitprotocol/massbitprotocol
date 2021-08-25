@@ -8,8 +8,8 @@ use rand::{thread_rng, Rng};
 use serde_yaml::Value;
 use std::iter;
 // Massbit dependencies
-use crate::ipfs::{get_ipfs_file_by_hash, read_config_file};
-use crate::types::stream_mod::ChainType;
+use crate::ipfs::{download_ipfs_file_by_hash, read_config_file};
+use crate::type_index::stream_mod::ChainType;
 
 pub fn get_chain_type(config: &Value) -> ChainType {
     let chain_type = match config["dataSources"][0]["kind"].as_str().unwrap() {
@@ -44,10 +44,10 @@ pub fn generate_random_hash() -> String {
 }
 
 // Generate mapping file type based on the config value
-pub fn generate_mapping_file_name(config: &Value, hash: &String) -> String {
+pub fn generate_mapping_name_and_type(config: &Value) -> String {
     if get_mapping_language(config).to_string().contains("wasm") {
-        format!("{}{}", hash, ".wasm")
+        String::from("mapping.wasm")
     } else {
-        format!("{}{}", hash, ".so")
+        String::from("mapping.so")
     }
 }

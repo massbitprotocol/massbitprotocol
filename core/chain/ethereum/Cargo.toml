@@ -22,12 +22,23 @@ ethabi = { git = "https://github.com/graphprotocol/ethabi.git", branch = "master
 stable-hash = { git = "https://github.com/graphprotocol/stable-hash" }
 anyhow = "1.0"
 hex = "0.4.3"
+tiny-keccak = "1.5.0"
 
 [dependencies.web3]
 package = "web3"
-#git = "https://github.com/tomusdrw/rust-web3.git"
 git = "https://github.com/graphprotocol/rust-web3"
 branch = "master"
 
+[dependencies.graph]
+package = "graph"
+git = "https://github.com/massbitprotocol/massbit-graph-node"
+branch = "anhhuy0501-patch-add-pub"
+#rev = "c87281e4d09a0b15b235646dc4b0ae5569da4be2"
+
+[dependencies.graph-chain-ethereum]
+package = "graph-chain-ethereum"
+git = "https://github.com/massbitprotocol/massbit-graph-node"
+#rev = "c87281e4d09a0b15b235646dc4b0ae5569da4be2"
+branch = "anhhuy0501-patch-add-pub"
 
 ############# End Ethereum

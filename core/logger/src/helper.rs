@@ -2,8 +2,7 @@
  *** This file is to help setup the logger based on the RUST_LOG and RUST_LOG_TYPE options
  **/
 use chrono::Local;
-use env_logger::{Builder, Env};
-use log::LevelFilter;
+use env_logger::Builder;
 use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Config, Root};
 use log4rs::encode::pattern::PatternEncoder;

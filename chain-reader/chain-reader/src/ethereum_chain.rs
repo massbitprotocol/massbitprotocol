@@ -21,10 +21,9 @@ use tokio::time::{sleep, Duration};
 use web3;
 use web3::transports::Batch;
 use web3::{
-    futures::future,
     types::{
-        Address, Block as EthBlock, BlockId, BlockNumber as Web3BlockNumber, Bytes, CallRequest,
-        Filter, FilterBuilder, Log, Transaction, TransactionReceipt, H256,
+        Block as EthBlock, BlockId, BlockNumber as Web3BlockNumber, Filter, FilterBuilder, Log,
+        Transaction, TransactionReceipt, H256,
     },
     Web3,
 };

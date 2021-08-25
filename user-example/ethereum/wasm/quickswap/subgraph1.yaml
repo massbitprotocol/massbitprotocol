@@ -1,0 +1,75 @@
+specVersion: 0.0.2
+description: Quickswap is a decentralized protocol for automated token exchange on Matic.
+repository: https://github.com/QuickSwap/QuickSwap-subgraph.git
+schema:
+  file:
+    /: /ipfs/Qmb6c64URqyYxozd9RB8LFsajzq1oP7Yhvqzvaa85ztanp
+graft:
+  base: QmfZAUKkHkLzKtVFQtGqSs4kKch9dfFg5Exs2zG9yNJrTW      # Subgraph ID of base subgraph
+  block: 17116542   # Block number
+dataSources:
+  - kind: ethereum/contract
+    name: Factory
+    network: matic
+    source:
+      address: '0x5757371414417b8C6CAad45bAeF941aBc7d3Ab32'
+      abi: Factory
+      startBlock: 5484576
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.4
+      language: wasm/assemblyscript
+      file:
+        /: /ipfs/QmSRSPDocdLYmA2T2aKFfaniauHiWYkWQGvfyoGVFjKDHq
+      entities:
+        - Pair
+        - Token
+      abis:
+        - name: Factory
+          file:
+            /: /ipfs/QmZFmmy6QP9JGmVZzRw72gYpRwMoDY3pkDLf5wZaqxmwkC
+        - name: ERC20
+          file:
+            /: /ipfs/QmYoHL3BvEW6nH1zYZqnziUHjajadu5ErJHavHS2zXkZhv
+        - name: ERC20SymbolBytes
+          file:
+            /: /ipfs/QmX3PFwF9LuKf1FkMveBYdX6eeV1KbvvgdvQ59xBfFCLXX
+        - name: ERC20NameBytes
+          file:
+            /: /ipfs/QmRetgfsufVwd3drmU1UjviaL4RneRN4WZ3mpos7kyx7EP
+      eventHandlers:
+        - event: PairCreated(indexed address,indexed address,address,uint256)
+          handler: handleNewPair
+templates:
+  - kind: ethereum/contract
+    name: Pair
+    network: matic
+    source:
+      abi: Pair
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.4
+      language: wasm/assemblyscript
+      file:
+        /: /ipfs/QmVcKLWaBrfr51NJgPfGpv8JhFKcFAPkPxU49ZpgLtYSMQ
+      entities:
+        - Pair
+        - Token
+      abis:
+        - name: Pair
+          file:
+            /: /ipfs/QmWyGu32R1nVsBXQCk6BnVBsJQP2i2QSreNsTWRT2Pfvo5
+        - name: Factory
+          file:
+            /: /ipfs/QmZFmmy6QP9JGmVZzRw72gYpRwMoDY3pkDLf5wZaqxmwkC
+      eventHandlers:
+        - event: Mint(indexed address,uint256,uint256)
+          handler: handleMint
+        - event: Burn(indexed address,uint256,uint256,indexed address)
+          handler: handleBurn
+        - event: Swap(indexed address,uint256,uint256,uint256,uint256,indexed address)
+          handler: handleSwap
+        - event: Transfer(indexed address,indexed address,uint256)
+          handler: handleTransfer
+        - event: Sync(uint112,uint112)
+          handler: handleSync

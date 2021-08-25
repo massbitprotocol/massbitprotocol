@@ -2,16 +2,21 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 use std::error::Error;
 
-use crate::trigger::{EthereumBlockData, EthereumEventData, EthereumTransactionData};
 use crate::types::LightEthereumBlockExt;
 use anyhow::Context;
+use graph_chain_ethereum::trigger::{
+    EthereumBlockData, EthereumEventData, EthereumTransactionData, EthereumTrigger,
+};
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::sync::Arc;
-use web3::types::{
-    Address, Block, BlockId, BlockNumber as Web3BlockNumber, Bytes, CallRequest, Filter,
-    FilterBuilder, Log, Transaction, TransactionReceipt, H256, U256,
-};
+use web3::types::{Block, Log, Transaction, TransactionReceipt, H256, U256};
+
+use graph::blockchain::{Blockchain, DataSource as _};
+use graph::log::logger;
+use graph_chain_ethereum::chain::BlockFinality;
+use graph_chain_ethereum::{Chain, DataSource, MappingTrigger};
+
 //***************** Ethereum data type *****************
 pub type EthereumBlock = ExtBlock;
 pub type EthereumTransaction = ExtTransaction;
@@ -52,7 +57,7 @@ pub fn decode(payload: &mut Vec<u8>) -> Result<EthereumBlock, Box<dyn Error>> {
     Ok(block)
 }
 
-pub fn get_events(eth_block: &EthereumBlock) -> Vec<EthereumEvent> {
+pub fn get_events(eth_block: &EthereumBlock, data_source: DataSource) -> Vec<EthereumEvent> {
     let block = Arc::new(eth_block.block.clone());
 
     eth_block
@@ -73,6 +78,29 @@ pub fn get_events(eth_block: &EthereumBlock) -> Vec<EthereumEvent> {
                     ..Transaction::default()
                 })
             };
+            // Todo: clean up for optimize
+            // Get params
+            let trigger: <Chain as Blockchain>::TriggerData =
+                EthereumTrigger::Log(Arc::new(log.clone()));
+            let logger = logger(true);
+            let block_finality: Arc<<Chain as Blockchain>::Block> =
+                Arc::new(BlockFinality::Final(block.clone()));
+            let mapping_trigger = data_source
+                .match_and_decode(&trigger, block_finality, &logger)
+                .unwrap();
+
+            let params = match mapping_trigger {
+                Some(MappingTrigger::Log {
+                    block: _,
+                    transaction: _,
+                    log: _,
+                    params,
+                    handler: _,
+                }) => params,
+                _ => Vec::new(),
+            };
+
+            // Create EthereumEvent
             match transaction {
                 Ok(transaction) => {
                     let transaction = Arc::new(transaction);
@@ -86,7 +114,7 @@ pub fn get_events(eth_block: &EthereumBlock) -> Vec<EthereumEvent> {
                             log_type: log.log_type.clone(),
                             block: EthereumBlockData::from(block.as_ref()),
                             transaction: EthereumTransactionData::from(transaction.deref()),
-                            params: vec![],
+                            params,
                         },
                     })
                 }
