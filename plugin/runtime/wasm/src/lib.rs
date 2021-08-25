@@ -2,7 +2,7 @@
 //pub mod chain;
 //pub mod error;
 //pub mod graph;
-pub mod ethereum_call;
+//pub mod ethereum_call;
 pub mod host_exports;
 //pub mod indexer;
 pub mod manifest;

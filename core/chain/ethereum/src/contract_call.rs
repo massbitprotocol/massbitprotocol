@@ -84,14 +84,14 @@ lazy_static! {
 
 #[derive(Clone)]
 pub struct SimpleEthereumAdapter {
-    url_hostname: Arc<String>,
-    provider: String,
-    web3: Arc<Web3<Transport>>,
-    supports_eip_1898: bool,
+    pub url_hostname: Arc<String>,
+    pub provider: String,
+    pub web3: Arc<Web3<Transport>>,
+    pub supports_eip_1898: bool,
 }
 
 pub struct SimpleEthereumCallCache {
-    map: HashMap<(ethabi::Address, Vec<u8>, BlockPtr), Vec<u8>>,
+    pub map: HashMap<(ethabi::Address, Vec<u8>, BlockPtr), Vec<u8>>,
 }
 
 pub trait SimpleEthereumCallCacheTrait: Send + Sync + 'static {
@@ -385,7 +385,7 @@ impl SimpleEthereumAdapter {
     }
 }
 
-fn ethereum_call(
+pub fn ethereum_call(
     eth_adapter: &SimpleEthereumAdapter,
     call_cache: Arc<Mutex<dyn SimpleEthereumCallCacheTrait>>,
     ctx: HostFnCtx<'_>,

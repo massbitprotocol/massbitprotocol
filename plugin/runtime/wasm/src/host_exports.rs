@@ -1,22 +1,4 @@
-use std::collections::HashMap;
-use std::str::FromStr;
-
-use massbit_common::prelude::{
-    anyhow::{anyhow, Context},
-    ethabi::param_type::Reader,
-    ethabi::{decode, encode, Token, Uint},
-    serde_json,
-};
-
-use never::Never;
-use slog::{b, info, record_static, trace};
-use wasmtime::Trap;
-use web3::types::H160;
-
-//use crate::asc_abi::class::{AscEnumArray, EthereumValueKind};
-//use crate::chain::ethereum::runtime::abi::{
-//    AscUnresolvedContractCall, AscUnresolvedContractCall_0_0_4,
-//};
+use core::ops::Deref;
 use graph::prelude::{
     BigDecimal, BigInt, BlockNumber, CheapClone, DataSourceTemplateInfo, StopwatchMetrics, Value,
 };
@@ -26,12 +8,25 @@ use graph_chain_ethereum::{
         abi::{AscUnresolvedContractCall, AscUnresolvedContractCall_0_0_4},
         runtime_adapter::UnresolvedContractCall,
     },
-    DataSource,
+    DataSource, Transport,
 };
 use graph_runtime_wasm::{
     asc_abi::class::{AscEnumArray, EthereumValueKind},
     error::DeterminismLevel,
 };
+use massbit_common::consts::*;
+use massbit_common::prelude::{
+    anyhow::{anyhow, Context},
+    ethabi::param_type::Reader,
+    ethabi::{decode, encode, Token, Uint},
+    serde_json,
+};
+use never::Never;
+use slog::{b, info, record_static, trace};
+use std::collections::HashMap;
+use std::str::FromStr;
+use wasmtime::Trap;
+use web3::types::H160;
 //use crate::chain::ethereum::EthereumContractCallError;
 /*
 use crate::chain::ethereum::{
@@ -48,8 +43,9 @@ use graph::blockchain::{
     Blockchain, DataSource as DataSourceTrait, DataSourceTemplate, HostFn, HostFnCtx,
 };
 use graph::prelude::BlockPtr;
-//use crate::store::scalar::{BigDecimal, BigInt};
-//use crate::store::{model::BlockNumber, Entity, EntityKey, EntityType, Value};
+use massbit_chain_ethereum::contract_call::{
+    ethereum_call, SimpleEthereumAdapter, SimpleEthereumCallCache,
+};
 
 use crate::manifest::datasource::DataSourceContext;
 use graph::components::store::{EntityKey, EntityType};
@@ -57,6 +53,7 @@ use graph::components::subgraph::{BlockState, Entity};
 use graph::data::subgraph::DeploymentHash;
 //use graph_runtime_wasm::module::IntoTrap;
 use crate::module::IntoTrap;
+use graph::prelude::web3::Web3;
 use std::sync::Mutex;
 use std::time::Instant;
 
@@ -607,6 +604,35 @@ pub(crate) fn bytes_to_string(logger: &Logger, bytes: Vec<u8>) -> String {
     // characters, so trim trailing nulls.
     s.trim_end_matches('\u{0000}').to_string()
 }
+pub fn create_ethereum_call(datasource: &DataSource) -> HostFn {
+    let (transport_event_loop, transport) = match ETHEREUM_USE_WS.deref() {
+        false => Transport::new_rpc(&ETHEREUM_URL, Default::default()),
+        true => Transport::new_ws(&ETHEREUM_WS),
+    };
+    std::mem::forget(transport_event_loop);
+    let web3 = Web3::new(transport);
+
+    /////////////////////// Create new adapter /////////////////////
+    let eth_adapter = SimpleEthereumAdapter {
+        url_hostname: Arc::new("hostname".to_string()),
+        provider: "provider".to_string(),
+        web3: Arc::new(web3.clone()),
+        supports_eip_1898: true, //Support RPC get block by block hash
+    };
+    //////////////////////// Run ethereum_call //////////////////////
+    let call_cache = Arc::new(Mutex::new(SimpleEthereumCallCache {
+        map: HashMap::new(),
+    }));
+    let abis = datasource.mapping.abis.clone();
+    HostFn {
+        name: "ethereum.call",
+        func: Arc::new(move |ctx, wasm_ptr| {
+            ethereum_call(&eth_adapter, call_cache.clone(), ctx, wasm_ptr, &abis)
+                .map(|ptr| ptr.wasm_ptr())
+        }),
+    }
+}
+/*
 //mock ethereum.call
 pub fn create_mock_ethereum_call(datasource: &DataSource) -> HostFn {
     HostFn {
@@ -634,6 +660,7 @@ fn ethereum_call(
     };
     Ok(asc_new(ctx.heap, tokens.as_slice())?)
 }
+ */
 /*
 /// function ethereum.call(call: SmartContractCall): Array<Token> | null
 fn ethereum_call(

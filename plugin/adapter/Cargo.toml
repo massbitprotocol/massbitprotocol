@@ -24,7 +24,7 @@ massbit-runtime-wasm    = { path = "../runtime/wasm" }
 massbit-common          = { path = "../../core/common"}
 #ipfs-client             = { path = "../../core/ipfs-client" }
 quote           =   "1.0.9"
-serde_regex     = "1.1.0"
+serde_regex     =   "1.1.0"
 serde_yaml      =   "0.8"
 structmap       =   "0.1.5"
 #syn            =   "1.0.74"

@@ -16,7 +16,7 @@ use graph::blockchain::{
 };
 use graph::components::store::{ModificationsAndCache, StoreError, WritableStore};
 use graph::components::subgraph::BlockState;
-use graph::data::subgraph::{Mapping, TemplateSource};
+use graph::data::subgraph::{Mapping, SubgraphManifest, TemplateSource};
 use graph::prelude::CheapClone;
 use graph::util::lfu_cache::LfuCache;
 use graph_chain_ethereum::Chain;
@@ -32,7 +32,7 @@ use massbit_chain_solana::data_type::{
     SolanaLogMessages, SolanaTransaction,
 };
 use massbit_common::prelude::anyhow::{self, Context};
-use massbit_runtime_wasm::ethereum_call::create_mock_ethereum_call;
+use massbit_runtime_wasm::host_exports::create_ethereum_call;
 use massbit_runtime_wasm::manifest::datasource::*;
 use massbit_runtime_wasm::mapping::FromFile;
 use massbit_runtime_wasm::mock::MockMetricsRegistry;
@@ -137,6 +137,99 @@ impl AdapterManager {
         }
     }
     pub async fn init(
+        &mut self,
+        hash: &String,
+        config: &Value,
+        mapping: &PathBuf,
+        schema: &PathBuf,
+        manifest: &Option<SubgraphManifest<Chain>>,
+    ) -> Result<(), Box<dyn Error>> {
+        /*
+        let templates = match config["templates"].as_sequence() {
+            Some(seqs) => seqs
+                .iter()
+                .map(|tpl| {
+                    DataSourceTemplate::try_from(tpl)
+                        .with_context(|| {
+                            format!(
+                                "Failed to create datasource from value `{:?}`, invalid address provided",
+                                tpl
+                            )
+                        })
+                        .unwrap()
+                })
+                .collect::<Vec<DataSourceTemplate>>(),
+            _ => Vec::default(),
+        };
+         */
+        let empty_ds: Vec<DataSource> = vec![];
+        let (data_sources, templates): (&Vec<DataSource>, Vec<DataSourceTemplate>) = match manifest
+        {
+            Some(sgd) => (
+                &sgd.data_sources,
+                sgd.templates
+                    .iter()
+                    .map(|tpl| tpl.clone())
+                    .collect::<Vec<DataSourceTemplate>>(),
+            ),
+            None => (&empty_ds, vec![]),
+        };
+        /*
+        let data_sources: &Vec<DataSource> = &manifest.data_sources;
+        let templates: Vec<DataSourceTemplate> = manifest
+            .templates
+            .iter()
+            .map(|tpl| tpl.clone())
+            .collect::<Vec<DataSourceTemplate>>();
+        */
+        let arc_templates = Arc::new(templates);
+        //Todo: Currently adapter only works with one datasource
+        match data_sources.get(0) {
+            Some(datasource) => {
+                let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await?;
+                log::info!(
+                    "{} Init Streamout client for chain {}",
+                    &*COMPONENT_NAME,
+                    &datasource.kind
+                );
+                let chain_type = get_chain_type(datasource);
+                let get_blocks_request = GetBlocksRequest {
+                    start_block_number: 0,
+                    end_block_number: 1,
+                    chain_type: chain_type as i32,
+                };
+                let mut stream: Streaming<GenericDataProto> = client
+                    .list_blocks(Request::new(get_blocks_request))
+                    .await?
+                    .into_inner();
+                log::info!(
+                    "{} Detect mapping language {}",
+                    &*COMPONENT_NAME,
+                    &datasource.mapping.language
+                );
+                match datasource.mapping.language.as_str() {
+                    "wasm/assemblyscript" => {
+                        self.handle_wasm_mapping(
+                            hash,
+                            datasource,
+                            arc_templates,
+                            mapping,
+                            schema,
+                            &mut stream,
+                        )
+                        .await
+                    }
+                    //Default use rust
+                    _ => {
+                        self.handle_rust_mapping(hash, datasource, mapping, &mut stream)
+                            .await
+                    }
+                }
+            }
+            _ => Ok(()),
+        }
+    }
+    pub async fn init0(
         &mut self,
         hash: &String,
         config: &Value,
@@ -338,7 +431,7 @@ impl AdapterManager {
                     println!("Error {:?}", e);
                     StoreError::Unknown(e.into())
                 })?;
-                println!("Finish mapping");
+                println!("Finish wasm mapping");
                 mods.iter().for_each(|entity| {
                     println!("Entitiy {:?}", entity);
                 });
@@ -463,7 +556,7 @@ impl AdapterManager {
                 };
                 runtime_adapter.host_fns(datasource)?
                  */
-                vec![create_mock_ethereum_call(datasource)]
+                vec![create_ethereum_call(datasource)]
             }
         };
         //datasource.mapping.requires_archive();
@@ -491,6 +584,7 @@ impl AdapterManager {
             //},
         )
     }
+
     async fn handle_rust_mapping<P: AsRef<OsStr>>(
         &mut self,
         indexer_hash: &String,

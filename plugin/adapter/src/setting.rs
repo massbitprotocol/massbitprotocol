@@ -21,7 +21,8 @@ pub fn get_chain_type(config: &Value) -> ChainType {
 }
 */
 pub fn get_chain_type(datasource: &DataSource) -> ChainType {
-    match datasource.kind.as_str() {
+    let ds_kind = datasource.kind.split('/').next().unwrap();
+    match ds_kind {
         "substrate" => ChainType::Substrate,
         "solana" => ChainType::Solana,
         "ethereum" => ChainType::Ethereum,

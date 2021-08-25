@@ -100,15 +100,16 @@ impl WritableStore for PostgresIndexStore {
         // that is fully plumbed in, we just use the biggest possible block
         // number so that we will always return the latest version,
         // i.e., the one with an infinite upper bound
-
+        println!("get entity by key {:?}", key);
         self.layout
             .find(&conn, &key.entity_type, &key.entity_id, BLOCK_NUMBER_MAX)
             .map_err(|e| {
+                println!("Error while get entity {:?}", &e);
                 QueryExecutionError::ResolveEntityError(
                     key.subgraph_id.clone(),
                     key.entity_type.to_string(),
                     key.entity_id.clone(),
-                    format!("Invalid entity {}", e),
+                    format!("Invalid entity {:?}", e),
                 )
             })
         /*

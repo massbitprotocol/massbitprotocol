@@ -9,9 +9,9 @@ use std::error::Error;
 use diesel::{Connection, PgConnection};
 use lazy_static::lazy_static;
 use log::{debug, info, warn};
-use std::time::{Duration, Instant};
 use serde_yaml::Value;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use tokio_compat_02::FutureExt;
 
 // Massbit dependencies
@@ -26,12 +26,12 @@ use crate::type_request::DeployParams;
 use adapter::core::AdapterManager;
 
 // Graph dependencies
+use graph::data::subgraph::UnresolvedSubgraphManifest;
+use graph::data::subgraph::{SubgraphAssignmentProviderError, SubgraphManifest};
+use graph::ipfs_client::IpfsClient;
 use graph::log::logger;
 use graph_chain_ethereum::{Chain, DataSource};
-use graph::data::subgraph::SubgraphAssignmentProviderError;
-use graph::data::subgraph::UnresolvedSubgraphManifest;
 use graph_core::LinkResolver;
-use graph::ipfs_client::IpfsClient;
 
 lazy_static! {
     static ref CHAIN_READER_URL: String =
@@ -57,13 +57,12 @@ pub async fn start_new_index(params: DeployParams) -> Result<(), Box<dyn Error>>
         .build();
 
     // TODO: Maybe break this into two different struct (So and Wasm) so we don't have to use Option
-    let data_sources: Vec<DataSource> = match &params.subgraph {
-        Some(v) => {
-            get_data_source(v).await.unwrap()
-        }
+    let manifest: Option<SubgraphManifest<Chain>> = match &params.subgraph {
+        Some(v) => Some(get_manifest(v).await.unwrap()),
         None => {
             println!(".SO mapping doesn't have parsed data source");
-            vec![]
+            //vec![]
+            None
         }
     };
 
@@ -74,7 +73,7 @@ pub async fn start_new_index(params: DeployParams) -> Result<(), Box<dyn Error>>
     IndexStore::insert_new_indexer(&index_config);
 
     // Start the adapter for the index
-    adapter_init(&index_config, &data_sources).await;
+    adapter_init(&index_config, &manifest).await;
 
     Ok(())
 }
@@ -112,9 +111,9 @@ pub async fn list_handler_helper() -> Result<Vec<Indexer>, Box<dyn Error>> {
 
 /********* HELPER FUNCTION ************/
 // TODO: Move to a different file
-async fn get_data_source(
+async fn get_manifest(
     file_hash: &String,
-) -> Result<Vec<DataSource>, SubgraphAssignmentProviderError> {
+) -> Result<SubgraphManifest<Chain>, SubgraphAssignmentProviderError> {
     let logger = logger(true);
     let ipfs_addresses = vec![String::from("0.0.0.0:5001")];
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await;
@@ -127,8 +126,7 @@ async fn get_data_source(
         .to_vec();
 
     // Get raw manifest
-    let file = String::from_utf8(file_bytes)
-        .unwrap();
+    let file = String::from_utf8(file_bytes).unwrap();
 
     println!("File: {}", file);
 
@@ -158,9 +156,8 @@ async fn get_data_source(
         .await
         .map_err(SubgraphAssignmentProviderError::ResolveError)?;
 
-    println!("data_sources: {:#?}", &manifest.data_sources);
-
-    Ok(manifest.data_sources)
+    //println!("data_sources: {:#?}", &manifest.data_sources);
+    Ok(manifest)
 }
 
 /********* HELPER FUNCTION ************/

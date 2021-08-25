@@ -2,19 +2,21 @@ use crate::core::{AdapterError, MessageHandler};
 pub use crate::stream_mod::{DataType, GenericDataProto};
 use crate::EthereumWasmHandlerProxy;
 use ethabi::{Address, LogParam, Token, Uint};
-use graph::blockchain::DataSource as DataSourceTrait;
+use graph::blockchain::{Blockchain, DataSource as DataSourceTrait};
 use graph::components::ethereum::LightEthereumBlockExt;
 use graph::data::subgraph::Mapping;
 use graph_chain_ethereum::{
-    trigger::MappingTrigger, trigger::MappingTrigger::Log, Chain, DataSource,
+    chain::BlockFinality,
+    trigger::{EthereumTrigger, MappingTrigger},
+    Chain, DataSource,
 };
 //use graph_runtime_wasm::WasmInstance;
+use graph::log::logger;
 use libloading::Library;
 use massbit_chain_ethereum::data_type::{
     decode, get_events, EthereumBlock, EthereumEvent, EthereumTransaction,
 };
 use massbit_runtime_wasm::WasmInstance;
-//use massbit_runtime_wasm::module::WasmInstance;
 use std::str::FromStr;
 use std::{error::Error, sync::Arc};
 crate::prepare_adapter!(Ethereum, {
@@ -27,7 +29,7 @@ impl MessageHandler for EthereumWasmHandlerProxy {
     fn handle_wasm_mapping(
         &self,
         wasm_instance: &mut WasmInstance<Chain>,
-        datasource: &DataSource,
+        data_source: &DataSource,
         data: &mut GenericDataProto,
     ) -> Result<(), Box<dyn Error>> {
         log::info!("{} call handle_wasm_mapping", &*COMPONENT_NAME);
@@ -35,6 +37,7 @@ impl MessageHandler for EthereumWasmHandlerProxy {
             Some(DataType::Block) => {
                 let eth_block: EthereumBlock = decode(&mut data.payload).unwrap();
                 let arc_block = Arc::new(eth_block.block);
+                /*
                 let params = vec![
                     LogParam {
                         name: "token0".to_string(),
@@ -59,10 +62,36 @@ impl MessageHandler for EthereumWasmHandlerProxy {
                         value: Token::Int(Uint::from(123)),
                     },
                 ];
+                 */
                 eth_block.logs.iter().for_each(|log| {
                     if let Some(transaction) = arc_block.transaction_for_log(log) {
                         let arc_log = Arc::new(log.clone());
                         let arc_tran = Arc::new(transaction.clone());
+
+                        let trigger: <Chain as Blockchain>::TriggerData =
+                            EthereumTrigger::Log(Arc::new(log.clone()));
+                        let logger = logger(true);
+                        let block_finality: Arc<<Chain as Blockchain>::Block> =
+                            Arc::new(BlockFinality::Final(arc_block.clone()));
+                        let mapping_trigger = data_source
+                            .match_and_decode(&trigger, block_finality, &logger)
+                            .unwrap();
+                        println!("Mapping trigger {:?}", mapping_trigger);
+                        if let Some(trigger) = mapping_trigger {
+                            wasm_instance.handle_trigger(trigger);
+                        }
+
+                        /*
+                        let params = match mapping_trigger {
+                            Some(MappingTrigger::Log {
+                                block: _,
+                                transaction: _,
+                                log: _,
+                                params,
+                                handler: _,
+                            }) => params,
+                            _ => Vec::new(),
+                        };
                         datasource
                             .mapping()
                             .event_handlers
@@ -77,6 +106,7 @@ impl MessageHandler for EthereumWasmHandlerProxy {
                                 };
                                 wasm_instance.handle_trigger(trigger);
                             });
+                         */
                     }
                 });
 
@@ -98,11 +128,13 @@ impl MessageHandler for EthereumWasmHandlerProxy {
                  */
             }
             Some(DataType::Event) => {
-                datasource
+                /*
+                data_source
                     .mapping()
                     .event_handlers
                     .iter()
                     .for_each(|handler| {});
+                 */
             }
             Some(DataType::Transaction) => {}
             _ => {}
