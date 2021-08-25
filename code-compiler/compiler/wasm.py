@@ -143,10 +143,11 @@ def generate_new_config(project, schema_res, abi_res, config):
                     object = {'name': name, 'file': {'/': '/ipfs/' + abi_object["hash"]}}
                     dictionary['templates'][0]['mapping']['abis'][i] = object
 
-    # Remove .ts file in Link
-    del dictionary['templates'][0]['mapping']['file']
+    # This is a small hack, should be fix in the next MR
+    # Providing the file here with any hash so it doesn't return error when parsing the datasource in index-manager
+    dictionary['dataSources'][0]['mapping']['file'] = {'/': '/ipfs/' + schema_res['Hash']}
     if 'templates' in dictionary:
-        del dictionary['templates'][0]['mapping']['file']
+        dictionary['templates'][0]['mapping']['file'] = {'/': '/ipfs/' + schema_res['Hash']}
 
     # Write the new config to local
     file = open(config, "w")
