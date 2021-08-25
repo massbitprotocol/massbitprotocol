@@ -9,5 +9,5 @@ edition = "2018"
 log                 = "0.4.0"
 env_logger          = "0.8.4"
 chrono              = "0.4"
-log4rs              = "1.0.0"
 lazy_static         = "1.4.0"
+log4rs              = { git = "https://github.com/yakov-bakhmatov/log4rs", branch = "async-rotation" }
