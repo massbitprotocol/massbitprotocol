@@ -56,7 +56,14 @@ pub async fn start_new_index(params: DeployParams) -> Result<(), Box<dyn Error>>
         .await
         .build();
 
-    let data_sources: Vec<DataSource> = get_data_source(&params.subgraph).await.unwrap();
+    let data_sources: Vec<DataSource> = match &params.subgraph {
+        Some(v) => {
+            get_data_source(v).await.unwrap()
+        }
+        None => {
+            vec![]
+        }
+    };
 
     // Create tables for the new index and track them in hasura
     run_ddl_gen(&index_config).await;
@@ -89,6 +96,7 @@ pub async fn restart_all_existing_index_helper() -> Result<(), Box<dyn Error>> {
                 .await
                 .build();
             // adapter_init(&index_config).await;
+            // TODO: Enable new index Config so we can have the start index on restart
         });
     }
     Ok(())
@@ -100,7 +108,8 @@ pub async fn list_handler_helper() -> Result<Vec<Indexer>, Box<dyn Error>> {
     Ok(indexers)
 }
 
-
+/********* HELPER FUNCTION ************/
+// TODO: Move to a different file
 async fn get_data_source(
     file_hash: &String,
 ) -> Result<Vec<DataSource>, SubgraphAssignmentProviderError> {
@@ -108,7 +117,6 @@ async fn get_data_source(
     let ipfs_addresses = vec![String::from("0.0.0.0:5001")];
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await;
 
-    // let mut resolver = TextResolver::default();
     let file_bytes = ipfs_clients[0]
         .cat_all(file_hash.to_string(), Duration::from_secs(10))
         .compat()
@@ -118,7 +126,6 @@ async fn get_data_source(
 
     // Get raw manifest
     let file = String::from_utf8(file_bytes)
-        //.map_err(|_| SubgraphAssignmentProviderError::ResolveError)
         .unwrap();
 
     println!("File: {}", file);
@@ -137,10 +144,8 @@ async fn get_data_source(
         serde_yaml::Value::from(id.to_string()),
     );
 
-    //println!("raw_manifest: {:#?}", &raw_manifest);
     // Parse the YAML data into an UnresolvedSubgraphManifest
     let value: Value = raw_manifest.into();
-    //println!("value: {:#?}", &value);
     let unresolved: UnresolvedSubgraphManifest<Chain> = serde_yaml::from_value(value).unwrap();
     let resolver = Arc::new(LinkResolver::from(ipfs_clients));
 
@@ -156,7 +161,8 @@ async fn get_data_source(
     Ok(manifest.data_sources)
 }
 
-
+/********* HELPER FUNCTION ************/
+// TODO: Move to a different file
 pub async fn create_ipfs_clients(ipfs_addresses: &Vec<String>) -> Vec<IpfsClient> {
     // Parse the IPFS URL from the `--ipfs` command line argument
     let ipfs_addresses: Vec<_> = ipfs_addresses

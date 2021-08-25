@@ -114,13 +114,22 @@ impl IndexConfigIpfsBuilder {
         }
     }
 
-    pub async fn subgraph(mut self, subgraph: &String) -> IndexConfigIpfsBuilder {
-        self.subgraph = download_ipfs_file_by_hash(
-            &String::from("subgraph.yaml"),
-            &self.hash,
-            subgraph,
-        ).await;
-        self
+    pub async fn subgraph(mut self, subgraph: &Option<String>) -> IndexConfigIpfsBuilder {
+        match subgraph {
+            Some(v) => {
+                self.subgraph = download_ipfs_file_by_hash(
+                    &String::from("subgraph.yaml"),
+                    &self.hash,
+                    v,
+                ).await;
+                self
+            }
+            None => {
+                println!(".SO mapping or this index type doesn't support ABIs");
+                self.subgraph = Default::default();
+                self
+            },
+        }
     }
 
     pub fn build(self) -> IndexConfig {

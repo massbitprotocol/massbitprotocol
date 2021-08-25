@@ -129,6 +129,7 @@ def deploy_so(data):
     else:
         index_manager_url = 'http://0.0.0.0:3030'
 
+    null = None
     res = requests.post(index_manager_url,
                         json={
                             'jsonrpc': '2.0',
@@ -137,7 +138,8 @@ def deploy_so(data):
                                 config_res['Hash'],
                                 so_res['Hash'],
                                 schema_res['Hash'],
-                                []
+                                null,
+                                null
                             ],
                             'id': '1',
                         })
