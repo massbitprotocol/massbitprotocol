@@ -135,7 +135,7 @@ def generate_new_config(project, schema_res, abi_res, config):
                 dictionary['dataSources'][0]['mapping']['abis'][i] = object
 
     # Add IPFS hash for templates abis
-    if dictionary['templates']:
+    if 'templates' in dictionary:
         for i in range(0, len(dictionary['templates'][0]['mapping']['abis'])):
             name = dictionary['templates'][0]['mapping']['abis'][i]['name']
             for abi_object in abi_res:
