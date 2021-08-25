@@ -174,14 +174,6 @@ impl AdapterManager {
             ),
             None => (&empty_ds, vec![]),
         };
-        /*
-        let data_sources: &Vec<DataSource> = &manifest.data_sources;
-        let templates: Vec<DataSourceTemplate> = manifest
-            .templates
-            .iter()
-            .map(|tpl| tpl.clone())
-            .collect::<Vec<DataSourceTemplate>>();
-        */
         let arc_templates = Arc::new(templates);
         //Todo: Currently adapter only works with one datasource
         match data_sources.get(0) {

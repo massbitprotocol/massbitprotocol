@@ -1,10 +1,4 @@
-//pub mod asc_abi;
-//pub mod chain;
-//pub mod error;
-//pub mod graph;
-//pub mod ethereum_call;
 pub mod host_exports;
-//pub mod indexer;
 pub mod manifest;
 pub mod mapping;
 pub mod mock;
@@ -19,9 +13,6 @@ pub use module::WasmInstance;
 pub use slog;
 pub use stable_hash;
 pub mod prelude {
-    //pub use crate::graph::prelude::*;
-    //pub use crate::impl_slog_value;
-    //pub use crate::mapping::ValidModule;
     pub use bigdecimal;
     pub use chrono;
     pub use semver::Version;
