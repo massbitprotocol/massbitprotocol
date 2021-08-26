@@ -426,7 +426,7 @@ impl AdapterManager {
                     println!("Error {:?}", e);
                     StoreError::Unknown(e.into())
                 })?;
-                println!("Finish wasm mapping");
+                // println!("Finish wasm mapping");
                 mods.iter().for_each(|entity| {
                     println!("Entitiy {:?}", entity);
                 });
