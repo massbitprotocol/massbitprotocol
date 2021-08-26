@@ -191,17 +191,20 @@ impl StoreBuilder {
         //Need execute command CREATE EXTENSION btree_gist; on db
         let logger = Logger::root(slog::Discard, o!());
         let conn = connection.get_with_timeout_warning(&logger).unwrap();
+        /*
         let site = Connection::new(&conn)
             .allocate_site(PRIMARY_SHARD.clone(), &DEPLOYMENT_HASH, NETWORK.clone())
             .unwrap();
-        /*
+        */
+
         let site = make_dummy_site(
             deployment_hash.cheap_clone(),
             NAMESPACE.clone(),
             String::from(""),
         );
-        */
-        let exists = deployment::exists(&conn, &site)?;
+
+        //let exists = deployment::exists(&conn, &site)?;
+        let exists = true;
         let arc_site = Arc::new(site);
         let catalog = Catalog::make_empty(arc_site.clone()).unwrap();
         match exists {
@@ -221,7 +224,7 @@ impl StoreBuilder {
         match layout.gen_relationship() {
             Ok(sql) => {
                 println!("{:?}", sql.join(";\n"));
-                let conn = connection.get_with_timeout_warning(&logger).unwrap();
+                //let conn = connection.get_with_timeout_warning(&logger).unwrap();
                 Ok(())
             }
             Err(e) => Err(e),
