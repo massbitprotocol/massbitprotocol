@@ -53,6 +53,12 @@ pub async fn print_blocks(
         .list_blocks(Request::new(get_blocks_request))
         .await?
         .into_inner();
+
+    // For ethereum only
+    let file_hash = "/ipfs/QmVVrXLPKJYiXQqmR5LVmPTJBbYEQp4vgwve3hqXroHDp5".to_string();
+    let data_sources: Vec<DataSource> = get_data_source(&file_hash).await.unwrap();
+    // End For ethereum only
+
     println!("Waitting for data...");
     while let Some(data) = stream.message().await? {
         let mut data = data as GenericDataProto;
@@ -140,16 +146,14 @@ pub async fn print_blocks(
                         "Recieved ETHREUM BLOCK with Block number: {}",
                         &block.block.number.unwrap().as_u64()
                     );
-                    let file_hash =
-                        "/ipfs/QmVVrXLPKJYiXQqmR5LVmPTJBbYEQp4vgwve3hqXroHDp5".to_string();
-                    let data_sources: Vec<DataSource> = get_data_source(&file_hash).await.unwrap();
-                    for data_source in data_sources {
-                        println!("data_source: {:#?}", &data_source);
+
+                    for data_source in &data_sources {
+                        //println!("data_source: {:#?}", &data_source);
                         let events = get_events(&block, data_source);
 
-                        for event in events {
-                            println!("Ethereum Event address: {:?}", &event.event.address);
-                        }
+                        // for event in events {
+                        //     println!("Ethereum Event address: {:?}", &event.event.address);
+                        // }
                     }
                 }
                 _ => {
@@ -210,7 +214,7 @@ pub async fn create_ipfs_clients(ipfs_addresses: &Vec<String>) -> Vec<IpfsClient
 async fn get_data_source(
     file_hash: &String,
 ) -> Result<Vec<DataSource>, SubgraphAssignmentProviderError> {
-    let logger = logger(true);
+    let logger = logger(false);
     let ipfs_addresses = vec![String::from("0.0.0.0:5001")];
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await;
 
@@ -223,8 +227,7 @@ async fn get_data_source(
         .to_vec();
 
     // Get raw manifest
-    let file = String::from_utf8(file_bytes)
-        .unwrap();
+    let file = String::from_utf8(file_bytes).unwrap();
     println!("File: {}", file);
 
     let raw: serde_yaml::Value = serde_yaml::from_str(&file).unwrap();

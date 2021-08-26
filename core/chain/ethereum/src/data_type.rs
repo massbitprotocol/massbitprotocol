@@ -57,7 +57,7 @@ pub fn decode(payload: &mut Vec<u8>) -> Result<EthereumBlock, Box<dyn Error>> {
     Ok(block)
 }
 
-pub fn get_events(eth_block: &EthereumBlock, data_source: DataSource) -> Vec<EthereumEvent> {
+pub fn get_events(eth_block: &EthereumBlock, data_source: &DataSource) -> Vec<EthereumEvent> {
     let block = Arc::new(eth_block.block.clone());
 
     eth_block

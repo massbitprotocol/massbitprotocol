@@ -27,6 +27,7 @@ use graph_runtime_wasm::ValidModule;
 use index_store::core::Store;
 use lazy_static::lazy_static;
 use libloading::Library;
+use log::info;
 use massbit_chain_solana::data_type::{
     convert_solana_encoded_block_to_solana_block, decode as solana_decode, SolanaEncodedBlock,
     SolanaLogMessages, SolanaTransaction,
@@ -174,15 +175,22 @@ impl AdapterManager {
         };
         let arc_templates = Arc::new(templates);
         //Todo: Currently adapter only works with one datasource
+        assert_eq!(
+            data_sources.len(),
+            1,
+            "Error: Number datasource: {} is not 1.",
+            data_sources.len()
+        );
         match data_sources.get(0) {
-            Some(datasource) => {
+            Some(data_source) => {
+                info!("Data source: {:?}", data_source);
                 let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await?;
                 log::info!(
                     "{} Init Streamout client for chain {}",
                     &*COMPONENT_NAME,
-                    &datasource.kind
+                    &data_source.kind
                 );
-                let chain_type = get_chain_type(datasource);
+                let chain_type = get_chain_type(data_source);
                 let get_blocks_request = GetBlocksRequest {
                     start_block_number: 0,
                     end_block_number: 1,
@@ -195,13 +203,13 @@ impl AdapterManager {
                 log::info!(
                     "{} Detect mapping language {}",
                     &*COMPONENT_NAME,
-                    &datasource.mapping.language
+                    &data_source.mapping.language
                 );
-                match datasource.mapping.language.as_str() {
+                match data_source.mapping.language.as_str() {
                     "wasm/assemblyscript" => {
                         self.handle_wasm_mapping(
                             hash,
-                            datasource,
+                            data_source,
                             arc_templates,
                             mapping,
                             schema,
@@ -211,7 +219,7 @@ impl AdapterManager {
                     }
                     //Default use rust
                     _ => {
-                        self.handle_rust_mapping(hash, datasource, mapping, &mut stream)
+                        self.handle_rust_mapping(hash, data_source, mapping, &mut stream)
                             .await
                     }
                 }

@@ -20,6 +20,7 @@ pub struct Config {
 pub struct ChainConfig {
     pub url: String,
     pub ws: String,
+    pub start_block: Option<u64>,
 }
 
 pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {

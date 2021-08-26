@@ -7,6 +7,7 @@ use anyhow::Error;
 use futures::stream;
 use futures::{Future, Stream};
 use futures03::{self, compat::Future01CompatExt};
+use graph::prelude::tokio::sync::Semaphore;
 use log::{debug, info};
 use massbit_chain_ethereum::data_type::EthereumBlock as Block;
 use std::collections::HashMap;
@@ -32,6 +33,7 @@ use web3::{
 const CHAIN_TYPE: ChainType = ChainType::Ethereum;
 const PULLING_INTERVAL: u64 = 200;
 const USE_WEBSOCKET: bool = false;
+const BLOCK_BATCH_SIZE: u64 = 10;
 
 #[derive(Error, Debug)]
 pub enum IngestorError {
@@ -227,7 +229,8 @@ pub async fn loop_get_block(chan: broadcast::Sender<GenericDataProto>) {
         .unwrap_or("Cannot get version".to_string());
 
     fix_one_thread_not_receive(&chan);
-    let mut got_block_number = None;
+    let mut got_block_number = config.start_block;
+    let sem = Arc::new(Semaphore::new(BLOCK_BATCH_SIZE as usize));
     loop {
         if exit.load(Ordering::Relaxed) {
             eprintln!("{}", "exit".to_string());
@@ -240,18 +243,30 @@ pub async fn loop_get_block(chan: broadcast::Sender<GenericDataProto>) {
             got_block_number = Some(latest_block_number - 1);
         }
 
-        if latest_block_number - got_block_number.unwrap() >= 1 {
-            info!(
-                "ETHEREUM pending block: {}",
-                latest_block_number - got_block_number.unwrap()
-            );
+        let pending_block = latest_block_number - got_block_number.unwrap();
+
+        if pending_block >= 1 {
+            info!("ETHEREUM pending block: {}", pending_block);
         }
 
-        for block_number in (got_block_number.unwrap() + 1)..(latest_block_number + 1) {
+        // Number of getting block
+        let getting_block;
+        if pending_block > BLOCK_BATCH_SIZE {
+            getting_block = BLOCK_BATCH_SIZE;
+        } else {
+            getting_block = pending_block;
+        }
+
+        for block_number in
+            (got_block_number.unwrap() + 1)..(got_block_number.unwrap() + 1 + getting_block)
+        {
             let clone_version = version.clone();
             let chan_clone = chan.clone();
             let clone_web3 = web3.clone();
+            // For limit number of spawn task
+            let permit = Arc::clone(&sem).acquire_owned().await;
             tokio::spawn(async move {
+                let _permit = permit;
                 // Get block
                 info!("Getting ETHEREUM block {}", block_number);
                 // Get receipts
@@ -299,7 +314,7 @@ pub async fn loop_get_block(chan: broadcast::Sender<GenericDataProto>) {
                 }
             });
         }
-        got_block_number = Some(latest_block_number);
+        got_block_number = Some(got_block_number.unwrap() + getting_block);
     }
 }
 
