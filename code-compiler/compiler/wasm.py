@@ -144,7 +144,6 @@ def replace_ipfs_hash(subgraph_type, dictionary, abi_res):
     if subgraph_type in dictionary:
         for i in range(0, len(dictionary[subgraph_type][0]['mapping']['abis'])):
             name = os.path.basename(dictionary[subgraph_type][0]['mapping']['abis'][i]['file'])
-            print(name)
             for abi in abi_res:
                 if name.lower() == abi["name"].lower():
                     dictionary[subgraph_type][0]['mapping']['abis'][i] = {'name': name, 'file': {'/': '/ipfs/' + abi["hash"]}}
