@@ -143,8 +143,9 @@ def generate_new_config(project, schema_res, abi_res, config):
 def replace_ipfs_hash(subgraph_type, subgraph, abi_res):
     if subgraph_type in subgraph:
         for i in range(0, len(subgraph[subgraph_type][0]['mapping']['abis'])):
-            name = os.path.basename(subgraph[subgraph_type][0]['mapping']['abis'][i]['file'])
+            file_name = os.path.basename(subgraph[subgraph_type][0]['mapping']['abis'][i]['file'])
+            name = subgraph[subgraph_type][0]['mapping']['abis'][i]['name']
             for abi in abi_res:
-                if name.lower() == abi["name"].lower():
+                if file_name.lower() == abi["name"].lower():
                     subgraph[subgraph_type][0]['mapping']['abis'][i] = {'name': name, 'file': {'/': '/ipfs/' + abi["hash"]}}
     return subgraph
