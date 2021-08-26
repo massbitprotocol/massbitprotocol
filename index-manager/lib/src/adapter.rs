@@ -23,7 +23,7 @@ pub async fn adapter_init(
     index_config: &IndexConfig,
     manifest: &Option<SubgraphManifest<Chain>>,
 ) -> Result<(), Box<dyn Error>> {
-    // Chain Reader Client Configuration to subscribe and get latest block from Chain Reader Server
+    //Chain Reader Client Configuration to subscribe and get latest block from Chain Reader Server
     //let config_value = read_config_file(&index_config.config);
     //let config_path = PathBuf::from(format!("{}/{}", QUICKSWAP_PATH, MANIFEST).as_str());
     //let config_value = read_config_file(&config_path);

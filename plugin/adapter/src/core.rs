@@ -38,7 +38,7 @@ use massbit_runtime_wasm::mapping::FromFile;
 use massbit_runtime_wasm::mock::MockMetricsRegistry;
 use massbit_runtime_wasm::prelude::{Logger, Version};
 use massbit_runtime_wasm::store::postgres::store_builder::*;
-use massbit_runtime_wasm::store::{PostgresIndexStore, SubgraphStore};
+use massbit_runtime_wasm::store::PostgresIndexStore;
 use massbit_runtime_wasm::{slog, store};
 use massbit_runtime_wasm::{HostExports, MappingContext, WasmInstance};
 use serde_yaml::Value;
@@ -60,8 +60,6 @@ lazy_static! {
         env::var("CHAIN_READER_URL").unwrap_or(String::from("http://127.0.0.1:50051"));
     static ref IPFS_ADDRESS: String =
         env::var("IPFS_ADDRESS").unwrap_or(String::from("0.0.0.0:5001"));
-    static ref DATABASE_CONNECTION_STRING: String = env::var("DATABASE_CONNECTION_STRING")
-        .unwrap_or(String::from("postgres://graph-node:let-me-in@localhost"));
     static ref GENERATED_FOLDER: String = String::from("index-manager/generated/");
     static ref COMPONENT_NAME: String = String::from("[Adapter-Manager]");
 }
@@ -323,11 +321,8 @@ impl AdapterManager {
             mapping_path.as_ref(),
             &valid_module.import_name_to_modules
         );
-        let store = Arc::new(create_store(
-            indexer_hash.as_str(),
-            DATABASE_CONNECTION_STRING.as_str(),
-            &schema_path,
-        ));
+        let store =
+            Arc::new(StoreBuilder::create_store(indexer_hash.as_str(), &schema_path).unwrap());
         let registry = Arc::new(MockMetricsRegistry::new());
         // Try to create IPFS clients for each URL specified in `--ipfs`
         //let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
@@ -586,11 +581,7 @@ impl AdapterManager {
     ) -> Result<(), Box<dyn Error>> {
         //let store = PostgresIndexStore::new(DATABASE_CONNECTION_STRING.as_str()).await;
         let empty_path = PathBuf::new();
-        let store = create_store(
-            indexer_hash.as_str(),
-            DATABASE_CONNECTION_STRING.as_str(),
-            &empty_path,
-        );
+        let store = StoreBuilder::create_store(indexer_hash.as_str(), &empty_path).unwrap();
         self.store = Some(store);
         unsafe {
             match self.load(indexer_hash, mapping_path).await {

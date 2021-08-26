@@ -40,13 +40,12 @@ use massbit_common::prelude::{
 use graph_store_postgres::command_support::Layout;
 use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
-use store_builder::create_store;
+use store_builder::StoreBuilder;
 
 pub const BLOCK_NUMBER_MAX: BlockNumber = <i32>::MAX;
 
 #[derive(Clone)]
 pub struct PostgresIndexStore {
-    pub connection_string: String,
     pub connection: ConnectionPool,
     pub layout: Layout,
     pub logger: Logger, //buffer: HashMap<String, TableBuffer>,
@@ -54,9 +53,9 @@ pub struct PostgresIndexStore {
 }
 
 impl PostgresIndexStore {
-    pub async fn new(indexer: &str, connection_str: &str) -> PostgresIndexStore {
+    pub fn new(indexer: &str) -> Result<PostgresIndexStore, anyhow::Error> {
         let path = PathBuf::new();
-        create_store(indexer, connection_str, &path)
+        StoreBuilder::create_store(indexer, &path)
     }
 }
 
