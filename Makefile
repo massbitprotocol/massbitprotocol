@@ -39,3 +39,26 @@ create-list-user-example-json-file:
 	@echo "Create list user examples json file ..."
 	cd user-example && python create_example_json.py
 
+#################### Dev commands ##########################
+
+deploy:
+	@echo "Deploy already build indexer $1"
+	curl --location --request POST 'localhost:5000/deploy/wasm' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{"configs": {"model": "Factory" }, "compilation_id": "$(id)" }'
+
+run-indexer-manager:
+	@echo "Run index-manager"
+	cargo run --bin index-manager-main
+
+run-chain-reader:
+	@echo "Run chain-reader"
+	cargo run --bin chain-reader
+
+services-up:
+	@echo "Run all service"
+	docker-compose -f docker-compose.min.yml up
+
+services-down:
+	@echo "Stop all service"
+	docker-compose -f docker-compose.min.yml down

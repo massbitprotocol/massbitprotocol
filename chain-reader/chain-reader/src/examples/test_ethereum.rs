@@ -156,7 +156,7 @@ impl SimpleEthereumAdapter {
         cache: Arc<Mutex<dyn SimpleEthereumCallCacheTrait>>,
     ) -> Box<dyn Future<Item = Vec<Token>, Error = EthereumContractCallError> + Send> {
         //Todo: clean logger
-        let logger = logger(true);
+        let logger = logger(false);
         // Emit custom error for type mismatches.
         for (token, kind) in call
             .args
@@ -249,7 +249,7 @@ impl SimpleEthereumAdapter {
         block_ptr: BlockPtr,
     ) -> impl Future<Item = Bytes, Error = EthereumContractCallError> + Send {
         //Todo: clean logger
-        let logger = logger(true);
+        let logger = logger(false);
         let web3 = self.web3.clone();
 
         // Ganache does not support calls by block hash.
@@ -558,7 +558,7 @@ async fn main() {
     let call_cache = Arc::new(Mutex::new(SimpleEthereumCallCache {
         map: HashMap::new(),
     }));
-    let log = logger(true);
+    let log = logger(false);
     let block = web3
         .eth()
         .block_with_txs(Web3BlockNumber::Latest.into())
