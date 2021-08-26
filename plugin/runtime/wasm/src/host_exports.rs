@@ -617,7 +617,7 @@ pub fn create_ethereum_call(datasource: &DataSource) -> HostFn {
         url_hostname: Arc::new("hostname".to_string()),
         provider: "provider".to_string(),
         web3: Arc::new(web3.clone()),
-        supports_eip_1898: true, //Support RPC get block by block hash
+        supports_eip_1898: false, //Support RPC get block by block hash. This must be false for ethereum call on Matic.
     };
     //////////////////////// Run ethereum_call //////////////////////
     let call_cache = Arc::new(Mutex::new(SimpleEthereumCallCache {

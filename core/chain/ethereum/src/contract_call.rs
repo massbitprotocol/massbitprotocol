@@ -3,6 +3,7 @@ use futures::future;
 use futures::prelude::*;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+//use tokio_compat_02::FutureExt;
 
 // The graph
 use graph::blockchain::types::BlockPtr;
@@ -13,7 +14,7 @@ use graph::prelude::ethabi::ParamType;
 use graph::prelude::lazy_static;
 use graph::prelude::{
     error, ethabi, ethabi::Token, retry, tiny_keccak, trace, BlockNumber, EthereumCallCache,
-    Future01CompatExt, MappingABI,
+    /*Future01CompatExt,*/ MappingABI,
 };
 use graph::runtime::{asc_get, asc_new, AscPtr, HostExportError};
 use graph::semver::Version;
@@ -175,7 +176,7 @@ impl SimpleEthereumAdapter {
             Ok(data) => data,
             Err(e) => return Box::new(future::err(EthereumContractCallError::EncodingError(e))),
         };
-
+        println!("call_data: {:?}", &call_data);
         trace!(logger, "eth_call";
             "address" => hex::encode(&call.address),
             "data" => hex::encode(&call_data)
@@ -188,7 +189,7 @@ impl SimpleEthereumAdapter {
             .ok()
             .flatten();
         drop(guard);
-
+        println!("cache_result: {:?}", &cache_result);
         // Check if we have it cached, if not do the call and cache.
         Box::new(
             match cache_result {
@@ -206,6 +207,7 @@ impl SimpleEthereumAdapter {
                             call.block_ptr.clone(),
                         )
                         .map(move |result| {
+                            println!("call result: {:?}", &result);
                             // Don't block handler execution on writing to the cache.
                             let for_cache = result.0.clone();
                             let _ = graph::spawn_blocking_allow_panic(move || {
@@ -250,7 +252,7 @@ impl SimpleEthereumAdapter {
         //Todo: clean logger
         let logger = logger(true);
         let web3 = self.web3.clone();
-
+        println!("web3: {:?}", &web3);
         // Ganache does not support calls by block hash.
         // See https://github.com/trufflesuite/ganache-cli/issues/745
         let block_id = if !self.supports_eip_1898 {
@@ -258,7 +260,7 @@ impl SimpleEthereumAdapter {
         } else {
             BlockId::Hash(block_ptr.hash_as_h256())
         };
-
+        println!("block_id: {:?}", &block_id);
         retry("eth_call RPC call", &logger)
             .when(|result| match result {
                 Ok(_) | Err(EthereumContractCallError::Revert(_)) => false,
@@ -275,7 +277,9 @@ impl SimpleEthereumAdapter {
                     value: None,
                     data: Some(call_data.clone()),
                 };
+                println!("req: {:?}", &req);
                 web3.eth().call(req, Some(block_id)).then(|result| {
+                    println!("web3.eth().call result: {:?}", &result);
                     // Try to check if the call was reverted. The JSON-RPC response for reverts is
                     // not standardized, so we have ad-hoc checks for each of Geth, Parity and
                     // Ganache.
@@ -431,7 +435,7 @@ fn eth_call(
         })?
         .contract
         .clone();
-
+    println!("contract: {:?}", &contract);
     let function = match unresolved_call.function_signature {
         // Behavior for apiVersion < 0.0.4: look up function by name; for overloaded
         // functions this always picks the same overloaded variant, which is incorrect
@@ -468,6 +472,7 @@ fn eth_call(
                 )
             })?,
     };
+    println!("function: {:?}", &function);
 
     let call = EthereumContractCall {
         address: unresolved_call.contract_address.clone(),
@@ -476,6 +481,7 @@ fn eth_call(
         args: unresolved_call.function_args.clone(),
     };
 
+    println!("call: {:?}", &call);
     // Run Ethereum call in tokio runtime
     let logger1 = logger.clone();
     let call_cache = call_cache.clone();
