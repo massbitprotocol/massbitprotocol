@@ -10,9 +10,6 @@ ${BROWSER}        Firefox
 *** Keywords ***
 Open Browser To Login Page
     Open Browser    ${DASHBOARD}    ${BROWSER}
-    Maximize Browser Window
-    Set Selenium Speed    ${DELAY}
-    Login Page Should Be Open
 
 *** Test Cases ***
 Valid Login
