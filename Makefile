@@ -55,6 +55,11 @@ run-chain-reader:
 	@echo "Run chain-reader"
 	cargo run --bin chain-reader
 
+run-code-compiler:
+	@echo "Run code-compiler"
+	cd code-compiler/ && python app.py
+
+
 services-up:
 	@echo "Run all service"
 	docker-compose -f docker-compose.min.yml up
