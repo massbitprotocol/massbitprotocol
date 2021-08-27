@@ -85,7 +85,6 @@ impl WritableStore for PostgresIndexStore {
         // that is fully plumbed in, we just use the biggest possible block
         // number so that we will always return the latest version,
         // i.e., the one with an infinite upper bound
-        log::info!("Get entity by key {:?}", key);
         self.layout
             .find(&conn, &key.entity_type, &key.entity_id, BLOCK_NUMBER_MAX)
             .map_err(|e| {

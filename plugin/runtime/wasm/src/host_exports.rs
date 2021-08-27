@@ -19,7 +19,7 @@ use massbit_common::prelude::{
     anyhow::{anyhow, Context},
     ethabi::param_type::Reader,
     ethabi::{decode, encode, Token, Uint},
-    serde_json,
+    log, serde_json,
 };
 use never::Never;
 use slog::{b, info, record_static, trace};
@@ -146,8 +146,9 @@ impl<C: Blockchain> HostExports<C> {
             entity_type: EntityType::new(entity_type.clone()),
             entity_id: entity_id.clone(),
         };
-        //let entity = state.get_entity(&store_key)?;
-        Ok(state.entity_cache.get(&store_key)?)
+        let entity = state.entity_cache.get(&store_key)?;
+        log::info!("Store get with key {:?} result {:?}", &store_key, &entity);
+        Ok(entity)
     }
 
     pub(crate) fn store_set(
