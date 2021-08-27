@@ -15,6 +15,7 @@ use graph_store_postgres::{
 use crate::store::postgres::ConnectionPool;
  */
 use crate::store::PostgresIndexStore;
+use anyhow::anyhow;
 use core::ops::{Deref, DerefMut};
 use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, PooledConnection};
@@ -37,13 +38,10 @@ use graph_store_postgres::{deployment, SubgraphStore};
 use inflector::Inflector;
 use massbit_common::consts::HASURA_URL;
 use massbit_common::prelude::diesel::connection::SimpleConnection;
-use massbit_common::prelude::diesel::result::Error;
-use massbit_common::prelude::diesel::row::Row;
-use massbit_common::prelude::diesel::sql_types::Text;
 use massbit_common::prelude::diesel::{sql_query, RunQueryDsl};
 use massbit_common::prelude::lazy_static::lazy_static;
 use massbit_common::prelude::log::{self, debug, error, info};
-use massbit_common::prelude::reqwest::{Client, Response};
+use massbit_common::prelude::reqwest::Client;
 use massbit_common::prelude::serde_json;
 use massbit_common::prelude::serde_json::Value;
 use massbit_common::prelude::tokio_compat_02::FutureExt;
@@ -162,11 +160,10 @@ impl StoreBuilder {
         //let exists = deployment::exists(&conn, &site)?;
         let arc_site = Arc::new(site);
         let catalog = Catalog::make_empty(arc_site.clone()).unwrap();
-        if result.count > 0 {
-            Layout::new(arc_site, &schema, catalog, false)
-        } else {
+        //let catalog = Catalog::new(&conn.deref(), arc_site.clone())?;
+        let conn = connection.get_with_timeout_warning(&logger)?;
+        if result.count == 0 {
             //Create schema
-            let conn = connection.get_with_timeout_warning(&logger)?;
             match sql_query(format!("create schema {}", NAMESPACE.as_str())).execute(&conn) {
                 Ok(_) => {}
                 Err(err) => {
@@ -174,46 +171,80 @@ impl StoreBuilder {
                 }
             };
             //Need execute command CREATE EXTENSION btree_gist; on db
-            let result = Layout::create_relational_schema(&conn.deref(), arc_site, &schema);
-            match result {
-                Ok(layout) => {
-                    Self::create_relationships(&layout, &conn.deref());
-                    let (hasura_up, _) = layout.create_hasura_payloads();
-                    //println!("{:?}", serde_json::to_string(&hasura_up).unwrap());
-                    tokio::spawn(async move {
-                        let response = Client::new()
-                            .post(&*HASURA_URL)
-                            .json(&hasura_up)
-                            .send()
-                            .compat()
-                            .await
-                            .unwrap();
-                        log::info!("Hasura {:?}", response);
-                    });
-                    Ok(layout)
-                }
-                Err(e) => Err(e),
-            }
         }
-    }
-
-    pub fn create_relationships(
-        layout: &Layout,
-        connection: &PgConnection,
-    ) -> Result<(), anyhow::Error> {
-        match layout.gen_relationship() {
-            Ok(sql) => {
-                let query = sql.join(";");
-                log::info!("Execute query: {:?}", &query);
-                match connection.batch_execute(&query) {
-                    Ok(_) => {}
-                    Err(err) => {
-                        println!("Error while crate relation {:?}", err)
+        match Layout::new(arc_site, &schema, catalog, false) {
+            Ok(layout) => {
+                let sql = layout.as_ddl().map_err(|_| {
+                    StoreError::Unknown(anyhow!("failed to generate DDL for layout"))
+                })?;
+                let relationships = layout.gen_relationship();
+                let (hasura_up, _) = layout.create_hasura_payloads();
+                tokio::spawn(async move {
+                    match conn.batch_execute(&sql) {
+                        Ok(_) => {}
+                        Err(e) => {
+                            log::error!("{:?}", e);
+                        }
                     }
-                }
-                Ok(())
+                    if relationships.len() > 0 {
+                        let query = relationships.join(";");
+                        log::info!("Create relationships: {:?}", &query);
+                        match conn.batch_execute(&query) {
+                            Ok(_) => {}
+                            Err(err) => {
+                                log::error!("Error while crate relation {:?}", err)
+                            }
+                        }
+                    }
+                    let response = Client::new()
+                        .post(&*HASURA_URL)
+                        .json(&hasura_up)
+                        .send()
+                        .compat()
+                        .await
+                        .unwrap();
+                    log::info!("Hasura {:?}", response);
+                });
+                Ok(layout)
             }
             Err(e) => Err(e),
+        }
+
+        /*
+        let result = Layout::create_relational_schema(&conn.deref(), arc_site, &schema);
+        match result {
+            Ok(layout) => {
+                Self::create_relationships(&layout, &conn.deref());
+                let (hasura_up, _) = layout.create_hasura_payloads();
+                //println!("{:?}", serde_json::to_string(&hasura_up).unwrap());
+                tokio::spawn(async move {
+                    let response = Client::new()
+                        .post(&*HASURA_URL)
+                        .json(&hasura_up)
+                        .send()
+                        .compat()
+                        .await
+                        .unwrap();
+                    log::info!("Hasura {:?}", response);
+                });
+                Ok(layout)
+            }
+            Err(e) => Err(e),
+        }
+        */
+    }
+
+    pub fn create_relationships(layout: &Layout, connection: &PgConnection) {
+        let relationships = layout.gen_relationship();
+        if relationships.len() > 0 {
+            let query = relationships.join(";");
+            log::info!("Create relationships: {:?}", &query);
+            match connection.batch_execute(&query) {
+                Ok(_) => {}
+                Err(err) => {
+                    println!("Error while crate relation {:?}", err);
+                }
+            }
         }
     }
 }
@@ -239,7 +270,7 @@ pub trait TableExt {
     fn get_dependencies(&self, layout: &Layout) -> Vec<String>;
 }
 pub trait LayoutExt {
-    fn gen_relationship(&self) -> Result<Vec<String>, anyhow::Error>;
+    fn gen_relationship(&self) -> Vec<String>;
     fn create_dependencies(&self) -> HashMap<String, Vec<String>>;
     fn create_hasura_payloads(&self) -> (serde_json::Value, serde_json::Value);
 }
@@ -282,7 +313,7 @@ impl TableExt for Table {
 }
 
 impl LayoutExt for Layout {
-    fn gen_relationship(&self) -> Result<Vec<String>, anyhow::Error> {
+    fn gen_relationship(&self) -> Vec<String> {
         let mut sqls = Vec::default();
         let mut references = HashSet::new();
         let schema = self.site.namespace.as_str();
@@ -304,7 +335,7 @@ impl LayoutExt for Layout {
                 ),
             )
         });
-        Ok(sqls)
+        sqls
     }
     fn create_dependencies(&self) -> HashMap<String, Vec<String>> {
         let mut dependencies = HashMap::default();
