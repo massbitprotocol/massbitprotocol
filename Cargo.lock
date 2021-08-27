@@ -3514,6 +3514,7 @@ dependencies = [
  "env_logger 0.9.0",
  "lazy_static",
  "log 0.4.14",
+ "massbit-common",
  "rand 0.8.4",
  "structmap",
  "structmap-derive",

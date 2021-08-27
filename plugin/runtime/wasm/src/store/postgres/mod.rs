@@ -1,22 +1,6 @@
-//pub mod advisory_lock;
-//pub mod catalog;
-//pub mod connection_pool;
-pub mod relational;
 pub mod store_builder;
-use graph::components::metrics::stopwatch::StopwatchMetrics;
-use graph::ext::futures::{CancelHandle, CancelableError};
-use graph::prelude::BlockPtr;
-
-/*
-use crate::store::{
-    Entity, EntityKey, EntityModification, EntityType, QueryExecutionError, StoreError,
-    WritableStore,
-};
- */
-//pub use connection_pool::ConnectionPool;
-
-//use crate::store::WritableStore;
 use crate::prelude::{Arc, Logger};
+use graph::components::metrics::stopwatch::StopwatchMetrics;
 use graph::components::store::{
     EntityKey, EntityModification, EntityType, StoreError, StoreEvent, StoredDynamicDataSource,
     WritableStore,
@@ -24,7 +8,10 @@ use graph::components::store::{
 use graph::components::subgraph::Entity;
 use graph::data::query::QueryExecutionError;
 use graph::data::subgraph::schema::SubgraphError;
+use graph::ext::futures::{CancelHandle, CancelableError};
+use graph::prelude::BlockPtr;
 use graph::prelude::{BlockNumber, DynTryFuture};
+use graph_store_postgres::command_support::Layout;
 use graph_store_postgres::connection_pool::ConnectionPool;
 use index_store::core::Store;
 use massbit_common::prelude::diesel::{
@@ -36,8 +23,6 @@ use massbit_common::prelude::{
     async_trait::async_trait,
     log, structmap,
 };
-//use relational::Layout;
-use graph_store_postgres::command_support::Layout;
 use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use store_builder::StoreBuilder;
@@ -50,7 +35,7 @@ pub struct PostgresIndexStore {
     pub connection: ConnectionPool,
     pub layout: Layout,
     //buffer: HashMap<String, TableBuffer>,
-    entity_dependencies: HashMap<String, Vec<String>>,
+    //entity_dependencies: HashMap<String, Vec<String>>,
 }
 
 impl PostgresIndexStore {
@@ -135,9 +120,11 @@ impl WritableStore for PostgresIndexStore {
         data_sources: Vec<StoredDynamicDataSource>,
         deterministic_errors: Vec<SubgraphError>,
     ) -> Result<(), StoreError> {
-        mods.iter().for_each(|entity| {
-            log::info!("Store {:?}", entity);
+        /*
+        mods.iter().for_each(|modification| {
+            log::info!("Transact {:?}", modification);
         });
+         */
         let conn = self.get_conn()?;
         let event = conn.transaction(|| -> Result<_, StoreError> {
             // Emit a store event for the changes we are about to make. We
@@ -173,6 +160,7 @@ impl WritableStore for PostgresIndexStore {
             */
             Ok(event)
         })?;
+        log::info!("{:?}", event);
         Ok(())
     }
 
@@ -320,6 +308,7 @@ impl PostgresIndexStore {
         let mut overwrites = HashMap::new();
         let mut removals = HashMap::new();
         for modification in mods.into_iter() {
+            log::info!("Store {:?}", &modification);
             match modification {
                 Insert { key, data } => {
                     inserts

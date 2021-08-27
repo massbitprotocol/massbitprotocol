@@ -3,25 +3,11 @@ use std::collections::BTreeMap;
 use massbit_common::prelude::async_trait::async_trait;
 
 pub use index_store::core::IndexStore;
-//pub mod cache;
-//pub mod config;
-//pub mod error;
-//pub mod model;
-pub mod position;
 pub mod postgres;
-pub mod scalar;
-//pub mod subgraph;
-//pub mod web3_type;
-//pub use cache::*;
-//pub use config::*;
-//pub use subgraph::SubgraphStore;
-//pub use error::{QueryExecutionError, StoreError};
-//pub use model::*;
 use graph::components::store::{EntityKey, EntityModification, EntityType, StoreError};
 use graph::components::subgraph::Entity;
 use graph::data::query::QueryExecutionError;
 pub use postgres::PostgresIndexStore;
-//pub use web3_type::*;
 
 /*
 #[async_trait]
