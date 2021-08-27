@@ -14,7 +14,7 @@ use graph::prelude::ethabi::ParamType;
 use graph::prelude::lazy_static;
 use graph::prelude::{
     error, ethabi, ethabi::Token, retry, tiny_keccak, trace, BlockNumber, EthereumCallCache,
-    /*Future01CompatExt,*/ MappingABI,
+    Future01CompatExt, MappingABI,
 };
 use graph::runtime::{asc_get, asc_new, AscPtr, HostExportError};
 use graph::semver::Version;
