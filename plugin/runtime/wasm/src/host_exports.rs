@@ -43,10 +43,11 @@ use graph::blockchain::{
     Blockchain, DataSource as DataSourceTrait, DataSourceTemplate, HostFn, HostFnCtx,
 };
 use graph::prelude::BlockPtr;
+/*
 use massbit_chain_ethereum::contract_call::{
     ethereum_call, SimpleEthereumAdapter, SimpleEthereumCallCache,
 };
-
+*/
 use crate::manifest::datasource::DataSourceContext;
 use graph::components::store::{EntityKey, EntityType};
 use graph::components::subgraph::{BlockState, Entity};
@@ -604,6 +605,7 @@ pub(crate) fn bytes_to_string(logger: &Logger, bytes: Vec<u8>) -> String {
     // characters, so trim trailing nulls.
     s.trim_end_matches('\u{0000}').to_string()
 }
+/*
 pub fn create_ethereum_call(datasource: &DataSource) -> HostFn {
     let (transport_event_loop, transport) = match ETHEREUM_USE_WS.deref() {
         false => Transport::new_rpc(&ETHEREUM_URL, Default::default()),
@@ -632,7 +634,7 @@ pub fn create_ethereum_call(datasource: &DataSource) -> HostFn {
         }),
     }
 }
-/*
+*/
 //mock ethereum.call
 pub fn create_mock_ethereum_call(datasource: &DataSource) -> HostFn {
     HostFn {
@@ -660,7 +662,7 @@ fn ethereum_call(
     };
     Ok(asc_new(ctx.heap, tokens.as_slice())?)
 }
- */
+
 /*
 /// function ethereum.call(call: SmartContractCall): Array<Token> | null
 fn ethereum_call(

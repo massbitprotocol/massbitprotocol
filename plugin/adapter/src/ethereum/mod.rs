@@ -78,7 +78,7 @@ impl MessageHandler for EthereumWasmHandlerProxy {
                             .unwrap();
                         //println!("Mapping trigger {:?}", mapping_trigger);
                         if let Some(trigger) = mapping_trigger {
-                            println!("Mapping trigger found");
+                            log::info!("Mapping trigger found");
                             wasm_instance.handle_trigger(trigger);
                         }
 

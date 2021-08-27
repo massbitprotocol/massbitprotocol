@@ -395,6 +395,7 @@ pub fn ethereum_call(
     // For apiVersion >= 0.0.4 the call passed from the mapping includes the
     // function signature; subgraphs using an apiVersion < 0.0.4 don't pass
     // the signature along with the call.
+    println!("Ethereum call");
     let call: UnresolvedContractCall = if ctx.heap.api_version() >= Version::new(0, 0, 4) {
         asc_get::<_, AscUnresolvedContractCall_0_0_4, _>(ctx.heap, wasm_ptr.into())?
     } else {
@@ -431,7 +432,7 @@ fn eth_call(
         })?
         .contract
         .clone();
-
+    println!("{:?}", contract);
     let function = match unresolved_call.function_signature {
         // Behavior for apiVersion < 0.0.4: look up function by name; for overloaded
         // functions this always picks the same overloaded variant, which is incorrect
@@ -448,27 +449,31 @@ fn eth_call(
         // Behavior for apiVersion >= 0.0.04: look up function by signature of
         // the form `functionName(uint256,string) returns (bytes32,string)`; this
         // correctly picks the correct variant of an overloaded function
-        Some(ref function_signature) => contract
-            .functions_by_name(unresolved_call.function_name.as_str())
-            .with_context(|| {
-                format!(
-                    "Unknown function \"{}::{}\" called from WASM runtime",
-                    unresolved_call.contract_name, unresolved_call.function_name
-                )
-            })?
-            .iter()
-            .find(|f| function_signature == &f.signature())
-            .with_context(|| {
-                format!(
-                    "Unknown function \"{}::{}\" with signature `{}` \
+        Some(ref function_signature) => {
+            println!("Function signature {}", function_signature);
+            println!("{:?}", &contract);
+            contract
+                .functions_by_name(unresolved_call.function_name.as_str())
+                .with_context(|| {
+                    format!(
+                        "Unknown function \"{}::{}\" called from WASM runtime",
+                        unresolved_call.contract_name, unresolved_call.function_name
+                    )
+                })?
+                .iter()
+                .find(|f| function_signature == &f.signature())
+                .with_context(|| {
+                    format!(
+                        "Unknown function \"{}::{}\" with signature `{}` \
                              called from WASM runtime",
-                    unresolved_call.contract_name,
-                    unresolved_call.function_name,
-                    function_signature,
-                )
-            })?,
+                        unresolved_call.contract_name,
+                        unresolved_call.function_name,
+                        function_signature,
+                    )
+                })?
+        }
     };
-
+    println!("{:?}", function);
     let call = EthereumContractCall {
         address: unresolved_call.contract_address.clone(),
         block_ptr: block_ptr.cheap_clone(),
@@ -479,6 +484,7 @@ fn eth_call(
     // Run Ethereum call in tokio runtime
     let logger1 = logger.clone();
     let call_cache = call_cache.clone();
+    println!("Contract call");
     let result = match graph::block_on(
         eth_adapter.contract_call(call, call_cache).compat()
     ) {

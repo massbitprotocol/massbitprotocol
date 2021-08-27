@@ -34,7 +34,7 @@ use massbit_common::prelude::diesel::{
 use massbit_common::prelude::{
     anyhow::{anyhow, Error},
     async_trait::async_trait,
-    structmap,
+    log, structmap,
 };
 //use relational::Layout;
 use graph_store_postgres::command_support::Layout;
@@ -46,10 +46,11 @@ pub const BLOCK_NUMBER_MAX: BlockNumber = <i32>::MAX;
 
 #[derive(Clone)]
 pub struct PostgresIndexStore {
+    pub logger: Logger,
     pub connection: ConnectionPool,
     pub layout: Layout,
-    pub logger: Logger, //buffer: HashMap<String, TableBuffer>,
-                        //entity_dependencies: HashMap<String, Vec<String>>
+    //buffer: HashMap<String, TableBuffer>,
+    entity_dependencies: HashMap<String, Vec<String>>,
 }
 
 impl PostgresIndexStore {
@@ -99,7 +100,7 @@ impl WritableStore for PostgresIndexStore {
         // that is fully plumbed in, we just use the biggest possible block
         // number so that we will always return the latest version,
         // i.e., the one with an infinite upper bound
-        println!("get entity by key {:?}", key);
+        log::info!("Get entity by key {:?}", key);
         self.layout
             .find(&conn, &key.entity_type, &key.entity_id, BLOCK_NUMBER_MAX)
             .map_err(|e| {
@@ -135,7 +136,7 @@ impl WritableStore for PostgresIndexStore {
         deterministic_errors: Vec<SubgraphError>,
     ) -> Result<(), StoreError> {
         mods.iter().for_each(|entity| {
-            println!("Entitiy {:?}", entity);
+            log::info!("Store {:?}", entity);
         });
         let conn = self.get_conn()?;
         let event = conn.transaction(|| -> Result<_, StoreError> {
@@ -179,7 +180,7 @@ impl WritableStore for PostgresIndexStore {
         &self,
         ids_for_type: BTreeMap<&EntityType, Vec<&str>>,
     ) -> Result<BTreeMap<EntityType, Vec<Entity>>, StoreError> {
-        println!("get_many {:?}", ids_for_type);
+        log::info!("Get many ids for type {:?}", ids_for_type);
         if ids_for_type.is_empty() {
             return Ok(BTreeMap::new());
         }
@@ -390,7 +391,6 @@ impl PostgresIndexStore {
         entity_type: &EntityType,
         data: &mut [(EntityKey, Entity)],
         conn: &PgConnection,
-        //layout: &Layout,
         block_ptr: &BlockPtr,
         stopwatch: &StopwatchMetrics,
     ) -> Result<usize, StoreError> {
@@ -403,6 +403,7 @@ impl PostgresIndexStore {
         section.end();
         */
         let _section = stopwatch.start_section("apply_entity_modifications_update");
+        log::info!("Update entity {:?} with value {:?}", &entity_type, data);
         self.layout
             .update(conn, &entity_type, data, block_ptr.number, stopwatch)
     }

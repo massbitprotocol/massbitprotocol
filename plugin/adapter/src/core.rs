@@ -33,7 +33,7 @@ use massbit_chain_solana::data_type::{
     SolanaLogMessages, SolanaTransaction,
 };
 use massbit_common::prelude::anyhow::{self, Context};
-use massbit_runtime_wasm::host_exports::create_ethereum_call;
+use massbit_runtime_wasm::host_exports::create_mock_ethereum_call;
 use massbit_runtime_wasm::manifest::datasource::*;
 use massbit_runtime_wasm::mapping::FromFile;
 use massbit_runtime_wasm::mock::MockMetricsRegistry;
@@ -332,14 +332,6 @@ impl AdapterManager {
         let store =
             Arc::new(StoreBuilder::create_store(indexer_hash.as_str(), &schema_path).unwrap());
         let registry = Arc::new(MockMetricsRegistry::new());
-        // Try to create IPFS clients for each URL specified in `--ipfs`
-        //let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
-        //let ipfs_clients = create_ipfs_clients(&ipfs_addresses);
-
-        // Convert the clients into a link resolver. Since we want to get past
-        // possible temporary DNS failures, make the resolver retry
-        //let link_resolver = Arc::new(LinkResolver::from(ipfs_clients));
-        //let store = Arc::new(PostgresIndexStore::new(DATABASE_CONNECTION_STRING.as_str()).await);
         /*
         let start = Instant::now();
         let clone_store = Arc::clone(&store);
@@ -373,6 +365,11 @@ impl AdapterManager {
         wasm_adapter
             .handler_proxies
             .insert(adapter_name.clone(), Arc::clone(&handler_proxy));
+        let stopwatch = StopwatchMetrics::new(
+            Logger::root(slog::Discard, o!()),
+            DEPLOYMENT_HASH.cheap_clone(),
+            registry.clone(),
+        );
         while let Some(mut data) = stream.message().await? {
             let data_type = DataType::from_i32(data.data_type).unwrap();
             let block_ptr_to = BlockPtr {
@@ -414,34 +411,23 @@ impl AdapterManager {
                     }
                     _ => {}
                 }
-                //let ref_mut = wasm_instance.instance_ctx.borrow_mut();
-                //let mut instance_ctx = ref_mut.as_ref().unwrap().ctx.state;
+                log::info!("Finish wasm mapping");
                 let state = wasm_instance.take_ctx().ctx.state;
-
                 let ModificationsAndCache {
                     modifications: mods,
                     data_sources,
                     entity_lfu_cache: cache,
                 } = state.entity_cache.as_modifications().map_err(|e| {
-                    println!("Error {:?}", e);
+                    log::error!("Error {:?}", e);
                     StoreError::Unknown(e.into())
                 })?;
-                println!("Finish wasm mapping");
-                mods.iter().for_each(|entity| {
-                    println!("Entitiy {:?}", entity);
-                });
+
                 // Transact entity modifications into the store
                 if mods.len() > 0 {
-                    let started = Instant::now();
-                    let stopwatch = StopwatchMetrics::new(
-                        Logger::root(slog::Discard, o!()),
-                        DeploymentHash::new(indexer_hash.clone())?,
-                        registry.clone(),
-                    );
                     store.transact_block_operations(
                         block_ptr_to,
                         mods,
-                        stopwatch,
+                        stopwatch.cheap_clone(),
                         data_sources,
                         vec![],
                     );
@@ -543,15 +529,8 @@ impl AdapterManager {
         let host_fns: Vec<HostFn> = match valid_module.import_name_to_modules.get("ethereum.call") {
             None => Vec::new(),
             Some(_) => {
-                /*
-                let adapters = vec![];
-                let runtime_adapter = RuntimeAdapter {
-                    eth_adapters: Arc::new(EthereumNetworkAdapters { adapters }),
-                    call_cache: Arc::new(()),
-                };
-                runtime_adapter.host_fns(datasource)?
-                 */
-                vec![create_ethereum_call(datasource)]
+                //vec![create_ethereum_call(datasource)]
+                vec![create_mock_ethereum_call(datasource)]
             }
         };
         //datasource.mapping.requires_archive();

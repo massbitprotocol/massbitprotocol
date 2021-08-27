@@ -37,7 +37,7 @@ lazy_static! {
                 // url: "https://bsc-dataseed.binance.org".to_string(),
                 ws: "wss://rpc-mainnet.matic.network".to_string(),
                 url: "https://rpc-mainnet.matic.network".to_string(),
-                start_block: Some(18403752),
+                start_block: Some(18403764),
             }),
         ].iter().cloned().collect(),
         url: "0.0.0.0:50051".to_string(),

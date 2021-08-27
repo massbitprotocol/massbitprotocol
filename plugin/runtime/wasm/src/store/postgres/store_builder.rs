@@ -7,6 +7,7 @@ use graph_store_postgres::{
         Namespace,
     },
     connection_pool::ConnectionPool,
+    relational,
     relational::{Layout, Table},
     PRIMARY_SHARD,
 };
@@ -15,6 +16,10 @@ use crate::store::postgres::ConnectionPool;
  */
 use crate::store::PostgresIndexStore;
 use core::ops::{Deref, DerefMut};
+use diesel::prelude::*;
+use diesel::r2d2::{ConnectionManager, PooledConnection};
+use diesel::sql_types::BigInt;
+use diesel::QueryableByName;
 use graph::cheap_clone::CheapClone;
 use graph::components::metrics::MetricsRegistry;
 use graph::data::schema::Schema;
@@ -25,19 +30,24 @@ use graph_node::{
     config::{Config, Opt, PoolSize, Shard as ShardConfig},
     store_builder::StoreBuilder as GraphStoreBuilder,
 };
-
 use graph_store_postgres::command_support::Catalog;
 use graph_store_postgres::layout_for_tests::make_dummy_site;
 use graph_store_postgres::subgraph_store::SubgraphStoreInner;
 use graph_store_postgres::{deployment, SubgraphStore};
 use inflector::Inflector;
+use massbit_common::consts::HASURA_URL;
 use massbit_common::prelude::diesel::connection::SimpleConnection;
+use massbit_common::prelude::diesel::result::Error;
+use massbit_common::prelude::diesel::row::Row;
 use massbit_common::prelude::diesel::sql_types::Text;
 use massbit_common::prelude::diesel::{sql_query, RunQueryDsl};
 use massbit_common::prelude::lazy_static::lazy_static;
-use massbit_common::prelude::tokio_postgres::Row;
-use slog::{info, o};
-use std::collections::HashMap;
+use massbit_common::prelude::log::{self, debug, error, info};
+use massbit_common::prelude::reqwest::{Client, Response};
+use massbit_common::prelude::serde_json;
+use massbit_common::prelude::serde_json::Value;
+use massbit_common::prelude::tokio_compat_02::FutureExt;
+use std::collections::{HashMap, HashSet};
 use std::convert::TryFrom;
 use std::env;
 use std::ffi::OsStr;
@@ -46,13 +56,14 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 
 lazy_static! {
-    static ref GRAPH_NODE: NodeId = NodeId::new("graph_node").unwrap();
-    static ref NAMESPACE: Namespace = Namespace::new("sgd0".to_string()).unwrap();
-    static ref DATABASE_CONNECTION_STRING: String = env::var("DATABASE_CONNECTION_STRING")
+    pub static ref GRAPH_NODE: NodeId = NodeId::new("graph_node").unwrap();
+    pub static ref NAMESPACE: Namespace = Namespace::new("sgd0".to_string()).unwrap();
+    pub static ref DATABASE_CONNECTION_STRING: String = env::var("DATABASE_CONNECTION_STRING")
         .unwrap_or(String::from("postgres://graph-node:let-me-in@localhost"));
-    static ref DEPLOYMENT_HASH: DeploymentHash = DeploymentHash::new("_indexer").unwrap();
-    static ref NETWORK: String = String::from("");
+    pub static ref DEPLOYMENT_HASH: DeploymentHash = DeploymentHash::new("_indexer").unwrap();
+    pub static ref NETWORK: String = String::from("");
 }
+
 const CONN_POOL_SIZE: u32 = 20;
 /// The name for the primary key column of a table; hardcoded for now
 pub(crate) const PRIMARY_KEY_COLUMN: &str = "id";
@@ -71,7 +82,6 @@ impl StoreBuilder {
         let registry = Arc::new(MockMetricsRegistry::new());
         let shard_config = config.stores.get(PRIMARY_SHARD.as_str()).unwrap();
         let shard_name = String::from(PRIMARY_SHARD.as_str());
-        println!("{:?}", &config);
         /*
         let shard_config = ShardConfig {
             connection: DATABASE_CONNECTION_STRING.clone(),
@@ -88,8 +98,6 @@ impl StoreBuilder {
             &config,
             registry.cheap_clone(),
         );
-         */
-        /*
         let store = GraphStoreBuilder::make_subgraph_store(
             &logger,
             &GRAPH_NODE,
@@ -104,75 +112,19 @@ impl StoreBuilder {
             &shard_config,
             registry.cheap_clone(),
         );
-        /*
-        let conn = connection.get_with_timeout_warning(&logger)?;
-        let site = Connection::new(conn)
-            .allocate_site(PRIMARY_SHARD.clone(), &DEPLOYMENT_HASH, NETWORK.clone())
-            .unwrap();
-         */
-        /*
-        let connection = Self::main_pool(
-            &logger,
-            indexer,
-            PRIMARY_SHARD.as_str(),
-            &shard_config,
-            registry,
-        );
-         */
         match Self::create_relational_schema(schema_path, &connection) {
             Ok(layout) => {
-                Self::create_relationships(&layout, &connection);
+                let entity_dependencies = layout.create_dependencies();
                 Ok(PostgresIndexStore {
                     connection,
                     layout,
+                    entity_dependencies,
                     logger,
                 })
             }
             Err(e) => Err(e.into()),
         }
     }
-    /// Create a connection pool for the main database of hte primary shard
-    /// without connecting to all the other configured databases
-    pub fn main_pool(
-        logger: &Logger,
-        indexer: &str,
-        name: &str,
-        shard: &ShardConfig,
-        registry: Arc<dyn MetricsRegistry>,
-    ) -> ConnectionPool {
-        let indexer_name = indexer.to_string();
-        //let node = NodeId::new(indexer_name).unwrap();
-        let node = NodeId::new("_indexer").unwrap();
-        /*
-        let pool_size = shard.pool_size.size_for(&node, name).expect(&format!(
-            "we can determine the pool size for store {}",
-            name
-        ));
-        let fdw_pool_size = shard.fdw_pool_size.size_for(&node, name).expect(&format!(
-            "we can determine the fdw pool size for store {}",
-            name
-        ));
-        */
-        let pool_size = 20;
-        let fdw_pool_size = 20;
-        info!(
-            logger,
-            "Connecting to Postgres";
-            "url" => SafeDisplay(shard.connection.as_str()),
-            "conn_pool_size" => pool_size,
-            "weight" => shard.weight
-        );
-        ConnectionPool::create(
-            name,
-            "main",
-            shard.connection.to_owned(),
-            pool_size,
-            Some(fdw_pool_size),
-            &logger,
-            registry.cheap_clone(),
-        )
-    }
-
     pub fn create_relational_schema<P: AsRef<Path>>(
         path: &P,
         connection: &ConnectionPool,
@@ -185,83 +137,86 @@ impl StoreBuilder {
         let deployment_hash = DeploymentHash::new("_indexer").unwrap();
         let schema = Schema::parse(schema_buffer.as_str(), deployment_hash.cheap_clone()).unwrap();
 
-        //let query = format!("create schema {}", NAMESPACE.as_str());
-        //conn.batch_execute(&*query).unwrap();
-        //Layout::new(site, &schema, catalog, false)
-        //Need execute command CREATE EXTENSION btree_gist; on db
-        let logger = Logger::root(slog::Discard, o!());
+        let logger = Logger::root(slog::Discard, slog::o!());
         let conn = connection.get_with_timeout_warning(&logger).unwrap();
         /*
         let site = Connection::new(&conn)
             .allocate_site(PRIMARY_SHARD.clone(), &DEPLOYMENT_HASH, NETWORK.clone())
             .unwrap();
         */
-
         let site = make_dummy_site(
-            deployment_hash.cheap_clone(),
+            DEPLOYMENT_HASH.cheap_clone(),
             NAMESPACE.clone(),
-            String::from(""),
+            NETWORK.clone(),
         );
+        let result = sql_query(format!(
+            "SELECT count(schema_name) FROM information_schema.schemata WHERE schema_name = '{}'",
+            NAMESPACE.as_str()
+        ))
+        //.bind::<Text, _>(NAMESPACE.as_str())
+        .get_results::<Counter>(&conn)
+        .expect("Query failed")
+        .pop()
+        .expect("No record found");
 
         //let exists = deployment::exists(&conn, &site)?;
-        let exists = true;
         let arc_site = Arc::new(site);
         let catalog = Catalog::make_empty(arc_site.clone()).unwrap();
-        match exists {
-            true => Layout::new(arc_site, &schema, catalog, false),
-            false => Layout::create_relational_schema(
-                connection.get_with_timeout_warning(&logger)?.deref(),
-                arc_site,
-                &schema,
-            ),
+        if result.count > 0 {
+            Layout::new(arc_site, &schema, catalog, false)
+        } else {
+            //Create schema
+            let conn = connection.get_with_timeout_warning(&logger)?;
+            match sql_query(format!("create schema {}", NAMESPACE.as_str())).execute(&conn) {
+                Ok(_) => {}
+                Err(err) => {
+                    error!("Error while create schema {:?}", err)
+                }
+            };
+            //Need execute command CREATE EXTENSION btree_gist; on db
+            let result = Layout::create_relational_schema(&conn.deref(), arc_site, &schema);
+            match result {
+                Ok(layout) => {
+                    Self::create_relationships(&layout, &conn.deref());
+                    let (hasura_up, _) = layout.create_hasura_payloads();
+                    println!("Hasura up {:?}", &hasura_up);
+                    tokio::spawn(async move {
+                        println!("Call hasura api");
+                        let response = Client::new()
+                            .post(&*HASURA_URL)
+                            .json(&hasura_up)
+                            .send()
+                            .compat()
+                            .await
+                            .unwrap();
+                        println!("Response {:?}", response);
+                    });
+                    Ok(layout)
+                }
+                Err(e) => Err(e),
+            }
         }
     }
 
     pub fn create_relationships(
         layout: &Layout,
-        connection: &ConnectionPool,
+        connection: &PgConnection,
     ) -> Result<(), anyhow::Error> {
         match layout.gen_relationship() {
             Ok(sql) => {
-                println!("{:?}", sql.join(";\n"));
-                //let conn = connection.get_with_timeout_warning(&logger).unwrap();
+                let query = sql.join(";");
+                log::info!("Execute query: {:?}", &query);
+                match connection.batch_execute(&query) {
+                    Ok(_) => {}
+                    Err(err) => {
+                        println!("Error while crate relation {:?}", err)
+                    }
+                }
                 Ok(())
             }
             Err(e) => Err(e),
         }
     }
-    /*
-    pub fn load_layout_fromdb(logger: &Logger, connection: &ConnectionPool) -> Layout {
-        let query = r#"
-            SELECT
-                pgc.conname as constraint_name,
-                kcu.table_name as table_name,
-                CASE WHEN (pgc.contype = 'f') THEN kcu.COLUMN_NAME ELSE ccu.COLUMN_NAME END as column_name,
-                CASE WHEN (pgc.contype = 'f') THEN ccu.TABLE_NAME ELSE (null) END as reference_table,
-                CASE WHEN (pgc.contype = 'f') THEN ccu.COLUMN_NAME ELSE (null) END as reference_col
-            FROM
-                pg_constraint AS pgc
-                JOIN pg_namespace nsp ON nsp.oid = pgc.connamespace
-                JOIN pg_class cls ON pgc.conrelid = cls.oid
-                JOIN information_schema.key_column_usage kcu ON kcu.constraint_name = pgc.conname
-                LEFT JOIN information_schema.constraint_column_usage ccu ON pgc.conname = ccu.CONSTRAINT_NAME
-                AND nsp.nspname = ccu.CONSTRAINT_SCHEMA
-            WHERE ccu.table_schema = ? AND pgc.contype = 'f'
-        "#;
-        let conn = connection.get_with_timeout_warning(&logger).unwrap();
-        /*
-        let tables = sql_query(query)
-            .bind::<Text, _>("public")
-            .get_results::<Row>(&conn);
-        println!("Result: {:?}", tables);
-         */
-        //conn.deref_mut().deref_mut().query();
-        //let result = conn.batch_execute(query);
-        Layout {
-            tables: Default::default(),
-        }
-    }
-    */
 }
 fn named_type(field_type: &q::Type) -> &str {
     match field_type {
@@ -270,41 +225,197 @@ fn named_type(field_type: &q::Type) -> &str {
         q::Type::NonNullType(child) => named_type(child),
     }
 }
-/*
-pub trait SubgraphStoreExt {
-    fn get_site(&self) -> Site;
+
+#[derive(Debug, Clone, QueryableByName)]
+struct Counter {
+    #[sql_type = "BigInt"]
+    pub count: i64,
 }
 
-impl SubgraphStoreExt for SubgraphStoreInner {
-    fn get_site(&self) -> Site {
-        self.site(&DeploymentHash);
-    }
+pub trait TableExt {
+    fn gen_relationship(
+        &self,
+        schema: &str,
+    ) -> Result<(Vec<String>, HashSet<String>), anyhow::Error>;
+    fn get_dependencies(&self, layout: &Layout) -> Vec<String>;
 }
-*/
-pub trait RelationshipGenerator {
+pub trait LayoutExt {
     fn gen_relationship(&self) -> Result<Vec<String>, anyhow::Error>;
+    fn create_dependencies(&self) -> HashMap<String, Vec<String>>;
+    fn create_hasura_payloads(&self) -> (serde_json::Value, serde_json::Value);
 }
-impl RelationshipGenerator for Table {
-    fn gen_relationship(&self) -> Result<Vec<String>, anyhow::Error> {
-        let sql = self.columns.iter().filter(|&column| column.is_reference() && !column.is_list()).map(|column|{
-                format!(r#"CONSTRAINT fk_{column_name} FOREIGN KEY("{column_name}") REFERENCES "{reference}"({reference_id})"#,
-                                         reference = named_type(&column.field_type).to_snake_case(),
-                                         reference_id = &PRIMARY_KEY_COLUMN.to_owned(),
-                                         column_name = column.name)
+pub trait EntityDependencies {
+    fn create_dependencies(&self) -> HashMap<String, Vec<String>>;
+}
+impl TableExt for Table {
+    fn gen_relationship(
+        &self,
+        schema: &str,
+    ) -> Result<(Vec<String>, HashSet<String>), anyhow::Error> {
+        let mut sqls: Vec<String> = Vec::default();
+        let mut references = HashSet::default();
+        self.columns
+            .iter()
+            .filter(|&column| column.is_reference() && !column.is_list())
+            .for_each(|column| {
+                let reference = named_type(&column.field_type).to_snake_case();
+                references.insert(reference.clone());
+                sqls.push(format!(
+                    r#"alter table {schema}.{table_name}
+                add constraint {table_name}_{column_name}_{reference}_{reference_id}_fk
+                foreign key ("{column_name}")
+                references {schema}.{reference} ({reference_id})"#,
+                    schema = schema,
+                    table_name = self.name.as_str(),
+                    column_name = column.name,
+                    reference = reference,
+                    reference_id = &PRIMARY_KEY_COLUMN.to_owned()
+                ));
+            });
+        Ok((sqls, references))
+    }
 
-        }).collect::<Vec<String>>();
-        Ok(sql)
+    fn get_dependencies(&self, layout: &Layout) -> Vec<String> {
+        let mut dependencies = Vec::default();
+
+        dependencies
     }
 }
 
-impl RelationshipGenerator for Layout {
+impl LayoutExt for Layout {
     fn gen_relationship(&self) -> Result<Vec<String>, anyhow::Error> {
         let mut sqls = Vec::default();
+        let mut references = HashSet::new();
+        let schema = self.site.namespace.as_str();
+        //"create unique index token_id_uindex on sgd0.token (id)";
         self.tables.iter().for_each(|(key, table)| {
-            if let Ok(mut tbl_rels) = table.gen_relationship() {
-                sqls.extend(tbl_rels);
+            if let Ok((mut fks, mut refs)) = table.gen_relationship(schema) {
+                sqls.extend(fks);
+                references.extend(refs);
             }
         });
+        references.iter().for_each(|r| {
+            sqls.insert(
+                0,
+                format!(
+                    r#"create unique index {table}_{field}_uindex on {schema}.{table} ({field})"#,
+                    schema = schema,
+                    table = r,
+                    field = &PRIMARY_KEY_COLUMN.to_owned(),
+                ),
+            )
+        });
         Ok(sqls)
+    }
+    fn create_dependencies(&self) -> HashMap<String, Vec<String>> {
+        let mut dependencies = HashMap::default();
+        self.tables.iter().for_each(|(key, table)| {
+            dependencies.insert(
+                String::from(table.name.as_str()),
+                table.get_dependencies(&self),
+            );
+        });
+        dependencies
+    }
+
+    fn create_hasura_payloads(&self) -> (Value, Value) {
+        //Generate hasura request to track tables + relationships
+        let mut hasura_tables: Vec<serde_json::Value> = Vec::new();
+        let mut hasura_relations: Vec<serde_json::Value> = Vec::new();
+        let mut hasura_down_relations: Vec<serde_json::Value> = Vec::new();
+        let mut hasura_down_tables: Vec<serde_json::Value> = Vec::new();
+        let schema = self.site.namespace.as_str();
+        self.tables.iter().for_each(|(name, table)| {
+            hasura_tables.push(serde_json::json!({
+                "type": "track_table",
+                "args": {
+                    "schema": schema,
+                    "name": table.name.as_str()
+                },
+            }));
+            hasura_down_tables.push(serde_json::json!({
+                "type": "untrack_table",
+                "args": {
+                    "table" : {
+                        "schema": schema,
+                        "name": table.name.as_str()
+                    },
+                    "source": "default",
+                    "cascade": true
+                },
+            }));
+            /*
+             * 21-07-27
+             * vuviettai: hasura use create_object_relationship api to create relationship in DB
+             * Migration sql already include this creation.
+             */
+            table
+                .columns
+                .iter()
+                .filter(|col| col.is_reference() && !col.is_list())
+                .for_each(|column| {
+                    // Don't create relationship for child table because if it's type is array the parent already has the foreign key constraint (I think)
+                    hasura_relations.push(serde_json::json!({
+                        "type": "create_object_relationship",
+                        "args": {
+                            "table": table.name.as_str(),
+                            "schema": schema,
+                            "name": format!("{}_{}",named_type(&column.field_type),column.name.as_str()), // This is be a unique identifier to avoid the problem: An entity can have multiple reference to another entity. Example: Pair Entity (token0: Token!, token1: Token!)
+                            "using" : {
+                                "foreign_key_constraint_on" : column.name.as_str()
+                            }
+                        }
+                    }));
+
+                    hasura_down_relations.push(serde_json::json!({
+                        "type": "drop_relationship",
+                        "args": {
+                            "schema": schema,
+                            "relationship": named_type(&column.field_type),
+                            "source": "default",
+                            "table": table.name.as_str()
+                        }
+                    }));
+                    let ref_table = named_type(&column.field_type).to_snake_case();
+
+                    // Don't create relationship for child table because if it's type is array the parent already has the foreign key constraint (I think)
+                    hasura_relations.push(serde_json::json!({
+                        "type": "create_array_relationship",
+                        "args": {
+                            "name": format!("{}_{}",table.name.as_str(),column.name.as_str()), // This is be a unique identifier to avoid the problem: An entity can have multiple reference to another entity. Example: Pair Entity (token0: Token!, token1: Token!)
+                            "table": ref_table.clone(),
+                            "schema": schema,
+                            "using" : {
+                                "foreign_key_constraint_on" : {
+                                    "table": table.name.as_str(),
+                                    "column": column.name.as_str()
+                                }
+                            }
+                        }
+                    }));
+
+                    hasura_down_relations.push(serde_json::json!({
+                        "type": "drop_relationship",
+                        "args": {
+                            "relationship": table.name.as_str(),
+                            "source": "default",
+                            "table": ref_table,
+                            "schema": schema,
+                        }
+                    }));
+                });
+        });
+        hasura_tables.append(&mut hasura_relations);
+        hasura_down_relations.append(&mut hasura_down_tables);
+        (
+            serde_json::json!({
+                "type": "bulk",
+                "args" : hasura_tables
+            }),
+            serde_json::json!({
+                "type": "bulk",
+                "args" : hasura_down_relations
+            }),
+        )
     }
 }
