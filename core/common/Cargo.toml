@@ -1,0 +1,30 @@
+[package]
+name = "massbit-common"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow                      = "1.0"
+async-trait                 = "0.1.48"
+diesel                      = { version = "1.4.7", features = ["postgres", "serde_json", "numeric", "r2d2", "chrono"] }
+diesel_derives              = "1.4"
+diesel_transaction_handles  = "0.1.1"
+lazy_static                 = "1.4"
+log                         = "0.4.0"
+ethabi                      = { git = "https://github.com/graphprotocol/ethabi.git", branch = "master" }
+regex                       = "1.5.4"
+reqwest                     = "0.10.8"
+serde                       = { version = "1.0.126", features = ["rc"] }
+serde_json                  = { version = "1.0", optional = false }
+serde_yaml                  = "0.8"
+serde_derive                = "1.0.125"
+serde_regex                 = "1.1.0"
+structmap                   = "0.1.5"
+tokio                       = {version = "1.2.0", features = ["full"]} # Required by Tonic
+tokio-compat-02             = "0.2"
+tokio-postgres              = "0.7.2"
+
+
+

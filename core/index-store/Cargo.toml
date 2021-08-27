@@ -6,7 +6,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-diesel          = { version = "1.4.0", features = ["postgres"] }
+diesel              = { version = "1.4.0", features = ["postgres"] }
 diesel_transaction_handles = "0.1.1"
 tokio = {version = "1.2.0", features = ["full"]} # Required by Tonic
 tokio-postgres      =  "0.7.2"
@@ -18,3 +18,4 @@ structmap-derive    = "0.1.5"
 uuid = { version = "0.8", features = ["serde", "v4"] }
 rand = "0.8.4"
 env_logger          = "0.9.0"
+massbit-common      = { path = "../../core/common"}

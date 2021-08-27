@@ -6,12 +6,13 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serde_json = "1.0.64"
+serde_json = { version = "1.0", optional = false }
 serde = "1.0.126"
 log = "0.4.14"
 env_logger = "0.9.0"
 bs58 = "0.4.0"
-
+futures = "0.1.31"
+tokio-compat-02 = "0.2"
 ############# Ethereum
 # master contains changes such as
 # https://github.com/paritytech/ethabi/pull/140, which upstream does not want
@@ -37,6 +38,12 @@ branch = "anhhuy0501-patch-add-pub"
 
 [dependencies.graph-chain-ethereum]
 package = "graph-chain-ethereum"
+git = "https://github.com/massbitprotocol/massbit-graph-node"
+#rev = "c87281e4d09a0b15b235646dc4b0ae5569da4be2"
+branch = "anhhuy0501-patch-add-pub"
+
+[dependencies.graph-runtime-wasm]
+package = "graph-runtime-wasm"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
 #rev = "c87281e4d09a0b15b235646dc4b0ae5569da4be2"
 branch = "anhhuy0501-patch-add-pub"

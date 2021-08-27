@@ -47,20 +47,54 @@ macro_rules! prepare_adapter {
         }
     };
 }
-
+#[macro_export]
+macro_rules! prepare_wasm_adapter {
+    ($adapter:ident) => {
+        paste! {
+            use massbit_runtime_wasm::mapping::ValidModule;
+            pub struct [<$adapter WasmHandlerProxy>] {
+                pub wasm_module: Arc<ValidModule>,
+            }
+            impl [<$adapter WasmHandlerProxy>] {
+                pub fn new(wasm_module: Arc<ValidModule>) -> [<$adapter WasmHandlerProxy>] {
+                    [<$adapter WasmHandlerProxy>] {
+                        wasm_module
+                    }
+                }
+            }
+        }
+    };
+}
+#[macro_export]
+macro_rules! import_adapters {
+    ($($adapter:ident),*) => {
+        paste! {
+            $(
+                pub mod [<$adapter:lower>];
+            )*
+        }
+    }
+}
 #[macro_export]
 macro_rules! create_adapters {
     ($($adapter:ident),*) => {
         paste! {
-
-            $(
-            pub mod [<$adapter:lower>];
-            )*
             use crate::{$([<$adapter:lower>]::*),*};
             pub enum HandlerProxyType {
                 $(
                     $adapter([<$adapter HandlerProxy>])
                 ),*
+            }
+            impl MessageHandler for HandlerProxyType {
+                fn handle_rust_mapping(&self, message: &mut GenericDataProto) -> Result<(), Box<dyn Error>> {
+                    match self {
+                        $(
+                        HandlerProxyType::$adapter(proxy) => {
+                            proxy.handle_rust_mapping(message)
+                        }
+                        )*
+                    }
+                }
             }
 
             pub trait PluginRegistrar {
@@ -79,16 +113,97 @@ macro_rules! create_adapters {
                 }
                 )*
             }
-
-            pub fn handle_message(proxy_type: &HandlerProxyType, message : &mut GenericDataProto) -> Result<(), Box<dyn Error>> {
+            /*
+            pub fn handle_rust_mapping(proxy_type: &HandlerProxyType, message : &mut GenericDataProto) -> Result<(), Box<dyn Error>> {
                 match proxy_type {
                     $(
                     HandlerProxyType::$adapter(proxy) => {
-                            proxy.handle_message(message)
+                            proxy.handle_rust_mapping(message)
                         }
                     )*
                 }
             }
+             */
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! create_wasm_adapters {
+    ($($adapter:ident),*) => {
+        paste! {
+            //use massbit_runtime_wasm::mapping::ValidModule;
+            use graph_chain_ethereum::{trigger::MappingTrigger, Chain, DataSource};
+            //use graph::data::subgraph::Mapping;
+            //use massbit_runtime_wasm::indexer::manifest::{Mapping, MappingBlockHandler};
+            use massbit_runtime_wasm::module::WasmInstance;
+            use massbit_runtime_wasm::mapping::MappingContext;
+            use graph_runtime_wasm::ValidModule;
+            //use graph_runtime_wasm::{ValidModule, MappingContext, WasmInstance};
+
+            $(
+            pub struct [<$adapter WasmHandlerProxy>] {
+                pub wasm_module: Arc<ValidModule>,
+            }
+            impl [<$adapter WasmHandlerProxy>] {
+                pub fn new(wasm_module: Arc<ValidModule>) -> [<$adapter WasmHandlerProxy>] {
+                    [<$adapter WasmHandlerProxy>] {
+                        wasm_module
+                    }
+                }
+            }
+            )*
+            pub enum WasmHandlerProxyType {
+                $(
+                    $adapter([<$adapter WasmHandlerProxy>])
+                ),*
+            }
+            impl WasmHandlerProxyType {
+                pub fn create_proxy(adapter_name: &String, wasm_module : Arc<ValidModule>) -> Option<WasmHandlerProxyType> {
+                    log::info!("Create proxy for adapter {}", adapter_name);
+                    let mut proxy = None;
+                        $(
+                        if format!("{}", quote!([<$adapter:lower>])).eq(adapter_name) {
+                            proxy = Some(WasmHandlerProxyType::$adapter([<$adapter WasmHandlerProxy>]::new(Arc::clone(&wasm_module))));
+                        }
+                        )*
+
+                    proxy
+                }
+            }
+
+            impl MessageHandler for WasmHandlerProxyType {
+                fn handle_wasm_mapping(
+                    &self,
+                    wasm_instance: &mut WasmInstance<Chain>,
+                    datasource: &DataSource,
+                    message: &mut GenericDataProto
+                ) -> Result<(), Box<dyn Error>> {
+                    match self {
+                        $(
+                        WasmHandlerProxyType::$adapter(proxy) => {
+                            proxy.handle_wasm_mapping(wasm_instance, datasource, message)
+                        }
+                        )*
+                    }
+                }
+            }
+            /*
+            pub fn handle_wasm_mapping(
+                    proxy_type: &WasmHandlerProxyType,
+                    wasm_instance: &mut WasmInstance<Chain>,
+                    mapping: &Mapping,
+                    message: &mut GenericDataProto
+            ) -> Result<(), Box<dyn Error>> {
+                match proxy_type {
+                    $(
+                    WasmHandlerProxyType::$adapter(proxy) => {
+                            proxy.handle_wasm_mapping(wasm_instance, mapping, message)
+                        }
+                    )*
+                }
+            }
+             */
         }
     }
 }

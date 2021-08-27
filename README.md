@@ -39,16 +39,15 @@ Note:
 - The code-compiler needs to know the context of massbitprotcol source folder so it can run the `cargo build` for the /compile api
 
 ## For dev environment
-### Run services
-TODO: add why and when to start this
+### Run all services
+Run all service with a single command. For testing purpose.
 ```bash
 sh run.sh
 ```
-### Deploy
-TODO: add why and when to call this API
-```
-curl --location --request POST 'localhost:5000/deploy' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "compilation_id": "056d7c458f004d778cb44cdfff82baa5"}'
+
+### Deploy 
+Deploy the indexer with id, in case the indexer's files already successfully build once. This is for reducing rebuild time.
+
+```bash
+make dev-deploy id=54e42a73317d80d1cf8289b49af96302
 ```
