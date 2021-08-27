@@ -2,7 +2,7 @@ use core::ops::Deref;
 use graph::prelude::{
     BigDecimal, BigInt, BlockNumber, CheapClone, DataSourceTemplateInfo, StopwatchMetrics, Value,
 };
-use graph::runtime::{asc_get, asc_new, AscPtr, DeterministicHostError, HostExportError};
+use graph::runtime::{DeterministicHostError, HostExportError};
 use graph_chain_ethereum::{
     runtime::{
         abi::{AscUnresolvedContractCall, AscUnresolvedContractCall_0_0_4},
