@@ -6,7 +6,7 @@ services:
       - '5001:5001'
 
   postgres:
-    image: postgres
+    build: ./store
     ports:
       - '5432:5432'
     command: ["postgres", "-cshared_preload_libraries=pg_stat_statements"]
@@ -56,7 +56,7 @@ services:
       ADMIN_SECRET: massbit
 
   dashboard:
-    image: sprise/dashboard:1.1
+    image: sprise/dashboard:1.2
     ports:
       - "8088:8088"
     depends_on: # Dashboard App will call to indexer to get indexer detail & code-compiler to compile and deploy new index
