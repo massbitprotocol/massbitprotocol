@@ -33,7 +33,7 @@ use massbit_chain_solana::data_type::{
     SolanaLogMessages, SolanaTransaction,
 };
 use massbit_common::prelude::anyhow::{self, Context};
-use massbit_runtime_wasm::host_exports::create_mock_ethereum_call;
+use massbit_runtime_wasm::host_exports::create_ethereum_call;
 use massbit_runtime_wasm::manifest::datasource::*;
 use massbit_runtime_wasm::mapping::FromFile;
 use massbit_runtime_wasm::mock::MockMetricsRegistry;
@@ -529,8 +529,8 @@ impl AdapterManager {
         let host_fns: Vec<HostFn> = match valid_module.import_name_to_modules.get("ethereum.call") {
             None => Vec::new(),
             Some(_) => {
-                //vec![create_ethereum_call(datasource)]
-                vec![create_mock_ethereum_call(datasource)]
+                vec![create_ethereum_call(datasource)]
+                //vec![create_mock_ethereum_call(datasource)]
             }
         };
         //datasource.mapping.requires_archive();
