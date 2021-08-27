@@ -22,6 +22,7 @@ use graph_runtime_wasm::error::DeterminismLevel;
 pub use into_wasm_ret::IntoWasmRet;
 use massbit_common::prelude::{
     anyhow::{anyhow, Context, Error},
+    log::info,
     serde_json,
 };
 
@@ -444,7 +445,7 @@ impl<C: Blockchain> WasmInstance<C> {
         let instance = linker.instantiate(&valid_module.module)?;
         // Usually `shared_ctx` is still `None` because no host fns were called during start.
         if shared_ctx.borrow().is_none() {
-            println!("Create WasmInstanceContext from instance");
+            info!("Create WasmInstanceContext from instance");
             *shared_ctx.borrow_mut() = Some(WasmInstanceContext::from_instance(
                 &instance,
                 ctx.borrow_mut().take().unwrap(),

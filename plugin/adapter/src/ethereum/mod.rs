@@ -11,7 +11,9 @@ use graph_chain_ethereum::{
     Chain, DataSource,
 };
 //use graph_runtime_wasm::WasmInstance;
+use graph::blockchain::types::{BlockHash, BlockPtr};
 use graph::log::logger;
+use graph_chain_ethereum::trigger::EthereumBlockTriggerType;
 use libloading::Library;
 use massbit_chain_ethereum::data_type::{
     decode, get_events, EthereumBlock, EthereumEvent, EthereumTransaction,
@@ -37,6 +39,13 @@ impl MessageHandler for EthereumWasmHandlerProxy {
             Some(DataType::Block) => {
                 let eth_block: EthereumBlock = decode(&mut data.payload).unwrap();
                 let arc_block = Arc::new(eth_block.block);
+                let block_finality: Arc<<Chain as Blockchain>::Block> =
+                    Arc::new(BlockFinality::Final(arc_block.clone()));
+                let block_ptr_to = BlockPtr {
+                    hash: BlockHash(data.block_hash.as_bytes().into()),
+                    number: data.block_number as i32,
+                };
+                let logger = logger(true);
                 /*
                 let params = vec![
                     LogParam {
@@ -63,72 +72,35 @@ impl MessageHandler for EthereumWasmHandlerProxy {
                     },
                 ];
                  */
+                //Trigger block
+                let block_trigger: <Chain as Blockchain>::TriggerData =
+                    EthereumTrigger::Block(block_ptr_to, EthereumBlockTriggerType::Every);
+                let mapping_trigger = data_source
+                    .match_and_decode(&block_trigger, block_finality.clone(), &logger)
+                    .unwrap();
+                if let Some(trigger) = mapping_trigger {
+                    log::info!("Block Mapping trigger found");
+                    wasm_instance.handle_trigger(trigger);
+                }
+                //Mapping trigger log
                 eth_block.logs.iter().for_each(|log| {
-                    if let Some(transaction) = arc_block.transaction_for_log(log) {
-                        let arc_log = Arc::new(log.clone());
-                        let arc_tran = Arc::new(transaction.clone());
-
-                        let trigger: <Chain as Blockchain>::TriggerData =
-                            EthereumTrigger::Log(Arc::new(log.clone()));
-                        let logger = logger(true);
-                        let block_finality: Arc<<Chain as Blockchain>::Block> =
-                            Arc::new(BlockFinality::Final(arc_block.clone()));
-                        let mapping_trigger = data_source
-                            .match_and_decode(&trigger, block_finality, &logger)
-                            .unwrap();
-                        //println!("Mapping trigger {:?}", mapping_trigger);
-                        if let Some(trigger) = mapping_trigger {
-                            log::info!("Mapping trigger found");
-                            wasm_instance.handle_trigger(trigger);
-                        }
-
-                        /*
-                        let params = match mapping_trigger {
-                            Some(MappingTrigger::Log {
-                                block: _,
-                                transaction: _,
-                                log: _,
-                                params,
-                                handler: _,
-                            }) => params,
-                            _ => Vec::new(),
-                        };
-                        datasource
-                            .mapping()
-                            .event_handlers
-                            .iter()
-                            .for_each(|handler| {
-                                let trigger = MappingTrigger::Log {
-                                    block: Arc::clone(&arc_block),
-                                    transaction: Arc::clone(&arc_tran),
-                                    log: Arc::clone(&arc_log),
-                                    params: params.clone(),
-                                    handler: handler.clone(),
-                                };
-                                wasm_instance.handle_trigger(trigger);
-                            });
-                         */
+                    //if let Some(transaction) = arc_block.transaction_for_log(log) {
+                    //let arc_tran = Arc::new(transaction.clone());
+                    let arc_log = Arc::new(log.clone());
+                    let trigger: <Chain as Blockchain>::TriggerData = EthereumTrigger::Log(arc_log);
+                    let mapping_trigger = data_source
+                        .match_and_decode(&trigger, block_finality.clone(), &logger)
+                        .unwrap();
+                    if let Some(trigger) = mapping_trigger {
+                        log::info!("Log Mapping trigger found");
+                        wasm_instance.handle_trigger(trigger);
                     }
+                    //};
                 });
-
-                /*
-                let events = get_events(&eth_block);
-                for event in events {
-
-                }
-                 */
-                /*
-                for handler in mapping.block_handlers.iter() {
-                    let block_ext: EthereumBlock = decode(&mut data.payload).unwrap();
-                    let trigger = MappingTrigger::Block {
-                        block: Arc::new(block_ext.block),
-                        handler: handler.clone(),
-                    };
-                    &wasm_instance.handle_trigger(trigger);
-                }
-                 */
+                //Trigger Call
             }
             Some(DataType::Event) => {
+                log::info!("Found event");
                 /*
                 data_source
                     .mapping()
@@ -137,7 +109,9 @@ impl MessageHandler for EthereumWasmHandlerProxy {
                     .for_each(|handler| {});
                  */
             }
-            Some(DataType::Transaction) => {}
+            Some(DataType::Transaction) => {
+                log::info!("Found transaction");
+            }
             _ => {}
         }
         Ok(())
