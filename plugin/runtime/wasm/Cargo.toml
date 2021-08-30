@@ -92,6 +92,10 @@ package = "graph-runtime-derive"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
 branch = "anhhuy0501-patch-add-pub"
 
+[dependencies.graph-mock]
+package = "graph-mock"
+git = "https://github.com/massbitprotocol/massbit-graph-node"
+branch = "anhhuy0501-patch-add-pub"
 #[dependencies.web3]
 #package = "web3"
 #git = "https://github.com/graphprotocol/rust-web3"

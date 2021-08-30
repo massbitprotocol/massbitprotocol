@@ -133,7 +133,7 @@ macro_rules! create_wasm_adapters {
     ($($adapter:ident),*) => {
         paste! {
             //use massbit_runtime_wasm::mapping::ValidModule;
-            use graph_chain_ethereum::{trigger::MappingTrigger, Chain, DataSource};
+            use graph_chain_ethereum::{trigger::MappingTrigger, Chain, DataSource, DataSourceTemplate};
             //use graph::data::subgraph::Mapping;
             //use massbit_runtime_wasm::indexer::manifest::{Mapping, MappingBlockHandler};
             use massbit_runtime_wasm::module::WasmInstance;
@@ -143,8 +143,33 @@ macro_rules! create_wasm_adapters {
 
             $(
             pub struct [<$adapter WasmHandlerProxy>] {
-                pub wasm_module: Arc<ValidModule>,
+                //pub wasm_module: Arc<ValidModule>,
+                pub indexer_hash: String,
+                pub store: Arc<dyn WritableStore>,
+                pub data_sources: Vec<DataSource>,
+                pub templates: Arc<Vec<DataSourceTemplate>>,
+                pub wasm_modules : HashMap<String, Arc<ValidModule>>
+                //pub registry: Arc<dyn MetricsRegistry>
             }
+            impl [<$adapter WasmHandlerProxy>] {
+                pub fn new(indexer_hash: &String,
+                    store: Arc<dyn WritableStore>,
+                    data_source : DataSource,
+                    templates: Arc<Vec<DataSourceTemplate>>) -> [<$adapter WasmHandlerProxy>] {
+                    [<$adapter WasmHandlerProxy>] {
+                        indexer_hash : indexer_hash.clone(),
+                        store,
+                        data_sources: vec![data_source],
+                        templates,
+                        wasm_modules: HashMap::default()
+                        //registry: Arc::new(MockMetricsRegistry::new())
+                    }
+                }
+                pub fn add_data_source(&mut self, datasource : DataSource) {
+                    self.data_sources.push(datasource);
+                }
+            }
+            /*
             impl [<$adapter WasmHandlerProxy>] {
                 pub fn new(wasm_module: Arc<ValidModule>) -> [<$adapter WasmHandlerProxy>] {
                     [<$adapter WasmHandlerProxy>] {
@@ -152,12 +177,33 @@ macro_rules! create_wasm_adapters {
                     }
                 }
             }
+             */
             )*
             pub enum WasmHandlerProxyType {
                 $(
                     $adapter([<$adapter WasmHandlerProxy>])
                 ),*
             }
+            impl WasmHandlerProxyType {
+                pub fn create_proxy(
+                    adapter_name: &String,
+                    indexer_hash: &String,
+                    store: Arc<dyn WritableStore>,
+                    data_source : DataSource,
+                    templates: Arc<Vec<DataSourceTemplate>>) -> Option<WasmHandlerProxyType> {
+                    log::info!("Create proxy for adapter {}", adapter_name);
+                    let mut proxy = None;
+                        $(
+                        if format!("{}", quote!([<$adapter:lower>])).eq(adapter_name) {
+                            proxy = Some(WasmHandlerProxyType::$adapter([<$adapter WasmHandlerProxy>]::new(
+                                indexer_hash, store, data_source, templates)));
+                        }
+                        )*
+
+                    proxy
+                }
+            }
+            /*
             impl WasmHandlerProxyType {
                 pub fn create_proxy(adapter_name: &String, wasm_module : Arc<ValidModule>) -> Option<WasmHandlerProxyType> {
                     log::info!("Create proxy for adapter {}", adapter_name);
@@ -171,18 +217,19 @@ macro_rules! create_wasm_adapters {
                     proxy
                 }
             }
-
+            */
             impl MessageHandler for WasmHandlerProxyType {
                 fn handle_wasm_mapping(
-                    &self,
-                    wasm_instance: &mut WasmInstance<Chain>,
-                    datasource: &DataSource,
+                    &mut self,
+                    //wasm_instance: &mut WasmInstance<Chain>,
+                    //datasource: &DataSource,
                     message: &mut GenericDataProto
                 ) -> Result<(), Box<dyn Error>> {
                     match self {
                         $(
                         WasmHandlerProxyType::$adapter(proxy) => {
-                            proxy.handle_wasm_mapping(wasm_instance, datasource, message)
+                            //proxy.handle_wasm_mapping(wasm_instance, datasource, message)
+                            proxy.handle_wasm_mapping(message)
                         }
                         )*
                     }

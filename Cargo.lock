@@ -21,6 +21,7 @@ dependencies = [
  "graph",
  "graph-chain-ethereum",
  "graph-core",
+ "graph-mock",
  "graph-runtime-wasm",
  "index-store",
  "lazy_static",
@@ -2712,6 +2713,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "graph-mock"
+version = "0.23.1"
+source = "git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub#6ea31915cc8c2330ffa6587a0e0212402db88a06"
+dependencies = [
+ "futures 0.1.31",
+ "graph",
+ "graph-graphql",
+ "graphql-parser",
+ "mockall 0.8.3",
+ "rand 0.6.5",
+]
+
+[[package]]
 name = "graph-node"
 version = "0.23.1"
 source = "git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub#6ea31915cc8c2330ffa6587a0e0212402db88a06"
@@ -4261,6 +4275,7 @@ dependencies = [
  "futures 0.3.16",
  "graph",
  "graph-chain-ethereum",
+ "graph-mock",
  "graph-node",
  "graph-runtime-derive",
  "graph-runtime-wasm",
@@ -9792,7 +9807,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04f8ab788026715fa63b31960869617cba39117e520eb415b0139543e325ab59"
 dependencies = [
  "cfg-if 0.1.10",
- "rand 0.7.3",
+ "rand 0.3.23",
  "static_assertions",
 ]
 

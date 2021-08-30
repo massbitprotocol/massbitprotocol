@@ -1,6 +1,6 @@
 //use super::relational::Layout;
-use crate::mock::MockMetricsRegistry;
 use crate::prelude::{Arc, Logger};
+use graph_mock::MockMetricsRegistry;
 use graph_store_postgres::{
     command_support::{
         catalog::{self, Connection, Site},

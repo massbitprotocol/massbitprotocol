@@ -20,12 +20,15 @@ pub async fn adapter_init(
     manifest: &Option<SubgraphManifest<Chain>>,
 ) -> Result<(), Box<dyn Error>> {
     log::info!("Load library from {:?}", &index_config.mapping);
+    let config_value = read_config_file(&index_config.config);
     let mut adapter = AdapterManager::new();
     //assert_eq!(manifest.data_sources.len(), 1);
+
+    println!("Index config {:?}", index_config);
     adapter
         .init(
             &index_config.identifier.name_with_hash,
-            //&config_value,
+            &config_value,
             &index_config.mapping,
             &index_config.schema,
             manifest,

@@ -23,6 +23,8 @@ use graph_chain_ethereum::Chain;
 use graph_chain_ethereum::{trigger::MappingTrigger, DataSource, DataSourceTemplate};
 use graph_core::LinkResolver;
 //use graph_runtime_wasm::{ExperimentalFeatures, HostExports, MappingContext};
+use graph::tokio_stream::StreamExt;
+use graph_mock::MockMetricsRegistry;
 use graph_runtime_wasm::ValidModule;
 use index_store::core::Store;
 use lazy_static::lazy_static;
@@ -33,10 +35,10 @@ use massbit_chain_solana::data_type::{
     SolanaLogMessages, SolanaTransaction,
 };
 use massbit_common::prelude::anyhow::{self, Context};
+use massbit_common::prelude::tokio::io::AsyncReadExt;
 use massbit_runtime_wasm::host_exports::create_ethereum_call;
 use massbit_runtime_wasm::manifest::datasource::*;
 use massbit_runtime_wasm::mapping::FromFile;
-use massbit_runtime_wasm::mock::MockMetricsRegistry;
 use massbit_runtime_wasm::prelude::{Logger, Version};
 use massbit_runtime_wasm::store::postgres::store_builder::*;
 use massbit_runtime_wasm::store::PostgresIndexStore;
@@ -45,6 +47,8 @@ use massbit_runtime_wasm::{HostExports, MappingContext, WasmInstance};
 use serde_yaml::Value;
 use slog::o;
 use std::collections::BTreeMap;
+use std::fs::File;
+use std::io::Read;
 use std::path::Path;
 use std::sync::Mutex;
 use std::time::Instant;
@@ -138,7 +142,7 @@ impl AdapterManager {
     pub async fn init(
         &mut self,
         hash: &String,
-        //config: &Value,
+        config: &Value,
         mapping: &PathBuf,
         schema: &PathBuf,
         manifest: &Option<SubgraphManifest<Chain>>,
@@ -161,29 +165,68 @@ impl AdapterManager {
             _ => Vec::default(),
         };
          */
-        let empty_ds: Vec<DataSource> = vec![];
-        let (data_sources, templates): (&Vec<DataSource>, Vec<DataSourceTemplate>) = match manifest
-        {
-            Some(sgd) => (
-                &sgd.data_sources,
-                sgd.templates
-                    .iter()
-                    .map(|tpl| tpl.clone())
-                    .collect::<Vec<DataSourceTemplate>>(),
-            ),
-            None => (&empty_ds, vec![]),
-        };
+
+        //Inject static wasm module
+        let quickswap_path = "/home/viettai/Massbit/QuickSwap-subgraph/build/";
+        let factory = "Factory/Factory.wasm";
+        let pair = "templates/Pair/Pair.wasm";
+        let factory_wasm = self
+            .load_wasm_content(format!("{}/{}", quickswap_path, factory))
+            .await;
+        let pair_wasm = self
+            .load_wasm_content(format!("{}/{}", quickswap_path, pair))
+            .await;
+
+        let mut empty_ds: Vec<DataSource> = vec![];
+        let mut data_sources: Vec<DataSource> = vec![];
+        let mut templates: Vec<DataSourceTemplate> = vec![];
+        if let Some(sgd) = manifest {
+            data_sources = sgd
+                .data_sources
+                .iter()
+                .map(|ds| ds.clone())
+                .collect::<Vec<DataSource>>();
+            templates = sgd
+                .templates
+                .iter()
+                .map(|tpl| tpl.clone())
+                .collect::<Vec<DataSourceTemplate>>();
+        }
+
+        if let Some(template) = templates.get_mut(0) {
+            template.mapping.runtime = Arc::new(pair_wasm);
+        }
+
+        /*
+        let (data_sources, templates): (&mut Vec<DataSource>, Vec<DataSourceTemplate>) =
+            match manifest {
+                Some(sgd) => (
+                    &sgd.data_sources.clone(),
+                    sgd.templates
+                        .iter()
+                        .map(|tpl| tpl.clone())
+                        .collect::<Vec<DataSourceTemplate>>(),
+                ),
+                None => (&mut empty_ds, vec![]),
+            };
+        */
+        //println!("{:?}", data_sources);
+        //println!("{:?}", templates);
+
         let arc_templates = Arc::new(templates);
         //Todo: Currently adapter only works with one datasource
+        /*
         assert_eq!(
             data_sources.len(),
             1,
             "Error: Number datasource: {} is not 1.",
             data_sources.len()
         );
-        match data_sources.get(0) {
+         */
+        match data_sources.get_mut(0) {
             Some(data_source) => {
                 info!("Data source: {:?}", data_source);
+                //data_source.mapping.runtime = Arc::new(factory_wasm);
                 let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await?;
                 log::info!(
                     "{} Init Streamout client for chain {}",
@@ -200,11 +243,7 @@ impl AdapterManager {
                     .list_blocks(Request::new(get_blocks_request))
                     .await?
                     .into_inner();
-                log::info!(
-                    "{} Detect mapping language {}",
-                    &*COMPONENT_NAME,
-                    &data_source.mapping.language
-                );
+
                 match data_source.mapping.language.as_str() {
                     "wasm/assemblyscript" => {
                         self.handle_wasm_mapping(
@@ -224,8 +263,37 @@ impl AdapterManager {
                     }
                 }
             }
-            _ => Ok(()),
+            _ => {
+                /*
+                let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await?;
+                log::info!(
+                    "{} Init Streamout client for chain {}",
+                    &*COMPONENT_NAME,
+                    &data_source.kind
+                );
+                let chain_type = get_chain_type(data_source);
+                let get_blocks_request = GetBlocksRequest {
+                    start_block_number: 0,
+                    end_block_number: 1,
+                    chain_type: chain_type as i32,
+                };
+                let mut stream: Streaming<GenericDataProto> = client
+                    .list_blocks(Request::new(get_blocks_request))
+                    .await?
+                    .into_inner();
+                self.handle_rust_mapping(hash, config, mapping, &mut stream)
+                    .await
+                 */
+                Ok(())
+            }
         }
+    }
+    pub async fn load_wasm_content(&self, path: String) -> Vec<u8> {
+        let mut content = Vec::new();
+        let mut file = File::open(&path).expect("Unable to open file");
+        file.read_to_end(&mut content)
+            .expect("Unable to read file content");
+        content
     }
     pub async fn init0(
         &mut self,
@@ -322,6 +390,7 @@ impl AdapterManager {
         schema_path: P,
         stream: &mut Streaming<GenericDataProto>,
     ) -> Result<(), Box<dyn Error>> {
+        /*
         log::info!("Load wasm file from {:?}", mapping_path.as_ref());
         let valid_module = Arc::new(ValidModule::from_file(mapping_path.as_ref()).unwrap());
         log::info!(
@@ -329,6 +398,7 @@ impl AdapterManager {
             mapping_path.as_ref(),
             &valid_module.import_name_to_modules
         );
+         */
         let store =
             Arc::new(StoreBuilder::create_store(indexer_hash.as_str(), &schema_path).unwrap());
         let registry = Arc::new(MockMetricsRegistry::new());
@@ -357,14 +427,19 @@ impl AdapterManager {
             .get(0)
             .unwrap()
             .to_string();
-        let handler_proxy = Arc::new(WasmHandlerProxyType::create_proxy(
+        let mut handler_proxy = WasmHandlerProxyType::create_proxy(
             &adapter_name,
-            Arc::clone(&valid_module),
-        ));
+            indexer_hash,
+            store,
+            datasource.clone(), //Arc::clone(&valid_module),
+            templates,
+        );
+        /*
         let mut wasm_adapter = WasmAdapter::new(indexer_hash.clone(), Arc::clone(&valid_module));
         wasm_adapter
             .handler_proxies
             .insert(adapter_name.clone(), Arc::clone(&handler_proxy));
+         */
         let stopwatch = StopwatchMetrics::new(
             Logger::root(slog::Discard, o!()),
             DEPLOYMENT_HASH.cheap_clone(),
@@ -384,7 +459,7 @@ impl AdapterManager {
                 data.block_hash,
                 data_type
             );
-
+            /*
             let start = Instant::now();
             let mut wasm_instance = self
                 .load_wasm(
@@ -403,15 +478,26 @@ impl AdapterManager {
                 &*COMPONENT_NAME,
                 start.elapsed()
             );
-            let clone_proxy = Arc::clone(&handler_proxy);
-            if let Some(proxy) = &*clone_proxy {
+             */
+            //let clone_proxy = Arc::clone(&handler_proxy);
+            if let Some(ref mut proxy) = handler_proxy {
+                match proxy.handle_wasm_mapping(&mut data) {
+                    Err(err) => {
+                        log::error!("{} Error while handle received message", err);
+                    }
+                    _ => {}
+                }
+                /*
                 match proxy.handle_wasm_mapping(&mut wasm_instance, datasource, &mut data) {
                     Err(err) => {
                         log::error!("{} Error while handle received message", err);
                     }
                     _ => {}
                 }
+                */
                 log::info!("Finish wasm mapping");
+
+                /*
                 let state = wasm_instance.take_ctx().ctx.state;
                 let ModificationsAndCache {
                     modifications: mods,
@@ -432,6 +518,7 @@ impl AdapterManager {
                         vec![],
                     );
                 }
+                 */
                 //.map(move |_| {
                 //    metrics.transaction.update_duration(started.elapsed());
                 //    block_ptr
@@ -651,9 +738,9 @@ pub trait MessageHandler {
         Ok(())
     }
     fn handle_wasm_mapping(
-        &self,
-        wasm_instance: &mut WasmInstance<Chain>,
-        datasource: &DataSource,
+        &mut self,
+        //wasm_instance: &mut WasmInstance<Chain>,
+        //datasource: &DataSource,
         message: &mut GenericDataProto,
     ) -> Result<(), Box<dyn Error>> {
         Ok(())

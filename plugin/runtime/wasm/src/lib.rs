@@ -1,7 +1,7 @@
 pub mod host_exports;
 pub mod manifest;
 pub mod mapping;
-pub mod mock;
+//pub mod mock;
 pub mod module;
 pub mod store;
 pub use host_exports::HostExports;
