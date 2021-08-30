@@ -1,6 +1,7 @@
 import errno
 import random
 import os
+import ipfshttpclient
 from shutil import copyfile
 
 
@@ -121,3 +122,17 @@ def upload_abi_to_ipfs(client, abi):
         abi_object["hash"] = res["Hash"]
         abi_new.append(abi_object)
     return abi
+
+
+def ipfs_client_init():
+    if os.environ.get('IPFS_URL'):
+        return ipfshttpclient.connect(os.environ.get('IPFS_URL'))  # Connect with IPFS container name
+    else:
+        return ipfshttpclient.connect()
+
+
+def get_index_manager_url():
+    if os.environ.get('INDEX_MANAGER_URL'):
+        return os.environ.get('INDEX_MANAGER_URL')  # Connection to indexer
+    else:
+        return 'http://0.0.0.0:3030'
