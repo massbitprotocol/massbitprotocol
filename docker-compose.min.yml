@@ -56,7 +56,7 @@ services:
       ADMIN_SECRET: massbit
 
   dashboard:
-    image: sprise/dashboard:1.2
+    image: sprise/dashboard:1.3
     ports:
       - "8088:8088"
     depends_on: # Dashboard App will call to indexer to get indexer detail & code-compiler to compile and deploy new index
