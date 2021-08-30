@@ -16,6 +16,10 @@ pub mod ethereum;
 pub mod matic;
 pub mod solana;
 pub mod substrate;
+use graph::components::store::{ModificationsAndCache, StoreError, WritableStore};
+use graph::prelude::MetricsRegistry;
+use graph_mock::MockMetricsRegistry;
+use std::collections::HashMap;
 //Add new chain name in CamelCase here
 crate::create_adapters!(Matic, Bsc, Ethereum, Solana, Substrate);
 crate::create_wasm_adapters!(Ethereum);

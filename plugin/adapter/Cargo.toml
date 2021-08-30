@@ -49,6 +49,12 @@ branch = "anhhuy0501-patch-add-pub"
 package = "graph-runtime-wasm"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
 branch = "anhhuy0501-patch-add-pub"
+
+[dependencies.graph-mock]
+package = "graph-mock"
+git = "https://github.com/massbitprotocol/massbit-graph-node"
+branch = "anhhuy0501-patch-add-pub"
+
 #rev =   "428b3d0"
 #[dependencies.node-template-runtime]
 #git = "https://github.com/scs/substrate-api-client-test-node"

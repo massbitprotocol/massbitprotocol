@@ -31,7 +31,8 @@ pub struct Abi {
 }
 
 // The IndexConfig is built from DeployParams
-// IndexConfig should let us know the location where the configs are stored
+// IndexConfig should let us know the location where the configs are
+#[derive(Clone, Debug)]
 pub struct IndexConfig {
     pub config: PathBuf,
     pub mapping: PathBuf,
@@ -42,6 +43,7 @@ pub struct IndexConfig {
 }
 
 // Identifier of the IndexConfig is an helper to easily access the hash of the index, and index's file name
+#[derive(Clone, Debug)]
 pub struct IndexIdentifier {
     pub name: String,
     pub hash: String,
