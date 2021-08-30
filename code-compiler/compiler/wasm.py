@@ -39,15 +39,15 @@ def compile_wasm(data, hash):
     # URL-decode the data
     mappings = data["mappings"]
     abis = data["abis"]
-    subgraph = urllib.parse.unquote_plus(data["configs"]["subgraph.yaml"])
-    schema = urllib.parse.unquote_plus(data["configs"]["schema.graphql"])
-    package = urllib.parse.unquote_plus(data["configs"]["package.json"])
+    subgraph = urllib.parse.unquote(data["configs"]["subgraph.yaml"])
+    schema = urllib.parse.unquote(data["configs"]["schema.graphql"])
+    package = urllib.parse.unquote(data["configs"]["package.json"])
 
     # Save the formatted data from request to disk, ready for compiling
     for file_name in mappings:
-        write_to_disk(os.path.join(generated_folder, "src", file_name), urllib.parse.unquote_plus(mappings[file_name]))
+        write_to_disk(os.path.join(generated_folder, "src", file_name), urllib.parse.unquote(mappings[file_name]))
     for file_name in abis:
-        write_to_disk(os.path.join(generated_folder, "abis", file_name), urllib.parse.unquote_plus(abis[file_name]))
+        write_to_disk(os.path.join(generated_folder, "abis", file_name), urllib.parse.unquote(abis[file_name]))
     write_to_disk(os.path.join(generated_folder, "subgraph.yaml"), subgraph)
     write_to_disk(os.path.join(generated_folder, "schema.graphql"), schema)
     write_to_disk(os.path.join(generated_folder, "package.json"), package)
@@ -61,7 +61,7 @@ def compile_wasm(data, hash):
 
 def deploy_wasm(data):
     # Parse the request data
-    compilation_id = urllib.parse.unquote_plus(data["compilation_id"])
+    compilation_id = urllib.parse.unquote(data["compilation_id"])
 
     # Get the files path from generated/hash folder
     subgraph_path = os.path.join("./generated", compilation_id, "build", "subgraph.yaml")
