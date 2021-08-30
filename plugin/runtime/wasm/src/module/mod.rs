@@ -27,6 +27,7 @@ use massbit_common::prelude::{
 };
 
 use crate::mapping::MappingContext;
+use crate::store::postgres::store_builder::*;
 use graph::components::subgraph::MappingError;
 use graph::data::subgraph::schema::SubgraphError;
 use graph::prelude::DeploymentHash;
@@ -206,10 +207,7 @@ impl<C: Blockchain> WasmInstance<C> {
             );
 
             let subgraph_error = SubgraphError {
-                subgraph_id: DeploymentHash::new(
-                    self.instance_ctx().ctx.host_exports.indexer_hash.clone(),
-                )
-                .unwrap(),
+                subgraph_id: DEPLOYMENT_HASH.clone(),
                 message,
                 block_ptr: Some(self.instance_ctx().ctx.block_ptr.cheap_clone()),
                 handler: Some(handler.to_string()),

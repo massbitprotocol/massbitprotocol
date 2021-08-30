@@ -188,7 +188,6 @@ impl MessageHandler for EthereumWasmHandlerProxy {
 }
 impl EthereumWasmHandlerProxy {
     fn prepare_wasm_module(&mut self, data_source: &DataSource) -> Arc<ValidModule> {
-        log::info!("Load wasm module for datasource {:?}", &data_source.name);
         let cur_module = self.wasm_modules.get_mut(&data_source.name);
         match cur_module {
             None => {

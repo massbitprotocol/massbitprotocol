@@ -165,7 +165,7 @@ impl AdapterManager {
             _ => Vec::default(),
         };
          */
-
+        /*
         //Inject static wasm module
         let quickswap_path = "/home/viettai/Massbit/QuickSwap-subgraph/build/";
         let factory = "Factory/Factory.wasm";
@@ -176,7 +176,7 @@ impl AdapterManager {
         let pair_wasm = self
             .load_wasm_content(format!("{}/{}", quickswap_path, pair))
             .await;
-
+        */
         let mut empty_ds: Vec<DataSource> = vec![];
         let mut data_sources: Vec<DataSource> = vec![];
         let mut templates: Vec<DataSourceTemplate> = vec![];
@@ -192,11 +192,11 @@ impl AdapterManager {
                 .map(|tpl| tpl.clone())
                 .collect::<Vec<DataSourceTemplate>>();
         }
-
+        /*
         if let Some(template) = templates.get_mut(0) {
             template.mapping.runtime = Arc::new(pair_wasm);
         }
-
+        */
         /*
         let (data_sources, templates): (&mut Vec<DataSource>, Vec<DataSourceTemplate>) =
             match manifest {
