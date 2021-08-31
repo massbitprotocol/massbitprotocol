@@ -223,10 +223,9 @@ impl AdapterManager {
             data_sources.len()
         );
          */
-        match data_sources.get_mut(0) {
+        match data_sources.get(0) {
             Some(data_source) => {
                 info!("Data source: {:?}", data_source);
-                //data_source.mapping.runtime = Arc::new(factory_wasm);
                 let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await?;
                 log::info!(
                     "{} Init Streamout client for chain {}",
