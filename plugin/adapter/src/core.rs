@@ -334,16 +334,16 @@ impl AdapterManager {
             _ => Vec::default(),
         };
         let templates = Arc::new(templates);
-        //Todo: Currently adapter only works with one datasource
+        //Todo: Currently adapter only works with one data_source
         match data_sources.get(0) {
-            Some(datasource) => {
+            Some(data_source) => {
                 let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await?;
                 log::info!(
                     "{} Init Streamout client for chain {}",
                     &*COMPONENT_NAME,
-                    &datasource.kind
+                    &data_source.kind
                 );
-                let chain_type = get_chain_type(datasource);
+                let chain_type = get_chain_type(data_source);
                 let get_blocks_request = GetBlocksRequest {
                     start_block_number: 0,
                     end_block_number: 1,
@@ -356,13 +356,13 @@ impl AdapterManager {
                 log::info!(
                     "{} Detect mapping language {}",
                     &*COMPONENT_NAME,
-                    &datasource.mapping.language
+                    &data_source.mapping.language
                 );
-                match datasource.mapping.language.as_str() {
+                match data_source.mapping.language.as_str() {
                     "wasm/assemblyscript" => {
                         self.handle_wasm_mapping(
                             hash,
-                            datasource,
+                            data_source,
                             templates,
                             mapping,
                             schema,
@@ -372,7 +372,7 @@ impl AdapterManager {
                     }
                     //Default use rust
                     _ => {
-                        self.handle_rust_mapping(hash, datasource, mapping, &mut stream)
+                        self.handle_rust_mapping(hash, data_source, mapping, &mut stream)
                             .await
                     }
                 }
@@ -383,7 +383,7 @@ impl AdapterManager {
     async fn handle_wasm_mapping<P: AsRef<Path>>(
         &mut self,
         indexer_hash: &String,
-        datasource: &DataSource,
+        data_source: &DataSource,
         templates: Arc<Vec<DataSourceTemplate>>,
         mapping_path: P,
         schema_path: P,
@@ -407,7 +407,7 @@ impl AdapterManager {
         let mut wasm_instance = self
             .load_wasm(
                 indexer_hash,
-                datasource,
+                data_source,
                 clone_store,
                 Arc::clone(&valid_module),
             )
@@ -419,7 +419,7 @@ impl AdapterManager {
         );
         */
         log::info!("{} Start mapping using wasm binary", &*COMPONENT_NAME);
-        let adapter_name = datasource
+        let adapter_name = data_source
             .kind
             .split("/")
             .collect::<Vec<&str>>()
@@ -430,7 +430,7 @@ impl AdapterManager {
             &adapter_name,
             indexer_hash,
             store,
-            datasource.clone(), //Arc::clone(&valid_module),
+            data_source.clone(), //Arc::clone(&valid_module),
             templates,
         );
         /*
@@ -463,7 +463,7 @@ impl AdapterManager {
             let mut wasm_instance = self
                 .load_wasm(
                     indexer_hash,
-                    datasource,
+                    data_source,
                     templates.clone(),
                     store.clone(),
                     //valid_module.cheap_clone(),
@@ -487,7 +487,7 @@ impl AdapterManager {
                     _ => {}
                 }
                 /*
-                match proxy.handle_wasm_mapping(&mut wasm_instance, datasource, &mut data) {
+                match proxy.handle_wasm_mapping(&mut wasm_instance, data_source, &mut data) {
                     Err(err) => {
                         log::error!("{} Error while handle received message", err);
                     }
@@ -547,7 +547,7 @@ impl AdapterManager {
     pub fn load_wasm(
         &mut self,
         indexer_hash: &String,
-        datasource: &DataSource,
+        data_source: &DataSource,
         templates: Arc<Vec<DataSourceTemplate>>,
         store: Arc<dyn WritableStore>,
         valid_module: Arc<ValidModule>,
@@ -567,16 +567,16 @@ impl AdapterManager {
         ));
         /*
         let templates = vec![DataSourceTemplate {
-            kind: datasource.kind.clone(),
-            name: datasource.name.clone(),
-            network: datasource.network.clone(),
+            kind: data_source.kind.clone(),
+            name: data_source.name.clone(),
+            network: data_source.network.clone(),
             source: TemplateSource {
-                abi: datasource.source.abi.clone(),
+                abi: data_source.source.abi.clone(),
             },
             mapping: Mapping {
-                kind: datasource.mapping.kind.clone(),
+                kind: data_source.mapping.kind.clone(),
                 api_version: api_version.clone(),
-                language: datasource.mapping.language.clone(),
+                language: data_source.mapping.language.clone(),
                 entities: vec![],
                 abis: vec![],
                 event_handlers: vec![],
@@ -587,7 +587,7 @@ impl AdapterManager {
             },
         }];
         */
-        let network = match &datasource.network {
+        let network = match &data_source.network {
             None => String::from("ethereum"),
             Some(val) => val.clone(),
         };
@@ -595,7 +595,7 @@ impl AdapterManager {
         //graph HostExports
         let host_exports = HostExports::new(
             DeploymentHash::new(indexer_hash.clone()).unwrap(),
-            datasource,
+            data_source,
             network,
             Arc::clone(&templates),
             link_resolver,
@@ -605,7 +605,7 @@ impl AdapterManager {
          */
         let host_exports = HostExports::new(
             indexer_hash.as_str(),
-            datasource,
+            data_source,
             network,
             Arc::clone(&templates),
             api_version,
@@ -615,16 +615,16 @@ impl AdapterManager {
         let host_fns: Vec<HostFn> = match valid_module.import_name_to_modules.get("ethereum.call") {
             None => Vec::new(),
             Some(_) => {
-                vec![create_ethereum_call(datasource)]
-                //vec![create_mock_ethereum_call(datasource)]
+                vec![create_ethereum_call(data_source)]
+                //vec![create_mock_ethereum_call(data_source)]
             }
         };
-        //datasource.mapping.requires_archive();
+        //data_source.mapping.requires_archive();
         let context = MappingContext {
             logger: Logger::root(slog::Discard, o!()),
             block_ptr: BlockPtr {
                 hash: Default::default(),
-                number: datasource.source.start_block,
+                number: data_source.source.start_block,
             },
             host_exports: Arc::new(host_exports),
             //state: IndexerState::new(store, Default::default()),
@@ -648,7 +648,7 @@ impl AdapterManager {
     async fn handle_rust_mapping<P: AsRef<OsStr>>(
         &mut self,
         indexer_hash: &String,
-        datasource: &DataSource,
+        data_source: &DataSource,
         mapping_path: P,
         stream: &mut Streaming<GenericDataProto>,
     ) -> Result<(), Box<dyn Error>> {
@@ -663,7 +663,7 @@ impl AdapterManager {
             }
         }
         log::info!("{} Start mapping using rust", &*COMPONENT_NAME);
-        let adapter_name = datasource.kind.as_str();
+        let adapter_name = data_source.kind.as_str();
         if let Some(adapter_handler) = self.map_handlers.get(indexer_hash.as_str()) {
             if let Some(handler_proxy) = adapter_handler.handler_proxies.get(adapter_name) {
                 while let Some(data) = stream.message().await? {
@@ -739,7 +739,7 @@ pub trait MessageHandler {
     fn handle_wasm_mapping(
         &mut self,
         //wasm_instance: &mut WasmInstance<Chain>,
-        //datasource: &DataSource,
+        //data_source: &DataSource,
         message: &mut GenericDataProto,
     ) -> Result<(), Box<dyn Error>> {
         Ok(())
