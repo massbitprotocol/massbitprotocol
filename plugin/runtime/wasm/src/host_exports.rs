@@ -544,6 +544,9 @@ impl<C: Blockchain> HostExports<C> {
                 "Critical error logged in mapping"
             )));
         }
+        if level == slog::Level::Info {
+            log::info!("Log from wasm module: {}", msg);
+        }
         Ok(())
     }
     pub(crate) fn data_source_address(&self) -> Vec<u8> {

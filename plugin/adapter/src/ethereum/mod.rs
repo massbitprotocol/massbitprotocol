@@ -46,6 +46,7 @@ crate::prepare_adapter!(Ethereum, {
 impl MessageHandler for EthereumWasmHandlerProxy {
     fn handle_wasm_mapping(&mut self, data: &mut GenericDataProto) -> Result<(), Box<dyn Error>> {
         log::info!("{} call handle_wasm_mapping", &*COMPONENT_NAME);
+        let logger = logger(true);
         let registry = Arc::new(MockMetricsRegistry::new());
         let start = Instant::now();
         let data_sources = self.data_sources.clone();
@@ -71,7 +72,7 @@ impl MessageHandler for EthereumWasmHandlerProxy {
                         hash: BlockHash(data.block_hash.as_bytes().into()),
                         number: data.block_number as i32,
                     };
-                    let logger = logger(true);
+
                     self.matching_block(
                         &logger,
                         &mut wasm_instance,

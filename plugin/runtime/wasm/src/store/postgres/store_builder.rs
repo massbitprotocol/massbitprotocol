@@ -179,23 +179,23 @@ impl StoreBuilder {
                 })?;
                 let relationships = layout.gen_relationship();
                 let (hasura_up, _) = layout.create_hasura_payloads();
-                tokio::spawn(async move {
-                    match conn.batch_execute(&sql) {
+                match conn.batch_execute(&sql) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        log::error!("{:?}", e);
+                    }
+                }
+                if relationships.len() > 0 {
+                    let query = relationships.join(";");
+                    log::info!("Create relationships: {:?}", &query);
+                    match conn.batch_execute(&query) {
                         Ok(_) => {}
-                        Err(e) => {
-                            log::error!("{:?}", e);
+                        Err(err) => {
+                            log::error!("Error while crate relation {:?}", err)
                         }
                     }
-                    if relationships.len() > 0 {
-                        let query = relationships.join(";");
-                        log::info!("Create relationships: {:?}", &query);
-                        match conn.batch_execute(&query) {
-                            Ok(_) => {}
-                            Err(err) => {
-                                log::error!("Error while crate relation {:?}", err)
-                            }
-                        }
-                    }
+                }
+                tokio::spawn(async move {
                     let response = Client::new()
                         .post(&*HASURA_URL)
                         .json(&hasura_up)
