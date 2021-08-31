@@ -526,12 +526,13 @@ fn eth_call(
                     e
                 ))),
     };
-    println!("Contract call finished: address: {}, contract: {}, function: {}, function_signature: {:?}, time: {}",
-             &unresolved_call.contract_address.to_string(),
+    log::info!("Contract call finished: address: {:?}, contract: {}, function: {}, function_signature: {:?}, result: {:?}, time: {:?}",
+             &unresolved_call.contract_address,
              &unresolved_call.contract_name,
              &unresolved_call.function_name,
              &unresolved_call.function_signature,
-             format!("{}ms", start_time.elapsed().as_millis()));
+             &result,
+             start_time.elapsed());
 
     result
 }
