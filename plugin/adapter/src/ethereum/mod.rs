@@ -51,9 +51,6 @@ impl MessageHandler for EthereumWasmHandlerProxy {
         let data_sources = self.data_sources.clone();
         data_sources.iter().for_each(|data_source| {
             let valid_module = self.prepare_wasm_module(data_source);
-            //let wasm_instance: &mut WasmInstance<Chain> =
-            //    self.prepare_wasm_instance(data_source, registry.clone());
-
             let mut wasm_instance = load_wasm(
                 &self.indexer_hash,
                 data_source,
@@ -67,7 +64,7 @@ impl MessageHandler for EthereumWasmHandlerProxy {
             match DataType::from_i32(data.data_type) {
                 Some(DataType::Block) => {
                     let eth_block: EthereumBlock = decode(&mut data.payload).unwrap();
-                    let arc_block = Arc::new(eth_block.block);
+                    let arc_block = Arc::new(eth_block.block.clone());
                     let block_finality: Arc<<Chain as Blockchain>::Block> =
                         Arc::new(BlockFinality::Final(arc_block.clone()));
                     let block_ptr_to = BlockPtr {
@@ -75,81 +72,43 @@ impl MessageHandler for EthereumWasmHandlerProxy {
                         number: data.block_number as i32,
                     };
                     let logger = logger(true);
-                    //Trigger block
-                    let block_trigger: <Chain as Blockchain>::TriggerData = EthereumTrigger::Block(
-                        block_ptr_to.clone(),
-                        EthereumBlockTriggerType::Every,
+                    self.matching_block(
+                        &logger,
+                        &mut wasm_instance,
+                        data_source,
+                        &eth_block,
+                        block_finality.clone(),
+                        &block_ptr_to,
                     );
-                    let mapping_trigger = data_source
-                        .match_and_decode(&block_trigger, block_finality.clone(), &logger)
-                        .unwrap();
-                    if let Some(trigger) = mapping_trigger {
-                        log::info!("Block Mapping trigger found");
-                        wasm_instance.handle_trigger(trigger);
-                        /*
-                        match wasm_instance {
-                            Some(ref mut instance) => {
-                                instance.handle_trigger(trigger);
-                            }
-                            None => {
-                                let mut instance = load_wasm(
-                                    &self.indexer_hash,
-                                    data_source,
-                                    self.templates.clone(),
-                                    self.store.clone(),
-                                    registry.cheap_clone(),
-                                )
-                                .unwrap();
-                                &instance.handle_trigger(trigger);
-                                wasm_instance = Some(instance);
-                            }
-                        }
-                         */
-                    }
-                    //Mapping trigger log
-                    eth_block.logs.iter().for_each(|log| {
-                        let arc_log = Arc::new(log.clone());
-                        let trigger: <Chain as Blockchain>::TriggerData =
-                            EthereumTrigger::Log(arc_log);
-                        let mapping_trigger = data_source
-                            .match_and_decode(&trigger, block_finality.clone(), &logger)
-                            .unwrap();
-                        if let Some(trigger) = mapping_trigger {
-                            log::info!("Log Mapping trigger found");
-                            wasm_instance.handle_trigger(trigger);
-                            /*
-                            match wasm_instance {
-                                Some(ref mut instance) => {
-                                    instance.handle_trigger(trigger);
-                                }
-                                None => {
-                                    let mut instance = load_wasm(
-                                        &self.indexer_hash,
-                                        data_source,
-                                        self.templates.clone(),
-                                        self.store.clone(),
-                                        registry.cheap_clone(),
-                                    )
-                                    .unwrap();
-                                    &instance.handle_trigger(trigger);
-                                    wasm_instance = Some(instance);
-                                }
-                            }
-
-                             */
-                        }
-                    });
                     //Handle result in BlockState
 
                     let mut context = wasm_instance.take_ctx();
-
                     //let mut state = context.ctx.state;
                     let has_created_data_sources = context.ctx.state.has_created_data_sources();
                     let data_source_infos = context.ctx.state.drain_created_data_sources();
                     for ds_template_info in data_source_infos {
                         let data_source = DataSource::try_from(ds_template_info).unwrap();
-                        //println!("{:?}", &data_source);
+                        let valid_module = self.prepare_wasm_module(&data_source);
+                        let mut wasm_instance = load_wasm(
+                            &self.indexer_hash,
+                            &data_source,
+                            self.templates.clone(),
+                            self.store.clone(),
+                            valid_module,
+                            registry.cheap_clone(),
+                        )
+                        .unwrap();
+                        self.matching_block(
+                            &logger,
+                            &mut wasm_instance,
+                            &data_source,
+                            &eth_block,
+                            block_finality.clone(),
+                            &block_ptr_to,
+                        );
+                        println!("New datasource with source: {:?}", &data_source.source);
                         self.add_data_source(data_source);
+                        println!("Total datasource: {:?}", self.data_sources.len());
                     }
                     let state = context.ctx.state;
                     let ModificationsAndCache {
@@ -203,6 +162,77 @@ impl EthereumWasmHandlerProxy {
             }
             Some(module) => module.clone(),
         }
+    }
+    fn matching_block(
+        &mut self,
+        logger: &Logger,
+        wasm_instance: &mut WasmInstance<Chain>,
+        data_source: &DataSource,
+        eth_block: &EthereumBlock,
+        block_finality: Arc<<Chain as Blockchain>::Block>,
+        block_ptr_to: &BlockPtr,
+    ) {
+        //Trigger block
+        let block_trigger: <Chain as Blockchain>::TriggerData =
+            EthereumTrigger::Block(block_ptr_to.clone(), EthereumBlockTriggerType::Every);
+        let mapping_trigger = data_source
+            .match_and_decode(&block_trigger, block_finality.clone(), &logger)
+            .unwrap();
+        if let Some(trigger) = mapping_trigger {
+            log::info!("Block Mapping trigger found");
+            wasm_instance.handle_trigger(trigger);
+            /*
+            match wasm_instance {
+                Some(ref mut instance) => {
+                    instance.handle_trigger(trigger);
+                }
+                None => {
+                    let mut instance = load_wasm(
+                        &self.indexer_hash,
+                        data_source,
+                        self.templates.clone(),
+                        self.store.clone(),
+                        registry.cheap_clone(),
+                    )
+                    .unwrap();
+                    &instance.handle_trigger(trigger);
+                    wasm_instance = Some(instance);
+                }
+            }
+             */
+        }
+        //Mapping trigger log
+        eth_block.logs.iter().for_each(|log| {
+            let arc_log = Arc::new(log.clone());
+            let trigger: <Chain as Blockchain>::TriggerData = EthereumTrigger::Log(arc_log);
+            let mapping_trigger = data_source
+                .match_and_decode(&trigger, block_finality.clone(), logger)
+                .unwrap();
+            if let Some(trigger) = mapping_trigger {
+                log::info!("Log Mapping trigger found");
+                wasm_instance.handle_trigger(trigger);
+                /*
+                match wasm_instance {
+                    Some(ref mut instance) => {
+                        instance.handle_trigger(trigger);
+                    }
+                    None => {
+                        let mut instance = load_wasm(
+                            &self.indexer_hash,
+                            data_source,
+                            self.templates.clone(),
+                            self.store.clone(),
+                            registry.cheap_clone(),
+                        )
+                        .unwrap();
+                        &instance.handle_trigger(trigger);
+                        wasm_instance = Some(instance);
+                    }
+                }
+
+                 */
+            }
+        });
     }
 }
 /*
