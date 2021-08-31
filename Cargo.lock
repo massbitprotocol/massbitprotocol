@@ -18,11 +18,11 @@ version = "0.1.0"
 dependencies = [
  "ethabi 12.0.0-graph",
  "futures 0.1.31",
- "graph",
- "graph-chain-ethereum",
- "graph-core",
+ "graph 0.23.1",
+ "graph-chain-ethereum 0.23.1",
+ "graph-core 0.23.1",
  "graph-mock",
- "graph-runtime-wasm",
+ "graph-runtime-wasm 0.23.1",
  "index-store",
  "lazy_static",
  "libloading",
@@ -856,10 +856,10 @@ dependencies = [
  "futures 0.3.16",
  "futures-core",
  "futures-util",
- "graph",
- "graph-chain-ethereum",
- "graph-core",
- "graph-runtime-wasm",
+ "graph 0.23.1 (git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub)",
+ "graph-chain-ethereum 0.23.1 (git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub)",
+ "graph-core 0.23.1 (git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub)",
+ "graph-runtime-wasm 0.23.1 (git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub)",
  "hex 0.4.3",
  "http 0.1.21",
  "ipfs-client",
@@ -2592,6 +2592,61 @@ dependencies = [
 [[package]]
 name = "graph"
 version = "0.23.1"
+dependencies = [
+ "Inflector",
+ "anyhow",
+ "async-trait",
+ "atomic_refcell",
+ "bigdecimal",
+ "bytes 0.5.6",
+ "chrono",
+ "diesel",
+ "diesel_derives",
+ "ethabi 12.0.0-graph",
+ "fail",
+ "futures 0.1.31",
+ "futures 0.3.16",
+ "graphql-parser",
+ "hex 0.4.3",
+ "http 0.2.3",
+ "isatty",
+ "itertools 0.10.1",
+ "lazy_static",
+ "mockall 0.8.3",
+ "num-bigint",
+ "num-traits",
+ "num_cpus",
+ "parking_lot 0.11.1",
+ "petgraph 0.6.0",
+ "priority-queue",
+ "prometheus 0.12.0",
+ "rand 0.6.5",
+ "reqwest 0.10.10",
+ "semver 1.0.3",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "serde_yaml",
+ "slog",
+ "slog-async",
+ "slog-envlogger",
+ "slog-term",
+ "stable-hash",
+ "strum",
+ "strum_macros",
+ "thiserror",
+ "tiny-keccak 1.5.0",
+ "tokio 0.2.25",
+ "tokio-retry 0.2.0",
+ "tokio-stream",
+ "url 2.2.2",
+ "wasmparser 0.78.2",
+ "web3",
+]
+
+[[package]]
+name = "graph"
+version = "0.23.1"
 source = "git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub#6ea31915cc8c2330ffa6587a0e0212402db88a06"
 dependencies = [
  "Inflector",
@@ -2648,6 +2703,31 @@ dependencies = [
 [[package]]
 name = "graph-chain-ethereum"
 version = "0.23.1"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "dirs-next",
+ "ethabi 12.0.0-graph",
+ "futures 0.1.31",
+ "graph 0.23.1",
+ "graph-runtime-derive 0.23.1",
+ "graph-runtime-wasm 0.23.1",
+ "hex 0.4.3",
+ "http 0.1.21",
+ "itertools 0.10.1",
+ "jsonrpc-core 14.2.0",
+ "lazy_static",
+ "mockall 0.9.1",
+ "semver 1.0.3",
+ "serde",
+ "state_machine_future",
+ "tiny-keccak 1.5.0",
+ "web3",
+]
+
+[[package]]
+name = "graph-chain-ethereum"
+version = "0.23.1"
 source = "git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub#6ea31915cc8c2330ffa6587a0e0212402db88a06"
 dependencies = [
  "anyhow",
@@ -2655,9 +2735,9 @@ dependencies = [
  "dirs-next",
  "ethabi 12.0.0-graph",
  "futures 0.1.31",
- "graph",
- "graph-runtime-derive",
- "graph-runtime-wasm",
+ "graph 0.23.1 (git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub)",
+ "graph-runtime-derive 0.23.1 (git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub)",
+ "graph-runtime-wasm 0.23.1 (git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub)",
  "hex 0.4.3",
  "http 0.1.21",
  "itertools 0.10.1",
@@ -2674,6 +2754,27 @@ dependencies = [
 [[package]]
 name = "graph-core"
 version = "0.23.1"
+dependencies = [
+ "async-trait",
+ "atomic_refcell",
+ "bytes 0.5.6",
+ "fail",
+ "futures 0.1.31",
+ "futures 0.3.16",
+ "graph 0.23.1",
+ "graph-chain-ethereum 0.23.1",
+ "graph-runtime-wasm 0.23.1",
+ "lazy_static",
+ "lru_time_cache",
+ "semver 1.0.3",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+]
+
+[[package]]
+name = "graph-core"
+version = "0.23.1"
 source = "git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub#6ea31915cc8c2330ffa6587a0e0212402db88a06"
 dependencies = [
  "async-trait",
@@ -2682,15 +2783,33 @@ dependencies = [
  "fail",
  "futures 0.1.31",
  "futures 0.3.16",
- "graph",
- "graph-chain-ethereum",
- "graph-runtime-wasm",
+ "graph 0.23.1 (git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub)",
+ "graph-chain-ethereum 0.23.1 (git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub)",
+ "graph-runtime-wasm 0.23.1 (git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub)",
  "lazy_static",
  "lru_time_cache",
  "semver 1.0.3",
  "serde",
  "serde_json",
  "serde_yaml",
+]
+
+[[package]]
+name = "graph-graphql"
+version = "0.23.1"
+dependencies = [
+ "Inflector",
+ "anyhow",
+ "crossbeam 0.8.1",
+ "defer",
+ "futures 0.1.31",
+ "graph 0.23.1",
+ "graphql-parser",
+ "indexmap",
+ "lazy_static",
+ "once_cell",
+ "parking_lot 0.11.1",
+ "stable-hash",
 ]
 
 [[package]]
@@ -2703,7 +2822,7 @@ dependencies = [
  "crossbeam 0.8.1",
  "defer",
  "futures 0.1.31",
- "graph",
+ "graph 0.23.1 (git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub)",
  "graphql-parser",
  "indexmap",
  "lazy_static",
@@ -2715,11 +2834,10 @@ dependencies = [
 [[package]]
 name = "graph-mock"
 version = "0.23.1"
-source = "git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub#6ea31915cc8c2330ffa6587a0e0212402db88a06"
 dependencies = [
  "futures 0.1.31",
- "graph",
- "graph-graphql",
+ "graph 0.23.1",
+ "graph-graphql 0.23.1",
  "graphql-parser",
  "mockall 0.8.3",
  "rand 0.6.5",
@@ -2728,7 +2846,6 @@ dependencies = [
 [[package]]
 name = "graph-node"
 version = "0.23.1"
-source = "git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub#6ea31915cc8c2330ffa6587a0e0212402db88a06"
 dependencies = [
  "clap 2.33.3",
  "crossbeam-channel",
@@ -2737,11 +2854,11 @@ dependencies = [
  "fail",
  "futures 0.3.16",
  "git-testament",
- "graph",
- "graph-chain-ethereum",
- "graph-core",
- "graph-graphql",
- "graph-runtime-wasm",
+ "graph 0.23.1",
+ "graph-chain-ethereum 0.23.1",
+ "graph-core 0.23.1",
+ "graph-graphql 0.23.1",
+ "graph-runtime-wasm 0.23.1",
  "graph-server-http",
  "graph-server-index-node",
  "graph-server-json-rpc",
@@ -2763,11 +2880,44 @@ dependencies = [
 [[package]]
 name = "graph-runtime-derive"
 version = "0.23.1"
+dependencies = [
+ "anyhow",
+ "quote 1.0.9",
+ "syn 1.0.64",
+]
+
+[[package]]
+name = "graph-runtime-derive"
+version = "0.23.1"
 source = "git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub#6ea31915cc8c2330ffa6587a0e0212402db88a06"
 dependencies = [
  "anyhow",
  "quote 1.0.9",
  "syn 1.0.64",
+]
+
+[[package]]
+name = "graph-runtime-wasm"
+version = "0.23.1"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "atomic_refcell",
+ "bs58 0.4.0",
+ "defer",
+ "ethabi 12.0.0-graph",
+ "futures 0.1.31",
+ "graph 0.23.1",
+ "graph-graphql 0.23.1",
+ "graph-runtime-derive 0.23.1",
+ "hex 0.4.3",
+ "lazy_static",
+ "never",
+ "semver 1.0.3",
+ "strum",
+ "strum_macros",
+ "uuid 0.8.2",
+ "wasmtime",
 ]
 
 [[package]]
@@ -2782,9 +2932,9 @@ dependencies = [
  "defer",
  "ethabi 12.0.0-graph",
  "futures 0.1.31",
- "graph",
- "graph-graphql",
- "graph-runtime-derive",
+ "graph 0.23.1 (git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub)",
+ "graph-graphql 0.23.1 (git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub)",
+ "graph-runtime-derive 0.23.1 (git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub)",
  "hex 0.4.3",
  "lazy_static",
  "never",
@@ -2798,11 +2948,10 @@ dependencies = [
 [[package]]
 name = "graph-server-http"
 version = "0.23.1"
-source = "git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub#6ea31915cc8c2330ffa6587a0e0212402db88a06"
 dependencies = [
  "futures 0.1.31",
- "graph",
- "graph-graphql",
+ "graph 0.23.1",
+ "graph-graphql 0.23.1",
  "graphql-parser",
  "http 0.2.3",
  "hyper 0.13.10",
@@ -2812,11 +2961,10 @@ dependencies = [
 [[package]]
 name = "graph-server-index-node"
 version = "0.23.1"
-source = "git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub#6ea31915cc8c2330ffa6587a0e0212402db88a06"
 dependencies = [
  "futures 0.3.16",
- "graph",
- "graph-graphql",
+ "graph 0.23.1",
+ "graph-graphql 0.23.1",
  "graphql-parser",
  "http 0.2.3",
  "hyper 0.13.10",
@@ -2826,9 +2974,8 @@ dependencies = [
 [[package]]
 name = "graph-server-json-rpc"
 version = "0.23.1"
-source = "git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub#6ea31915cc8c2330ffa6587a0e0212402db88a06"
 dependencies = [
- "graph",
+ "graph 0.23.1",
  "jsonrpc-http-server",
  "lazy_static",
  "serde",
@@ -2837,10 +2984,9 @@ dependencies = [
 [[package]]
 name = "graph-server-metrics"
 version = "0.23.1"
-source = "git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub#6ea31915cc8c2330ffa6587a0e0212402db88a06"
 dependencies = [
  "futures 0.1.31",
- "graph",
+ "graph 0.23.1",
  "http 0.2.3",
  "hyper 0.13.10",
  "lazy_static",
@@ -2850,11 +2996,10 @@ dependencies = [
 [[package]]
 name = "graph-server-websocket"
 version = "0.23.1"
-source = "git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub#6ea31915cc8c2330ffa6587a0e0212402db88a06"
 dependencies = [
  "anyhow",
  "futures 0.1.31",
- "graph",
+ "graph 0.23.1",
  "graphql-parser",
  "http 0.2.3",
  "lazy_static",
@@ -2867,7 +3012,6 @@ dependencies = [
 [[package]]
 name = "graph-store-postgres"
 version = "0.23.1"
-source = "git+https://github.com/massbitprotocol/massbit-graph-node?branch=anhhuy0501-patch-add-pub#6ea31915cc8c2330ffa6587a0e0212402db88a06"
 dependencies = [
  "Inflector",
  "anyhow",
@@ -2883,9 +3027,9 @@ dependencies = [
  "fallible-iterator 0.2.0",
  "futures 0.1.31",
  "git-testament",
- "graph",
- "graph-chain-ethereum",
- "graph-graphql",
+ "graph 0.23.1",
+ "graph-chain-ethereum 0.23.1",
+ "graph-graphql 0.23.1",
  "graphql-parser",
  "itertools 0.10.1",
  "lazy_static",
@@ -3477,9 +3621,9 @@ dependencies = [
  "env_logger 0.8.4",
  "frame-system",
  "futures 0.3.16",
- "graph",
- "graph-chain-ethereum",
- "graph-core",
+ "graph 0.23.1",
+ "graph-chain-ethereum 0.23.1",
+ "graph-core 0.23.1",
  "index-store",
  "ipfs-client",
  "jsonrpc-http-server",
@@ -4191,9 +4335,9 @@ dependencies = [
  "env_logger 0.9.0",
  "ethabi 12.0.0-graph",
  "futures 0.1.31",
- "graph",
- "graph-chain-ethereum",
- "graph-runtime-wasm",
+ "graph 0.23.1",
+ "graph-chain-ethereum 0.23.1",
+ "graph-runtime-wasm 0.23.1",
  "hex 0.4.3",
  "log 0.4.14",
  "serde",
@@ -4273,12 +4417,12 @@ dependencies = [
  "diesel_derives",
  "futures 0.1.31",
  "futures 0.3.16",
- "graph",
- "graph-chain-ethereum",
+ "graph 0.23.1",
+ "graph-chain-ethereum 0.23.1",
  "graph-mock",
  "graph-node",
- "graph-runtime-derive",
- "graph-runtime-wasm",
+ "graph-runtime-derive 0.23.1",
+ "graph-runtime-wasm 0.23.1",
  "graph-store-postgres",
  "hex 0.4.3",
  "http 0.1.21",

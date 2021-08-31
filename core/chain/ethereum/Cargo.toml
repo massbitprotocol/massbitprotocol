@@ -24,28 +24,31 @@ stable-hash = { git = "https://github.com/graphprotocol/stable-hash" }
 anyhow = "1.0"
 hex = "0.4.3"
 tiny-keccak = "1.5.0"
+graph = { path = "../../../../massbit-graph-node/graph"}
+graph-chain-ethereum = { path = "../../../../massbit-graph-node/chain/ethereum" }
+graph-runtime-wasm = { path = "../../../../massbit-graph-node/runtime/wasm" }
 
 [dependencies.web3]
 package = "web3"
 git = "https://github.com/graphprotocol/rust-web3"
 branch = "master"
 
-[dependencies.graph]
-package = "graph"
-git = "https://github.com/massbitprotocol/massbit-graph-node"
-branch = "anhhuy0501-patch-add-pub"
+#[dependencies.graph]
+#package = "graph"
+#git = "https://github.com/massbitprotocol/massbit-graph-node"
+#branch = "anhhuy0501-patch-add-pub"
 #rev = "c87281e4d09a0b15b235646dc4b0ae5569da4be2"
 
-[dependencies.graph-chain-ethereum]
-package = "graph-chain-ethereum"
-git = "https://github.com/massbitprotocol/massbit-graph-node"
-#rev = "c87281e4d09a0b15b235646dc4b0ae5569da4be2"
-branch = "anhhuy0501-patch-add-pub"
+#[dependencies.graph-chain-ethereum]
+#package = "graph-chain-ethereum"
+#git = "https://github.com/massbitprotocol/massbit-graph-node"
+##rev = "c87281e4d09a0b15b235646dc4b0ae5569da4be2"
+#branch = "anhhuy0501-patch-add-pub"
 
-[dependencies.graph-runtime-wasm]
-package = "graph-runtime-wasm"
-git = "https://github.com/massbitprotocol/massbit-graph-node"
-#rev = "c87281e4d09a0b15b235646dc4b0ae5569da4be2"
-branch = "anhhuy0501-patch-add-pub"
+#[dependencies.graph-runtime-wasm]
+#package = "graph-runtime-wasm"
+#git = "https://github.com/massbitprotocol/massbit-graph-node"
+##rev = "c87281e4d09a0b15b235646dc4b0ae5569da4be2"
+#branch = "anhhuy0501-patch-add-pub"
 
 ############# End Ethereum
