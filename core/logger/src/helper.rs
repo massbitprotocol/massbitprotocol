@@ -33,7 +33,7 @@ pub fn log_to_console(log_level: &String) {
                 "{} [{}] - [{}] {}",
                 Local::now().format("%Y-%m-%dT%H:%M:%S"), // Reformat to human-readable timestamp
                 record.level(),
-                record.module_path_static().unwrap(),
+                record.module_path().unwrap(),
                 record.args(),
             )
         })
