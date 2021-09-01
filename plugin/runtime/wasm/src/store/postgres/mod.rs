@@ -1,6 +1,7 @@
+pub mod relational;
 pub mod store_builder;
 use crate::prelude::{Arc, Logger};
-use crate::store::postgres::store_builder::LayoutExt;
+use crate::store::postgres::relational::LayoutExt;
 use graph::cheap_clone::CheapClone;
 use graph::components::metrics::stopwatch::StopwatchMetrics;
 use graph::components::store::{
@@ -13,6 +14,7 @@ use graph::data::subgraph::schema::SubgraphError;
 use graph::ext::futures::{CancelHandle, CancelableError};
 use graph::prelude::BlockPtr;
 use graph::prelude::{BlockNumber, DynTryFuture};
+
 use graph_store_postgres::command_support::Layout;
 use graph_store_postgres::connection_pool::ConnectionPool;
 use index_store::core::Store;
@@ -431,9 +433,10 @@ impl PostgresIndexStore {
         let _section = stopwatch.start_section("apply_entity_modifications_update");
         log::info!("Update entity {:?} with value {:?}", &entity_type, data);
         //Original code update current record and insert new one
-        //self.layout.update(conn, &entity_type, data, block_ptr.number, stopwatch)
         self.layout
-            .simple_update(conn, &entity_type, data, block_ptr.number, stopwatch)
+            .update(conn, &entity_type, data, block_ptr.number, stopwatch)
+        //self.layout
+        //    .simple_update(conn, &entity_type, data, block_ptr.number, stopwatch)
     }
 
     fn remove_entities(

@@ -413,7 +413,7 @@ pub fn ethereum_call(
     match result {
         Some(tokens) => Ok(asc_new(ctx.heap, tokens.as_slice())?),
         None => match function_name.as_str() {
-            "totalSupply" | "decimals" | "balanceOf" => Ok(asc_new(
+            "balanceOf" => Ok(asc_new(
                 ctx.heap,
                 vec![Token::Uint(Uint::from(0_u128))].as_slice(),
             )?),
