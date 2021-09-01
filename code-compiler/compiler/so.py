@@ -192,7 +192,7 @@ def parse_subgraph(subgraph_path, parsed_subgraph_path, schema_res):
 
     # Quick hack so we have file with ipfs link
     subgraph['dataSources'][0]['mapping']['file'] = {'/': '/ipfs/' + schema_res['Hash']}
-    subgraph['dataSources'][0]['mapping']['abis'] = {'/': '/ipfs/' + schema_res['Hash']}
+    subgraph['dataSources'][0]['mapping']['abis'][0] = {'name': subgraph['dataSources'][0]['mapping']['abis'][0]["name"], 'file': {'/': '/ipfs/' + schema_res["Hash"]}}
 
     # Write the new file to local disk
     file = open(parsed_subgraph_path, "w")
