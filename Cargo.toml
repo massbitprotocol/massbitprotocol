@@ -8,8 +8,8 @@ members = [
     "index-manager/main",
     "plugin/adapter",
     "plugin/runtime/wasm",
-    #"plugin/test-plugin",
-    "cli"
+    "cli",
+    "utils"
 ]
 exclude = ["code-compiler/generated"]
 

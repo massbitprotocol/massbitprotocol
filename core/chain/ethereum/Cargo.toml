@@ -24,6 +24,8 @@ stable-hash = { git = "https://github.com/graphprotocol/stable-hash" }
 anyhow = "1.0"
 hex = "0.4.3"
 tiny-keccak = "1.5.0"
+futures03 = { version = "0.3.1", package = "futures", features = ["compat"] }
+utils = { path = "../../../utils" }
 
 [dependencies.web3]
 package = "web3"
