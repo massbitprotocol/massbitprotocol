@@ -36,7 +36,8 @@ use graph_node::{
     store_builder::StoreBuilder as GraphStoreBuilder,
 };
 use graph_store_postgres::command_support::Catalog;
-use graph_store_postgres::layout_for_tests::make_dummy_site;
+//use graph_store_postgres::layout_for_tests::make_dummy_site;
+use graph_store_postgres::primary::DeploymentId;
 use graph_store_postgres::relational_queries::ClampRangeQuery;
 use graph_store_postgres::subgraph_store::SubgraphStoreInner;
 use graph_store_postgres::{deployment, SubgraphStore};
@@ -146,11 +147,24 @@ impl StoreBuilder {
             .allocate_site(PRIMARY_SHARD.clone(), &DEPLOYMENT_HASH, NETWORK.clone())
             .unwrap();
         */
+        /*
         let site = make_dummy_site(
             DEPLOYMENT_HASH.cheap_clone(),
             NAMESPACE.clone(),
             NETWORK.clone(),
         );
+         */
+        //Create simple site
+        let site = Site {
+            id: DeploymentId(0),
+            deployment: DEPLOYMENT_HASH.cheap_clone(),
+            shard: PRIMARY_SHARD.clone(),
+            namespace: NAMESPACE.clone(),
+            network: NETWORK.clone(),
+            active: true,
+            _creation_disallowed: (),
+        };
+
         let result = sql_query(format!(
             "SELECT count(schema_name) FROM information_schema.schemata WHERE schema_name = '{}'",
             NAMESPACE.as_str()
