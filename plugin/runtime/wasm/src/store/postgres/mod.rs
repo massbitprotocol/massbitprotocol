@@ -1,5 +1,7 @@
 pub mod store_builder;
 use crate::prelude::{Arc, Logger};
+use crate::store::postgres::store_builder::LayoutExt;
+use graph::cheap_clone::CheapClone;
 use graph::components::metrics::stopwatch::StopwatchMetrics;
 use graph::components::store::{
     EntityKey, EntityModification, EntityType, StoreError, StoreEvent, StoredDynamicDataSource,
@@ -23,7 +25,7 @@ use massbit_common::prelude::{
     async_trait::async_trait,
     log, structmap,
 };
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::PathBuf;
 use store_builder::StoreBuilder;
 
@@ -35,7 +37,7 @@ pub struct PostgresIndexStore {
     pub connection: ConnectionPool,
     pub layout: Layout,
     //buffer: HashMap<String, TableBuffer>,
-    //entity_dependencies: HashMap<String, Vec<String>>,
+    pub entity_dependencies: HashMap<EntityType, Vec<EntityType>>,
 }
 
 impl PostgresIndexStore {
@@ -159,7 +161,7 @@ impl WritableStore for PostgresIndexStore {
             */
             Ok(event)
         })?;
-        log::info!("{:?}", event);
+        log::info!("{:?}", &event);
         Ok(())
     }
 
@@ -307,7 +309,7 @@ impl PostgresIndexStore {
         let mut overwrites = HashMap::new();
         let mut removals = HashMap::new();
         for modification in mods.into_iter() {
-            log::info!("Store {:?}", &modification);
+            log::info!("Store modification {:?}", &modification);
             match modification {
                 Insert { key, data } => {
                     inserts
@@ -332,12 +334,48 @@ impl PostgresIndexStore {
 
         // Apply modification groups.
         // Inserts:
-        for (entity_type, mut entities) in inserts.into_iter() {
-            count +=
-                self.insert_entities(&entity_type, &mut entities, conn, block_ptr, &stopwatch)?
-                    as i32
+        //Order inserts by dependency before transact to db
+        //let mut buffer = inserts;
+        log::debug!("Dependencies {:?}", &self.entity_dependencies);
+        loop {
+            let mut keys = inserts
+                .iter()
+                .map(|(key, _)| key.cheap_clone())
+                .collect::<HashSet<EntityType>>();
+            let mut buffer = inserts;
+            inserts = HashMap::new();
+            for (entity_type, mut entities) in buffer.into_iter() {
+                match self.entity_dependencies.get(&entity_type) {
+                    None => {
+                        count += self.insert_entities(
+                            &entity_type,
+                            &mut entities,
+                            conn,
+                            block_ptr,
+                            &stopwatch,
+                        )? as i32;
+                        keys.remove(&entity_type);
+                    }
+                    Some(vec) => {
+                        if vec.iter().filter(|dep| keys.contains(dep)).count() > 0 {
+                            inserts.insert(entity_type.cheap_clone(), entities);
+                        } else {
+                            count += self.insert_entities(
+                                &entity_type,
+                                &mut entities,
+                                conn,
+                                block_ptr,
+                                &stopwatch,
+                            )? as i32;
+                        }
+                    }
+                };
+            }
+            log::debug!("Inserts {:?}", &inserts);
+            if inserts.is_empty() {
+                break;
+            }
         }
-
         // Overwrites:
         for (entity_type, mut entities) in overwrites.into_iter() {
             // we do not update the count since the number of entities remains the same
@@ -392,8 +430,10 @@ impl PostgresIndexStore {
         */
         let _section = stopwatch.start_section("apply_entity_modifications_update");
         log::info!("Update entity {:?} with value {:?}", &entity_type, data);
+        //Original code update current record and insert new one
+        //self.layout.update(conn, &entity_type, data, block_ptr.number, stopwatch)
         self.layout
-            .update(conn, &entity_type, data, block_ptr.number, stopwatch)
+            .simple_update(conn, &entity_type, data, block_ptr.number, stopwatch)
     }
 
     fn remove_entities(

@@ -38,6 +38,7 @@ lazy_static! {
                 ws: "wss://rpc-mainnet.matic.network".to_string(),
                 url: "https://rpc-mainnet.matic.network".to_string(),
                 start_block: Some(18403764),
+                //start_block: Some(12580640),
             }),
         ].iter().cloned().collect(),
         url: "0.0.0.0:50051".to_string(),

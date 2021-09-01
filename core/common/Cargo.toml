@@ -21,6 +21,10 @@ serde_json                  = { version = "1.0", optional = false }
 serde_yaml                  = "0.8"
 serde_derive                = "1.0.125"
 serde_regex                 = "1.1.0"
+slog                        = { version = "2.7.0", features = ["release_max_level_trace", "max_level_trace"] }
+slog-async                  = "2.5.0"
+slog-envlogger              = "2.1.0"
+slog-term                   = "2.7.0"
 structmap                   = "0.1.5"
 tokio                       = {version = "1.2.0", features = ["full"]} # Required by Tonic
 tokio-compat-02             = "0.2"

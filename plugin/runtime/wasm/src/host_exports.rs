@@ -636,8 +636,10 @@ pub fn create_ethereum_call(datasource: &DataSource) -> HostFn {
     HostFn {
         name: "ethereum.call",
         func: Arc::new(move |ctx, wasm_ptr| {
-            ethereum_call(&eth_adapter, call_cache.clone(), ctx, wasm_ptr, &abis)
-                .map(|ptr| ptr.wasm_ptr())
+            let result = ethereum_call(&eth_adapter, call_cache.clone(), ctx, wasm_ptr, &abis)
+                .map(|ptr| ptr.wasm_ptr());
+            log::info!("ethereum.call result {:?}", &result);
+            result
         }),
     }
 }

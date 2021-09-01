@@ -4,6 +4,8 @@ use futures::prelude::*;
 use log::{debug, info};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::Duration;
 use tokio_compat_02::FutureExt;
 
 // The graph
@@ -13,8 +15,9 @@ use graph::cheap_clone::CheapClone;
 use graph::log::logger;
 use graph::prelude::ethabi::ParamType;
 use graph::prelude::{
-    error, ethabi, ethabi::Token, retry, tiny_keccak, trace, BlockNumber, EthereumCallCache,
-    Future01CompatExt, MappingABI,
+    error, ethabi,
+    ethabi::{Token, Uint},
+    retry, tiny_keccak, trace, BlockNumber, EthereumCallCache, Future01CompatExt, MappingABI,
 };
 use graph::prelude::{lazy_static, tokio};
 use graph::runtime::{asc_get, asc_new, AscPtr, HostExportError};
@@ -405,11 +408,17 @@ pub fn ethereum_call(
     } else {
         asc_get::<_, AscUnresolvedContractCall, _>(ctx.heap, wasm_ptr.into())?
     };
-
+    let function_name = call.function_name.clone();
     let result = eth_call(eth_adapter, call_cache, &ctx.block_ptr, call, abis)?;
     match result {
         Some(tokens) => Ok(asc_new(ctx.heap, tokens.as_slice())?),
-        None => Ok(AscPtr::null()),
+        None => match function_name.as_str() {
+            "totalSupply" | "decimals" | "balanceOf" => Ok(asc_new(
+                ctx.heap,
+                vec![Token::Uint(Uint::from(0_u128))].as_slice(),
+            )?),
+            _ => Ok(AscPtr::null()),
+        },
     }
 }
 
@@ -485,10 +494,31 @@ fn eth_call(
     debug!("call: {:?}", &call);
     // Run Ethereum call in tokio runtime
     let logger1 = logger.clone();
-    let call_cache = call_cache.clone();
-    let result_contract_call = eth_adapter.contract_call(call, call_cache).wait();
-    debug!("result_contract_call: {:?}", &result_contract_call);
-
+    //let call_cache = call_cache.clone();
+    let mut result_contract_call = eth_adapter
+        .contract_call(call.clone(), call_cache.clone())
+        .wait();
+    let mut loop_counter = 0;
+    info!("result_contract_call: {:?}", &result_contract_call);
+    loop {
+        let mut retry = match result_contract_call {
+            Ok(_) | Err(EthereumContractCallError::Revert(_)) => false,
+            Err(_) => true,
+        };
+        if retry && loop_counter < 10 {
+            loop_counter = loop_counter + 1;
+            thread::sleep(Duration::from_millis(100));
+            result_contract_call = eth_adapter
+                .contract_call(call.clone(), call_cache.clone())
+                .wait();
+            info!(
+                "result_contract_call at retry {}-th: {:?}",
+                loop_counter, &result_contract_call
+            );
+        } else {
+            break;
+        }
+    }
     let result =
         //match graph::block_on(eth_adapter.contract_call(call, call_cache).compat())
         match result_contract_call
