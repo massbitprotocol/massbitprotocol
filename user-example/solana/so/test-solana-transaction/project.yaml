@@ -1,12 +1,23 @@
+description: Transaction for Solana
+repository: https://github.com/massbitprotocol/massbitprotocol/tree/main/user-example
 schema:
   file: ./schema.graphql
-
 dataSources:
   - kind: solana
-    name: Solana-Transaction
-    network: https://data-seed-prebsc-1-s1.binance.org:8545/
+    name: SolanaTransaction
+    network: mainnet
+    source:
+      address: '0xf73D010412Fb5835C310728F0Ba1b7DFDe88379A'
+      abi: SolanaTransaction
     mapping:
+      kind: solana/TransactionHandler
+      apiVersion: 0.0.4
       language: rust
-      handlers:
+      entities:
+        - SolanaTransaction
+      blockHandlers:
         - handler: handleTransaction
-          kind: solana/TransactionHandler
+      file: ./src/mapping.rs
+      abis:
+        - name: SolanaTransaction
+          file: ./abis/SolanaTransaction.json
