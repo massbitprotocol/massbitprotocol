@@ -15,6 +15,7 @@ pub mod prelude {
     pub use serde_json;
     pub use serde_regex;
     pub use serde_yaml;
+    pub use slog;
     pub use structmap;
     pub use tokio;
     pub use tokio_compat_02;

@@ -48,16 +48,23 @@ impl MessageHandler for EthereumWasmHandlerProxy {
         log::info!("{} call handle_wasm_mapping", &*COMPONENT_NAME);
         let logger = logger(true);
         let registry = Arc::new(MockMetricsRegistry::new());
+        let stopwatch = StopwatchMetrics::new(
+            Logger::root(slog::Discard, slog::o!()),
+            DEPLOYMENT_HASH.cheap_clone(),
+            registry.clone(),
+        );
         let start = Instant::now();
         let data_sources = self.data_sources.clone();
         data_sources.iter().for_each(|data_source| {
             let valid_module = self.prepare_wasm_module(data_source);
+            let ethereum_call = self.get_ethereum_call(data_source);
             let mut wasm_instance = load_wasm(
                 &self.indexer_hash,
                 data_source,
                 self.templates.clone(),
                 self.store.clone(),
                 valid_module,
+                ethereum_call,
                 registry.cheap_clone(),
             )
             .unwrap();
@@ -79,10 +86,12 @@ impl MessageHandler for EthereumWasmHandlerProxy {
                         data_source,
                         &eth_block,
                         block_finality.clone(),
-                        &block_ptr_to,
+                        block_ptr_to,
+                        registry.cheap_clone(),
+                        stopwatch.cheap_clone(),
                     );
                     //Handle result in BlockState
-
+                    /*
                     let mut context = wasm_instance.take_ctx();
                     //let mut state = context.ctx.state;
                     let has_created_data_sources = context.ctx.state.has_created_data_sources();
@@ -90,12 +99,14 @@ impl MessageHandler for EthereumWasmHandlerProxy {
                     for ds_template_info in data_source_infos {
                         let data_source = DataSource::try_from(ds_template_info).unwrap();
                         let valid_module = self.prepare_wasm_module(&data_source);
+                        let ethereum_call = self.get_ethereum_call(&data_source);
                         let mut wasm_instance = load_wasm(
                             &self.indexer_hash,
                             &data_source,
                             self.templates.clone(),
                             self.store.clone(),
                             valid_module,
+                            ethereum_call,
                             registry.cheap_clone(),
                         )
                         .unwrap();
@@ -139,6 +150,7 @@ impl MessageHandler for EthereumWasmHandlerProxy {
                             vec![],
                         );
                     }
+                     */
                 }
                 _ => {}
             }
@@ -164,6 +176,17 @@ impl EthereumWasmHandlerProxy {
             Some(module) => module.clone(),
         }
     }
+    fn get_ethereum_call(&mut self, data_source: &DataSource) -> HostFn {
+        match self.ethereum_calls.get(&data_source.name) {
+            None => {
+                let ethereum_call = create_ethereum_call(data_source);
+                self.ethereum_calls
+                    .insert(data_source.name.clone(), ethereum_call.cheap_clone());
+                ethereum_call
+            }
+            Some(host_fn) => host_fn.cheap_clone(),
+        }
+    }
     fn matching_block(
         &mut self,
         logger: &Logger,
@@ -171,7 +194,9 @@ impl EthereumWasmHandlerProxy {
         data_source: &DataSource,
         eth_block: &EthereumBlock,
         block_finality: Arc<<Chain as Blockchain>::Block>,
-        block_ptr_to: &BlockPtr,
+        block_ptr_to: BlockPtr,
+        registry: Arc<MockMetricsRegistry>,
+        stopwatch: StopwatchMetrics,
     ) {
         //Trigger block
         let block_trigger: <Chain as Blockchain>::TriggerData =
@@ -234,6 +259,65 @@ impl EthereumWasmHandlerProxy {
                  */
             }
         });
+        let mut context = wasm_instance.take_ctx();
+        let has_created_data_sources = context.ctx.state.has_created_data_sources();
+        let data_source_infos = context.ctx.state.drain_created_data_sources();
+        let ModificationsAndCache {
+            modifications: mods,
+            data_sources,
+            entity_lfu_cache: cache,
+        } = context
+            .ctx
+            .state
+            .entity_cache
+            .as_modifications()
+            .map_err(|e| {
+                log::error!("Error {:?}", e);
+                StoreError::Unknown(e.into())
+            })
+            .unwrap();
+
+        // Transact entity modifications into the store
+        if mods.len() > 0 {
+            match self.store.transact_block_operations(
+                block_ptr_to.cheap_clone(),
+                mods,
+                stopwatch.cheap_clone(),
+                data_sources,
+                vec![],
+            ) {
+                Ok(_) => log::info!("Transact block operation successfully"),
+                Err(err) => log::info!("Transact block operation with error {:?}", err),
+            }
+        }
+        for ds_template_info in data_source_infos {
+            let data_source = DataSource::try_from(ds_template_info).unwrap();
+            let valid_module = self.prepare_wasm_module(&data_source);
+            let ethereum_call = self.get_ethereum_call(&data_source);
+            let mut wasm_instance = load_wasm(
+                &self.indexer_hash,
+                &data_source,
+                self.templates.clone(),
+                self.store.clone(),
+                valid_module,
+                ethereum_call,
+                registry.cheap_clone(),
+            )
+            .unwrap();
+            self.matching_block(
+                &logger,
+                &mut wasm_instance,
+                &data_source,
+                &eth_block,
+                block_finality.clone(),
+                block_ptr_to.cheap_clone(),
+                registry.cheap_clone(),
+                stopwatch.cheap_clone(),
+            );
+            println!("New datasource with source: {:?}", &data_source.source);
+            self.add_data_source(data_source);
+            println!("Total datasource: {:?}", self.data_sources.len());
+        }
     }
 }
 /*
@@ -288,6 +372,7 @@ pub fn load_wasm(
     templates: Arc<Vec<DataSourceTemplate>>,
     store: Arc<dyn WritableStore>,
     valid_module: Arc<ValidModule>,
+    ethereum_call: HostFn,
     registry: Arc<MockMetricsRegistry>,
     //link_resolver: Arc<dyn LinkResolverTrait>,
 ) -> Result<WasmInstance<Chain>, anyhow::Error> {
@@ -325,7 +410,8 @@ pub fn load_wasm(
     let host_fns: Vec<HostFn> = match valid_module.import_name_to_modules.get("ethereum.call") {
         None => Vec::new(),
         Some(_) => {
-            vec![create_ethereum_call(datasource)]
+            //vec![create_ethereum_call(datasource)]
+            vec![ethereum_call]
             //vec![create_mock_ethereum_call(datasource)]
         }
     };

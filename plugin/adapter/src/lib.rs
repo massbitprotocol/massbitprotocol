@@ -16,6 +16,7 @@ pub mod ethereum;
 pub mod matic;
 pub mod solana;
 pub mod substrate;
+use graph::blockchain::HostFn;
 use graph::components::store::{ModificationsAndCache, StoreError, WritableStore};
 use graph::prelude::MetricsRegistry;
 use graph_mock::MockMetricsRegistry;

@@ -143,12 +143,12 @@ macro_rules! create_wasm_adapters {
 
             $(
             pub struct [<$adapter WasmHandlerProxy>] {
-                //pub wasm_module: Arc<ValidModule>,
                 pub indexer_hash: String,
                 pub store: Arc<dyn WritableStore>,
                 pub data_sources: Vec<DataSource>,
                 pub templates: Arc<Vec<DataSourceTemplate>>,
-                pub wasm_modules : HashMap<String, Arc<ValidModule>>
+                pub wasm_modules : HashMap<String, Arc<ValidModule>>,
+                pub ethereum_calls: HashMap<String, HostFn>
                 //pub registry: Arc<dyn MetricsRegistry>
             }
             impl [<$adapter WasmHandlerProxy>] {
@@ -161,7 +161,8 @@ macro_rules! create_wasm_adapters {
                         store,
                         data_sources: vec![data_source],
                         templates,
-                        wasm_modules: HashMap::default()
+                        wasm_modules: HashMap::default(),
+                        ethereum_calls: HashMap::default()
                         //registry: Arc::new(MockMetricsRegistry::new())
                     }
                 }
@@ -190,7 +191,8 @@ macro_rules! create_wasm_adapters {
                     indexer_hash: &String,
                     store: Arc<dyn WritableStore>,
                     data_source : DataSource,
-                    templates: Arc<Vec<DataSourceTemplate>>) -> Option<WasmHandlerProxyType> {
+                    templates: Arc<Vec<DataSourceTemplate>>
+                ) -> Option<WasmHandlerProxyType> {
                     log::info!("Create proxy for adapter {}", adapter_name);
                     let mut proxy = None;
                         $(
