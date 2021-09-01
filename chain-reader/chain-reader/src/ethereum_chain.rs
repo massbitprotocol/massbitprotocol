@@ -34,6 +34,7 @@ const CHAIN_TYPE: ChainType = ChainType::Ethereum;
 const PULLING_INTERVAL: u64 = 200;
 const USE_WEBSOCKET: bool = false;
 const BLOCK_BATCH_SIZE: u64 = 10;
+const RETRY_GET_BLOCK_LIMIT: u32 = 10;
 
 #[derive(Error, Debug)]
 pub enum IngestorError {
@@ -270,10 +271,22 @@ pub async fn loop_get_block(chan: broadcast::Sender<GenericDataProto>) {
                 // Get block
                 info!("Getting ETHEREUM block {}", block_number);
                 // Get receipts
-                let block = clone_web3
+                let mut block = clone_web3
                     .eth()
                     .block_with_txs(BlockId::Number(Web3BlockNumber::from(block_number)))
                     .wait();
+
+                for i in 0..RETRY_GET_BLOCK_LIMIT {
+                    if block.is_err() {
+                        info!("Getting ETHEREUM block {} retry {} times", block_number, i);
+                        block = clone_web3
+                            .eth()
+                            .block_with_txs(BlockId::Number(Web3BlockNumber::from(block_number)))
+                            .wait();
+                    } else {
+                        break;
+                    }
+                }
 
                 if let Ok(Some(block)) = block {
                     //println!("Got ETHEREUM Block {:?}",block);
