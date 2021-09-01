@@ -9,7 +9,7 @@ def read_so_example(path):
     mapping_file.close()
 
     # Read project.yaml
-    project_file = open(os.path.join(path, "project.yaml"))
+    project_file = open(os.path.join(path, "subgraph.yaml"))
     project = urllib.parse.quote(project_file.read())
     project_file.close()
 
