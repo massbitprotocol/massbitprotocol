@@ -25,7 +25,7 @@ class CargoCodegen(threading.Thread):
         try:
             # Config
             schema = os.path.join("src/schema.graphql")
-            project = os.path.join("src/project.yaml")
+            project = os.path.join("src/subgraph.yaml")
             folder = os.path.join("src/")
             command = "$HOME/.cargo/bin/cargo run --manifest-path=../../../Cargo.toml --bin cli -- codegen -s {schema} -c {project} -o {folder} " \
                 .format(schema=schema, project=project, folder=folder)
@@ -80,7 +80,7 @@ def compile_so(data, hash):
 
     # URL-decode the data
     mapping = urllib.parse.unquote(data["mappings"]["mapping.rs"])
-    project = urllib.parse.unquote(data["configs"]["project.yaml"])
+    project = urllib.parse.unquote(data["configs"]["subgraph.yaml"])
     schema = urllib.parse.unquote(data["configs"]["schema.graphql"])
 
     # Populating stub data
@@ -90,7 +90,7 @@ def compile_so(data, hash):
 
     # Save the formatted data from request to disk, ready for compiling
     write_to_disk(generated_folder + "/src/mapping.rs", mapping)
-    write_to_disk(generated_folder + "/src/project.yaml", project)
+    write_to_disk(generated_folder + "/src/subgraph.yaml", project)
     write_to_disk(generated_folder + "/src/schema.graphql", schema)
 
     # Codegen + Build
@@ -104,14 +104,11 @@ def deploy_so(data):
     compilation_id = urllib.parse.unquote(data["compilation_id"])
 
     # Get the files path from generated/hash folder
-    subgraph_path = os.path.join("./generated", compilation_id, "src", "project.yaml") # TODO replace to have the same name project.yaml or subgraph.yaml
+    subgraph_path = os.path.join("./generated", compilation_id, "src", "subgraph.yaml") # TODO replace to have the same name subgraph.yaml or subgraph.yaml
     parsed_subgraph_path = os.path.join("./generated", compilation_id, "parsed_subgraph.yaml")
-    project = os.path.join("./generated", compilation_id, "src/project.yaml")
+    project = os.path.join("./generated", compilation_id, "src/subgraph.yaml")
     so = os.path.join("./generated", compilation_id, "target/release/libblock.so")
     schema = os.path.join("./generated", compilation_id, "src/schema.graphql")
-    # ds_mapping_path = get_ds_mapping_path(subgraph_path, compilation_id)
-    # if is_template_exist(subgraph_path):
-    #     tp_mapping_path = get_tp_mapping_path(subgraph_path, compilation_id)
 
     # Uploading files to IPFS
     if os.environ.get('IPFS_URL'):
@@ -125,7 +122,7 @@ def deploy_so(data):
     schema_res = client.add(schema)
 
     # Uploading to IPFS result
-    print("project.yaml: " + config_res['Hash'])
+    print("subgraph.yaml: " + config_res['Hash'])
     print("libblock.so: " + so_res['Hash'])
     print("schema.graphql: " + schema_res['Hash'])
 
