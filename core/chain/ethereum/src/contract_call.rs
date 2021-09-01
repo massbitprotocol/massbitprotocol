@@ -266,130 +266,131 @@ impl SimpleEthereumAdapter {
         } else {
             BlockId::Hash(block_ptr.hash_as_h256())
         };
-        // Todo: add retry code
-        // retry("eth_call RPC call", &logger)
-        //     .when(|result| match result {
-        //         Ok(_) | Err(EthereumContractCallError::Revert(_)) => false,
-        //         Err(_) => true,
-        //     })
-        //     .limit(10)
-        //     .timeout_secs(*JSON_RPC_TIMEOUT)
-        //     .run(move || {
-        let req = CallRequest {
-            from: None,
-            to: contract_address,
-            gas: Some(web3::types::U256::from(*ETH_CALL_GAS)),
-            gas_price: None,
-            value: None,
-            data: Some(call_data.clone()),
-        };
-        debug!("req: {:?}", &req);
-        web3.eth().call(req, Some(block_id)).then(|result| {
-            debug!("web3.eth().call result: {:?}", &result);
-            // Try to check if the call was reverted. The JSON-RPC response for reverts is
-            // not standardized, so we have ad-hoc checks for each of Geth, Parity and
-            // Ganache.eq
+        retry("eth_call RPC call", &logger)
+            .when(|result| match result {
+                Ok(_) | Err(EthereumContractCallError::Revert(_)) => false,
+                Err(_) => true,
+            })
+            .limit(10)
+            .timeout_secs(*JSON_RPC_TIMEOUT)
+            .run(move || {
+                let req = CallRequest {
+                    from: None,
+                    to: contract_address,
+                    gas: Some(web3::types::U256::from(*ETH_CALL_GAS)),
+                    gas_price: None,
+                    value: None,
+                    data: Some(call_data.clone()),
+                };
 
-            // 0xfe is the "designated bad instruction" of the EVM, and Solidity uses it for
-            // asserts.
-            const PARITY_BAD_INSTRUCTION_FE: &str = "Bad instruction fe";
+                web3.eth().call(req, Some(block_id)).then(|result| {
+                    debug!("web3.eth().call result: {:?}", &result);
+                    // Try to check if the call was reverted. The JSON-RPC response for reverts is
+                    // not standardized, so we have ad-hoc checks for each of Geth, Parity and
+                    // Ganache.eq
 
-            // 0xfd is REVERT, but on some contracts, and only on older blocks,
-            // this happens. Makes sense to consider it a revert as well.
-            const PARITY_BAD_INSTRUCTION_FD: &str = "Bad instruction fd";
+                    // 0xfe is the "designated bad instruction" of the EVM, and Solidity uses it for
+                    // asserts.
+                    const PARITY_BAD_INSTRUCTION_FE: &str = "Bad instruction fe";
 
-            const PARITY_BAD_JUMP_PREFIX: &str = "Bad jump";
-            const PARITY_STACK_LIMIT_PREFIX: &str = "Out of stack";
+                    // 0xfd is REVERT, but on some contracts, and only on older blocks,
+                    // this happens. Makes sense to consider it a revert as well.
+                    const PARITY_BAD_INSTRUCTION_FD: &str = "Bad instruction fd";
 
-            const GANACHE_VM_EXECUTION_ERROR: i64 = -32000;
-            const GANACHE_REVERT_MESSAGE: &str =
-                "VM Exception while processing transaction: revert";
-            const PARITY_VM_EXECUTION_ERROR: i64 = -32015;
-            const PARITY_REVERT_PREFIX: &str = "Reverted 0x";
+                    const PARITY_BAD_JUMP_PREFIX: &str = "Bad jump";
+                    const PARITY_STACK_LIMIT_PREFIX: &str = "Out of stack";
 
-            // Deterministic Geth execution errors. We might need to expand this as
-            // subgraphs come across other errors. See
-            // https://github.com/ethereum/go-ethereum/blob/cd57d5cd38ef692de8fbedaa56598b4e9fbfbabc/core/vm/errors.go
-            const GETH_EXECUTION_ERRORS: &[&str] = &[
-                "execution reverted",
-                "invalid jump destination",
-                "invalid opcode",
-                // Ethereum says 1024 is the stack sizes limit, so this is deterministic.
-                "stack limit reached 1024",
-                // See f0af4ab0-6b7c-4b68-9141-5b79346a5f61 for why the gas limit is considered deterministic.
-                "out of gas",
-            ];
+                    const GANACHE_VM_EXECUTION_ERROR: i64 = -32000;
+                    const GANACHE_REVERT_MESSAGE: &str =
+                        "VM Exception while processing transaction: revert";
+                    const PARITY_VM_EXECUTION_ERROR: i64 = -32015;
+                    const PARITY_REVERT_PREFIX: &str = "Reverted 0x";
 
-            let as_solidity_revert_with_reason = |bytes: &[u8]| {
-                let solidity_revert_function_selector =
-                    &tiny_keccak::keccak256(b"Error(string)")[..4];
+                    // Deterministic Geth execution errors. We might need to expand this as
+                    // subgraphs come across other errors. See
+                    // https://github.com/ethereum/go-ethereum/blob/cd57d5cd38ef692de8fbedaa56598b4e9fbfbabc/core/vm/errors.go
+                    const GETH_EXECUTION_ERRORS: &[&str] = &[
+                        "execution reverted",
+                        "invalid jump destination",
+                        "invalid opcode",
+                        // Ethereum says 1024 is the stack sizes limit, so this is deterministic.
+                        "stack limit reached 1024",
+                        // See f0af4ab0-6b7c-4b68-9141-5b79346a5f61 for why the gas limit is considered deterministic.
+                        "out of gas",
+                    ];
 
-                match bytes.len() >= 4 && &bytes[..4] == solidity_revert_function_selector {
-                    false => None,
-                    true => ethabi::decode(&[ParamType::String], &bytes[4..])
-                        .ok()
-                        .and_then(|tokens| tokens[0].clone().to_string()),
-                }
-            };
+                    let as_solidity_revert_with_reason = |bytes: &[u8]| {
+                        let solidity_revert_function_selector =
+                            &tiny_keccak::keccak256(b"Error(string)")[..4];
 
-            match result {
-                // A successful response.
-                Ok(bytes) => Ok(bytes),
+                        match bytes.len() >= 4 && &bytes[..4] == solidity_revert_function_selector {
+                            false => None,
+                            true => ethabi::decode(&[ParamType::String], &bytes[4..])
+                                .ok()
+                                .and_then(|tokens| tokens[0].clone().to_string()),
+                        }
+                    };
 
-                // Check for Geth revert.
-                Err(web3::Error::Rpc(rpc_error))
-                    if GETH_EXECUTION_ERRORS
-                        .iter()
-                        .any(|e| rpc_error.message.contains(e)) =>
-                {
-                    Err(EthereumContractCallError::Revert(rpc_error.message))
-                }
+                    match result {
+                        // A successful response.
+                        Ok(bytes) => Ok(bytes),
 
-                // Check for Parity revert.
-                Err(web3::Error::Rpc(ref rpc_error))
-                    if rpc_error.code.code() == PARITY_VM_EXECUTION_ERROR =>
-                {
-                    match rpc_error.data.as_ref().and_then(|d| d.as_str()) {
-                        Some(data)
-                            if data.starts_with(PARITY_REVERT_PREFIX)
-                                || data.starts_with(PARITY_BAD_JUMP_PREFIX)
-                                || data.starts_with(PARITY_STACK_LIMIT_PREFIX)
-                                || data == PARITY_BAD_INSTRUCTION_FE
-                                || data == PARITY_BAD_INSTRUCTION_FD =>
+                        // Check for Geth revert.
+                        Err(web3::Error::Rpc(rpc_error))
+                            if GETH_EXECUTION_ERRORS
+                                .iter()
+                                .any(|e| rpc_error.message.contains(e)) =>
                         {
-                            let reason = if data == PARITY_BAD_INSTRUCTION_FE {
-                                PARITY_BAD_INSTRUCTION_FE.to_owned()
-                            } else {
-                                let payload = data.trim_start_matches(PARITY_REVERT_PREFIX);
-                                hex::decode(payload)
-                                    .ok()
-                                    .and_then(|payload| as_solidity_revert_with_reason(&payload))
-                                    .unwrap_or("no reason".to_owned())
-                            };
-                            Err(EthereumContractCallError::Revert(reason))
+                            Err(EthereumContractCallError::Revert(rpc_error.message))
                         }
 
-                        // The VM execution error was not identified as a revert.
-                        _ => Err(EthereumContractCallError::Web3Error(web3::Error::Rpc(
-                            rpc_error.clone(),
-                        ))),
+                        // Check for Parity revert.
+                        Err(web3::Error::Rpc(ref rpc_error))
+                            if rpc_error.code.code() == PARITY_VM_EXECUTION_ERROR =>
+                        {
+                            match rpc_error.data.as_ref().and_then(|d| d.as_str()) {
+                                Some(data)
+                                    if data.starts_with(PARITY_REVERT_PREFIX)
+                                        || data.starts_with(PARITY_BAD_JUMP_PREFIX)
+                                        || data.starts_with(PARITY_STACK_LIMIT_PREFIX)
+                                        || data == PARITY_BAD_INSTRUCTION_FE
+                                        || data == PARITY_BAD_INSTRUCTION_FD =>
+                                {
+                                    let reason = if data == PARITY_BAD_INSTRUCTION_FE {
+                                        PARITY_BAD_INSTRUCTION_FE.to_owned()
+                                    } else {
+                                        let payload = data.trim_start_matches(PARITY_REVERT_PREFIX);
+                                        hex::decode(payload)
+                                            .ok()
+                                            .and_then(|payload| {
+                                                as_solidity_revert_with_reason(&payload)
+                                            })
+                                            .unwrap_or("no reason".to_owned())
+                                    };
+                                    Err(EthereumContractCallError::Revert(reason))
+                                }
+
+                                // The VM execution error was not identified as a revert.
+                                _ => Err(EthereumContractCallError::Web3Error(web3::Error::Rpc(
+                                    rpc_error.clone(),
+                                ))),
+                            }
+                        }
+
+                        // Check for Ganache revert.
+                        Err(web3::Error::Rpc(ref rpc_error))
+                            if rpc_error.code.code() == GANACHE_VM_EXECUTION_ERROR
+                                && rpc_error.message.starts_with(GANACHE_REVERT_MESSAGE) =>
+                        {
+                            Err(EthereumContractCallError::Revert(rpc_error.message.clone()))
+                        }
+
+                        // The error was not identified as a revert.
+                        Err(err) => Err(EthereumContractCallError::Web3Error(err)),
                     }
-                }
-
-                // Check for Ganache revert.
-                Err(web3::Error::Rpc(ref rpc_error))
-                    if rpc_error.code.code() == GANACHE_VM_EXECUTION_ERROR
-                        && rpc_error.message.starts_with(GANACHE_REVERT_MESSAGE) =>
-                {
-                    Err(EthereumContractCallError::Revert(rpc_error.message.clone()))
-                }
-
-                // The error was not identified as a revert.
-                Err(err) => Err(EthereumContractCallError::Web3Error(err)),
-            }
-        })
-        // })
-        // .map_err(|e| e.into_inner().unwrap_or(EthereumContractCallError::Timeout))
+                })
+            })
+            .map_err(|e| e.into_inner().unwrap_or(EthereumContractCallError::Timeout))
     }
 }
 
@@ -498,27 +499,7 @@ fn eth_call(
     let mut result_contract_call = eth_adapter
         .contract_call(call.clone(), call_cache.clone())
         .wait();
-    let mut loop_counter = 0;
-    info!("result_contract_call: {:?}", &result_contract_call);
-    loop {
-        let mut retry = match result_contract_call {
-            Ok(_) | Err(EthereumContractCallError::Revert(_)) => false,
-            Err(_) => true,
-        };
-        if retry && loop_counter < 10 {
-            loop_counter = loop_counter + 1;
-            thread::sleep(Duration::from_millis(100));
-            result_contract_call = eth_adapter
-                .contract_call(call.clone(), call_cache.clone())
-                .wait();
-            info!(
-                "result_contract_call at retry {}-th: {:?}",
-                loop_counter, &result_contract_call
-            );
-        } else {
-            break;
-        }
-    }
+
     let result =
         //match graph::block_on(eth_adapter.contract_call(call, call_cache).compat())
         match result_contract_call
