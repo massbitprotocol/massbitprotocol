@@ -552,6 +552,7 @@ impl AdapterManager {
         store: Arc<dyn WritableStore>,
         valid_module: Arc<ValidModule>,
         registry: Arc<MockMetricsRegistry>,
+        block_ptr: BlockPtr,
         //link_resolver: Arc<dyn LinkResolverTrait>,
     ) -> Result<WasmInstance<Chain>, anyhow::Error> {
         let api_version = API_VERSION_0_0_4.clone();
@@ -622,10 +623,7 @@ impl AdapterManager {
         //data_source.mapping.requires_archive();
         let context = MappingContext {
             logger: Logger::root(slog::Discard, o!()),
-            block_ptr: BlockPtr {
-                hash: Default::default(),
-                number: data_source.source.start_block,
-            },
+            block_ptr,
             host_exports: Arc::new(host_exports),
             //state: IndexerState::new(store, Default::default()),
             state: BlockState::new(store, Default::default()),

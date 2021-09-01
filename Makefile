@@ -42,7 +42,7 @@ create-list-user-example-json-file:
 #################### Dev commands ##########################
 
 deploy:
-	@echo "Deploy already build indexer $1"
+	@echo "Deploy already build indexer $(id)"
 	curl --location --request POST 'localhost:5000/deploy/wasm' \
     --header 'Content-Type: application/json' \
     --data-raw '{"configs": {"model": "Factory" }, "compilation_id": "$(id)" }'

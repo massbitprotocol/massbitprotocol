@@ -58,6 +58,11 @@ impl MessageHandler for EthereumWasmHandlerProxy {
         data_sources.iter().for_each(|data_source| {
             let valid_module = self.prepare_wasm_module(data_source);
             let ethereum_call = self.get_ethereum_call(data_source);
+            let block_ptr_to = BlockPtr {
+                hash: BlockHash(data.block_hash.as_bytes().into()),
+                number: data.block_number as i32,
+            };
+
             let mut wasm_instance = load_wasm(
                 &self.indexer_hash,
                 data_source,
@@ -66,6 +71,7 @@ impl MessageHandler for EthereumWasmHandlerProxy {
                 valid_module,
                 ethereum_call,
                 registry.cheap_clone(),
+                block_ptr_to.cheap_clone(),
             )
             .unwrap();
 
@@ -75,10 +81,6 @@ impl MessageHandler for EthereumWasmHandlerProxy {
                     let arc_block = Arc::new(eth_block.block.clone());
                     let block_finality: Arc<<Chain as Blockchain>::Block> =
                         Arc::new(BlockFinality::Final(arc_block.clone()));
-                    let block_ptr_to = BlockPtr {
-                        hash: BlockHash(data.block_hash.as_bytes().into()),
-                        number: data.block_number as i32,
-                    };
 
                     self.matching_block(
                         &logger,
@@ -155,6 +157,7 @@ impl MessageHandler for EthereumWasmHandlerProxy {
                 _ => {}
             }
         });
+        log::info!("{} Finished call handle_wasm_mapping", &*COMPONENT_NAME);
         Ok(())
     }
 }
@@ -302,6 +305,7 @@ impl EthereumWasmHandlerProxy {
                 valid_module,
                 ethereum_call,
                 registry.cheap_clone(),
+                block_ptr_to.cheap_clone(),
             )
             .unwrap();
             self.matching_block(
@@ -374,6 +378,7 @@ pub fn load_wasm(
     valid_module: Arc<ValidModule>,
     ethereum_call: HostFn,
     registry: Arc<MockMetricsRegistry>,
+    block_ptr: BlockPtr,
     //link_resolver: Arc<dyn LinkResolverTrait>,
 ) -> Result<WasmInstance<Chain>, anyhow::Error> {
     let api_version = API_VERSION_0_0_4.clone();
@@ -418,10 +423,7 @@ pub fn load_wasm(
     //datasource.mapping.requires_archive();
     let context = MappingContext {
         logger: Logger::root(slog::Discard, slog::o!()),
-        block_ptr: BlockPtr {
-            hash: Default::default(),
-            number: datasource.source.start_block,
-        },
+        block_ptr,
         host_exports: Arc::new(host_exports),
         //state: IndexerState::new(store, Default::default()),
         state: BlockState::new(store, Default::default()),
