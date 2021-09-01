@@ -23,7 +23,7 @@ def read_so_example(path):
             "mapping.rs": mapping,
         },
         "configs": {
-            "project.yaml": project,
+            "subgraph.yaml": project,
             "schema.graphql": schema
         }
     }
