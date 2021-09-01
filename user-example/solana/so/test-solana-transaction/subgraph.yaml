@@ -15,8 +15,9 @@ dataSources:
       language: rust
       entities:
         - SolanaTransaction
-      blockHandlers:
+      handlers:
         - handler: handleTransaction
+          kind: solana/TransactionHandler
       file: ./src/mapping.rs
       abis:
         - name: SolanaTransaction

@@ -15,8 +15,9 @@ dataSources:
       language: rust
       entities:
         - SolanaLogMessages
-      blockHandlers:
+      handlers:
         - handler: handleLogMessages
+          kind: solana/LogMessagesHandler
       file: ./src/mapping.rs
       abis:
         - name: SolanaLogMessages

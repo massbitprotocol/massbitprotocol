@@ -16,8 +16,9 @@ dataSources:
       language: rust
       entities:
         - EthereumBlock
-      blockHandlers:
+      handlers:
         - handler: handleBlock
+          kind: ethereum/BlockHandler
       file: ./src/mapping.rs
       abis:
         - name: EthereumBlock

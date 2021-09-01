@@ -16,8 +16,9 @@ dataSources:
       language: rust
       entities:
         - SubstrateBlock
-      blockHandlers:
+      handlers:
         - handler: handleBlock
+          kind: substrate/BlockHandler
       file: ./src/mapping.rs
       abis:
         - name: SubstrateBlock

@@ -16,8 +16,9 @@ dataSources:
       language: rust
       entities:
         - SolanaSerum
-      blockHandlers:
+      handlers:
         - handler: handleBlock
+          kind: solana/BlockHandler
       file: ./src/mapping.rs
       abis:
         - name: SolanaSerum

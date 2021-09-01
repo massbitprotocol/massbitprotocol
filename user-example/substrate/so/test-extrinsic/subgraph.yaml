@@ -16,8 +16,9 @@ dataSources:
       language: rust
       entities:
         - SubstrateExtrinsic
-      blockHandlers:
+      handlers:
         - handler: handleExtrinsic
+          kind: substrate/ExtrinsicHandler
       file: ./src/mapping.rs
       abis:
         - name: SubstrateExtrinsic

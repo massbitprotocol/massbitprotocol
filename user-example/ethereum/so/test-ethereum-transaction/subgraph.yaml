@@ -16,8 +16,9 @@ dataSources:
       language: rust
       entities:
         - EthereumTransaction
-      blockHandlers:
+      handlers:
         - handler: handleTransaction
+          kind: ethereum/TransactionHandler
       file: ./src/mapping.rs
       abis:
         - name: EthereumTransaction

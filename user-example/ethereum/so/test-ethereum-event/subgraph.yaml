@@ -16,8 +16,9 @@ dataSources:
       language: rust
       entities:
         - EthereumEvent
-      blockHandlers:
+      handlers:
         - handler: handleEvent
+          kind: ethereum/EventHandler
       file: ./src/mapping.rs
       abis:
         - name: EthereumEvent
