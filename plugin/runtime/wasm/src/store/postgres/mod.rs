@@ -39,7 +39,7 @@ pub struct PostgresIndexStore {
     pub connection: ConnectionPool,
     pub layout: Layout,
     //buffer: HashMap<String, TableBuffer>,
-    pub entity_dependencies: HashMap<EntityType, Vec<EntityType>>,
+    pub entity_dependencies: HashMap<EntityType, HashSet<EntityType>>,
 }
 
 impl PostgresIndexStore {
@@ -311,7 +311,7 @@ impl PostgresIndexStore {
         let mut overwrites = HashMap::new();
         let mut removals = HashMap::new();
         for modification in mods.into_iter() {
-            log::info!("Store modification {:?}", &modification);
+            //log::info!("Store modification {:?}", &modification);
             match modification {
                 Insert { key, data } => {
                     inserts
@@ -338,7 +338,7 @@ impl PostgresIndexStore {
         // Inserts:
         //Order inserts by dependency before transact to db
         //let mut buffer = inserts;
-        log::debug!("Dependencies {:?}", &self.entity_dependencies);
+        log::info!("Dependencies {:?}", &self.entity_dependencies);
         loop {
             let mut keys = inserts
                 .iter()
@@ -349,6 +349,11 @@ impl PostgresIndexStore {
             for (entity_type, mut entities) in buffer.into_iter() {
                 match self.entity_dependencies.get(&entity_type) {
                     None => {
+                        log::info!(
+                            "Insert independent entities {:?} with values {:?}",
+                            &entity_type,
+                            &entities
+                        );
                         count += self.insert_entities(
                             &entity_type,
                             &mut entities,
@@ -359,9 +364,16 @@ impl PostgresIndexStore {
                         keys.remove(&entity_type);
                     }
                     Some(vec) => {
+                        log::info!("Buffer keys {:?}", &keys);
                         if vec.iter().filter(|dep| keys.contains(dep)).count() > 0 {
+                            log::info!("Put entities {:?} back to buffer", &entity_type);
                             inserts.insert(entity_type.cheap_clone(), entities);
                         } else {
+                            log::info!(
+                                "Insert entities {:?} with values {:?}",
+                                &entity_type,
+                                &entities
+                            );
                             count += self.insert_entities(
                                 &entity_type,
                                 &mut entities,
@@ -373,7 +385,7 @@ impl PostgresIndexStore {
                     }
                 };
             }
-            log::debug!("Inserts {:?}", &inserts);
+            log::info!("Buffer content: {:?}", &inserts);
             if inserts.is_empty() {
                 break;
             }
@@ -435,8 +447,6 @@ impl PostgresIndexStore {
         //Original code update current record and insert new one
         self.layout
             .update(conn, &entity_type, data, block_ptr.number, stopwatch)
-        //self.layout
-        //    .simple_update(conn, &entity_type, data, block_ptr.number, stopwatch)
     }
 
     fn remove_entities(

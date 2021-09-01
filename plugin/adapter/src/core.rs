@@ -225,7 +225,6 @@ impl AdapterManager {
          */
         match data_sources.get(0) {
             Some(data_source) => {
-                info!("Data source: {:?}", data_source);
                 let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await?;
                 log::info!(
                     "{} Init Streamout client for chain {}",

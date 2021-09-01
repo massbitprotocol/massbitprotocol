@@ -409,16 +409,22 @@ pub fn ethereum_call(
         asc_get::<_, AscUnresolvedContractCall, _>(ctx.heap, wasm_ptr.into())?
     };
     let function_name = call.function_name.clone();
-    let result = eth_call(eth_adapter, call_cache, &ctx.block_ptr, call, abis)?;
-    match result {
-        Some(tokens) => Ok(asc_new(ctx.heap, tokens.as_slice())?),
-        None => match function_name.as_str() {
-            "balanceOf" => Ok(asc_new(
-                ctx.heap,
-                vec![Token::Uint(Uint::from(0_u128))].as_slice(),
-            )?),
-            _ => Ok(AscPtr::null()),
+    match eth_call(eth_adapter, call_cache, &ctx.block_ptr, call, abis) {
+        Ok(result) => match result {
+            Some(tokens) => Ok(asc_new(ctx.heap, tokens.as_slice())?),
+            None => match function_name.as_str() {
+                //Todo: remove this hard code
+                "totalSupply" | "decimals" | "balanceOf" => Ok(asc_new(
+                    ctx.heap,
+                    vec![Token::Uint(Uint::from(0_u128))].as_slice(),
+                )?),
+                _ => Ok(AscPtr::null()),
+            },
         },
+        Err(err) => {
+            log::info!("Ethereum call error {:?}", &err);
+            Err(err)
+        }
     }
 }
 
