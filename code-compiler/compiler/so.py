@@ -4,6 +4,7 @@ import subprocess
 import threading
 import ipfshttpclient
 import requests
+import yaml
 from distutils.dir_util import copy_tree
 from helper.helper import write_to_disk, populate_stub
 
@@ -103,9 +104,14 @@ def deploy_so(data):
     compilation_id = urllib.parse.unquote(data["compilation_id"])
 
     # Get the files path from generated/hash folder
+    subgraph_path = os.path.join("./generated", compilation_id, "src", "project.yaml") # TODO replace to have the same name project.yaml or subgraph.yaml
+    parsed_subgraph_path = os.path.join("./generated", compilation_id, "parsed_subgraph.yaml")
     project = os.path.join("./generated", compilation_id, "src/project.yaml")
     so = os.path.join("./generated", compilation_id, "target/release/libblock.so")
     schema = os.path.join("./generated", compilation_id, "src/schema.graphql")
+    # ds_mapping_path = get_ds_mapping_path(subgraph_path, compilation_id)
+    # if is_template_exist(subgraph_path):
+    #     tp_mapping_path = get_tp_mapping_path(subgraph_path, compilation_id)
 
     # Uploading files to IPFS
     if os.environ.get('IPFS_URL'):
@@ -129,6 +135,9 @@ def deploy_so(data):
     else:
         index_manager_url = 'http://0.0.0.0:3030'
 
+    parse_subgraph(subgraph_path, parsed_subgraph_path, schema_res)
+    parsed_subgraph_res = client.add(parsed_subgraph_path)
+
     null = None
     res = requests.post(index_manager_url,
                         json={
@@ -139,8 +148,49 @@ def deploy_so(data):
                                 so_res['Hash'],
                                 schema_res['Hash'],
                                 null,
-                                null
+                                parsed_subgraph_res['Hash']
                             ],
                             'id': '1',
                         })
     print(res.json())
+
+
+def get_ds_mapping_path(subgraph_path, compilation_id):
+    stream = open(subgraph_path, 'r')
+    subgraph = yaml.safe_load(stream)
+    stream.close()
+    return os.path.join("./generated", compilation_id, "build", subgraph['dataSources'][0]['mapping']['file'])
+
+
+def get_tp_mapping_path(subgraph_path, compilation_id):
+    stream = open(subgraph_path, 'r')
+    subgraph = yaml.safe_load(stream)
+    stream.close()
+    return os.path.join("./generated", compilation_id, "build", subgraph['templates'][0]['mapping']['file'])
+
+
+def is_template_exist(subgraph_path):
+    stream = open(subgraph_path, 'r')
+    subgraph = yaml.safe_load(stream)
+    if 'templates' in subgraph:
+        stream.close()
+        return True
+    return False
+
+
+def parse_subgraph(subgraph_path, parsed_subgraph_path, schema_res):
+    """
+    Parse subgraph.yaml and create a new parsed_subgraph.yaml with IPFS hash populated
+    """
+    # Create new file
+    stream = open(subgraph_path, 'r')
+    # Load subgraph content
+    subgraph = yaml.safe_load(stream)
+
+    # Parsing subgraph content
+    subgraph['schema']['file'] = {'/': '/ipfs/' + schema_res['Hash']}
+
+    # Write the new file to local disk
+    file = open(parsed_subgraph_path, "w")
+    yaml.safe_dump(subgraph, file)
+    file.close()
