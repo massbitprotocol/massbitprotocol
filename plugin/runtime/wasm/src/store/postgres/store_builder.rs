@@ -181,8 +181,7 @@ impl StoreBuilder {
                 let sql = layout.as_ddl().map_err(|_| {
                     StoreError::Unknown(anyhow!("failed to generate DDL for layout"))
                 })?;
-                let relationships = layout.gen_relationship();
-                let (hasura_up, _) = layout.create_hasura_payloads();
+                let sql_relationships = layout.gen_relationship();
                 match conn.batch_execute(&sql) {
                     Ok(_) => {}
                     Err(e) => {
@@ -190,8 +189,8 @@ impl StoreBuilder {
                     }
                 }
                 /*
-                if relationships.len() > 0 {
-                    let query = relationships.join(";");
+                if sql_relationships.len() > 0 {
+                    let query = sql_relationships.join(";");
                     log::info!("Create relationships: {:?}", &query);
                     match conn.batch_execute(&query) {
                         Ok(_) => {}
@@ -201,10 +200,19 @@ impl StoreBuilder {
                     }
                 }
                  */
+                let (track_tables, _) = layout.create_hasura_tracking_tables();
+                //let (track_relationships, _) = layout.create_hasura_tracking_relationships();
                 tokio::spawn(async move {
+                    /*
+                    let payload = serde_json::json!({
+                        "type": "bulk",
+                        "args" : vec![track_tables, track_relationships]
+                    });
+                     */
                     let response = Client::new()
                         .post(&*HASURA_URL)
-                        .json(&hasura_up)
+                        //.json(&payload)
+                        .json(&track_tables)
                         .send()
                         .compat()
                         .await
