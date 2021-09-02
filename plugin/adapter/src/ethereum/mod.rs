@@ -46,6 +46,7 @@ crate::prepare_adapter!(Ethereum, {
 impl MessageHandler for EthereumWasmHandlerProxy {
     fn handle_wasm_mapping(&mut self, data: &mut GenericDataProto) -> Result<(), Box<dyn Error>> {
         log::info!("{} call handle_wasm_mapping", &*COMPONENT_NAME);
+        let start = Instant::now();
         let logger = logger(true);
         let registry = Arc::new(MockMetricsRegistry::new());
         let stopwatch = StopwatchMetrics::new(
@@ -53,111 +54,47 @@ impl MessageHandler for EthereumWasmHandlerProxy {
             DEPLOYMENT_HASH.cheap_clone(),
             registry.clone(),
         );
-        let start = Instant::now();
-        let data_sources = self.data_sources.clone();
-        data_sources.iter().for_each(|data_source| {
-            let valid_module = self.prepare_wasm_module(data_source);
-            let ethereum_call = self.get_ethereum_call(data_source);
-            let block_ptr_to = BlockPtr {
-                hash: BlockHash(data.block_hash.as_bytes().into()),
-                number: data.block_number as i32,
-            };
-
-            let mut wasm_instance = load_wasm(
-                &self.indexer_hash,
-                data_source,
-                self.templates.clone(),
-                self.store.clone(),
-                valid_module,
-                ethereum_call,
-                registry.cheap_clone(),
-                block_ptr_to.cheap_clone(),
-            )
-            .unwrap();
-
-            match DataType::from_i32(data.data_type) {
-                Some(DataType::Block) => {
-                    let eth_block: EthereumBlock = decode(&mut data.payload).unwrap();
-                    let arc_block = Arc::new(eth_block.block.clone());
-                    let block_finality: Arc<<Chain as Blockchain>::Block> =
-                        Arc::new(BlockFinality::Final(arc_block.clone()));
-
+        match DataType::from_i32(data.data_type) {
+            Some(DataType::Block) => {
+                log::info!(
+                    "Start decode payload with size {} at {:?}",
+                    data.payload.len(),
+                    start.elapsed()
+                );
+                let eth_block: EthereumBlock = decode(&mut data.payload).unwrap();
+                log::info!("Decoded payload at {:?}", start.elapsed());
+                let arc_block = Arc::new(eth_block.block.clone());
+                let block_finality: Arc<<Chain as Blockchain>::Block> =
+                    Arc::new(BlockFinality::Final(arc_block.clone()));
+                let block_ptr = BlockPtr {
+                    hash: BlockHash(data.block_hash.as_bytes().into()),
+                    number: data.block_number as i32,
+                };
+                let data_sources = self.data_sources.clone();
+                log::info!("Cloned data_sources at {:?}", start.elapsed());
+                data_sources.into_iter().for_each(|data_source| {
+                    //wasm_instance for each datasource
+                    let mut wasm_instance: Option<WasmInstance<Chain>> = None;
                     self.matching_block(
                         &logger,
                         &mut wasm_instance,
                         data_source,
                         &eth_block,
                         block_finality.clone(),
-                        block_ptr_to,
+                        &block_ptr,
                         registry.cheap_clone(),
                         stopwatch.cheap_clone(),
                     );
-                    //Handle result in BlockState
-                    /*
-                    let mut context = wasm_instance.take_ctx();
-                    //let mut state = context.ctx.state;
-                    let has_created_data_sources = context.ctx.state.has_created_data_sources();
-                    let data_source_infos = context.ctx.state.drain_created_data_sources();
-                    for ds_template_info in data_source_infos {
-                        let data_source = DataSource::try_from(ds_template_info).unwrap();
-                        let valid_module = self.prepare_wasm_module(&data_source);
-                        let ethereum_call = self.get_ethereum_call(&data_source);
-                        let mut wasm_instance = load_wasm(
-                            &self.indexer_hash,
-                            &data_source,
-                            self.templates.clone(),
-                            self.store.clone(),
-                            valid_module,
-                            ethereum_call,
-                            registry.cheap_clone(),
-                        )
-                        .unwrap();
-                        self.matching_block(
-                            &logger,
-                            &mut wasm_instance,
-                            &data_source,
-                            &eth_block,
-                            block_finality.clone(),
-                            &block_ptr_to,
-                        );
-                        println!("New datasource with source: {:?}", &data_source.source);
-                        self.add_data_source(data_source);
-                        println!("Total datasource: {:?}", self.data_sources.len());
-                    }
-                    let state = context.ctx.state;
-                    let ModificationsAndCache {
-                        modifications: mods,
-                        data_sources,
-                        entity_lfu_cache: cache,
-                    } = state
-                        .entity_cache
-                        .as_modifications()
-                        .map_err(|e| {
-                            log::error!("Error {:?}", e);
-                            StoreError::Unknown(e.into())
-                        })
-                        .unwrap();
-                    let stopwatch = StopwatchMetrics::new(
-                        Logger::root(slog::Discard, slog::o!()),
-                        DEPLOYMENT_HASH.cheap_clone(),
-                        registry.clone(),
-                    );
-                    // Transact entity modifications into the store
-                    if mods.len() > 0 {
-                        self.store.transact_block_operations(
-                            block_ptr_to,
-                            mods,
-                            stopwatch.cheap_clone(),
-                            data_sources,
-                            vec![],
-                        );
-                    }
-                     */
-                }
-                _ => {}
+                });
             }
-        });
-        log::info!("{} Finished call handle_wasm_mapping", &*COMPONENT_NAME);
+            _ => {}
+        }
+
+        log::info!(
+            "{} Finished call handle_wasm_mapping in {:?}",
+            &*COMPONENT_NAME,
+            start.elapsed()
+        );
         Ok(())
     }
 }
@@ -190,45 +127,58 @@ impl EthereumWasmHandlerProxy {
             Some(host_fn) => host_fn.cheap_clone(),
         }
     }
+    ///Create wasm_instance once by data_source
+    fn prepare_wasm_instance(
+        &mut self,
+        wasm_instance: &mut Option<WasmInstance<Chain>>,
+        data_source: &DataSource,
+        registry: Arc<MockMetricsRegistry>,
+        block_ptr: &BlockPtr,
+    ) {
+        if wasm_instance.is_none() {
+            let valid_module = self.prepare_wasm_module(data_source);
+            let ethereum_call = self.get_ethereum_call(data_source);
+            *wasm_instance = Some(
+                load_wasm(
+                    &self.indexer_hash,
+                    data_source,
+                    self.templates.clone(),
+                    self.store.clone(),
+                    valid_module,
+                    ethereum_call,
+                    registry,
+                    block_ptr,
+                )
+                .unwrap(),
+            );
+        }
+    }
     fn matching_block(
         &mut self,
         logger: &Logger,
-        wasm_instance: &mut WasmInstance<Chain>,
+        wasm_instance: &mut Option<WasmInstance<Chain>>,
         data_source: &DataSource,
         eth_block: &EthereumBlock,
         block_finality: Arc<<Chain as Blockchain>::Block>,
-        block_ptr_to: BlockPtr,
+        block_ptr: &BlockPtr,
         registry: Arc<MockMetricsRegistry>,
         stopwatch: StopwatchMetrics,
     ) {
         //Trigger block
         let block_trigger: <Chain as Blockchain>::TriggerData =
-            EthereumTrigger::Block(block_ptr_to.clone(), EthereumBlockTriggerType::Every);
+            EthereumTrigger::Block(block_ptr.cheap_clone(), EthereumBlockTriggerType::Every);
         let mapping_trigger = data_source
             .match_and_decode(&block_trigger, block_finality.clone(), &logger)
             .unwrap();
         if let Some(trigger) = mapping_trigger {
             log::info!("Block Mapping trigger found");
-            wasm_instance.handle_trigger(trigger);
-            /*
-            match wasm_instance {
-                Some(ref mut instance) => {
-                    instance.handle_trigger(trigger);
-                }
-                None => {
-                    let mut instance = load_wasm(
-                        &self.indexer_hash,
-                        data_source,
-                        self.templates.clone(),
-                        self.store.clone(),
-                        registry.cheap_clone(),
-                    )
-                    .unwrap();
-                    &instance.handle_trigger(trigger);
-                    wasm_instance = Some(instance);
-                }
-            }
-             */
+            self.prepare_wasm_instance(
+                wasm_instance,
+                data_source,
+                registry.cheap_clone(),
+                block_ptr,
+            );
+            wasm_instance.as_mut().unwrap().handle_trigger(trigger);
         }
         //Mapping trigger log
         eth_block.logs.iter().for_each(|log| {
@@ -238,138 +188,71 @@ impl EthereumWasmHandlerProxy {
                 .match_and_decode(&trigger, block_finality.clone(), logger)
                 .unwrap();
             if let Some(trigger) = mapping_trigger {
-                log::info!("Log Mapping trigger found");
-                wasm_instance.handle_trigger(trigger);
-                /*
-                match wasm_instance {
-                    Some(ref mut instance) => {
-                        instance.handle_trigger(trigger);
-                    }
-                    None => {
-                        let mut instance = load_wasm(
-                            &self.indexer_hash,
-                            data_source,
-                            self.templates.clone(),
-                            self.store.clone(),
-                            registry.cheap_clone(),
-                        )
-                        .unwrap();
-                        &instance.handle_trigger(trigger);
-                        wasm_instance = Some(instance);
-                    }
-                }
-
-                 */
+                log::info!("Log Mapping trigger found. Create wasm instance if not exits");
+                self.prepare_wasm_instance(
+                    wasm_instance,
+                    data_source,
+                    registry.cheap_clone(),
+                    block_ptr,
+                );
+                wasm_instance.as_mut().unwrap().handle_trigger(trigger);
             }
         });
-        let mut context = wasm_instance.take_ctx();
-        let has_created_data_sources = context.ctx.state.has_created_data_sources();
-        let data_source_infos = context.ctx.state.drain_created_data_sources();
-        let ModificationsAndCache {
-            modifications: mods,
-            data_sources,
-            entity_lfu_cache: cache,
-        } = context
-            .ctx
-            .state
-            .entity_cache
-            .as_modifications()
-            .map_err(|e| {
-                log::error!("Error {:?}", e);
-                StoreError::Unknown(e.into())
-            })
-            .unwrap();
-
-        // Transact entity modifications into the store
-        if mods.len() > 0 {
-            match self.store.transact_block_operations(
-                block_ptr_to.cheap_clone(),
-                mods,
-                stopwatch.cheap_clone(),
+        if let Some(instance) = wasm_instance {
+            let mut context = instance.take_ctx();
+            let has_created_data_sources = context.ctx.state.has_created_data_sources();
+            let data_source_infos = context.ctx.state.drain_created_data_sources();
+            let ModificationsAndCache {
+                modifications: mods,
                 data_sources,
-                vec![],
-            ) {
-                Ok(_) => log::info!("Transact block operation successfully"),
-                Err(err) => log::info!("Transact block operation with error {:?}", err),
+                entity_lfu_cache: cache,
+            } = context
+                .ctx
+                .state
+                .entity_cache
+                .as_modifications()
+                .map_err(|e| {
+                    log::error!("Error {:?}", e);
+                    StoreError::Unknown(e.into())
+                })
+                .unwrap();
+
+            // Transact entity modifications into the store
+            if mods.len() > 0 {
+                match self.store.transact_block_operations(
+                    block_ptr.cheap_clone(),
+                    mods,
+                    stopwatch.cheap_clone(),
+                    data_sources,
+                    vec![],
+                ) {
+                    Ok(_) => log::info!("Transact block operation successfully"),
+                    Err(err) => log::info!("Transact block operation with error {:?}", err),
+                }
             }
-        }
-        for ds_template_info in data_source_infos {
-            let data_source = DataSource::try_from(ds_template_info).unwrap();
-            let valid_module = self.prepare_wasm_module(&data_source);
-            let ethereum_call = self.get_ethereum_call(&data_source);
-            let mut wasm_instance = load_wasm(
-                &self.indexer_hash,
-                &data_source,
-                self.templates.clone(),
-                self.store.clone(),
-                valid_module,
-                ethereum_call,
-                registry.cheap_clone(),
-                block_ptr_to.cheap_clone(),
-            )
-            .unwrap();
-            self.matching_block(
-                &logger,
-                &mut wasm_instance,
-                &data_source,
-                &eth_block,
-                block_finality.clone(),
-                block_ptr_to.cheap_clone(),
-                registry.cheap_clone(),
-                stopwatch.cheap_clone(),
-            );
-            println!("New datasource with source: {:?}", &data_source.source);
-            self.add_data_source(data_source);
-            println!("Total datasource: {:?}", self.data_sources.len());
-        }
-    }
-}
-/*
-impl EthereumWasmHandlerProxy {
-    fn prepare_wasm_instance(
-        &mut self,
-        data_source: &DataSource,
-        registry: Arc<MockMetricsRegistry>,
-    ) -> &mut WasmInstance<Chain> {
-        let cur_instance = self.wasm_instances.get_mut(&data_source.name);
-        match cur_instance {
-            None => {
-                let mut instance = load_wasm(
-                    &self.indexer_hash,
-                    data_source,
-                    self.templates.clone(),
-                    self.store.clone(),
+            for ds_template_info in data_source_infos {
+                let data_source = DataSource::try_from(ds_template_info).unwrap();
+                let mut wasm_instance: Option<WasmInstance<Chain>> = None;
+                self.matching_block(
+                    &logger,
+                    &mut wasm_instance,
+                    &data_source,
+                    &eth_block,
+                    block_finality.clone(),
+                    block_ptr,
                     registry.cheap_clone(),
-                )
-                .unwrap();
-                self.wasm_instances
-                    .insert(data_source.name.clone(), instance);
+                    stopwatch.cheap_clone(),
+                );
+                log::info!(
+                    "New datasource #{} with source: {:?}",
+                    self.data_sources.len() + 1,
+                    &data_source.source
+                );
+                self.add_data_source(data_source);
             }
-            _ => {}
-        };
-        self.wasm_instances.get_mut(&data_source.name).unwrap()
-    }
-}
-*/
-/*
-pub fn extract_wasm_instance(wasm_instance: &mut Option<WasmInstance<Chain>>) -> &mut WasmInstance<Chain> {
-    match wasm_instance {
-        Some(mut instance) => instance,
-        None => {
-            let mut instance = load_wasm(
-                &self.indexer_hash,
-                data_source,
-                self.templates.clone(),
-                self.store.clone(),
-                registry.cheap_clone(),
-            )
-                .unwrap();
-            wasm_instance = Some(instance);
-            &instance.handle_trigger(trigger);
         }
     }
 }
- */
 pub fn load_wasm(
     indexer_hash: &String,
     datasource: &DataSource,
@@ -378,11 +261,10 @@ pub fn load_wasm(
     valid_module: Arc<ValidModule>,
     ethereum_call: HostFn,
     registry: Arc<MockMetricsRegistry>,
-    block_ptr: BlockPtr,
+    block_ptr: &BlockPtr,
     //link_resolver: Arc<dyn LinkResolverTrait>,
 ) -> Result<WasmInstance<Chain>, anyhow::Error> {
     let api_version = API_VERSION_0_0_4.clone();
-
     let stopwatch_metrics = StopwatchMetrics::new(
         Logger::root(slog::Discard, slog::o!()),
         DeploymentHash::new("_indexer").unwrap(),
@@ -404,13 +286,6 @@ pub fn load_wasm(
         Arc::clone(&templates),
         api_version,
     );
-    /*
-    let valid_module = Arc::new(ValidModule::new(&datasource.mapping.runtime).unwrap());
-    log::info!(
-        "Import wasm module successfully: {:?}",
-        &valid_module.import_name_to_modules
-    );
-     */
     //check if wasm module use import ethereum.call
     let host_fns: Vec<HostFn> = match valid_module.import_name_to_modules.get("ethereum.call") {
         None => Vec::new(),
@@ -423,9 +298,8 @@ pub fn load_wasm(
     //datasource.mapping.requires_archive();
     let context = MappingContext {
         logger: Logger::root(slog::Discard, slog::o!()),
-        block_ptr,
+        block_ptr: block_ptr.cheap_clone(),
         host_exports: Arc::new(host_exports),
-        //state: IndexerState::new(store, Default::default()),
         state: BlockState::new(store, Default::default()),
         //proof_of_indexing: None,
         host_fns: Arc::new(host_fns),
