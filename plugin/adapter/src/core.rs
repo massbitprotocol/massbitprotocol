@@ -1,764 +1,373 @@
-//use super::ipfs::create_ipfs_clients;
-use crate::setting::*;
-pub use crate::stream_mod::{
-    streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
-};
-pub use crate::{HandlerProxyType, PluginRegistrar, WasmHandlerProxyType};
-use futures::future;
-use graph::components::metrics::stopwatch::StopwatchMetrics;
-use graph::prelude::{
-    DeploymentHash, HostMetrics, LinkResolver as LinkResolverTrait, MetricsRegistry,
-};
-
-use graph::blockchain::{BlockHash, BlockPtr, DataSource as _};
-use graph::blockchain::{
-    DataSource as DataSourceTrait, HostFn, RuntimeAdapter as RuntimeAdapterTrait,
-};
-use graph::components::store::{ModificationsAndCache, StoreError, WritableStore};
-use graph::components::subgraph::BlockState;
-use graph::data::subgraph::{Mapping, SubgraphManifest, TemplateSource};
-use graph::prelude::CheapClone;
-use graph::util::lfu_cache::LfuCache;
-use graph_chain_ethereum::Chain;
-use graph_chain_ethereum::{trigger::MappingTrigger, DataSource, DataSourceTemplate};
-use graph_core::LinkResolver;
-//use graph_runtime_wasm::{ExperimentalFeatures, HostExports, MappingContext};
-use graph::tokio_stream::StreamExt;
-use graph_mock::MockMetricsRegistry;
-use graph_runtime_wasm::ValidModule;
-use index_store::core::Store;
+use diesel::{PgConnection, RunQueryDsl, Connection, QueryResult};
+use diesel_transaction_handles::TransactionalConnection;
+use structmap::GenericMap;
+use std::collections::{HashMap, BTreeMap};
+use std::time::{self, SystemTime, SystemTimeError, Duration, Instant, UNIX_EPOCH};
+use std::fmt::{self, Write};
+use std::error::Error;
+use std::sync::{mpsc, Arc, Mutex};
+use std::thread;
+use structmap::value::Value;
+use tokio;
+use tokio_postgres::{NoTls};
+use std::collections::hash_map::RandomState;
+use std::ops::Deref;
+use diesel::result::Error as DieselError;
 use lazy_static::lazy_static;
-use libloading::Library;
-use log::info;
-use massbit_chain_solana::data_type::{
-    convert_solana_encoded_block_to_solana_block, decode as solana_decode, SolanaEncodedBlock,
-    SolanaLogMessages, SolanaTransaction,
-};
-use massbit_common::prelude::anyhow::{self, Context};
-use massbit_common::prelude::tokio::io::AsyncReadExt;
-use massbit_runtime_wasm::host_exports::create_ethereum_call;
-use massbit_runtime_wasm::manifest::datasource::*;
-use massbit_runtime_wasm::mapping::FromFile;
-use massbit_runtime_wasm::prelude::{Logger, Version};
-use massbit_runtime_wasm::store::postgres::store_builder::*;
-use massbit_runtime_wasm::store::PostgresIndexStore;
-use massbit_runtime_wasm::{slog, store};
-use massbit_runtime_wasm::{HostExports, MappingContext, WasmInstance};
-use serde_yaml::Value;
-use slog::o;
-use std::collections::BTreeMap;
-use std::fs::File;
-use std::io::Read;
-use std::path::Path;
-use std::sync::Mutex;
-use std::time::Instant;
-use std::{
-    alloc::System, collections::HashMap, env, error::Error, ffi::OsStr, fmt, path::PathBuf,
-    sync::Arc,
-};
-use tonic::{Request, Streaming};
 
-const API_VERSION_0_0_4: Version = Version::new(0, 0, 4);
-const API_VERSION_0_0_5: Version = Version::new(0, 0, 5);
 lazy_static! {
-    static ref CHAIN_READER_URL: String =
-        env::var("CHAIN_READER_URL").unwrap_or(String::from("http://127.0.0.1:50051"));
-    static ref IPFS_ADDRESS: String =
-        env::var("IPFS_ADDRESS").unwrap_or(String::from("0.0.0.0:5001"));
-    static ref GENERATED_FOLDER: String = String::from("index-manager/generated/");
-    static ref COMPONENT_NAME: String = String::from("[Adapter-Manager]");
-}
-#[global_allocator]
-static ALLOCATOR: System = System;
-
-#[derive(Copy, Clone)]
-pub struct AdapterDeclaration {
-    pub register: unsafe extern "C" fn(&mut dyn PluginRegistrar),
-}
-//adapter_type => HandlerProxyType
-
-pub struct AdapterHandler {
-    indexer_hash: String,
-    pub lib: Arc<Library>,
-    pub handler_proxies: HashMap<String, HandlerProxyType>,
+    static ref COMPONENT_NAME: String = String::from("[Index-Store]");
 }
 
-impl AdapterHandler {
-    fn new(hash: String, lib: Arc<Library>) -> AdapterHandler {
-        AdapterHandler {
-            indexer_hash: hash,
-            lib,
-            handler_proxies: HashMap::default(),
+const BATCH_SIZE: usize = 10;
+const PERIOD: u128 = 50;        //Period to insert in ms
+
+type ArcVec = Arc<Mutex<Vec<GenericMap>>>;
+struct TableBuffer {
+    data : ArcVec,
+    last_store: u128
+}
+impl TableBuffer {
+    fn new() -> TableBuffer {
+        TableBuffer {
+            data : Arc::new(Mutex::new(Vec::new())),
+            last_store : 0
         }
     }
+    pub fn size(&self) -> usize {
+        let buffer  = self.data.clone();
+        let size = buffer.lock().unwrap().len();
+        size
+    }
+    pub fn elapsed_since_last_flush(&self) -> u128 {
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("system time before Unix epoch");
+        now.as_millis() - self.last_store
+    }
+    fn push(&mut self, record: GenericMap) {
+        let arc_buf = self.data.clone();
+        let mut buffer = arc_buf.lock().unwrap();
+        buffer.push(record);
+    }
+    pub fn move_buffer(&mut self) -> Vec<GenericMap> {
+        let buffer = self.data.clone();
+        let mut data = buffer.lock().unwrap();
+        //Todo: improve redundent clone
+        let res = data.clone();
+        data.clear();
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("system time before Unix epoch");
+        self.last_store = now.as_millis();
+        res
+    }
+}
+pub struct IndexStore {
+    pub connection_string: String,
+    buffer: HashMap<String, TableBuffer>,
+    entity_dependencies: HashMap<String, Vec<String>>
 }
 
-pub struct WasmAdapter {
-    indexer_hash: String,
-    pub wasm: Arc<ValidModule>,
-    pub handler_proxies: HashMap<String, Arc<Option<WasmHandlerProxyType>>>,
-}
 
-impl WasmAdapter {
-    fn new(hash: String, wasm: Arc<ValidModule>) -> WasmAdapter {
-        WasmAdapter {
-            indexer_hash: hash,
-            wasm,
-            handler_proxies: HashMap::default(),
+pub trait Store: Sync + Send {
+    fn save(&mut self, entity_name: String, data: GenericMap);
+    fn flush(&mut self);
+}
+impl Store for IndexStore {
+    fn save(&mut self, _entity_name: String, mut _data: GenericMap) {
+        match self.buffer.get_mut(_entity_name.as_str()) {
+            //Create buffer for first call
+            None => {
+                let mut tab_buf = TableBuffer::new();
+                tab_buf.push(_data);
+                self.buffer.insert(_entity_name, tab_buf);
+            },
+            //Put data into buffer then perform flush to db if buffer size exceeds BATCH_SIZE
+            //or elapsed time from last save exceeds PERIOD
+            Some(tab_buf) => {
+                tab_buf.push(_data);
+                self.check_and_flush(&_entity_name);
+            }
         }
+    }
+    fn flush(&mut self) {
+        //Todo: flush data in buffer to db when stop Indexer or periodically
     }
 }
 /*
-pub struct AdapterManager<'a> {
-    pub store: &'a dyn Store,
-    pub libs: Vec<Rc<Library>>,
-    handler_proxies: MapProxies,
-}
-impl<'a> AdapterManager<'a> {
-    pub fn new(store: &mut dyn Store) -> AdapterManager {
-        AdapterManager {
-            store,
-            libs: vec![],
-            handler_proxies: HashMap::default(),
+ * 2021-07-27
+ * vuvietai: add dependent insert
+ */
+impl IndexStore {
+    pub async fn new (connection: &str) -> IndexStore {
+        //let dependencies = HashMap::new();
+
+        let dependencies = match get_entity_dependencies(connection, "public").await {
+            Ok(res) => {
+                res
+            }
+            Err(err) => {
+                log::error!("{} Cannot load relationship from db: {:?}", &*COMPONENT_NAME, err);
+                HashMap::new()
+            }
+        };
+
+        IndexStore {
+            connection_string : connection.to_string(),
+            buffer: HashMap::new(),
+            entity_dependencies: dependencies
         }
     }
+    fn check_and_flush(&mut self, _entity_name: &String) {
+        if let Some(table_buf) = self.buffer.get(_entity_name.as_str()) {
+            let size = table_buf.size();
+            if size >= BATCH_SIZE || (table_buf.elapsed_since_last_flush() >= PERIOD && size > 0) {
+                //Todo: move this init connection to new fn.
+                let con = PgConnection::establish(&self.connection_string).expect(&format!("Error connecting to {}", self.connection_string));
+                let buffer = &mut self.buffer;
+                //Todo: implement multiple levels of relationship (chain dependencies)
+                let dependencies  = self.entity_dependencies.get(_entity_name.as_str());
+                match dependencies {
+                    Some(deps) => {
+                        deps.iter().rev().for_each(|reference|{
+                            log::info!("{} Flush reference data into table {}", &*COMPONENT_NAME, reference.as_str());
+                            if let Some(ref_buf) = buffer.get_mut(reference.as_str()) {
+                                let buf_data = ref_buf.move_buffer();
+                                flush_entity(reference, &buf_data, &con);
+                            }
+                        });
+                    },
+                    None => {}
+                };
+                if let Some(table_buf) = buffer.get_mut(_entity_name.as_str()) {
+                    let buf_data = table_buf.move_buffer();
+                    log::info!("{} Flush data into table {}", &*COMPONENT_NAME, _entity_name.as_str());
+                    flush_entity(_entity_name, &buf_data, &con);
+                }
+                /*
+                con.transaction::<(), DieselError, _>(|| {
+                    match dependencies {
+                        Some(deps) => {
+                            deps.iter().rev().for_each(|reference|{
+                                log::info!("Flush reference data into table {}", reference.as_str());
+                                if let Some(ref_buf) = buffer.get_mut(reference.as_str()) {
+                                    let buf_data = ref_buf.move_buffer();
+                                    flush_entity(reference, &buf_data, &con);
+                                }
+                            });
+                        },
+                        None => {}
+                    };
+                    if let Some(table_buf) = buffer.get_mut(_entity_name.as_str()) {
+                        let buf_data = table_buf.move_buffer();
+                        log::info!("Flush data into table {}", _entity_name.as_str());
+                        flush_entity(_entity_name, &buf_data, &con);
+                    }
+                    Ok(())
+                    // If we want to roll back the transaction, but don't have an
+                    // actual error to return, we can return `RollbackTransaction`.
+                    //Err(DieselError::RollbackTransaction)
+                });
+                 */
+            }
+        };
+    }
+    /*
+    fn check_and_flush(&mut self, _entity_name: String) {
+        let now = Instant::now();
+        let elapsed = match self.last_store {
+            None => 0,  //First save
+            Some(last) => now.duration_since(last).as_millis()
+        };
+        match self.buffer.get_mut(_entity_name.as_str()) {
+            None => {}
+            Some(vec) => {
+                let size = vec.len();
+                if size >= BATCH_SIZE || (elapsed >= PERIOD && size > 0) {
+                    let start = Instant::now();
+                    match create_query(_entity_name, vec) {
+                        None => {},
+                        Some(query) => {
+                            let con = PgConnection::establish(&self.connection_string).expect(&format!("Error connecting to {}", self.connection_string));
+                            match diesel::sql_query(query.as_str()).execute(&con) {
+                                Ok(_) => {}
+                                Err(err) => {
+                                    log::error!("[Index-Store] Error {:?} while insert querey {:?}.", err, query.as_str());
+                                }
+                            }
+                            self.last_store = Some(Instant::now());
+                            vec.clear();
+                            log::info!("[Index-Store] Insert {:?} records in: {:?} ms.", size, start.elapsed());
+                        }
+                    }
+                }
+            }
+        };
+    }
+     */
+}
+//fn flush_entity(table_name : &String, _buffer : &Vec<GenericMap>, conn: &TransactionalConnection<PgConnection>) -> QueryResult<usize> {
+fn flush_entity(table_name : &String, _buffer : &Vec<GenericMap>, conn: &PgConnection) {
+    let start = Instant::now();
+    if let Some(query) = create_query(table_name, _buffer) {
+        match diesel::sql_query(query.as_str()).execute(conn) {
+            Ok(res) => {
+                log::info!("{} Execute query with result {:?}.", &*COMPONENT_NAME, res);
+            }
+            Err(err) => {
+                log::error!("{} Error {:?} while insert query {:?}.", &*COMPONENT_NAME, err, query.as_str());
+            }
+        }
+        log::info!("{} Insert {:?} records into table {:?} in: {:?} ms.", &*COMPONENT_NAME, _buffer.len(), table_name, start.elapsed());
+    }
+}
+
+///
+/// Create Query with format
+/// INSERT INTO {entity_name} ({field1}, {field2}, {field3}) VALUES
+/// ('strval11',numberval12, numberval13),
+/// ('strval21',numberval22, numberval23),
+///
+fn create_query(_entity_name : &str, buffer : &Vec<GenericMap>) -> Option<String> {
+    let mut query = None;
+    if buffer.len() > 0 {
+        if let Some(_data) = buffer.get(0) {
+            let fields : Vec<String> = _data.iter().map(|(k,_)|{k.to_string()}).collect();
+            //Store vector of row's stuse std::sync::{Arc, Mutex};ring form ('strval11',numberval12, numberval13)
+            let row_values : Vec<String> = buffer.iter().map(|_data| {
+                let field_values: Vec<String> = _data.iter().map(|(_,v)| {
+                    let mut str_val = String::new();
+                    if let Some(r) = v.bool() {
+                        write!(str_val, "{}", r);
+                    } else if let Some(r) = v.f64() {
+                        write!(str_val, "{}", r);
+                    }  else if let Some(r) = v.i64() {
+                        write!(str_val, "{}", r);
+                    }  else if let Some(r) = v.u64() {
+                        write!(str_val, "{}", r);
+                    } else if let Some(r)  = v.string() {
+                        write!(str_val, "'{}'", r);
+                    }
+                    str_val
+                }).collect();
+                format!("({})",field_values.join(","))
+            }).collect();
+            query = Some(format!("INSERT INTO {} ({}) VALUES {};", _entity_name, fields.join(","), row_values.join(",")));
+        }
+    }
+    query
+}
+
+
+///
+/// Get relationship dependencies from database
+/// When flush data into one table, first check and flush data in reference table
+///
+//Todo: get dependencies from input schema (not from DB)
+async fn get_entity_dependencies(connection: &str, schema: &str) -> Result<HashMap<String, Vec<String>>, Box<dyn Error>> {
+    //let conn = establish_connection();
+    let query = r#"
+        SELECT
+            pgc.conname as constraint_name,
+            kcu.table_name as table_name,
+            CASE WHEN (pgc.contype = 'f') THEN kcu.COLUMN_NAME ELSE ccu.COLUMN_NAME END as column_name,
+            CASE WHEN (pgc.contype = 'f') THEN ccu.TABLE_NAME ELSE (null) END as reference_table,
+            CASE WHEN (pgc.contype = 'f') THEN ccu.COLUMN_NAME ELSE (null) END as reference_col
+        FROM
+            pg_constraint AS pgc
+            JOIN pg_namespace nsp ON nsp.oid = pgc.connamespace
+            JOIN pg_class cls ON pgc.conrelid = cls.oid
+            JOIN information_schema.key_column_usage kcu ON kcu.constraint_name = pgc.conname
+            LEFT JOIN information_schema.constraint_column_usage ccu ON pgc.conname = ccu.CONSTRAINT_NAME
+            AND nsp.nspname = ccu.CONSTRAINT_SCHEMA
+        WHERE ccu.table_schema = $1 and pgc.contype = 'f'
+    "#;
+    let mut dependencies : HashMap<String, Vec<String>> = HashMap::new();
+    /*
+     * https://docs.rs/tokio-postgres/0.7.2/tokio_postgres/
+     * 2021-07-28
+     * vuviettai: use tokio_postgres instead of postgres
+     */
+
+    //log::info!("Connect to ds with string {}", connection);
+    // Connect to the database.
+    let (client, connection) =
+        tokio_postgres::connect(connection, NoTls).await?;
+
+    // The connection object performs the actual communication with the database,
+    // so spawn it off to run on its own.
+    tokio::spawn(async move {
+        if let Err(e) = connection.await {
+            eprintln!("connection error: {}", e);
+        }
+    });
+
+    // Now we can execute a simple statement that just returns its parameter.
+    //let mut client = Client::connect(connection, NoTls)?;
+    let result = &client.query(query, &[&schema]).await?;
+    result.iter().for_each(|row| {
+        let table_name = row.get::<usize, String>(1);
+        let reference = row.get::<usize, String>(3);
+        match dependencies.get_mut(table_name.as_str()) {
+            None => {
+                let mut vec = Vec::new();
+                vec.push(reference);
+                dependencies.insert(table_name, vec);
+            }
+            Some(vec) => {
+                if !vec.contains(&reference) {
+                    vec.push(reference);
+                }
+            }
+        }
+    });
+    log::info!("{} Found references {:?}", &*COMPONENT_NAME, &dependencies);
+    let mut chain_deps : HashMap<String, Vec<String>> = HashMap::default();
+    dependencies.iter().for_each(|(key,_)| {
+        let vec = create_chain_dependencies(key, &dependencies);
+        chain_deps.insert(key.clone(), vec);
+    });
+    log::info!("{} Chain dependencies {:?}", &*COMPONENT_NAME, &chain_deps);
+    Ok(chain_deps)
+}
+/*
+ * Create chain dependencies from db relationship:
+ * For example: A depends on B, B depends on C then output A depends on [C,B]
+ */
+fn create_chain_dependencies(table_name: &String, dependencies: &HashMap<String, Vec<String>>) -> Vec<String> {
+    let mut res : Vec<String> = Vec::default();
+    let mut checking: Vec<String> = Vec::default();
+    if let Some(dep) = dependencies.get(table_name) {
+        dep.iter().for_each(|ref_table|{
+            let mut tmp = create_chain_dependencies(ref_table, dependencies);
+            tmp.iter().for_each(|item|{
+                if !res.contains(item) {
+                    res.push(item.clone());
+                }
+            });
+            res.push(ref_table.clone());
+        });
+    };
+    res
+}
+/*
+///
+/// Collect all dependencies chain start by table_name
+///
+
+fn prepare_dependency_lists<'a>(table_name: &'a String, dependencies: &'a HashMap<String, Vec<String>>) -> Vec<&'a String> {
+    let mut res : Vec<&String> = Vec::new();
+    match dependencies.get(table_name.as_str()) {
+        None => {}
+        Some(vec) => {
+            for ref_table in vec.iter() {
+                res.push(ref_table);
+                let dep_list = prepare_dependency_lists(ref_table, dependencies);
+                dep_list.iter().for_each( |val| {
+                    if !res.contains(val) {
+                        res.push(val.clone());
+                    }
+                });
+            }
+        }
+    };
+    res
 }
 */
-
-pub struct AdapterManager {
-    store: Option<PostgresIndexStore>,
-    libs: HashMap<String, Arc<Library>>,
-    map_handlers: HashMap<String, AdapterHandler>,
-}
-
-impl AdapterManager {
-    pub fn new() -> AdapterManager {
-        AdapterManager {
-            store: None,
-            libs: HashMap::default(),
-            map_handlers: HashMap::default(),
-        }
-    }
-    pub async fn init(
-        &mut self,
-        hash: &String,
-        config: &Value,
-        mapping: &PathBuf,
-        schema: &PathBuf,
-        manifest: &Option<SubgraphManifest<Chain>>,
-    ) -> Result<(), Box<dyn Error>> {
-        /*
-        let templates = match config["templates"].as_sequence() {
-            Some(seqs) => seqs
-                .iter()
-                .map(|tpl| {
-                    DataSourceTemplate::try_from(tpl)
-                        .with_context(|| {
-                            format!(
-                                "Failed to create datasource from value `{:?}`, invalid address provided",
-                                tpl
-                            )
-                        })
-                        .unwrap()
-                })
-                .collect::<Vec<DataSourceTemplate>>(),
-            _ => Vec::default(),
-        };
-         */
-        /*
-        //Inject static wasm module
-        let quickswap_path = "/home/viettai/Massbit/QuickSwap-subgraph/build/";
-        let factory = "Factory/Factory.wasm";
-        let pair = "templates/Pair/Pair.wasm";
-        let factory_wasm = self
-            .load_wasm_content(format!("{}/{}", quickswap_path, factory))
-            .await;
-        let pair_wasm = self
-            .load_wasm_content(format!("{}/{}", quickswap_path, pair))
-            .await;
-        */
-        let mut empty_ds: Vec<DataSource> = vec![];
-        let mut data_sources: Vec<DataSource> = vec![];
-        let mut templates: Vec<DataSourceTemplate> = vec![];
-        if let Some(sgd) = manifest {
-            data_sources = sgd
-                .data_sources
-                .iter()
-                .map(|ds| ds.clone())
-                .collect::<Vec<DataSource>>();
-            templates = sgd
-                .templates
-                .iter()
-                .map(|tpl| tpl.clone())
-                .collect::<Vec<DataSourceTemplate>>();
-        }
-        /*
-        if let Some(template) = templates.get_mut(0) {
-            template.mapping.runtime = Arc::new(pair_wasm);
-        }
-        */
-        /*
-        let (data_sources, templates): (&mut Vec<DataSource>, Vec<DataSourceTemplate>) =
-            match manifest {
-                Some(sgd) => (
-                    &sgd.data_sources.clone(),
-                    sgd.templates
-                        .iter()
-                        .map(|tpl| tpl.clone())
-                        .collect::<Vec<DataSourceTemplate>>(),
-                ),
-                None => (&mut empty_ds, vec![]),
-            };
-        */
-        //println!("{:?}", data_sources);
-        //println!("{:?}", templates);
-
-        let arc_templates = Arc::new(templates);
-        //Todo: Currently adapter only works with one datasource
-        /*
-        assert_eq!(
-            data_sources.len(),
-            1,
-            "Error: Number datasource: {} is not 1.",
-            data_sources.len()
-        );
-         */
-        match data_sources.get(0) {
-            Some(data_source) => {
-                let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await?;
-                log::info!(
-                    "{} Init Streamout client for chain {}",
-                    &*COMPONENT_NAME,
-                    &data_source.kind
-                );
-                let chain_type = get_chain_type(data_source);
-                let get_blocks_request = GetBlocksRequest {
-                    start_block_number: 0,
-                    end_block_number: 1,
-                    chain_type: chain_type as i32,
-                };
-                let mut stream: Streaming<GenericDataProto> = client
-                    .list_blocks(Request::new(get_blocks_request))
-                    .await?
-                    .into_inner();
-
-                match data_source.mapping.language.as_str() {
-                    "wasm/assemblyscript" => {
-                        self.handle_wasm_mapping(
-                            hash,
-                            data_source,
-                            arc_templates,
-                            mapping,
-                            schema,
-                            &mut stream,
-                        )
-                        .await
-                    }
-                    //Default use rust
-                    _ => {
-                        self.handle_rust_mapping(hash, data_source, mapping, &mut stream)
-                            .await
-                    }
-                }
-            }
-            _ => {
-                /*
-                let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await?;
-                log::info!(
-                    "{} Init Streamout client for chain {}",
-                    &*COMPONENT_NAME,
-                    &data_source.kind
-                );
-                let chain_type = get_chain_type(data_source);
-                let get_blocks_request = GetBlocksRequest {
-                    start_block_number: 0,
-                    end_block_number: 1,
-                    chain_type: chain_type as i32,
-                };
-                let mut stream: Streaming<GenericDataProto> = client
-                    .list_blocks(Request::new(get_blocks_request))
-                    .await?
-                    .into_inner();
-                self.handle_rust_mapping(hash, config, mapping, &mut stream)
-                    .await
-                 */
-                Ok(())
-            }
-        }
-    }
-    pub async fn load_wasm_content(&self, path: String) -> Vec<u8> {
-        let mut content = Vec::new();
-        let mut file = File::open(&path).expect("Unable to open file");
-        file.read_to_end(&mut content)
-            .expect("Unable to read file content");
-        content
-    }
-    pub async fn init0(
-        &mut self,
-        hash: &String,
-        config: &Value,
-        mapping: &PathBuf,
-        schema: &PathBuf,
-    ) -> Result<(), Box<dyn Error>> {
-        let data_sources = match config["dataSources"].as_sequence() {
-            Some(seqs) => seqs
-                .iter()
-                .map(|datasource| {
-                    DataSource::try_from(datasource)
-                        .with_context(|| {
-                            format!(
-                                "Failed to create datasource from value `{:?}`, invalid address provided",
-                                datasource
-                            )
-                        })
-                        .unwrap()
-                })
-                .collect::<Vec<DataSource>>(),
-            _ => Vec::default(),
-        };
-        let templates = match config["templates"].as_sequence() {
-            Some(seqs) => seqs
-                .iter()
-                .map(|tpl| {
-                    DataSourceTemplate::try_from(tpl)
-                        .with_context(|| {
-                            format!(
-                                "Failed to create datasource from value `{:?}`, invalid address provided",
-                                tpl
-                            )
-                        })
-                        .unwrap()
-                })
-                .collect::<Vec<DataSourceTemplate>>(),
-            _ => Vec::default(),
-        };
-        let templates = Arc::new(templates);
-        //Todo: Currently adapter only works with one data_source
-        match data_sources.get(0) {
-            Some(data_source) => {
-                let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await?;
-                log::info!(
-                    "{} Init Streamout client for chain {}",
-                    &*COMPONENT_NAME,
-                    &data_source.kind
-                );
-                let chain_type = get_chain_type(data_source);
-                let get_blocks_request = GetBlocksRequest {
-                    start_block_number: 0,
-                    end_block_number: 1,
-                    chain_type: chain_type as i32,
-                };
-                let mut stream: Streaming<GenericDataProto> = client
-                    .list_blocks(Request::new(get_blocks_request))
-                    .await?
-                    .into_inner();
-                log::info!(
-                    "{} Detect mapping language {}",
-                    &*COMPONENT_NAME,
-                    &data_source.mapping.language
-                );
-                match data_source.mapping.language.as_str() {
-                    "wasm/assemblyscript" => {
-                        self.handle_wasm_mapping(
-                            hash,
-                            data_source,
-                            templates,
-                            mapping,
-                            schema,
-                            &mut stream,
-                        )
-                        .await
-                    }
-                    //Default use rust
-                    _ => {
-                        self.handle_rust_mapping(hash, data_source, mapping, &mut stream)
-                            .await
-                    }
-                }
-            }
-            _ => Ok(()),
-        }
-    }
-    async fn handle_wasm_mapping<P: AsRef<Path>>(
-        &mut self,
-        indexer_hash: &String,
-        data_source: &DataSource,
-        templates: Arc<Vec<DataSourceTemplate>>,
-        mapping_path: P,
-        schema_path: P,
-        stream: &mut Streaming<GenericDataProto>,
-    ) -> Result<(), Box<dyn Error>> {
-        /*
-        log::info!("Load wasm file from {:?}", mapping_path.as_ref());
-        let valid_module = Arc::new(ValidModule::from_file(mapping_path.as_ref()).unwrap());
-        log::info!(
-            "Import wasm file {:?} successfully with modules {:?}",
-            mapping_path.as_ref(),
-            &valid_module.import_name_to_modules
-        );
-         */
-        let store =
-            Arc::new(StoreBuilder::create_store(indexer_hash.as_str(), &schema_path).unwrap());
-        let registry = Arc::new(MockMetricsRegistry::new());
-        /*
-        let start = Instant::now();
-        let clone_store = Arc::clone(&store);
-        let mut wasm_instance = self
-            .load_wasm(
-                indexer_hash,
-                data_source,
-                clone_store,
-                Arc::clone(&valid_module),
-            )
-            .unwrap();
-        log::info!(
-            "{} Create wasm instance finished in {:?}",
-            &*COMPONENT_NAME,
-            start.elapsed()
-        );
-        */
-        log::info!("{} Start mapping using wasm binary", &*COMPONENT_NAME);
-        let adapter_name = data_source
-            .kind
-            .split("/")
-            .collect::<Vec<&str>>()
-            .get(0)
-            .unwrap()
-            .to_string();
-        let mut handler_proxy = WasmHandlerProxyType::create_proxy(
-            &adapter_name,
-            indexer_hash,
-            store,
-            data_source.clone(), //Arc::clone(&valid_module),
-            templates,
-        );
-        /*
-        let mut wasm_adapter = WasmAdapter::new(indexer_hash.clone(), Arc::clone(&valid_module));
-        wasm_adapter
-            .handler_proxies
-            .insert(adapter_name.clone(), Arc::clone(&handler_proxy));
-         */
-        let stopwatch = StopwatchMetrics::new(
-            Logger::root(slog::Discard, o!()),
-            DEPLOYMENT_HASH.cheap_clone(),
-            registry.clone(),
-        );
-        while let Some(mut data) = stream.message().await? {
-            let data_type = DataType::from_i32(data.data_type).unwrap();
-            let block_ptr_to = BlockPtr {
-                hash: BlockHash(data.block_hash.as_bytes().into()),
-                number: data.block_number as i32,
-            };
-            log::info!(
-                "{} Chain {:?} received data block = {:?}, hash = {:?}, data type = {:?}",
-                &*COMPONENT_NAME,
-                ChainType::from_i32(data.chain_type).unwrap(),
-                data.block_number,
-                data.block_hash,
-                data_type
-            );
-            /*
-            let start = Instant::now();
-            let mut wasm_instance = self
-                .load_wasm(
-                    indexer_hash,
-                    data_source,
-                    templates.clone(),
-                    store.clone(),
-                    //valid_module.cheap_clone(),
-                    Arc::clone(&valid_module),
-                    registry.clone(),
-                    //link_resolver.clone(),
-                )
-                .unwrap();
-            log::info!(
-                "{} Create wasm instance finished in {:?}",
-                &*COMPONENT_NAME,
-                start.elapsed()
-            );
-             */
-            //let clone_proxy = Arc::clone(&handler_proxy);
-            if let Some(ref mut proxy) = handler_proxy {
-                match proxy.handle_wasm_mapping(&mut data) {
-                    Err(err) => {
-                        log::error!("{} Error while handle received message", err);
-                    }
-                    _ => {}
-                }
-                /*
-                match proxy.handle_wasm_mapping(&mut wasm_instance, data_source, &mut data) {
-                    Err(err) => {
-                        log::error!("{} Error while handle received message", err);
-                    }
-                    _ => {}
-                }
-                */
-                log::info!("Finish wasm mapping");
-
-                /*
-                let state = wasm_instance.take_ctx().ctx.state;
-                let ModificationsAndCache {
-                    modifications: mods,
-                    data_sources,
-                    entity_lfu_cache: cache,
-                } = state.entity_cache.as_modifications().map_err(|e| {
-                    log::error!("Error {:?}", e);
-                    StoreError::Unknown(e.into())
-                })?;
-
-                // Transact entity modifications into the store
-                if mods.len() > 0 {
-                    store.transact_block_operations(
-                        block_ptr_to,
-                        mods,
-                        stopwatch.cheap_clone(),
-                        data_sources,
-                        vec![],
-                    );
-                }
-                 */
-                //.map(move |_| {
-                //    metrics.transaction.update_duration(started.elapsed());
-                //    block_ptr
-                //});
-                /*
-                future::result(
-                    store
-                        .transact_block_operations(
-                            block_ptr.clone(),
-                            modifications,
-                            stopwatch,
-                            Vec::new(),
-                            Vec::new(),
-                        )
-                        .map_err(|e| e.into())
-                        .map(move |_| {
-                            metrics.transaction.update_duration(started.elapsed());
-                            block_ptr
-                        }),
-                )
-                 */
-            }
-        }
-        Ok(())
-    }
-
-    pub fn load_wasm(
-        &mut self,
-        indexer_hash: &String,
-        data_source: &DataSource,
-        templates: Arc<Vec<DataSourceTemplate>>,
-        store: Arc<dyn WritableStore>,
-        valid_module: Arc<ValidModule>,
-        registry: Arc<MockMetricsRegistry>,
-        block_ptr: BlockPtr,
-        //link_resolver: Arc<dyn LinkResolverTrait>,
-    ) -> Result<WasmInstance<Chain>, anyhow::Error> {
-        let api_version = API_VERSION_0_0_4.clone();
-        let stopwatch_metrics = StopwatchMetrics::new(
-            Logger::root(slog::Discard, o!()),
-            DeploymentHash::new("_indexer").unwrap(),
-            registry.clone(),
-        );
-        let host_metrics = Arc::new(HostMetrics::new(
-            registry.clone(),
-            indexer_hash.as_str(),
-            stopwatch_metrics,
-        ));
-        /*
-        let templates = vec![DataSourceTemplate {
-            kind: data_source.kind.clone(),
-            name: data_source.name.clone(),
-            network: data_source.network.clone(),
-            source: TemplateSource {
-                abi: data_source.source.abi.clone(),
-            },
-            mapping: Mapping {
-                kind: data_source.mapping.kind.clone(),
-                api_version: api_version.clone(),
-                language: data_source.mapping.language.clone(),
-                entities: vec![],
-                abis: vec![],
-                event_handlers: vec![],
-                call_handlers: vec![],
-                block_handlers: vec![],
-                runtime: Arc::new(vec![]),
-                //link: Default::default(),
-            },
-        }];
-        */
-        let network = match &data_source.network {
-            None => String::from("ethereum"),
-            Some(val) => val.clone(),
-        };
-        /*
-        //graph HostExports
-        let host_exports = HostExports::new(
-            DeploymentHash::new(indexer_hash.clone()).unwrap(),
-            data_source,
-            network,
-            Arc::clone(&templates),
-            link_resolver,
-            //Arc::new(graph_core::LinkResolver::from(IpfsClient::localhost())),
-            Arc::new(SubgraphStore::new()),
-        );
-         */
-        let host_exports = HostExports::new(
-            indexer_hash.as_str(),
-            data_source,
-            network,
-            Arc::clone(&templates),
-            api_version,
-        );
-        //let store = store::IndexStore::new();
-        //check if wasm module use import ethereum.call
-        let host_fns: Vec<HostFn> = match valid_module.import_name_to_modules.get("ethereum.call") {
-            None => Vec::new(),
-            Some(_) => {
-                vec![create_ethereum_call(data_source)]
-                //vec![create_mock_ethereum_call(data_source)]
-            }
-        };
-        //data_source.mapping.requires_archive();
-        let context = MappingContext {
-            logger: Logger::root(slog::Discard, o!()),
-            block_ptr,
-            host_exports: Arc::new(host_exports),
-            //state: IndexerState::new(store, Default::default()),
-            state: BlockState::new(store, Default::default()),
-            //proof_of_indexing: None,
-            host_fns: Arc::new(host_fns),
-        };
-        let timeout = None;
-
-        WasmInstance::from_valid_module_with_ctx(
-            valid_module,
-            context,
-            host_metrics,
-            timeout,
-            //ExperimentalFeatures {
-            //    allow_non_deterministic_ipfs: false,
-            //},
-        )
-    }
-
-    async fn handle_rust_mapping<P: AsRef<OsStr>>(
-        &mut self,
-        indexer_hash: &String,
-        data_source: &DataSource,
-        mapping_path: P,
-        stream: &mut Streaming<GenericDataProto>,
-    ) -> Result<(), Box<dyn Error>> {
-        //let store = PostgresIndexStore::new(DATABASE_CONNECTION_STRING.as_str()).await;
-        let empty_path = PathBuf::new();
-        let store = StoreBuilder::create_store(indexer_hash.as_str(), &empty_path).unwrap();
-        self.store = Some(store);
-        unsafe {
-            match self.load(indexer_hash, mapping_path).await {
-                Ok(_) => log::info!("{} Load library successfully", &*COMPONENT_NAME),
-                Err(err) => println!("Load library with error {:?}", err),
-            }
-        }
-        log::info!("{} Start mapping using rust", &*COMPONENT_NAME);
-        let adapter_name = data_source.kind.as_str();
-        if let Some(adapter_handler) = self.map_handlers.get(indexer_hash.as_str()) {
-            if let Some(handler_proxy) = adapter_handler.handler_proxies.get(adapter_name) {
-                while let Some(data) = stream.message().await? {
-                    let mut data = data as GenericDataProto;
-                    log::info!(
-                        "{} Chain {:?} received data block = {:?}, hash = {:?}, data type = {:?}",
-                        &*COMPONENT_NAME,
-                        ChainType::from_i32(data.chain_type).unwrap(),
-                        data.block_number,
-                        data.block_hash,
-                        DataType::from_i32(data.data_type).unwrap()
-                    );
-                    match handler_proxy.handle_rust_mapping(&mut data) {
-                        Err(err) => {
-                            log::error!("{} Error while handle received message", err);
-                        }
-                        _ => {}
-                    }
-                }
-            } else {
-                log::debug!(
-                    "{} Cannot find proxy for adapter {}",
-                    *COMPONENT_NAME,
-                    adapter_name
-                );
-            }
-        } else {
-            log::debug!(
-                "{} Cannot find adapter handler for indexer {}",
-                &*COMPONENT_NAME,
-                &indexer_hash
-            );
-        }
-        Ok(())
-    }
-    /// Load a plugin library
-    /// A plugin library **must** be implemented using the
-    /// [`model::adapter_declaration!()`] macro. Trying manually implement
-    /// a plugin without going through that macro will result in undefined
-    /// behaviour.
-    pub async unsafe fn load<P: AsRef<OsStr>>(
-        &mut self,
-        indexer_hash: &String,
-        library_path: P,
-    ) -> Result<(), Box<dyn Error>> {
-        let lib = Arc::new(Library::new(library_path)?);
-        // inject store to plugin
-        let store = &mut self.store;
-        match store {
-            Some(store) => {
-                lib.get::<*mut Option<&dyn Store>>(b"STORE\0")?
-                    .write(Some(store));
-            }
-            _ => {}
-        }
-        let adapter_decl = lib
-            .get::<*mut AdapterDeclaration>(b"adapter_declaration\0")?
-            .read();
-        let mut registrar = AdapterHandler::new(indexer_hash.clone(), Arc::clone(&lib));
-        (adapter_decl.register)(&mut registrar);
-        self.map_handlers.insert(indexer_hash.clone(), registrar);
-        self.libs.insert(indexer_hash.clone(), lib);
-        Ok(())
-    }
-}
-
-// General trait for handling message,
-// every adapter proxies must implement this trait
-pub trait MessageHandler {
-    fn handle_rust_mapping(&self, message: &mut GenericDataProto) -> Result<(), Box<dyn Error>> {
-        Ok(())
-    }
-    fn handle_wasm_mapping(
-        &mut self,
-        //wasm_instance: &mut WasmInstance<Chain>,
-        //data_source: &DataSource,
-        message: &mut GenericDataProto,
-    ) -> Result<(), Box<dyn Error>> {
-        Ok(())
-    }
-}
-
-#[derive(Debug)]
-pub struct AdapterError(String);
-
-impl AdapterError {
-    pub fn new(msg: &str) -> AdapterError {
-        AdapterError(msg.to_string())
-    }
-}
-
-impl fmt::Display for AdapterError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-impl Error for AdapterError {
-    fn description(&self) -> &str {
-        &self.0
-    }
-}
