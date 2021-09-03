@@ -41,7 +41,7 @@ pub struct PostgresIndexStore {
     pub connection: ConnectionPool,
     pub layout: Layout,
     //buffer: HashMap<String, TableBuffer>,
-    pub entity_dependencies: HashMap<EntityType, HashSet<EntityType>>,
+    //pub entity_dependencies: HashMap<EntityType, HashSet<EntityType>>,
 }
 
 impl PostgresIndexStore {
@@ -271,60 +271,10 @@ impl PostgresIndexStore {
         }
 
         // Apply modification groups.
-        // Inserts:
-        //Order inserts by dependency before transact to db
-        //let mut buffer = inserts;
-        log::info!("Dependencies {:?}", &self.entity_dependencies);
-        loop {
-            let mut keys = inserts
-                .iter()
-                .map(|(key, _)| key.cheap_clone())
-                .collect::<HashSet<EntityType>>();
-            let mut buffer = inserts;
-            inserts = HashMap::new();
-            for (entity_type, mut entities) in buffer.into_iter() {
-                match self.entity_dependencies.get(&entity_type) {
-                    None => {
-                        log::info!(
-                            "Insert independent entities {:?} with values {:?}",
-                            &entity_type,
-                            &entities
-                        );
-                        count += self.insert_entities(
-                            &entity_type,
-                            &mut entities,
-                            conn,
-                            block_ptr,
-                            &stopwatch,
-                        )? as i32;
-                        keys.remove(&entity_type);
-                    }
-                    Some(vec) => {
-                        log::info!("Buffer keys {:?}", &keys);
-                        if vec.iter().filter(|dep| keys.contains(dep)).count() > 0 {
-                            log::info!("Put entities {:?} back to buffer", &entity_type);
-                            inserts.insert(entity_type.cheap_clone(), entities);
-                        } else {
-                            log::info!(
-                                "Insert entities {:?} with values {:?}",
-                                &entity_type,
-                                &entities
-                            );
-                            count += self.insert_entities(
-                                &entity_type,
-                                &mut entities,
-                                conn,
-                                block_ptr,
-                                &stopwatch,
-                            )? as i32;
-                        }
-                    }
-                };
-            }
-            log::info!("Buffer content: {:?}", &inserts);
-            if inserts.is_empty() {
-                break;
-            }
+        for (entity_type, mut entities) in inserts.into_iter() {
+            count +=
+                self.insert_entities(&entity_type, &mut entities, conn, block_ptr, &stopwatch)?
+                    as i32;
         }
         // Overwrites:
         for (entity_type, mut entities) in overwrites.into_iter() {

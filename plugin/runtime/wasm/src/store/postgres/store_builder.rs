@@ -117,11 +117,11 @@ impl StoreBuilder {
         );
         match Self::create_relational_schema(schema_path, &connection) {
             Ok(layout) => {
-                let entity_dependencies = layout.create_dependencies();
+                //let entity_dependencies = layout.create_dependencies();
                 Ok(PostgresIndexStore {
                     connection,
                     layout,
-                    entity_dependencies,
+                    //entity_dependencies,
                     logger,
                 })
             }
