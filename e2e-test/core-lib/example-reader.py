@@ -9,7 +9,7 @@ def read_so_example(path):
     mapping_file.close()
 
     # Read project.yaml
-    project_file = open(os.path.join(path, "project.yaml"))
+    project_file = open(os.path.join(path, "subgraph.yaml"))
     project = urllib.parse.quote(project_file.read())
     project_file.close()
 
@@ -18,14 +18,24 @@ def read_so_example(path):
     schema = urllib.parse.quote(schema_file.read())
     schema_file.close()
 
+    # Read abis
+    abis_files = os.listdir(os.path.join(path, "abis"))
+    abis_dict = {}
+    for name in abis_files:
+        f = open(os.path.join(path, "abis", name))
+        content = urllib.parse.quote(f.read())
+        abis_dict[name] = content
+        f.close()
+
     payload = {
         "mappings": {
             "mapping.rs": mapping,
         },
         "configs": {
-            "project.yaml": project,
+            "subgraph.yaml": project,
             "schema.graphql": schema
-        }
+        },
+        "abis": abis_dict,
     }
     print(payload)
     return payload
