@@ -215,18 +215,15 @@ impl StoreBuilder {
                 }
                  */
                 let (track_tables, _) = layout.create_hasura_tracking_tables();
-                //let (track_relationships, _) = layout.create_hasura_tracking_relationships();
+                let (track_relationships, _) = layout.create_hasura_tracking_relationships();
                 tokio::spawn(async move {
-                    /*
                     let payload = serde_json::json!({
                         "type": "bulk",
                         "args" : vec![track_tables, track_relationships]
                     });
-                     */
                     let response = Client::new()
                         .post(&*HASURA_URL)
-                        //.json(&payload)
-                        .json(&track_tables)
+                        .json(&payload)
                         .send()
                         .compat()
                         .await

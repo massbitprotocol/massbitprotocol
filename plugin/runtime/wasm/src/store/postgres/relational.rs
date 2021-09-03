@@ -181,7 +181,6 @@ impl LayoutExt for Layout {
                                     },
                                     "column_mapping":{
                                         column.name.as_str(): PRIMARY_KEY_COLUMN,
-                                        "block_range":"block_range"
                                     }
                                 }
                            }
@@ -220,7 +219,6 @@ impl LayoutExt for Layout {
                                     "source":"default",
                                     "column_mapping":{
                                         "id":column.name.as_str(),
-                                        "block_range":"block_range"
                                     }
                                 }
                             }

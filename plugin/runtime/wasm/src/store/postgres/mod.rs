@@ -22,6 +22,8 @@ use massbit_common::prelude::diesel::{
     r2d2::{ConnectionManager, PooledConnection},
     Connection, PgConnection,
 };
+use std::iter::FromIterator;
+
 use massbit_common::prelude::{
     anyhow::{anyhow, Error},
     async_trait::async_trait,
@@ -100,19 +102,6 @@ impl WritableStore for PostgresIndexStore {
                     format!("Invalid entity {:?}", e),
                 )
             })
-        /*
-        let mut entity = Entity::new();
-        let id = key.entity_id.as_str();
-        entity.set("id", key.entity_id.as_str());
-        println!("get entity by key {:?}", entity);
-        match id {
-            "0x5757371414417b8C6CAad45bAeF941aBc7d3Ab32" => {
-                entity.set("pairCount", 0);
-                Ok(Some(entity))
-            }
-            _ => Ok(None),
-        }
-         */
     }
 
     fn transact_block_operations(
@@ -240,59 +229,6 @@ impl WritableStore for PostgresIndexStore {
 }
 
 impl PostgresIndexStore {
-    /*
-    /// Execute a closure with a connection to the database.
-    ///
-    /// # API
-    ///   The API of using a closure to bound the usage of the connection serves several
-    ///   purposes:
-    ///
-    ///   * Moves blocking database access out of the `Future::poll`. Within
-    ///     `Future::poll` (which includes all `async` methods) it is illegal to
-    ///     perform a blocking operation. This includes all accesses to the
-    ///     database, acquiring of locks, etc. Calling a blocking operation can
-    ///     cause problems with `Future` combinators (including but not limited
-    ///     to select, timeout, and FuturesUnordered) and problems with
-    ///     executors/runtimes. This method moves the database work onto another
-    ///     thread in a way which does not block `Future::poll`.
-    ///
-    ///   * Limit the total number of connections. Because the supplied closure
-    ///     takes a reference, we know the scope of the usage of all entity
-    ///     connections and can limit their use in a non-blocking way.
-    ///
-    /// # Cancellation
-    ///   The normal pattern for futures in Rust is drop to cancel. Once we
-    ///   spawn the database work in a thread though, this expectation no longer
-    ///   holds because the spawned task is the independent of this future. So,
-    ///   this method provides a cancel token which indicates that the `Future`
-    ///   has been dropped. This isn't *quite* as good as drop on cancel,
-    ///   because a drop on cancel can do things like cancel http requests that
-    ///   are in flight, but checking for cancel periodically is a significant
-    ///   improvement.
-    ///
-    ///   The implementation of the supplied closure should check for cancel
-    ///   between every operation that is potentially blocking. This includes
-    ///   any method which may interact with the database. The check can be
-    ///   conveniently written as `token.check_cancel()?;`. It is low overhead
-    ///   to check for cancel, so when in doubt it is better to have too many
-    ///   checks than too few.
-    ///
-    /// # Panics:
-    ///   * This task will panic if the supplied closure panics
-    ///   * This task will panic if the supplied closure returns Err(Cancelled)
-    ///     when the supplied cancel token is not cancelled.
-    pub(crate) async fn with_conn<T: Send + 'static>(
-        &self,
-        f: impl 'static
-            + Send
-            + FnOnce(
-                &PooledConnection<ConnectionManager<PgConnection>>,
-                &CancelHandle,
-            ) -> Result<T, CancelableError<StoreError>>,
-    ) -> Result<T, StoreError> {
-        self.connection.with_conn(f).await
-    }
-     */
     fn get_conn(&self) -> Result<PooledConnection<ConnectionManager<PgConnection>>, Error> {
         self.connection.get_with_timeout_warning(&self.logger)
     }
@@ -417,10 +353,10 @@ impl PostgresIndexStore {
         let section = stopwatch.start_section("check_interface_entity_uniqueness");
         for (key, _) in data.iter() {
             // WARNING: This will potentially execute 2 queries for each entity key.
-            self.check_interface_entity_uniqueness(conn, layout, key)?;
+            self.check_interface_entity_uniqueness(conn, key)?;
         }
         section.end();
-        */
+         */
         let _section = stopwatch.start_section("apply_entity_modifications_insert");
         self.layout
             .insert(conn, entity_type, data, block_ptr.number, stopwatch)
