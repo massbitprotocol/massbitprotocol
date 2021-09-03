@@ -16,7 +16,7 @@ use graph::blockchain::{
 };
 use graph::components::store::{ModificationsAndCache, StoreError, WritableStore};
 use graph::components::subgraph::BlockState;
-use graph::data::subgraph::{Mapping, SubgraphManifest, TemplateSource};
+use graph::data::subgraph::{Mapping, MappingABI, Source, SubgraphManifest, TemplateSource};
 use graph::prelude::CheapClone;
 use graph::util::lfu_cache::LfuCache;
 use graph_chain_ethereum::Chain;
@@ -35,9 +35,10 @@ use massbit_chain_solana::data_type::{
     SolanaLogMessages, SolanaTransaction,
 };
 use massbit_common::prelude::anyhow::{self, Context};
+use massbit_common::prelude::ethabi::Contract;
 use massbit_common::prelude::tokio::io::AsyncReadExt;
 use massbit_runtime_wasm::host_exports::create_ethereum_call;
-use massbit_runtime_wasm::manifest::datasource::*;
+//use massbit_runtime_wasm::manifest::datasource::*;
 use massbit_runtime_wasm::mapping::FromFile;
 use massbit_runtime_wasm::prelude::{Logger, Version};
 use massbit_runtime_wasm::store::postgres::store_builder::*;
@@ -192,29 +193,13 @@ impl AdapterManager {
                 .map(|tpl| tpl.clone())
                 .collect::<Vec<DataSourceTemplate>>();
         }
-        /*
-        if let Some(template) = templates.get_mut(0) {
-            template.mapping.runtime = Arc::new(pair_wasm);
-        }
-        */
-        /*
-        let (data_sources, templates): (&mut Vec<DataSource>, Vec<DataSourceTemplate>) =
-            match manifest {
-                Some(sgd) => (
-                    &sgd.data_sources.clone(),
-                    sgd.templates
-                        .iter()
-                        .map(|tpl| tpl.clone())
-                        .collect::<Vec<DataSourceTemplate>>(),
-                ),
-                None => (&mut empty_ds, vec![]),
-            };
-        */
-        //println!("{:?}", data_sources);
-        //println!("{:?}", templates);
 
         let arc_templates = Arc::new(templates);
         //Todo: Currently adapter only works with one datasource
+        if data_sources.len() == 0 {
+            let data_source = self.create_mock_so_data_source();
+            data_sources.push(data_source);
+        }
         /*
         assert_eq!(
             data_sources.len(),
@@ -226,12 +211,14 @@ impl AdapterManager {
         match data_sources.get(0) {
             Some(data_source) => {
                 let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await?;
-                log::info!(
-                    "{} Init Streamout client for chain {}",
-                    &*COMPONENT_NAME,
-                    &data_source.kind
-                );
                 let chain_type = get_chain_type(data_source);
+                log::info!(
+                    "{} Init Streamout client for chain {} using language {}",
+                    &*COMPONENT_NAME,
+                    &data_source.kind,
+                    &data_source.mapping.language
+                );
+
                 let get_blocks_request = GetBlocksRequest {
                     start_block_number: 0,
                     end_block_number: 1,
@@ -248,7 +235,6 @@ impl AdapterManager {
                             hash,
                             data_source,
                             arc_templates,
-                            mapping,
                             schema,
                             &mut stream,
                         )
@@ -256,43 +242,15 @@ impl AdapterManager {
                     }
                     //Default use rust
                     _ => {
-                        self.handle_rust_mapping(hash, data_source, mapping, &mut stream)
+                        self.handle_rust_mapping(hash, data_source, mapping, schema, &mut stream)
                             .await
                     }
                 }
             }
-            _ => {
-                /*
-                let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await?;
-                log::info!(
-                    "{} Init Streamout client for chain {}",
-                    &*COMPONENT_NAME,
-                    &data_source.kind
-                );
-                let chain_type = get_chain_type(data_source);
-                let get_blocks_request = GetBlocksRequest {
-                    start_block_number: 0,
-                    end_block_number: 1,
-                    chain_type: chain_type as i32,
-                };
-                let mut stream: Streaming<GenericDataProto> = client
-                    .list_blocks(Request::new(get_blocks_request))
-                    .await?
-                    .into_inner();
-                self.handle_rust_mapping(hash, config, mapping, &mut stream)
-                    .await
-                 */
-                Ok(())
-            }
+            _ => Ok(()),
         }
     }
-    pub async fn load_wasm_content(&self, path: String) -> Vec<u8> {
-        let mut content = Vec::new();
-        let mut file = File::open(&path).expect("Unable to open file");
-        file.read_to_end(&mut content)
-            .expect("Unable to read file content");
-        content
-    }
+    /*
     pub async fn init0(
         &mut self,
         hash: &String,
@@ -371,7 +329,7 @@ impl AdapterManager {
                     }
                     //Default use rust
                     _ => {
-                        self.handle_rust_mapping(hash, data_source, mapping, &mut stream)
+                        self.handle_rust_mapping(hash, data_source, mapping, schema, &mut stream)
                             .await
                     }
                 }
@@ -379,12 +337,48 @@ impl AdapterManager {
             _ => Ok(()),
         }
     }
+     */
+    fn create_mock_so_data_source(&self) -> DataSource {
+        DataSource {
+            kind: "solana".to_string(),
+            network: None,
+            name: "solana".to_string(),
+            source: Source {
+                address: None,
+                abi: "".to_string(),
+                start_block: 0,
+            },
+            mapping: Mapping {
+                kind: "".to_string(),
+                api_version: Version::new(0, 0, 4),
+                language: "rust".to_string(),
+                entities: vec![],
+                abis: vec![],
+                block_handlers: vec![],
+                call_handlers: vec![],
+                event_handlers: vec![],
+                runtime: Arc::new(vec![]),
+                link: Default::default(),
+            },
+            context: Arc::new(None),
+            creation_block: None,
+            contract_abi: Arc::new(MappingABI {
+                name: "".to_string(),
+                contract: Contract {
+                    constructor: None,
+                    functions: Default::default(),
+                    events: Default::default(),
+                    receive: false,
+                    fallback: false,
+                },
+            }),
+        }
+    }
     async fn handle_wasm_mapping<P: AsRef<Path>>(
         &mut self,
         indexer_hash: &String,
         data_source: &DataSource,
         templates: Arc<Vec<DataSourceTemplate>>,
-        mapping_path: P,
         schema_path: P,
         stream: &mut Streaming<GenericDataProto>,
     ) -> Result<(), Box<dyn Error>> {
@@ -429,126 +423,36 @@ impl AdapterManager {
         Ok(())
     }
 
-    pub fn load_wasm(
-        &mut self,
-        indexer_hash: &String,
-        data_source: &DataSource,
-        templates: Arc<Vec<DataSourceTemplate>>,
-        store: Arc<dyn WritableStore>,
-        valid_module: Arc<ValidModule>,
-        registry: Arc<MockMetricsRegistry>,
-        block_ptr: BlockPtr,
-        //link_resolver: Arc<dyn LinkResolverTrait>,
-    ) -> Result<WasmInstance<Chain>, anyhow::Error> {
-        let api_version = API_VERSION_0_0_4.clone();
-        let stopwatch_metrics = StopwatchMetrics::new(
-            Logger::root(slog::Discard, o!()),
-            DeploymentHash::new("_indexer").unwrap(),
-            registry.clone(),
-        );
-        let host_metrics = Arc::new(HostMetrics::new(
-            registry.clone(),
-            indexer_hash.as_str(),
-            stopwatch_metrics,
-        ));
-        /*
-        let templates = vec![DataSourceTemplate {
-            kind: data_source.kind.clone(),
-            name: data_source.name.clone(),
-            network: data_source.network.clone(),
-            source: TemplateSource {
-                abi: data_source.source.abi.clone(),
-            },
-            mapping: Mapping {
-                kind: data_source.mapping.kind.clone(),
-                api_version: api_version.clone(),
-                language: data_source.mapping.language.clone(),
-                entities: vec![],
-                abis: vec![],
-                event_handlers: vec![],
-                call_handlers: vec![],
-                block_handlers: vec![],
-                runtime: Arc::new(vec![]),
-                //link: Default::default(),
-            },
-        }];
-        */
-        let network = match &data_source.network {
-            None => String::from("ethereum"),
-            Some(val) => val.clone(),
-        };
-        /*
-        //graph HostExports
-        let host_exports = HostExports::new(
-            DeploymentHash::new(indexer_hash.clone()).unwrap(),
-            data_source,
-            network,
-            Arc::clone(&templates),
-            link_resolver,
-            //Arc::new(graph_core::LinkResolver::from(IpfsClient::localhost())),
-            Arc::new(SubgraphStore::new()),
-        );
-         */
-        let host_exports = HostExports::new(
-            indexer_hash.as_str(),
-            data_source,
-            network,
-            Arc::clone(&templates),
-            api_version,
-        );
-        //let store = store::IndexStore::new();
-        //check if wasm module use import ethereum.call
-        let host_fns: Vec<HostFn> = match valid_module.import_name_to_modules.get("ethereum.call") {
-            None => Vec::new(),
-            Some(_) => {
-                vec![create_ethereum_call(data_source)]
-                //vec![create_mock_ethereum_call(data_source)]
-            }
-        };
-        //data_source.mapping.requires_archive();
-        let context = MappingContext {
-            logger: Logger::root(slog::Discard, o!()),
-            block_ptr,
-            host_exports: Arc::new(host_exports),
-            //state: IndexerState::new(store, Default::default()),
-            state: BlockState::new(store, Default::default()),
-            //proof_of_indexing: None,
-            host_fns: Arc::new(host_fns),
-        };
-        let timeout = None;
-
-        WasmInstance::from_valid_module_with_ctx(
-            valid_module,
-            context,
-            host_metrics,
-            timeout,
-            //ExperimentalFeatures {
-            //    allow_non_deterministic_ipfs: false,
-            //},
-        )
-    }
-
-    async fn handle_rust_mapping<P: AsRef<OsStr>>(
+    async fn handle_rust_mapping<P: AsRef<Path>>(
         &mut self,
         indexer_hash: &String,
         data_source: &DataSource,
         mapping_path: P,
+        schema_path: P,
         stream: &mut Streaming<GenericDataProto>,
     ) -> Result<(), Box<dyn Error>> {
         //let store = PostgresIndexStore::new(DATABASE_CONNECTION_STRING.as_str()).await;
-        let empty_path = PathBuf::new();
-        let store = StoreBuilder::create_store(indexer_hash.as_str(), &empty_path).unwrap();
+        let store = StoreBuilder::create_store(indexer_hash.as_str(), &schema_path).unwrap();
         self.store = Some(store);
         unsafe {
-            match self.load(indexer_hash, mapping_path).await {
+            match self
+                .load(indexer_hash, mapping_path.as_ref().as_os_str())
+                .await
+            {
                 Ok(_) => log::info!("{} Load library successfully", &*COMPONENT_NAME),
                 Err(err) => println!("Load library with error {:?}", err),
             }
         }
         log::info!("{} Start mapping using rust", &*COMPONENT_NAME);
-        let adapter_name = data_source.kind.as_str();
+        let adapter_name = data_source
+            .kind
+            .split("/")
+            .collect::<Vec<&str>>()
+            .get(0)
+            .unwrap()
+            .to_string();
         if let Some(adapter_handler) = self.map_handlers.get(indexer_hash.as_str()) {
-            if let Some(handler_proxy) = adapter_handler.handler_proxies.get(adapter_name) {
+            if let Some(handler_proxy) = adapter_handler.handler_proxies.get(&adapter_name) {
                 while let Some(data) = stream.message().await? {
                     let mut data = data as GenericDataProto;
                     log::info!(

@@ -17,6 +17,7 @@ use graph_runtime_wasm::{
 use massbit_common::consts::*;
 use massbit_common::prelude::{
     anyhow::{anyhow, Context},
+    bs58,
     ethabi::param_type::Reader,
     ethabi::{decode, encode, Token, Uint},
     log, serde_json,
@@ -48,10 +49,10 @@ use massbit_chain_ethereum::contract_call::{
     ethereum_call, SimpleEthereumAdapter, SimpleEthereumCallCache,
 };
 */
-use crate::manifest::datasource::DataSourceContext;
+//use crate::manifest::datasource::DataSourceContext;
 use graph::components::store::{EntityKey, EntityType};
 use graph::components::subgraph::{BlockState, Entity};
-use graph::data::subgraph::DeploymentHash;
+use graph::data::subgraph::{DataSourceContext, DeploymentHash};
 //use graph_runtime_wasm::module::IntoTrap;
 use crate::module::IntoTrap;
 use graph::prelude::web3::Web3;
@@ -406,7 +407,7 @@ impl<C: Blockchain> HostExports<C> {
 
     /// Useful for IPFS hashes stored as bytes
     pub(crate) fn bytes_to_base58(&self, bytes: Vec<u8>) -> Result<String, DeterministicHostError> {
-        Ok(::bs58::encode(&bytes).into_string())
+        Ok(bs58::encode(&bytes).into_string())
     }
 
     pub(crate) fn big_decimal_plus(

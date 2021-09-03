@@ -21,7 +21,6 @@ isatty                  = "0.1.9"
 itertools               = "0.10.1"
 #graph = { path = "../../graph" }
 #graph-graphql = { path = "../../graphql" }
-bs58                    = "0.4.0"
 #massbit-runtime-derive  = { path = "../derive" }
 massbit-chain-ethereum  = { path = "../../../core/chain/ethereum"}
 massbit-common          = { path = "../../../core/common"}
@@ -45,10 +44,9 @@ prometheus              = "0.12.0"
 rand                    = "0.8.4"
 reqwest = { version = "0.10", features = ["json", "stream", "trust-dns-resolver"] }
 semver                  = "1.0"
-serde                   = { version = "1.0.126", features = ["rc"] }
+serde                   = { version = "1.0.126" }
 #causes runtime error dueto conflict feature from chain-reader
-#serde_json              = { version = "1.0", features = ["arbitrary_precision"] }
-#serde                   = { version = "1.0", optional = false }
+
 slog                    = { version = "2.7.0", features = ["release_max_level_trace", "max_level_trace"] }
 slog-async = "2.5.0"
 slog-envlogger = "2.1.0"

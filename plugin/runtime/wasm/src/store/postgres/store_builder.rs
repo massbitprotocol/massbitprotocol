@@ -74,7 +74,7 @@ pub struct StoreBuilder {}
 impl StoreBuilder {
     pub fn create_store<'a, P: AsRef<Path>>(
         indexer: &str,
-        schema_path: &P,
+        schema_path: P,
     ) -> Result<PostgresIndexStore, anyhow::Error> {
         let logger = logger(false);
         let mut opt = Opt::default();
@@ -129,7 +129,7 @@ impl StoreBuilder {
         }
     }
     pub fn create_relational_schema<P: AsRef<Path>>(
-        path: &P,
+        path: P,
         connection: &ConnectionPool,
     ) -> Result<Layout, StoreError> {
         let mut schema_buffer = String::new();

@@ -3,8 +3,10 @@ pub mod prelude {
     pub use anyhow;
     //pub use anyhow::{anyhow, Context as _, Error};
     pub use async_trait;
+    pub use bs58;
     pub use diesel;
     pub use diesel_derives;
+    pub use env_logger;
     pub use ethabi;
     pub use lazy_static;
     pub use log;
