@@ -2,6 +2,7 @@ import errno
 import random
 import os
 import ipfshttpclient
+import yaml
 from shutil import copyfile
 
 
@@ -136,3 +137,24 @@ def get_index_manager_url():
         return os.environ.get('INDEX_MANAGER_URL')  # Connection to indexer
     else:
         return 'http://0.0.0.0:3030'
+
+
+def is_template_exist(subgraph_path):
+    stream = open(subgraph_path, 'r')
+    subgraph = yaml.safe_load(stream)
+    if 'templates' in subgraph:
+        stream.close()
+        return True
+    return False
+
+
+def replace_abi_with_hash(subgraph_type, subgraph, abi_res):
+    if subgraph_type in subgraph:
+        for i in range(0, len(subgraph[subgraph_type][0]['mapping']['abis'])):
+            file_name = os.path.basename(subgraph[subgraph_type][0]['mapping']['abis'][i]['file'])
+            name = subgraph[subgraph_type][0]['mapping']['abis'][i]['name']
+            for abi_object in abi_res:
+                if file_name.lower() == abi_object["name"].lower():
+                    subgraph[subgraph_type][0]['mapping']['abis'][i] = {'name': name,
+                                                                        'file': {'/': '/ipfs/' + abi_object["hash"]}}
+    return subgraph

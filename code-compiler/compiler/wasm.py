@@ -4,7 +4,7 @@ import subprocess
 import threading
 import requests
 import yaml
-from helper.helper import write_to_disk, get_abi_files, upload_abi_to_ipfs, ipfs_client_init, get_index_manager_url
+from helper.helper import write_to_disk, get_abi_files, upload_abi_to_ipfs, ipfs_client_init, get_index_manager_url, is_template_exist, replace_abi_with_hash
 
 
 class WasmCodegenAndBuild(threading.Thread):
@@ -113,8 +113,8 @@ def parse_subgraph(subgraph_path, parsed_subgraph_path, schema_res, abi_res, ds_
 
     # Parsing subgraph content
     subgraph['schema']['file'] = {'/': '/ipfs/' + schema_res['Hash']}
-    subgraph = replace_ipfs_hash('dataSources', subgraph, abi_res)
-    subgraph = replace_ipfs_hash('templates', subgraph, abi_res)
+    subgraph = replace_abi_with_hash('dataSources', subgraph, abi_res)
+    subgraph = replace_abi_with_hash('templates', subgraph, abi_res)
     subgraph['dataSources'][0]['mapping']['file'] = {'/': '/ipfs/' + ds_mapping_res['Hash']}
     if is_template_exist(subgraph_path):
         subgraph['templates'][0]['mapping']['file'] = {'/': '/ipfs/' + tp_mapping_res['Hash']}
@@ -123,18 +123,6 @@ def parse_subgraph(subgraph_path, parsed_subgraph_path, schema_res, abi_res, ds_
     file = open(parsed_subgraph_path, "w")
     yaml.safe_dump(subgraph, file)
     file.close()
-
-
-def replace_ipfs_hash(subgraph_type, subgraph, abi_res):
-    if subgraph_type in subgraph:
-        for i in range(0, len(subgraph[subgraph_type][0]['mapping']['abis'])):
-            file_name = os.path.basename(subgraph[subgraph_type][0]['mapping']['abis'][i]['file'])
-            name = subgraph[subgraph_type][0]['mapping']['abis'][i]['name']
-            for abi_object in abi_res:
-                if file_name.lower() == abi_object["name"].lower():
-                    subgraph[subgraph_type][0]['mapping']['abis'][i] = {'name': name,
-                                                                        'file': {'/': '/ipfs/' + abi_object["hash"]}}
-    return subgraph
 
 
 def deploy_to_index_manager(parsed_subgraph_res, ds_mapping_res, schema_res, abi_res):
@@ -173,10 +161,3 @@ def get_tp_mapping_path(subgraph_path, compilation_id):
     return os.path.join("./generated", compilation_id, "build", subgraph['templates'][0]['mapping']['file'])
 
 
-def is_template_exist(subgraph_path):
-    stream = open(subgraph_path, 'r')
-    subgraph = yaml.safe_load(stream)
-    if 'templates' in subgraph:
-        stream.close()
-        return True
-    return False

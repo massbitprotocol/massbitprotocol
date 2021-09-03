@@ -6,7 +6,8 @@ import ipfshttpclient
 import requests
 import yaml
 from distutils.dir_util import copy_tree
-from helper.helper import write_to_disk, populate_stub, get_abi_files, upload_abi_to_ipfs
+from helper.helper import write_to_disk, populate_stub, get_abi_files, upload_abi_to_ipfs, replace_abi_with_hash, \
+    get_index_manager_url
 
 
 class CargoCodegen(threading.Thread):
@@ -132,17 +133,17 @@ def deploy_so(data):
     for abi_object in abi_res:
         print(f"{os.path.join('./generated', compilation_id, abi_object['name'])} : {abi_object['hash']}")
 
-    # Uploading IPFS files to Index Manager
-    if os.environ.get('INDEX_MANAGER_URL'):
-        index_manager_url = os.environ.get('INDEX_MANAGER_URL')  # Connection to indexer
-    else:
-        index_manager_url = 'http://0.0.0.0:3030'
-
+    # Parse subgraph file and upload to IPFS
     parse_subgraph(subgraph_path, parsed_subgraph_path, schema_res, abi_res)
     parsed_subgraph_res = client.add(parsed_subgraph_path)
 
+    # Deploy a new index to Index Manager
+    deploy_to_index_manager(parsed_subgraph_res, mapping_res, schema_res)
+
+
+def deploy_to_index_manager(subgraph_res, parsed_subgraph_res, mapping_res, schema_res):
     null = None
-    res = requests.post(index_manager_url,
+    res = requests.post(get_index_manager_url(),
                         json={
                             'jsonrpc': '2.0',
                             'method': 'index_deploy',
@@ -156,29 +157,6 @@ def deploy_so(data):
                             'id': '1',
                         })
     print(res.json())
-
-
-def get_ds_mapping_path(subgraph_path, compilation_id):
-    stream = open(subgraph_path, 'r')
-    subgraph = yaml.safe_load(stream)
-    stream.close()
-    return os.path.join("./generated", compilation_id, "build", subgraph['dataSources'][0]['mapping']['file'])
-
-
-def get_tp_mapping_path(subgraph_path, compilation_id):
-    stream = open(subgraph_path, 'r')
-    subgraph = yaml.safe_load(stream)
-    stream.close()
-    return os.path.join("./generated", compilation_id, "build", subgraph['templates'][0]['mapping']['file'])
-
-
-def is_template_exist(subgraph_path):
-    stream = open(subgraph_path, 'r')
-    subgraph = yaml.safe_load(stream)
-    if 'templates' in subgraph:
-        stream.close()
-        return True
-    return False
 
 
 def parse_subgraph(subgraph_path, parsed_subgraph_path, schema_res, abi_res):
@@ -195,21 +173,9 @@ def parse_subgraph(subgraph_path, parsed_subgraph_path, schema_res, abi_res):
 
     # Quick hack so we have file with ipfs link
     subgraph['dataSources'][0]['mapping']['file'] = {'/': '/ipfs/' + schema_res['Hash']}
-    subgraph = replace_ipfs_hash('dataSources', subgraph, abi_res)
+    subgraph = replace_abi_with_hash('dataSources', subgraph, abi_res)
 
     # Write the new file to local disk
     file = open(parsed_subgraph_path, "w")
     yaml.safe_dump(subgraph, file)
     file.close()
-
-
-def replace_ipfs_hash(subgraph_type, subgraph, abi_res):
-    if subgraph_type in subgraph:
-        for i in range(0, len(subgraph[subgraph_type][0]['mapping']['abis'])):
-            file_name = os.path.basename(subgraph[subgraph_type][0]['mapping']['abis'][i]['file'])
-            name = subgraph[subgraph_type][0]['mapping']['abis'][i]['name']
-            for abi_object in abi_res:
-                if file_name.lower() == abi_object["name"].lower():
-                    subgraph[subgraph_type][0]['mapping']['abis'][i] = {'name': name,
-                                                                        'file': {'/': '/ipfs/' + abi_object["hash"]}}
-    return subgraph
