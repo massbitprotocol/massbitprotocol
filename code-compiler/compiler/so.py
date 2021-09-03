@@ -134,7 +134,7 @@ def deploy_so(data):
         print(f"{os.path.join('./generated', compilation_id, abi_object['name'])} : {abi_object['hash']}")
 
     # Parse subgraph file and upload to IPFS
-    parse_subgraph(subgraph_path, parsed_subgraph_path, schema_res, abi_res)
+    parse_subgraph(subgraph_path, parsed_subgraph_path, mapping_res, schema_res, abi_res)
     parsed_subgraph_res = client.add(parsed_subgraph_path)
 
     # Deploy a new index to Index Manager
@@ -159,7 +159,7 @@ def deploy_to_index_manager(subgraph_res, parsed_subgraph_res, mapping_res, sche
     print(res.json())
 
 
-def parse_subgraph(subgraph_path, parsed_subgraph_path, schema_res, abi_res):
+def parse_subgraph(subgraph_path, parsed_subgraph_path, mapping_res, schema_res, abi_res):
     """
     Parse subgraph.yaml and create a new parsed_subgraph.yaml with IPFS hash populated
     """
@@ -172,7 +172,7 @@ def parse_subgraph(subgraph_path, parsed_subgraph_path, schema_res, abi_res):
     subgraph['schema']['file'] = {'/': '/ipfs/' + schema_res['Hash']}
 
     # Quick hack so we have file with ipfs link
-    subgraph['dataSources'][0]['mapping']['file'] = {'/': '/ipfs/' + schema_res['Hash']}
+    subgraph['dataSources'][0]['mapping']['file'] = {'/': '/ipfs/' + mapping_res['Hash']}
     subgraph = replace_abi_with_hash('dataSources', subgraph, abi_res)
 
     # Write the new file to local disk
