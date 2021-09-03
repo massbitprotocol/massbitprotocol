@@ -1,3 +1,4 @@
+specVersion: 0.0.2
 description: Transaction for Solana
 repository: https://github.com/massbitprotocol/massbitprotocol/tree/main/user-example
 schema:

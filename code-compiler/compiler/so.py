@@ -138,7 +138,7 @@ def deploy_so(data):
     parsed_subgraph_res = client.add(parsed_subgraph_path)
 
     # Deploy a new index to Index Manager
-    deploy_to_index_manager(parsed_subgraph_res, mapping_res, schema_res)
+    deploy_to_index_manager(subgraph_res, parsed_subgraph_res, mapping_res, schema_res)
 
 
 def deploy_to_index_manager(subgraph_res, parsed_subgraph_res, mapping_res, schema_res):
