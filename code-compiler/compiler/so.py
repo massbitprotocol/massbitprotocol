@@ -6,7 +6,7 @@ import ipfshttpclient
 import requests
 import yaml
 from distutils.dir_util import copy_tree
-from helper.helper import write_to_disk, populate_stub
+from helper.helper import write_to_disk, populate_stub, get_abi_files, upload_abi_to_ipfs
 
 
 class CargoCodegen(threading.Thread):
@@ -82,6 +82,7 @@ def compile_so(data, hash):
     mapping = urllib.parse.unquote(data["mappings"]["mapping.rs"])
     project = urllib.parse.unquote(data["configs"]["subgraph.yaml"])
     schema = urllib.parse.unquote(data["configs"]["schema.graphql"])
+    abis = data["abis"]
 
     # Populating stub data
     populate_stub(generated_folder, "Cargo.lock")
@@ -92,6 +93,8 @@ def compile_so(data, hash):
     write_to_disk(generated_folder + "/src/mapping.rs", mapping)
     write_to_disk(generated_folder + "/src/subgraph.yaml", project)
     write_to_disk(generated_folder + "/src/schema.graphql", schema)
+    for file_name in abis:
+        write_to_disk(os.path.join(generated_folder, "abis", file_name), urllib.parse.unquote(abis[file_name]))
 
     # Codegen + Build
     print("Generating code + compiling for: " + hash + ". This will take a while!")
@@ -104,11 +107,11 @@ def deploy_so(data):
     compilation_id = urllib.parse.unquote(data["compilation_id"])
 
     # Get the files path from generated/hash folder
-    subgraph_path = os.path.join("./generated", compilation_id, "src", "subgraph.yaml") # TODO replace to have the same name subgraph.yaml or subgraph.yaml
+    subgraph_path = os.path.join("./generated", compilation_id, "src", "subgraph.yaml")
     parsed_subgraph_path = os.path.join("./generated", compilation_id, "parsed_subgraph.yaml")
-    project = os.path.join("./generated", compilation_id, "src/subgraph.yaml")
-    so = os.path.join("./generated", compilation_id, "target/release/libblock.so")
-    schema = os.path.join("./generated", compilation_id, "src/schema.graphql")
+    mapping_path = os.path.join("./generated", compilation_id, "target/release/libblock.so")
+    schema_path = os.path.join("./generated", compilation_id, "src/schema.graphql")
+    abi = get_abi_files(compilation_id)
 
     # Uploading files to IPFS
     if os.environ.get('IPFS_URL'):
@@ -117,14 +120,17 @@ def deploy_so(data):
         client = ipfshttpclient.connect()
 
     print("Uploading files to IPFS...")
-    config_res = client.add(project)
-    so_res = client.add(so)
-    schema_res = client.add(schema)
+    subgraph_res = client.add(subgraph_path)
+    mapping_res = client.add(mapping_path)
+    schema_res = client.add(schema_path)
+    abi_res = upload_abi_to_ipfs(client, abi)
 
     # Uploading to IPFS result
-    print("subgraph.yaml: " + config_res['Hash'])
-    print("libblock.so: " + so_res['Hash'])
-    print("schema.graphql: " + schema_res['Hash'])
+    print(f"{subgraph_path}: {subgraph_res['Hash']}")
+    print(f"libblock.so: : {mapping_res['Hash']}")
+    print(f"{schema_path}: {schema_res['Hash']}")
+    for abi_object in abi_res:
+        print(f"{os.path.join('./generated', compilation_id, abi_object['name'])} : {abi_object['hash']}")
 
     # Uploading IPFS files to Index Manager
     if os.environ.get('INDEX_MANAGER_URL'):
@@ -132,7 +138,7 @@ def deploy_so(data):
     else:
         index_manager_url = 'http://0.0.0.0:3030'
 
-    parse_subgraph(subgraph_path, parsed_subgraph_path, schema_res)
+    parse_subgraph(subgraph_path, parsed_subgraph_path, schema_res, abi_res)
     parsed_subgraph_res = client.add(parsed_subgraph_path)
 
     null = None
@@ -141,8 +147,8 @@ def deploy_so(data):
                             'jsonrpc': '2.0',
                             'method': 'index_deploy',
                             'params': [
-                                config_res['Hash'],
-                                so_res['Hash'],
+                                subgraph_res['Hash'],
+                                mapping_res['Hash'],
                                 schema_res['Hash'],
                                 null,
                                 parsed_subgraph_res['Hash']
@@ -175,7 +181,7 @@ def is_template_exist(subgraph_path):
     return False
 
 
-def parse_subgraph(subgraph_path, parsed_subgraph_path, schema_res):
+def parse_subgraph(subgraph_path, parsed_subgraph_path, schema_res, abi_res):
     """
     Parse subgraph.yaml and create a new parsed_subgraph.yaml with IPFS hash populated
     """
@@ -189,9 +195,21 @@ def parse_subgraph(subgraph_path, parsed_subgraph_path, schema_res):
 
     # Quick hack so we have file with ipfs link
     subgraph['dataSources'][0]['mapping']['file'] = {'/': '/ipfs/' + schema_res['Hash']}
-    subgraph['dataSources'][0]['mapping']['abis'][0] = {'name': subgraph['dataSources'][0]['mapping']['abis'][0]["name"], 'file': {'/': '/ipfs/' + schema_res["Hash"]}}
+    subgraph = replace_ipfs_hash('templates', subgraph, abi_res)
 
     # Write the new file to local disk
     file = open(parsed_subgraph_path, "w")
     yaml.safe_dump(subgraph, file)
     file.close()
+
+
+def replace_ipfs_hash(subgraph_type, subgraph, abi_res):
+    if subgraph_type in subgraph:
+        for i in range(0, len(subgraph[subgraph_type][0]['mapping']['abis'])):
+            file_name = os.path.basename(subgraph[subgraph_type][0]['mapping']['abis'][i]['file'])
+            name = subgraph[subgraph_type][0]['mapping']['abis'][i]['name']
+            for abi_object in abi_res:
+                if file_name.lower() == abi_object["name"].lower():
+                    subgraph[subgraph_type][0]['mapping']['abis'][i] = {'name': name,
+                                                                        'file': {'/': '/ipfs/' + abi_object["hash"]}}
+    return subgraph

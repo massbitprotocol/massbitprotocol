@@ -75,7 +75,7 @@ def deploy_wasm(data):
     # Upload files to IPFS
     print("Uploading files to IPFS...")
     client = ipfs_client_init()
-    parsed_subgraph_res = client.add(subgraph_path)
+    subgraph_res = client.add(subgraph_path)
     schema_res = client.add(schema_path)
     abi_res = upload_abi_to_ipfs(client, abi)
     ds_mapping_res = client.add(ds_mapping_path)
@@ -83,7 +83,7 @@ def deploy_wasm(data):
         tp_mapping_res = client.add(tp_mapping_path)
 
     # IPFS upload result
-    print(f"{parsed_subgraph_path}: {parsed_subgraph_res['Hash']}")
+    print(f"{subgraph_path}: {subgraph_res['Hash']}")
     print(f"{schema_path}: {schema_res['Hash']}")
     print(f"{ds_mapping_path}: {ds_mapping_res['Hash']}")
     for abi_object in abi_res:
