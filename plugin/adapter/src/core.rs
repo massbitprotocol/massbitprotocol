@@ -26,7 +26,7 @@ use graph::tokio_stream::StreamExt;
 use graph_mock::MockMetricsRegistry;
 use graph_runtime_wasm::ValidModule;
 //use index_store::IndexerState;
-use index_store::Store;
+use index_store::{IndexerState, Store};
 use lazy_static::lazy_static;
 use libloading::Library;
 use log::info;
@@ -127,7 +127,7 @@ impl<'a> AdapterManager<'a> {
 */
 
 pub struct AdapterManager {
-    store: Option<dyn Store>,
+    //store: Option<dyn Store>,
     libs: HashMap<String, Arc<Library>>,
     map_handlers: HashMap<String, AdapterHandler>,
 }
@@ -135,7 +135,7 @@ pub struct AdapterManager {
 impl AdapterManager {
     pub fn new() -> AdapterManager {
         AdapterManager {
-            store: None,
+            //store: None,
             libs: HashMap::default(),
             map_handlers: HashMap::default(),
         }
@@ -432,12 +432,18 @@ impl AdapterManager {
         stream: &mut Streaming<GenericDataProto>,
     ) -> Result<(), Box<dyn Error>> {
         //let store = PostgresIndexStore::new(DATABASE_CONNECTION_STRING.as_str()).await;
-        let store = StoreBuilder::create_store(indexer_hash.as_str(), &schema_path).unwrap();
-        //let indexer_state = IndexerState::new(Arc::new(store));
-        self.store = Some(store);
+        let mut store = StoreBuilder::create_store(indexer_hash.as_str(), &schema_path).unwrap();
+        //let mut store = Some(&store);
+        let indexer_state = IndexerState::new(Arc::new(store));
+        //self.store = Some(store);
+        //let wrap_indexer_state = Some(&indexer_state);
         unsafe {
             match self
-                .load(indexer_hash, mapping_path.as_ref().as_os_str())
+                .load(
+                    indexer_hash,
+                    mapping_path.as_ref().as_os_str(),
+                    &indexer_state,
+                )
                 .await
             {
                 Ok(_) => log::info!("{} Load library successfully", &*COMPONENT_NAME),
@@ -454,8 +460,10 @@ impl AdapterManager {
             .to_string();
         if let Some(adapter_handler) = self.map_handlers.get(indexer_hash.as_str()) {
             if let Some(handler_proxy) = adapter_handler.handler_proxies.get(&adapter_name) {
-                while let Some(data) = stream.message().await? {
-                    let mut data = data as GenericDataProto;
+                while let Some(mut data) = stream.message().await? {
+                    let encoded_block: SolanaEncodedBlock =
+                        solana_decode(&mut data.payload).unwrap();
+                    //let mut data = data as GenericDataProto;
                     log::info!(
                         "{} Chain {:?} received data block = {:?}, hash = {:?}, data type = {:?}",
                         &*COMPONENT_NAME,
@@ -496,17 +504,21 @@ impl AdapterManager {
         &mut self,
         indexer_hash: &String,
         library_path: P,
+        store: &dyn Store,
     ) -> Result<(), Box<dyn Error>> {
         let lib = Arc::new(Library::new(library_path)?);
         // inject store to plugin
-        let store = &mut self.store;
-        match store {
-            Some(store) => {
-                lib.get::<*mut Option<&dyn Store>>(b"STORE\0")?
-                    .write(Some(store));
-            }
-            _ => {}
-        }
+        //let store = &mut self.store;
+        // match store {
+        //     Some(store) => {
+        //         lib.get::<*mut Option<&dyn Store>>(b"STORE\0")?
+        //             .write(Some(store));
+        //
+        //     }
+        //     _ => {}
+        // }
+        lib.get::<*mut Option<&dyn Store>>(b"STORE\0")?
+            .write(Some(store));
         let adapter_decl = lib
             .get::<*mut AdapterDeclaration>(b"adapter_declaration\0")?
             .read();

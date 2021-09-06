@@ -2,7 +2,7 @@ extern crate diesel;
 use graph::data::subgraph::DeploymentHash;
 use lazy_static::lazy_static;
 pub mod core;
-//pub mod mapping;
+pub mod mapping;
 pub mod postgres;
 
 lazy_static! {
@@ -11,4 +11,4 @@ lazy_static! {
 }
 
 pub use crate::core::Store;
-//pub use crate::mapping::IndexerState;
+pub use crate::mapping::IndexerState;
