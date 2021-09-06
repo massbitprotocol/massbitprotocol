@@ -5,7 +5,6 @@ pub use crate::stream_mod::{
 };
 pub use crate::{HandlerProxyType, PluginRegistrar, WasmHandlerProxyType};
 use futures::future;
-use graph::components::metrics::stopwatch::StopwatchMetrics;
 use graph::prelude::{
     DeploymentHash, HostMetrics, LinkResolver as LinkResolverTrait, MetricsRegistry,
 };
@@ -26,7 +25,8 @@ use graph_core::LinkResolver;
 use graph::tokio_stream::StreamExt;
 use graph_mock::MockMetricsRegistry;
 use graph_runtime_wasm::ValidModule;
-use index_store::core::Store;
+//use index_store::IndexerState;
+use index_store::Store;
 use lazy_static::lazy_static;
 use libloading::Library;
 use log::info;
@@ -127,7 +127,7 @@ impl<'a> AdapterManager<'a> {
 */
 
 pub struct AdapterManager {
-    store: Option<PostgresIndexStore>,
+    store: Option<dyn Store>,
     libs: HashMap<String, Arc<Library>>,
     map_handlers: HashMap<String, AdapterHandler>,
 }
@@ -433,6 +433,7 @@ impl AdapterManager {
     ) -> Result<(), Box<dyn Error>> {
         //let store = PostgresIndexStore::new(DATABASE_CONNECTION_STRING.as_str()).await;
         let store = StoreBuilder::create_store(indexer_hash.as_str(), &schema_path).unwrap();
+        //let indexer_state = IndexerState::new(Arc::new(store));
         self.store = Some(store);
         unsafe {
             match self

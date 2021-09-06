@@ -3523,9 +3523,14 @@ dependencies = [
 name = "index-store"
 version = "0.1.0"
 dependencies = [
+ "Inflector",
  "diesel",
  "diesel_transaction_handles",
  "env_logger 0.9.0",
+ "graph",
+ "graph-mock",
+ "graph-node",
+ "graph-store-postgres",
  "lazy_static",
  "log 0.4.14",
  "massbit-common",

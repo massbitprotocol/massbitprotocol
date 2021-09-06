@@ -1,6 +1,7 @@
 use diesel::result::Error as DieselError;
 use diesel::{Connection, PgConnection, QueryResult, RunQueryDsl};
 use diesel_transaction_handles::TransactionalConnection;
+use graph::prelude::BlockPtr;
 use lazy_static::lazy_static;
 use std::collections::hash_map::RandomState;
 use std::collections::{BTreeMap, HashMap};

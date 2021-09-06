@@ -6,7 +6,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serde_json = "1.0.64"
+serde_json = { version = "1.0", optional = false }
 serde = "1.0.126"
 solana-sdk = "1.7.4"
 log = "0.4.14"
