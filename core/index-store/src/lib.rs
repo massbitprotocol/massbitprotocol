@@ -9,6 +9,6 @@ lazy_static! {
     pub static ref COMPONENT_NAME: String = String::from("[Index-Store]");
     pub static ref DEPLOYMENT_HASH: DeploymentHash = DeploymentHash::new("_indexer").unwrap();
 }
-
 pub use crate::core::Store;
 pub use crate::mapping::IndexerState;
+pub(crate) use postgres::relational::PRIMARY_KEY_COLUMN;

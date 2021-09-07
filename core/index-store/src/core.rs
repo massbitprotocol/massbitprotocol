@@ -1,7 +1,6 @@
 use diesel::result::Error as DieselError;
 use diesel::{Connection, PgConnection, QueryResult, RunQueryDsl};
 use diesel_transaction_handles::TransactionalConnection;
-use graph::prelude::BlockPtr;
 use lazy_static::lazy_static;
 use std::collections::hash_map::RandomState;
 use std::collections::{BTreeMap, HashMap};
@@ -73,7 +72,7 @@ pub struct IndexStore {
 
 pub trait Store: Sync + Send {
     fn save(&mut self, entity_name: String, data: GenericMap);
-    fn flush(&mut self);
+    fn flush(&mut self, block_hash: &String, block_number: u64) -> Result<(), Box<dyn Error>>;
 }
 impl Store for IndexStore {
     fn save(&mut self, _entity_name: String, mut _data: GenericMap) {
@@ -92,8 +91,15 @@ impl Store for IndexStore {
             }
         }
     }
-    fn flush(&mut self) {
-        //Todo: flush data in buffer to db when stop Indexer or periodically
+
+    fn flush(&mut self, block_hash: &String, block_number: u64) -> Result<(), Box<dyn Error>> {
+        //todo!()
+        log::info!(
+            "Flush block with hash: {} and number: {}",
+            block_hash,
+            block_number
+        );
+        Ok(())
     }
 }
 /*

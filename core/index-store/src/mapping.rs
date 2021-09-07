@@ -1,5 +1,7 @@
 use crate::core::Store;
 use crate::DEPLOYMENT_HASH;
+use crate::PRIMARY_KEY_COLUMN;
+use graph::blockchain::BlockHash;
 use graph::cheap_clone::CheapClone;
 use graph::components::store::{
     EntityCache, EntityKey, EntityType, ModificationsAndCache, StoreError, WritableStore,
@@ -9,6 +11,8 @@ use graph::data::store::Value as StoreValue;
 use graph::data::subgraph::DeploymentHash;
 use graph::prelude::{Attribute, BigDecimal, BigInt, BlockPtr, StopwatchMetrics};
 use graph_mock::MockMetricsRegistry;
+use inflector::cases::camelcase::to_camel_case;
+use inflector::Inflector;
 use massbit_common::prelude::structmap::value::{Num, Value};
 use massbit_common::prelude::{
     slog::{self, Logger},
@@ -16,6 +20,7 @@ use massbit_common::prelude::{
 };
 use std::collections::HashMap;
 use std::convert::From;
+use std::error::Error;
 use std::sync::{Arc, Mutex};
 /*
 use structmap::{FromMap, ToMap};
@@ -57,7 +62,7 @@ impl Store for IndexerState {
         if let Some(entity_id) = data["id"].string() {
             let key = EntityKey {
                 subgraph_id: crate::DEPLOYMENT_HASH.cheap_clone(),
-                entity_type: EntityType::new(entity_type),
+                entity_type: EntityType::new(entity_type.to_camel_case()),
                 entity_id,
             };
             let entity = generic_map_to_entity(data);
@@ -65,41 +70,54 @@ impl Store for IndexerState {
             self.entity_cache.set(key.clone(), entity);
         }
     }
-    fn flush(&mut self) {}
-}
-impl IndexerState {
-    fn flush_cache(&mut self, block_ptr: &BlockPtr) {
+    fn flush(&mut self, block_hash: &String, block_number: u64) -> Result<(), Box<dyn Error>> {
         //let mut data = self.entity_cache.lock().unwrap();
         let entity_cache =
             std::mem::replace(&mut self.entity_cache, EntityCache::new(self.store.clone()));
-        let ModificationsAndCache {
+        println!("Cache {:?}", &entity_cache);
+        if let Ok(ModificationsAndCache {
             modifications: mods,
             data_sources,
             entity_lfu_cache: cache,
-        } = entity_cache
-            .as_modifications()
-            .map_err(|e| {
-                log::error!("Error {:?}", e);
-                StoreError::Unknown(e.into())
-            })
-            .unwrap();
-        // Transact entity modifications into the store
-        if mods.len() > 0 {
-            let store = self.store.clone();
-            match store.transact_block_operations(
-                block_ptr.cheap_clone(),
-                mods,
-                self.stopwatch.cheap_clone(),
-                Vec::default(),
-                vec![],
-            ) {
-                Ok(_) => log::info!("Transact block operation successfully"),
-                Err(err) => log::info!("Transact block operation with error {:?}", err),
+        }) = entity_cache.as_modifications().map_err(|e| {
+            log::error!("Error {:?}", e);
+            StoreError::Unknown(e.into())
+        }) {
+            // Transact entity modifications into the store
+            if mods.len() > 0 {
+                //let store = self.store.clone();
+                let block_ptr = BlockPtr {
+                    hash: Default::default(),
+                    number: block_number as i32,
+                };
+                match self.store.transact_block_operations(
+                    block_ptr,
+                    mods,
+                    self.stopwatch.cheap_clone(),
+                    Vec::default(),
+                    vec![],
+                ) {
+                    Ok(_) => {
+                        log::info!("Transact block operation successfully");
+                    }
+                    Err(err) => {
+                        log::error!("Transact block operation with error {:?}", &err);
+                    }
+                }
             }
         }
+        Ok(())
     }
 }
+
 fn generic_map_to_entity(m: GenericMap) -> Entity {
+    // let mut map = HashMap::new();
+    // m.iter().for_each(|(key, val)| {
+    //     if key.as_str() != PRIMARY_KEY_COLUMN {
+    //         map.insert(key.clone(), generic_value_to_store(val));
+    //     }
+    // });
+    // Entity::from(map)
     Entity::from(
         m.iter()
             .map(|(key, val)| (key.clone(), generic_value_to_store(val)))

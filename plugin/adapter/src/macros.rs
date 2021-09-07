@@ -86,11 +86,11 @@ macro_rules! create_adapters {
                 ),*
             }
             impl MessageHandler for HandlerProxyType {
-                fn handle_rust_mapping(&self, message: &mut GenericDataProto) -> Result<(), Box<dyn Error>> {
+                fn handle_rust_mapping(&self, message: &mut GenericDataProto, store: &mut dyn Store) -> Result<(), Box<dyn Error>> {
                     match self {
                         $(
                         HandlerProxyType::$adapter(proxy) => {
-                            proxy.handle_rust_mapping(message)
+                            proxy.handle_rust_mapping(message, store)
                         }
                         )*
                     }

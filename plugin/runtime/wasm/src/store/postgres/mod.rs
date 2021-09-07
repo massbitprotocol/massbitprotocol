@@ -22,14 +22,14 @@ use massbit_common::prelude::diesel::{
     r2d2::{ConnectionManager, PooledConnection},
     Connection, PgConnection,
 };
-use std::iter::FromIterator;
-
 use massbit_common::prelude::{
     anyhow::{anyhow, Error},
     async_trait::async_trait,
     log, structmap,
 };
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::error::Error as StdError;
+use std::iter::FromIterator;
 use std::path::PathBuf;
 use store_builder::StoreBuilder;
 
@@ -54,7 +54,9 @@ impl PostgresIndexStore {
 impl Store for PostgresIndexStore {
     fn save(&mut self, entity_name: String, data: structmap::GenericMap) {}
 
-    fn flush(&mut self) {}
+    fn flush(&mut self, block_hash: &String, block_number: u64) -> Result<(), Box<dyn StdError>> {
+        Ok(())
+    }
 }
 
 #[async_trait]

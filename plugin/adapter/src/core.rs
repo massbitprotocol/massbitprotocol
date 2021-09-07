@@ -34,6 +34,12 @@ use massbit_chain_solana::data_type::{
     convert_solana_encoded_block_to_solana_block, decode as solana_decode, SolanaEncodedBlock,
     SolanaLogMessages, SolanaTransaction,
 };
+
+use massbit_chain_substrate::data_type::{
+    decode as subtrate_decode, get_extrinsics_from_block, SubstrateBlock, SubstrateEventRecord,
+    SubstrateUncheckedExtrinsic,
+};
+
 use massbit_common::prelude::anyhow::{self, Context};
 use massbit_common::prelude::ethabi::Contract;
 use massbit_common::prelude::tokio::io::AsyncReadExt;
@@ -81,10 +87,11 @@ pub struct AdapterDeclaration {
 pub struct AdapterHandler {
     indexer_hash: String,
     pub lib: Arc<Library>,
+    //pub store: &'a dyn Store,
     pub handler_proxies: HashMap<String, HandlerProxyType>,
 }
 
-impl AdapterHandler {
+impl<'a> AdapterHandler {
     fn new(hash: String, lib: Arc<Library>) -> AdapterHandler {
         AdapterHandler {
             indexer_hash: hash,
@@ -178,6 +185,34 @@ impl AdapterManager {
             .load_wasm_content(format!("{}/{}", quickswap_path, pair))
             .await;
         */
+
+        //Test client
+        /*
+        let get_blocks_request = GetBlocksRequest {
+            start_block_number: 0,
+            end_block_number: 1,
+            chain_type: ChainType::Substrate as i32,
+        };
+        let mut client = StreamoutClient::connect("http://127.0.0.1:50051").await?;
+        let mut stream: Streaming<GenericDataProto> = client
+            .list_blocks(Request::new(get_blocks_request))
+            .await?
+            .into_inner();
+        while let Some(mut data) = stream.message().await? {
+            let mut data = data as GenericDataProto;
+            let data_type = DataType::from_i32(data.data_type).unwrap();
+            log::info!(
+                "{} Chain {:?} received data block = {:?}, hash = {:?}, data type = {:?}",
+                &*COMPONENT_NAME,
+                ChainType::from_i32(data.chain_type).unwrap(),
+                data.block_number,
+                data.block_hash,
+                data_type
+            );
+            let encoded_block: SubstrateBlock = subtrate_decode(&mut data.payload).unwrap();
+        }
+         */
+        //End test client
         let mut empty_ds: Vec<DataSource> = vec![];
         let mut data_sources: Vec<DataSource> = vec![];
         let mut templates: Vec<DataSourceTemplate> = vec![];
@@ -228,7 +263,19 @@ impl AdapterManager {
                     .list_blocks(Request::new(get_blocks_request))
                     .await?
                     .into_inner();
-
+                // while let Some(mut data) = stream.message().await? {
+                //     let mut data = data as GenericDataProto;
+                //     let data_type = DataType::from_i32(data.data_type).unwrap();
+                //     log::info!(
+                //         "{} Chain {:?} received data block = {:?}, hash = {:?}, data type = {:?}",
+                //         &*COMPONENT_NAME,
+                //         ChainType::from_i32(data.chain_type).unwrap(),
+                //         data.block_number,
+                //         data.block_hash,
+                //         data_type
+                //     );
+                //     let encoded_block: SubstrateBlock = subtrate_decode(&mut data.payload).unwrap();
+                // }
                 match data_source.mapping.language.as_str() {
                     "wasm/assemblyscript" => {
                         self.handle_wasm_mapping(
@@ -431,10 +478,8 @@ impl AdapterManager {
         schema_path: P,
         stream: &mut Streaming<GenericDataProto>,
     ) -> Result<(), Box<dyn Error>> {
-        //let store = PostgresIndexStore::new(DATABASE_CONNECTION_STRING.as_str()).await;
         let mut store = StoreBuilder::create_store(indexer_hash.as_str(), &schema_path).unwrap();
-        //let mut store = Some(&store);
-        let indexer_state = IndexerState::new(Arc::new(store));
+        let mut indexer_state = IndexerState::new(Arc::new(store));
         //self.store = Some(store);
         //let wrap_indexer_state = Some(&indexer_state);
         unsafe {
@@ -458,11 +503,11 @@ impl AdapterManager {
             .get(0)
             .unwrap()
             .to_string();
-        if let Some(adapter_handler) = self.map_handlers.get(indexer_hash.as_str()) {
+        if let Some(adapter_handler) = self.map_handlers.get_mut(indexer_hash.as_str()) {
             if let Some(handler_proxy) = adapter_handler.handler_proxies.get(&adapter_name) {
                 while let Some(mut data) = stream.message().await? {
-                    let encoded_block: SolanaEncodedBlock =
-                        solana_decode(&mut data.payload).unwrap();
+                    //let encoded_block: SolanaEncodedBlock =
+                    //    solana_decode(&mut data.payload).unwrap();
                     //let mut data = data as GenericDataProto;
                     log::info!(
                         "{} Chain {:?} received data block = {:?}, hash = {:?}, data type = {:?}",
@@ -472,7 +517,7 @@ impl AdapterManager {
                         data.block_hash,
                         DataType::from_i32(data.data_type).unwrap()
                     );
-                    match handler_proxy.handle_rust_mapping(&mut data) {
+                    match handler_proxy.handle_rust_mapping(&mut data, &mut indexer_state) {
                         Err(err) => {
                             log::error!("{} Error while handle received message", err);
                         }
@@ -533,7 +578,11 @@ impl AdapterManager {
 // General trait for handling message,
 // every adapter proxies must implement this trait
 pub trait MessageHandler {
-    fn handle_rust_mapping(&self, message: &mut GenericDataProto) -> Result<(), Box<dyn Error>> {
+    fn handle_rust_mapping(
+        &self,
+        message: &mut GenericDataProto,
+        store: &mut dyn Store,
+    ) -> Result<(), Box<dyn Error>> {
         Ok(())
     }
     fn handle_wasm_mapping(

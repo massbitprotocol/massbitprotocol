@@ -1,5 +1,6 @@
 use crate::core::{AdapterError, MessageHandler};
 pub use crate::stream_mod::{DataType, GenericDataProto};
+use index_store::Store;
 use libloading::Library;
 use massbit_chain_solana::data_type::{
     convert_solana_encoded_block_to_solana_block, decode, SolanaBlock, SolanaEncodedBlock,
@@ -15,7 +16,11 @@ crate::prepare_adapter!(Solana, {
      handle_log_messages:SolanaLogMessages
 });
 impl MessageHandler for SolanaHandlerProxy {
-    fn handle_rust_mapping(&self, data: &mut GenericDataProto) -> Result<(), Box<dyn Error>> {
+    fn handle_rust_mapping(
+        &self,
+        data: &mut GenericDataProto,
+        store: &mut dyn Store,
+    ) -> Result<(), Box<dyn Error>> {
         /*
         println!(
             "{} handle rust mapping with payload {:?}",

@@ -16,6 +16,8 @@ dependencies = [
 name = "adapter"
 version = "0.1.0"
 dependencies = [
+ "clap 2.33.3",
+ "env_logger 0.9.0",
  "ethabi 12.0.0-graph",
  "futures 0.1.31",
  "graph",
@@ -38,6 +40,9 @@ dependencies = [
  "serde_regex",
  "serde_yaml",
  "structmap",
+ "tokio 1.10.1",
+ "tokio-compat-02",
+ "tokio-stream",
  "tonic",
  "tonic-build",
 ]

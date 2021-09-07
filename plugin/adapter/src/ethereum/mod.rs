@@ -21,6 +21,7 @@ use graph::log::logger;
 use graph_chain_ethereum::trigger::EthereumBlockTriggerType;
 use graph_mock::MockMetricsRegistry;
 use graph_runtime_wasm::ValidModule;
+use index_store::Store;
 use libloading::Library;
 use massbit_chain_ethereum::data_type::{
     decode, get_events, EthereumBlock, EthereumEvent, EthereumTransaction,
@@ -318,7 +319,11 @@ pub fn load_wasm(
 }
 
 impl MessageHandler for EthereumHandlerProxy {
-    fn handle_rust_mapping(&self, data: &mut GenericDataProto) -> Result<(), Box<dyn Error>> {
+    fn handle_rust_mapping(
+        &self,
+        data: &mut GenericDataProto,
+        store: &mut dyn Store,
+    ) -> Result<(), Box<dyn Error>> {
         //println!("GenericDataProto{:?}", data);
         match DataType::from_i32(data.data_type) {
             Some(DataType::Block) => {
