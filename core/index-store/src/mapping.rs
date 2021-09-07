@@ -62,7 +62,7 @@ impl Store for IndexerState {
         if let Some(entity_id) = data["id"].string() {
             let key = EntityKey {
                 subgraph_id: crate::DEPLOYMENT_HASH.cheap_clone(),
-                entity_type: EntityType::new(entity_type.to_camel_case()),
+                entity_type: EntityType::new(entity_type),
                 entity_id,
             };
             let entity = generic_map_to_entity(data);
@@ -74,7 +74,6 @@ impl Store for IndexerState {
         //let mut data = self.entity_cache.lock().unwrap();
         let entity_cache =
             std::mem::replace(&mut self.entity_cache, EntityCache::new(self.store.clone()));
-        println!("Cache {:?}", &entity_cache);
         if let Ok(ModificationsAndCache {
             modifications: mods,
             data_sources,
@@ -111,13 +110,6 @@ impl Store for IndexerState {
 }
 
 fn generic_map_to_entity(m: GenericMap) -> Entity {
-    // let mut map = HashMap::new();
-    // m.iter().for_each(|(key, val)| {
-    //     if key.as_str() != PRIMARY_KEY_COLUMN {
-    //         map.insert(key.clone(), generic_value_to_store(val));
-    //     }
-    // });
-    // Entity::from(map)
     Entity::from(
         m.iter()
             .map(|(key, val)| (key.clone(), generic_value_to_store(val)))

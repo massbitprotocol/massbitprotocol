@@ -38,7 +38,8 @@ fn generate_rust_entity(schema_path: &str, output: &str) -> Result<(), Box<dyn E
     for (name, model) in layout.models.into_iter() {
         let mut entity = String::new();
         model.as_rust(&mut entity)?;
-        let table_name = name.clone().to_snake_case();
+        //let table_name = name.clone().to_snake_case();
+        let table_name = name.clone();
         binding.entities.insert(name, (table_name, entity));
     }
 
