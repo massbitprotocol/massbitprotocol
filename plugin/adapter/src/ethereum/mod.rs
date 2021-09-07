@@ -1,43 +1,37 @@
 use crate::core::{AdapterError, MessageHandler};
 pub use crate::stream_mod::{DataType, GenericDataProto};
 use crate::EthereumWasmHandlerProxy;
-use ethabi::{Address, LogParam, Token, Uint};
 use graph::blockchain::{Blockchain, DataSource as DataSourceTrait, HostFn};
-use graph::components::ethereum::LightEthereumBlockExt;
-use graph::data::subgraph::{DeploymentHash, Mapping};
+use graph::data::subgraph::DeploymentHash;
 use graph_chain_ethereum::{
-    chain::BlockFinality,
-    trigger::{EthereumTrigger, MappingTrigger},
-    Chain, DataSource, DataSourceTemplate,
+    chain::BlockFinality, trigger::EthereumTrigger, Chain, DataSource, DataSourceTemplate,
 };
 //use graph_runtime_wasm::WasmInstance;
 use graph::blockchain::types::{BlockHash, BlockPtr};
 use graph::cheap_clone::CheapClone;
 use graph::components::metrics::stopwatch::StopwatchMetrics;
-use graph::components::metrics::MetricsRegistry;
 use graph::components::store::{ModificationsAndCache, StoreError, WritableStore};
-use graph::components::subgraph::{BlockState, DataSourceTemplateInfo, HostMetrics};
+use graph::components::subgraph::{BlockState, HostMetrics};
 use graph::log::logger;
 use graph_chain_ethereum::trigger::EthereumBlockTriggerType;
 use graph_mock::MockMetricsRegistry;
 use graph_runtime_wasm::ValidModule;
+use index_store::postgres::store_builder::*;
 use index_store::Store;
 use libloading::Library;
 use massbit_chain_ethereum::data_type::{
-    decode, get_events, EthereumBlock, EthereumEvent, EthereumTransaction,
+    decode, EthereumBlock, EthereumEvent, EthereumTransaction,
 };
 use massbit_common::prelude::anyhow;
 use massbit_runtime_wasm::host_exports::create_ethereum_call;
 use massbit_runtime_wasm::prelude::{Logger, Version};
-use massbit_runtime_wasm::store::postgres::store_builder::*;
 use massbit_runtime_wasm::{slog, HostExports, MappingContext, WasmInstance};
 use std::convert::TryFrom;
-use std::str::FromStr;
 use std::time::Instant;
 use std::{error::Error, sync::Arc};
 
 const API_VERSION_0_0_4: Version = Version::new(0, 0, 4);
-const API_VERSION_0_0_5: Version = Version::new(0, 0, 5);
+//const API_VERSION_0_0_5: Version = Version::new(0, 0, 5);
 
 crate::prepare_adapter!(Ethereum, {
     handle_block: EthereumBlock,
@@ -201,12 +195,12 @@ impl EthereumWasmHandlerProxy {
         });
         if let Some(instance) = wasm_instance {
             let mut context = instance.take_ctx();
-            let has_created_data_sources = context.ctx.state.has_created_data_sources();
+            let _has_created_data_sources = context.ctx.state.has_created_data_sources();
             let data_source_infos = context.ctx.state.drain_created_data_sources();
             let ModificationsAndCache {
                 modifications: mods,
                 data_sources,
-                entity_lfu_cache: cache,
+                entity_lfu_cache: _cache,
             } = context
                 .ctx
                 .state

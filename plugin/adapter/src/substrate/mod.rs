@@ -1,6 +1,5 @@
 use crate::core::{AdapterError, MessageHandler};
 pub use crate::stream_mod::{DataType, GenericDataProto};
-use graph::prelude::BlockPtr;
 use index_store::Store;
 use libloading::Library;
 use massbit_chain_substrate::data_type::{

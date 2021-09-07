@@ -1,14 +1,13 @@
 use crate::host_exports;
 use crate::mapping::MappingContext;
 use crate::prelude::{warn, Arc, Version};
-use crate::store;
 use graph::blockchain::Blockchain;
 use graph::prelude::{BigDecimal, BigInt, HostMetrics};
 use graph::{
     prelude::CheapClone,
     runtime::{
-        asc_get, asc_new, try_asc_get, AscHeap, AscPtr, AscValue, DeterministicHostError,
-        HostExportError, IndexForAscTypeId,
+        asc_get, asc_new, try_asc_get, AscHeap, AscPtr, DeterministicHostError, HostExportError,
+        IndexForAscTypeId,
     },
 };
 use graph_runtime_wasm::asc_abi::class::*;
@@ -16,13 +15,7 @@ use graph_runtime_wasm::mapping::ValidModule;
 use graph_runtime_wasm::module::TimeoutStopwatch;
 use massbit_common::prelude::anyhow::{anyhow, Context};
 use never::Never;
-use std::rc::Rc;
-use std::{
-    collections::HashMap,
-    convert::TryFrom,
-    marker::{Send, Sync},
-    time::{Duration, Instant},
-};
+use std::{collections::HashMap, convert::TryFrom, time::Duration};
 use wasmtime::Memory;
 
 type AscJson = AscTypedMap<AscString, AscEnum<JsonValueKind>>;

@@ -17,9 +17,7 @@ pub mod matic;
 pub mod solana;
 pub mod substrate;
 use graph::blockchain::HostFn;
-use graph::components::store::{ModificationsAndCache, StoreError, WritableStore};
-use graph::prelude::MetricsRegistry;
-use graph_mock::MockMetricsRegistry;
+use graph::components::store::WritableStore;
 use index_store::Store;
 use std::collections::HashMap;
 //Add new chain name in CamelCase here

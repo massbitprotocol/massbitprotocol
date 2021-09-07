@@ -4,69 +4,29 @@ pub use crate::stream_mod::{
     streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
 };
 pub use crate::{HandlerProxyType, PluginRegistrar, WasmHandlerProxyType};
-use futures::future;
-use graph::prelude::{
-    DeploymentHash, HostMetrics, LinkResolver as LinkResolverTrait, MetricsRegistry,
-};
-
-use graph::blockchain::{BlockHash, BlockPtr, DataSource as _};
-use graph::blockchain::{
-    DataSource as DataSourceTrait, HostFn, RuntimeAdapter as RuntimeAdapterTrait,
-};
-use graph::components::store::{ModificationsAndCache, StoreError, WritableStore};
-use graph::components::subgraph::BlockState;
-use graph::data::subgraph::{Mapping, MappingABI, Source, SubgraphManifest, TemplateSource};
-use graph::prelude::CheapClone;
-use graph::util::lfu_cache::LfuCache;
+//use graph::blockchain::DataSource as _;
+use graph::data::subgraph::{Mapping, MappingABI, Source, SubgraphManifest};
 use graph_chain_ethereum::Chain;
-use graph_chain_ethereum::{trigger::MappingTrigger, DataSource, DataSourceTemplate};
-use graph_core::LinkResolver;
+use graph_chain_ethereum::{DataSource, DataSourceTemplate};
 //use graph_runtime_wasm::{ExperimentalFeatures, HostExports, MappingContext};
-use graph::tokio_stream::StreamExt;
-use graph_mock::MockMetricsRegistry;
 use graph_runtime_wasm::ValidModule;
-//use index_store::IndexerState;
+use index_store::postgres::store_builder::*;
 use index_store::{IndexerState, Store};
 use lazy_static::lazy_static;
 use libloading::Library;
-use log::info;
-use massbit_chain_solana::data_type::{
-    convert_solana_encoded_block_to_solana_block, decode as solana_decode, SolanaEncodedBlock,
-    SolanaLogMessages, SolanaTransaction,
-};
-
-use massbit_chain_substrate::data_type::{
-    decode as subtrate_decode, get_extrinsics_from_block, SubstrateBlock, SubstrateEventRecord,
-    SubstrateUncheckedExtrinsic,
-};
-
-use massbit_common::prelude::anyhow::{self, Context};
 use massbit_common::prelude::ethabi::Contract;
-use massbit_common::prelude::tokio::io::AsyncReadExt;
-use massbit_runtime_wasm::host_exports::create_ethereum_call;
-//use massbit_runtime_wasm::manifest::datasource::*;
-use massbit_runtime_wasm::mapping::FromFile;
-use massbit_runtime_wasm::prelude::{Logger, Version};
-use massbit_runtime_wasm::store::postgres::store_builder::*;
-use massbit_runtime_wasm::store::PostgresIndexStore;
-use massbit_runtime_wasm::{slog, store};
-use massbit_runtime_wasm::{HostExports, MappingContext, WasmInstance};
+//use massbit_runtime_wasm::host_exports::create_ethereum_call;
+//use massbit_runtime_wasm::mapping::FromFile;
+use massbit_runtime_wasm::prelude::Version;
+use massbit_runtime_wasm::slog;
 use serde_yaml::Value;
-use slog::o;
-use std::collections::BTreeMap;
-use std::fs::File;
-use std::io::Read;
 use std::path::Path;
-use std::sync::Mutex;
-use std::time::Instant;
 use std::{
     alloc::System, collections::HashMap, env, error::Error, ffi::OsStr, fmt, path::PathBuf,
     sync::Arc,
 };
 use tonic::{Request, Streaming};
 
-const API_VERSION_0_0_4: Version = Version::new(0, 0, 4);
-const API_VERSION_0_0_5: Version = Version::new(0, 0, 5);
 lazy_static! {
     static ref CHAIN_READER_URL: String =
         env::var("CHAIN_READER_URL").unwrap_or(String::from("http://127.0.0.1:50051"));
@@ -213,7 +173,6 @@ impl AdapterManager {
         }
          */
         //End test client
-        let mut empty_ds: Vec<DataSource> = vec![];
         let mut data_sources: Vec<DataSource> = vec![];
         let mut templates: Vec<DataSourceTemplate> = vec![];
         if let Some(sgd) = manifest {
@@ -478,7 +437,7 @@ impl AdapterManager {
         schema_path: P,
         stream: &mut Streaming<GenericDataProto>,
     ) -> Result<(), Box<dyn Error>> {
-        let mut store = StoreBuilder::create_store(indexer_hash.as_str(), &schema_path).unwrap();
+        let store = StoreBuilder::create_store(indexer_hash.as_str(), &schema_path).unwrap();
         let mut indexer_state = IndexerState::new(Arc::new(store));
         //self.store = Some(store);
         //let wrap_indexer_state = Some(&indexer_state);

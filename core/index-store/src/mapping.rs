@@ -1,6 +1,5 @@
 use crate::core::Store;
 use crate::DEPLOYMENT_HASH;
-use crate::PRIMARY_KEY_COLUMN;
 use graph::blockchain::BlockHash;
 use graph::cheap_clone::CheapClone;
 use graph::components::store::{
@@ -8,11 +7,8 @@ use graph::components::store::{
 };
 use graph::components::subgraph::Entity;
 use graph::data::store::Value as StoreValue;
-use graph::data::subgraph::DeploymentHash;
 use graph::prelude::{Attribute, BigDecimal, BigInt, BlockPtr, StopwatchMetrics};
 use graph_mock::MockMetricsRegistry;
-use inflector::cases::camelcase::to_camel_case;
-use inflector::Inflector;
 use massbit_common::prelude::structmap::value::{Num, Value};
 use massbit_common::prelude::{
     slog::{self, Logger},
@@ -21,7 +17,7 @@ use massbit_common::prelude::{
 use std::collections::HashMap;
 use std::convert::From;
 use std::error::Error;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 /*
 use structmap::{FromMap, ToMap};
 use structmap_derive::{FromMap, ToMap};
@@ -76,8 +72,8 @@ impl Store for IndexerState {
             std::mem::replace(&mut self.entity_cache, EntityCache::new(self.store.clone()));
         if let Ok(ModificationsAndCache {
             modifications: mods,
-            data_sources,
-            entity_lfu_cache: cache,
+            data_sources: _,
+            entity_lfu_cache: _cache,
         }) = entity_cache.as_modifications().map_err(|e| {
             log::error!("Error {:?}", e);
             StoreError::Unknown(e.into())
@@ -86,7 +82,7 @@ impl Store for IndexerState {
             if mods.len() > 0 {
                 //let store = self.store.clone();
                 let block_ptr = BlockPtr {
-                    hash: Default::default(),
+                    hash: BlockHash::from(block_hash.as_bytes().to_vec()),
                     number: block_number as i32,
                 };
                 match self.store.transact_block_operations(

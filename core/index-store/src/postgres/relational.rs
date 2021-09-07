@@ -1,18 +1,9 @@
-use diesel::prelude::*;
-use diesel::r2d2::{ConnectionManager, PooledConnection};
-use diesel::sql_types::BigInt;
-use graph::cheap_clone::CheapClone;
-use graph::components::metrics::stopwatch::StopwatchMetrics;
-use graph::components::store::{BlockNumber, EntityKey, EntityType};
-use graph::components::subgraph::Entity;
-use graph::prelude::{q, StoreError};
+use graph::prelude::q;
 use graph_store_postgres::relational::{Layout, Table};
-use graph_store_postgres::relational_queries::ClampRangeQuery;
 use inflector::Inflector;
 use massbit_common::prelude::anyhow;
 use massbit_common::prelude::serde_json;
-use massbit_common::prelude::serde_json::Value;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::HashSet;
 /// The name for the primary key column of a table; hardcoded for now
 pub(crate) const PRIMARY_KEY_COLUMN: &str = "id";
 
@@ -80,8 +71,8 @@ impl LayoutExt for Layout {
         let mut references = HashSet::new();
         let schema = self.site.namespace.as_str();
         //"create unique index token_id_uindex on sgd0.token (id)";
-        self.tables.iter().for_each(|(key, table)| {
-            if let Ok((mut fks, mut refs)) = table.gen_relationship(schema) {
+        self.tables.iter().for_each(|(_key, table)| {
+            if let Ok((fks, refs)) = table.gen_relationship(schema) {
                 sqls.extend(fks);
                 references.extend(refs);
             }
@@ -116,7 +107,7 @@ impl LayoutExt for Layout {
         let mut hasura_tables: Vec<serde_json::Value> = Vec::new();
         let mut hasura_down_tables: Vec<serde_json::Value> = Vec::new();
         let schema = self.site.namespace.as_str();
-        self.tables.iter().for_each(|(name, table)| {
+        self.tables.iter().for_each(|(_name, table)| {
             hasura_tables.push(serde_json::json!({
                 "type": "track_table",
                 "args": {
@@ -156,7 +147,7 @@ impl LayoutExt for Layout {
         let mut hasura_relations: Vec<serde_json::Value> = Vec::new();
         let mut hasura_down_relations: Vec<serde_json::Value> = Vec::new();
         let schema = self.site.namespace.as_str();
-        self.tables.iter().for_each(|(name, table)| {
+        self.tables.iter().for_each(|(_name, table)| {
             table
                 .columns
                 .iter()

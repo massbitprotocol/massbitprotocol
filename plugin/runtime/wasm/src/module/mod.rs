@@ -4,16 +4,15 @@ use std::{
     sync::Arc,
     time::Duration,
 };
-use wasmtime::{Memory, Trap};
+use wasmtime::Trap;
 pub mod context;
 pub mod into_wasm_ret;
 pub mod stopwatch;
 use crate::prelude::{error, Version};
-use crate::store;
 pub use context::WasmInstanceContext;
 use graph::{
     blockchain::{Blockchain, HostFnCtx, MappingTrigger},
-    prelude::{CheapClone, HostMetrics, Value},
+    prelude::{CheapClone, HostMetrics},
     runtime::{
         asc_new, AscHeap, AscPtr, DeterministicHostError, HostExportError, IndexForAscTypeId,
     },
@@ -27,13 +26,11 @@ use massbit_common::prelude::{
 };
 
 use crate::mapping::MappingContext;
-use crate::store::postgres::store_builder::*;
 use graph::components::subgraph::MappingError;
 use graph::data::subgraph::schema::SubgraphError;
-use graph::prelude::DeploymentHash;
 use graph_runtime_wasm::module::TimeoutStopwatch;
 use graph_runtime_wasm::ValidModule;
-use std::sync::Mutex;
+use index_store::postgres::store_builder::*;
 use std::time::Instant;
 
 pub const TRAP_TIMEOUT: &str = "trap: interrupt";

@@ -11,4 +11,3 @@ lazy_static! {
 }
 pub use crate::core::Store;
 pub use crate::mapping::IndexerState;
-pub(crate) use postgres::relational::PRIMARY_KEY_COLUMN;

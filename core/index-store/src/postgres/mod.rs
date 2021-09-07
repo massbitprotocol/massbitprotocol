@@ -1,6 +1,5 @@
 pub mod relational;
 pub mod store_builder;
-use graph::cheap_clone::CheapClone;
 use graph::components::metrics::stopwatch::StopwatchMetrics;
 use graph::components::store::{
     EntityKey, EntityModification, EntityType, StoreError, StoreEvent, StoredDynamicDataSource,
@@ -9,7 +8,6 @@ use graph::components::store::{
 use graph::components::subgraph::Entity;
 use graph::data::query::QueryExecutionError;
 use graph::data::subgraph::schema::SubgraphError;
-use graph::ext::futures::{CancelHandle, CancelableError};
 use graph::prelude::BlockPtr;
 use graph::prelude::{BlockNumber, DynTryFuture};
 use graph_store_postgres::command_support::Layout;
@@ -20,16 +18,14 @@ use massbit_common::prelude::diesel::{
     Connection, PgConnection,
 };
 use massbit_common::prelude::slog::Logger;
-use relational::LayoutExt;
-use std::iter::FromIterator;
 use std::sync::Arc;
 
 use massbit_common::prelude::{
     anyhow::{anyhow, Error},
     async_trait::async_trait,
-    log, structmap,
+    log,
 };
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use store_builder::StoreBuilder;
 
@@ -57,11 +53,11 @@ impl WritableStore for PostgresIndexStore {
         Ok(None)
     }
 
-    fn start_subgraph_deployment(&self, logger: &Logger) -> Result<(), StoreError> {
+    fn start_subgraph_deployment(&self, _logger: &Logger) -> Result<(), StoreError> {
         Ok(())
     }
 
-    fn revert_block_operations(&self, block_ptr_to: BlockPtr) -> Result<(), StoreError> {
+    fn revert_block_operations(&self, _block_ptr_to: BlockPtr) -> Result<(), StoreError> {
         Ok(())
     }
 
@@ -69,7 +65,7 @@ impl WritableStore for PostgresIndexStore {
         Ok(())
     }
 
-    async fn fail_subgraph(&self, error: SubgraphError) -> Result<(), StoreError> {
+    async fn fail_subgraph(&self, _error: SubgraphError) -> Result<(), StoreError> {
         Ok(())
     }
 
@@ -103,8 +99,8 @@ impl WritableStore for PostgresIndexStore {
         block_ptr_to: BlockPtr,
         mods: Vec<EntityModification>,
         stopwatch: StopwatchMetrics,
-        data_sources: Vec<StoredDynamicDataSource>,
-        deterministic_errors: Vec<SubgraphError>,
+        _data_sources: Vec<StoredDynamicDataSource>,
+        _deterministic_errors: Vec<SubgraphError>,
     ) -> Result<(), StoreError> {
         /*
         mods.iter().for_each(|modification| {
@@ -120,7 +116,7 @@ impl WritableStore for PostgresIndexStore {
             let event: StoreEvent = mods.iter().collect();
 
             let section = stopwatch.start_section("apply_entity_modifications");
-            let count = self.apply_entity_modifications(&conn, mods, &block_ptr_to, stopwatch)?;
+            let _count = self.apply_entity_modifications(&conn, mods, &block_ptr_to, stopwatch)?;
             section.end();
             /*
             deployment::update_entity_count(
