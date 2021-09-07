@@ -35,7 +35,7 @@ test-run-all-and-up:
 
 test-init:
 	@echo "Installing all the dependencies for E2E tests ..."
-	pip install robotframework robotframework-requests robotframework-databaselibrary psycopg2 rpaframework robotframework-seleniumlibrary
+	pip install robotframework robotframework-requests robotframework-databaselibrary psycopg2 rpaframework robotframework-seleniumlibrary robotframework-sshlibrary
 	@echo "Installing Webdriver for Selenium to run tests ..."
 	sudo pip pip install webdrivermanager
 	sudo webdrivermanager firefox chrome --linkpath /usr/local/bin
@@ -44,3 +44,31 @@ create-list-user-example-json-file:
 	@echo "Create list user examples json file ..."
 	cd user-example && python create_example_json.py
 
+#################### Dev commands ##########################
+
+deploy:
+	@echo "Deploy already build indexer $(id)"
+	curl --location --request POST 'localhost:5000/deploy/wasm' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{"configs": {"model": "Factory" }, "compilation_id": "$(id)" }'
+
+run-indexer-manager:
+	@echo "Run index-manager"
+	cargo run --bin index-manager-main
+
+run-chain-reader:
+	@echo "Run chain-reader"
+	cargo run --bin chain-reader
+
+run-code-compiler:
+	@echo "Run code-compiler"
+	cd code-compiler/ && python app.py
+
+
+services-up:
+	@echo "Run all service"
+	docker-compose -f docker-compose.min.yml up
+
+services-down:
+	@echo "Stop all service"
+	docker-compose -f docker-compose.min.yml down

@@ -10,8 +10,20 @@ massbit-chain-substrate = { path = "../../core/chain/substrate"}
 massbit-chain-solana = { path = "../../core/chain/solana"}
 index-store = { path = "../../core/index-store"}
 plugin = { path = "../plugin"}
+adapter = {path = "../adapter"}
+massbit-runtime-wasm = {path = "../runtime/wasm" }
+semver = "1.0"
+serde_yaml              = "0.8"
 structmap = "0.1.5"
 structmap-derive = "0.1.5"
+#tokio = { version = "0.2.25", features = ["stream", "rt-threaded", "rt-util", "blocking", "time", "sync", "macros", "test-util", "net"] }
+tokio = {version = "1.2.0", features = ["full"]} # Required by Tonic
+wasmtime                = "0.27.0"
+ethabi = "14.1.0"
+[[bin]]
+name    =   "quickswap"
+path    =   "src/quickswap.rs"
 
-[lib]
-crate-type = ["cdylib"]
+[[bin]]
+name    =   "datasource"
+path    =   "src/datasource.rs"

@@ -2,8 +2,7 @@
  *** This file is to help setup the logger based on the RUST_LOG and RUST_LOG_TYPE options
  **/
 use chrono::Local;
-use env_logger::{Builder, Env};
-use log::LevelFilter;
+use env_logger::Builder;
 use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Config, Root};
 use log4rs::encode::pattern::PatternEncoder;
@@ -32,9 +31,9 @@ pub fn log_to_console(log_level: &String) {
             writeln!(
                 buf,
                 "{} [{}] - [{}] {}",
-                Local::now().format("%Y-%m-%dT%H:%M:%S"), // Reformat to human-readable timestamp
+                Local::now().format("%Y-%m-%dT%H:%M:%S.%f"), // Reformat to human-readable timestamp
                 record.level(),
-                record.module_path_static().unwrap(),
+                record.module_path().unwrap(),
                 record.args(),
             )
         })

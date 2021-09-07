@@ -18,7 +18,7 @@ lazy_static! {
     static ref GENERATED_FOLDER: String = String::from("index-manager/generated");
 }
 
-pub async fn get_ipfs_file_by_hash(file_name: &String, folder_name: &String, ipfs_hash: &String) -> PathBuf {
+pub async fn download_ipfs_file_by_hash(file_name: &String, folder_name: &String, ipfs_hash: &String) -> PathBuf {
     log::info!("Downloading {} from IPFS as {}", ipfs_hash, file_name);
     let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await;

@@ -1,0 +1,43 @@
+type Block @entity {
+    id: ID!
+    block_number: Int!
+    block_hash: String!
+    sum_fee: Int!
+    transaction_number: Int!
+    success_rate: BigDecimal!
+}
+
+type Transaction @entity {
+    id: ID!
+    signatures: [String]!
+    timestamp: Int!
+    fee: Int!
+    block: Block!
+    block_number: Int!
+    success: Boolean!
+}
+
+
+type TransactionAccount @entity {
+    id: ID!
+    pub_key: String!
+    pos_balance: Int!
+    change_balance: Int!
+    is_program: Boolean!
+    transaction_own: Transaction!
+    inner_account_index: Int!
+}
+
+type InstructionDetail @entity {
+    id: ID!
+    name: String
+    is_decoded: Boolean!
+}
+
+type TransactionInstruction @entity {
+    id: ID!
+    transaction_own: Transaction!
+    inner_account_index: Int!
+    instruction_detail: InstructionDetail!
+
+}
