@@ -30,10 +30,15 @@ test-run-all-and-up:
 	cd e2e-test/solana && robot solana.robot
 	@echo "Running ethereum tests ..."
 	cd e2e-test/ethereum && robot ethereum.robot
+	@echo "Running dashboard tests ..."
+	cd e2e-test/dashboard && robot dashboard.robot || true
 
 test-init:
 	@echo "Installing all the dependencies for E2E tests ..."
-	pip install robotframework robotframework-requests robotframework-databaselibrary psycopg2 rpaframework robotframework-sshlibrary
+	pip install robotframework robotframework-requests robotframework-databaselibrary psycopg2 rpaframework robotframework-seleniumlibrary robotframework-sshlibrary
+	@echo "Installing Webdriver for Selenium to run tests ..."
+	sudo pip pip install webdrivermanager
+	sudo webdrivermanager firefox chrome --linkpath /usr/local/bin
 
 create-list-user-example-json-file:
 	@echo "Create list user examples json file ..."
