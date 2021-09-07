@@ -6,8 +6,6 @@ Suite Setup            Open Connection And Log In
 Suite Teardown         Close All Connections
 
 *** Variables ***
-${HOST}                6.tcp.ngrok.io
-${SSH_USERNAME}        massbit
 ${WORK_DIRECTORY}      work/massbitprotocol
 
 *** Test Cases ***
@@ -37,5 +35,5 @@ Check if Chain Reader is still receiving Ethereum Data
 
 *** Keywords ***
 Open Connection And Log In
-   Open Connection     ${HOST}                port=18268
+   Open Connection     ${SSH_HOST}            port=${SSH_PORT}
    Login               ${SSH_USERNAME}        ${SSH_PASSWORD}
