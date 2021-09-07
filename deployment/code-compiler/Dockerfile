@@ -13,6 +13,11 @@ RUN apt-get install -y libssl-dev libudev-dev pkg-config zlib1g-dev llvm clang m
 RUN $HOME/.cargo/bin/rustup target add wasm32-unknown-unknown --toolchain stable
 RUN $HOME/.cargo/bin/rustup toolchain install nightly-2021-05-20
 RUN $HOME/.cargo/bin/rustup target add wasm32-unknown-unknown --toolchain nightly-2021-05-20
+RUN $HOME/.cargo/bin/rustup install 1.53.0
+RUN $HOME/.cargo/bin/rustup default 1.53.0-x86_64-unknown-linux-gnu
+RUN $HOME/.cargo/bin/rustup target add wasm32-unknown-unknown --toolchain 1.53.0-x86_64-unknown-linux-gnu
+RUN $HOME/.cargo/bin/rustup show
+
 
 RUN ls
 RUN apt install -y python3 python3-pip wget unzip
@@ -23,8 +28,7 @@ RUN wget --no-verbose https://code-compiler-built-target.s3.ap-southeast-2.amazo
 RUN ls -ll
 COPY ./ massbitprotocol
 RUN ls -ll
-RUN unzip -qo target.zip -d massbitprotocol/code-compiler/stub/solana
-RUN unzip -qo target.zip -d massbitprotocol/code-compiler/stub/substrate
+RUN unzip -qo target.zip -d massbitprotocol/code-compiler/stub
 
 WORKDIR "massbitprotocol/code-compiler"
 
