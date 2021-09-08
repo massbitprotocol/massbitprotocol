@@ -1,24 +1,17 @@
-//use super::ipfs::create_ipfs_clients;
 use crate::setting::*;
 pub use crate::stream_mod::{
     streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
 };
 pub use crate::{HandlerProxyType, PluginRegistrar, WasmHandlerProxyType};
 //use graph::blockchain::DataSource as _;
-use graph::data::subgraph::{Mapping, MappingABI, Source, SubgraphManifest};
+use graph::data::subgraph::SubgraphManifest;
 use graph_chain_ethereum::Chain;
 use graph_chain_ethereum::{DataSource, DataSourceTemplate};
-//use graph_runtime_wasm::{ExperimentalFeatures, HostExports, MappingContext};
 use graph_runtime_wasm::ValidModule;
 use index_store::postgres::store_builder::*;
 use index_store::{IndexerState, Store};
 use lazy_static::lazy_static;
 use libloading::Library;
-use massbit_common::prelude::ethabi::Contract;
-//use massbit_runtime_wasm::host_exports::create_ethereum_call;
-//use massbit_runtime_wasm::mapping::FromFile;
-use massbit_runtime_wasm::prelude::Version;
-use massbit_runtime_wasm::slog;
 use serde_yaml::Value;
 use std::path::Path;
 use std::{
