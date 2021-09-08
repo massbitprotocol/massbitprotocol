@@ -114,64 +114,6 @@ impl AdapterManager {
         schema: &PathBuf,
         manifest: &Option<SubgraphManifest<Chain>>,
     ) -> Result<(), Box<dyn Error>> {
-        /*
-        let templates = match config["templates"].as_sequence() {
-            Some(seqs) => seqs
-                .iter()
-                .map(|tpl| {
-                    DataSourceTemplate::try_from(tpl)
-                        .with_context(|| {
-                            format!(
-                                "Failed to create datasource from value `{:?}`, invalid address provided",
-                                tpl
-                            )
-                        })
-                        .unwrap()
-                })
-                .collect::<Vec<DataSourceTemplate>>(),
-            _ => Vec::default(),
-        };
-         */
-        /*
-        //Inject static wasm module
-        let quickswap_path = "/home/viettai/Massbit/QuickSwap-subgraph/build/";
-        let factory = "Factory/Factory.wasm";
-        let pair = "templates/Pair/Pair.wasm";
-        let factory_wasm = self
-            .load_wasm_content(format!("{}/{}", quickswap_path, factory))
-            .await;
-        let pair_wasm = self
-            .load_wasm_content(format!("{}/{}", quickswap_path, pair))
-            .await;
-        */
-
-        //Test client
-        /*
-        let get_blocks_request = GetBlocksRequest {
-            start_block_number: 0,
-            end_block_number: 1,
-            chain_type: ChainType::Substrate as i32,
-        };
-        let mut client = StreamoutClient::connect("http://127.0.0.1:50051").await?;
-        let mut stream: Streaming<GenericDataProto> = client
-            .list_blocks(Request::new(get_blocks_request))
-            .await?
-            .into_inner();
-        while let Some(mut data) = stream.message().await? {
-            let mut data = data as GenericDataProto;
-            let data_type = DataType::from_i32(data.data_type).unwrap();
-            log::info!(
-                "{} Chain {:?} received data block = {:?}, hash = {:?}, data type = {:?}",
-                &*COMPONENT_NAME,
-                ChainType::from_i32(data.chain_type).unwrap(),
-                data.block_number,
-                data.block_hash,
-                data_type
-            );
-            let encoded_block: SubstrateBlock = subtrate_decode(&mut data.payload).unwrap();
-        }
-         */
-        //End test client
         let mut data_sources: Vec<DataSource> = vec![];
         let mut templates: Vec<DataSourceTemplate> = vec![];
         if let Some(sgd) = manifest {
@@ -189,18 +131,12 @@ impl AdapterManager {
 
         let arc_templates = Arc::new(templates);
         //Todo: Currently adapter only works with one datasource
-        if data_sources.len() == 0 {
-            let data_source = self.create_mock_so_data_source();
-            data_sources.push(data_source);
-        }
-        /*
         assert_eq!(
             data_sources.len(),
             1,
             "Error: Number datasource: {} is not 1.",
             data_sources.len()
         );
-         */
         match data_sources.get(0) {
             Some(data_source) => {
                 let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await?;
@@ -221,19 +157,6 @@ impl AdapterManager {
                     .list_blocks(Request::new(get_blocks_request))
                     .await?
                     .into_inner();
-                // while let Some(mut data) = stream.message().await? {
-                //     let mut data = data as GenericDataProto;
-                //     let data_type = DataType::from_i32(data.data_type).unwrap();
-                //     log::info!(
-                //         "{} Chain {:?} received data block = {:?}, hash = {:?}, data type = {:?}",
-                //         &*COMPONENT_NAME,
-                //         ChainType::from_i32(data.chain_type).unwrap(),
-                //         data.block_number,
-                //         data.block_hash,
-                //         data_type
-                //     );
-                //     let encoded_block: SubstrateBlock = subtrate_decode(&mut data.payload).unwrap();
-                // }
                 match data_source.mapping.language.as_str() {
                     "wasm/assemblyscript" => {
                         self.handle_wasm_mapping(
@@ -255,130 +178,7 @@ impl AdapterManager {
             _ => Ok(()),
         }
     }
-    /*
-    pub async fn init0(
-        &mut self,
-        hash: &String,
-        config: &Value,
-        mapping: &PathBuf,
-        schema: &PathBuf,
-    ) -> Result<(), Box<dyn Error>> {
-        let data_sources = match config["dataSources"].as_sequence() {
-            Some(seqs) => seqs
-                .iter()
-                .map(|datasource| {
-                    DataSource::try_from(datasource)
-                        .with_context(|| {
-                            format!(
-                                "Failed to create datasource from value `{:?}`, invalid address provided",
-                                datasource
-                            )
-                        })
-                        .unwrap()
-                })
-                .collect::<Vec<DataSource>>(),
-            _ => Vec::default(),
-        };
-        let templates = match config["templates"].as_sequence() {
-            Some(seqs) => seqs
-                .iter()
-                .map(|tpl| {
-                    DataSourceTemplate::try_from(tpl)
-                        .with_context(|| {
-                            format!(
-                                "Failed to create datasource from value `{:?}`, invalid address provided",
-                                tpl
-                            )
-                        })
-                        .unwrap()
-                })
-                .collect::<Vec<DataSourceTemplate>>(),
-            _ => Vec::default(),
-        };
-        let templates = Arc::new(templates);
-        //Todo: Currently adapter only works with one data_source
-        match data_sources.get(0) {
-            Some(data_source) => {
-                let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await?;
-                log::info!(
-                    "{} Init Streamout client for chain {}",
-                    &*COMPONENT_NAME,
-                    &data_source.kind
-                );
-                let chain_type = get_chain_type(data_source);
-                let get_blocks_request = GetBlocksRequest {
-                    start_block_number: 0,
-                    end_block_number: 1,
-                    chain_type: chain_type as i32,
-                };
-                let mut stream: Streaming<GenericDataProto> = client
-                    .list_blocks(Request::new(get_blocks_request))
-                    .await?
-                    .into_inner();
-                log::info!(
-                    "{} Detect mapping language {}",
-                    &*COMPONENT_NAME,
-                    &data_source.mapping.language
-                );
-                match data_source.mapping.language.as_str() {
-                    "wasm/assemblyscript" => {
-                        self.handle_wasm_mapping(
-                            hash,
-                            data_source,
-                            templates,
-                            mapping,
-                            schema,
-                            &mut stream,
-                        )
-                        .await
-                    }
-                    //Default use rust
-                    _ => {
-                        self.handle_rust_mapping(hash, data_source, mapping, schema, &mut stream)
-                            .await
-                    }
-                }
-            }
-            _ => Ok(()),
-        }
-    }
-     */
-    fn create_mock_so_data_source(&self) -> DataSource {
-        DataSource {
-            kind: "solana".to_string(),
-            network: None,
-            name: "solana".to_string(),
-            source: Source {
-                address: None,
-                abi: "".to_string(),
-                start_block: 0,
-            },
-            mapping: Mapping {
-                kind: "".to_string(),
-                api_version: Version::new(0, 0, 4),
-                language: "rust".to_string(),
-                entities: vec![],
-                abis: vec![],
-                block_handlers: vec![],
-                call_handlers: vec![],
-                event_handlers: vec![],
-                runtime: Arc::new(vec![]),
-                link: Default::default(),
-            },
-            context: Arc::new(None),
-            creation_block: None,
-            contract_abi: Arc::new(MappingABI {
-                name: "".to_string(),
-                contract: Contract {
-                    constructor: None,
-                    functions: Default::default(),
-                    events: Default::default(),
-                    receive: false,
-                    fallback: false,
-                },
-            }),
-        }
-    }
+
     async fn handle_wasm_mapping<P: AsRef<Path>>(
         &mut self,
         indexer_hash: &String,
@@ -511,15 +311,6 @@ impl AdapterManager {
     ) -> Result<(), Box<dyn Error>> {
         let lib = Arc::new(Library::new(library_path)?);
         // inject store to plugin
-        //let store = &mut self.store;
-        // match store {
-        //     Some(store) => {
-        //         lib.get::<*mut Option<&dyn Store>>(b"STORE\0")?
-        //             .write(Some(store));
-        //
-        //     }
-        //     _ => {}
-        // }
         lib.get::<*mut Option<&dyn Store>>(b"STORE\0")?
             .write(Some(store));
         let adapter_decl = lib
@@ -545,8 +336,6 @@ pub trait MessageHandler {
     }
     fn handle_wasm_mapping(
         &mut self,
-        //wasm_instance: &mut WasmInstance<Chain>,
-        //data_source: &DataSource,
         message: &mut GenericDataProto,
     ) -> Result<(), Box<dyn Error>> {
         Ok(())
