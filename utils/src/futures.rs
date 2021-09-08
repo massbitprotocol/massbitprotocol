@@ -9,44 +9,44 @@ use thiserror::Error;
 use tokio_retry::strategy::{jitter, ExponentialBackoff};
 use tokio_retry::Retry;
 
-/// Generic helper function for retrying async operations with built-in logging.
-///
-/// To use this helper, do the following:
-///
-/// 1. Call this function with an operation name (used for logging) and a `Logger`.
-/// 2. Optional: Chain a call to `.when(...)` to set a custom retry condition.
-/// 3. Optional: call `.log_after(...)` or `.no_logging()`.
-/// 4. Call either `.limit(...)` or `.no_limit()`.
-/// 5. Call one of `.timeout_secs(...)`, `.timeout_millis(...)`, `.timeout(...)`, and
-///    `.no_timeout()`.
-/// 6. Call `.run(...)`.
-///
-/// All steps are required, except Step 2 and Step 3.
-///
-/// Example usage:
-/// ```
-/// # extern crate graph;
-/// # use graph::prelude::*;
-/// # use tokio::time::timeout;
-/// use std::future::Future;
-/// use graph::prelude::{Logger, TimeoutError};
-/// #
-/// # type Memes = (); // the memes are a lie :(
-/// #
-/// # async fn  download_the_memes() -> Result<Memes, ()> {
-/// #     Ok(())
-/// # }
-///
-/// fn async_function(logger: Logger) -> impl Future<Output=Result<Memes, TimeoutError<()>>> {
-///     // Retry on error
-///     retry("download memes", &logger)
-///         .no_limit() // Retry forever
-///         .timeout_secs(30) // Retry if an attempt takes > 30 seconds
-///         .run(|| {
-///             download_the_memes() // Return a Future
-///         })
-/// }
-/// ```
+// Generic helper function for retrying async operations with built-in logging.
+//
+// To use this helper, do the following:
+//
+// 1. Call this function with an operation name (used for logging) and a `Logger`.
+// 2. Optional: Chain a call to `.when(...)` to set a custom retry condition.
+// 3. Optional: call `.log_after(...)` or `.no_logging()`.
+// 4. Call either `.limit(...)` or `.no_limit()`.
+// 5. Call one of `.timeout_secs(...)`, `.timeout_millis(...)`, `.timeout(...)`, and
+//    `.no_timeout()`.
+// 6. Call `.run(...)`.
+//
+// All steps are required, except Step 2 and Step 3.
+//
+// Example usage:
+// ```
+// # extern crate graph;
+// # use graph::prelude::*;
+// # use tokio::time::timeout;
+// use std::future::Future;
+// use graph::prelude::{Logger, TimeoutError};
+// #
+// # type Memes = (); // the memes are a lie :(
+// #
+// # async fn  download_the_memes() -> Result<Memes, ()> {
+// #     Ok(())
+// # }
+//
+// fn async_function(logger: Logger) -> impl Future<Output=Result<Memes, TimeoutError<()>>> {
+//     // Retry on error
+//     retry("download memes", &logger)
+//         .no_limit() // Retry forever
+//         .timeout_secs(30) // Retry if an attempt takes > 30 seconds
+//         .run(|| {
+//             download_the_memes() // Return a Future
+//         })
+// }
+// ```
 pub fn retry<I, E>(operation_name: impl ToString, logger: &Logger) -> RetryConfig<I, E> {
     RetryConfig {
         operation_name: operation_name.to_string(),
