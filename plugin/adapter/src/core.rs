@@ -17,6 +17,7 @@ use libloading::Library;
 use massbit_common::prelude::ethabi::Contract;
 //use massbit_runtime_wasm::host_exports::create_ethereum_call;
 //use massbit_runtime_wasm::mapping::FromFile;
+use massbit_common::prelude::tokio::time::{sleep, Duration};
 use massbit_runtime_wasm::prelude::Version;
 use massbit_runtime_wasm::slog;
 use serde_yaml::Value;
@@ -139,44 +140,69 @@ impl AdapterManager {
         );
         match data_sources.get(0) {
             Some(data_source) => {
-                let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await?;
-                let chain_type = get_chain_type(data_source);
                 log::info!(
                     "{} Init Streamout client for chain {} using language {}",
                     &*COMPONENT_NAME,
                     &data_source.kind,
                     &data_source.mapping.language
                 );
-
-                let get_blocks_request = GetBlocksRequest {
-                    start_block_number: 0,
-                    end_block_number: 1,
-                    chain_type: chain_type as i32,
-                };
-                let mut stream: Streaming<GenericDataProto> = client
-                    .list_blocks(Request::new(get_blocks_request))
-                    .await?
-                    .into_inner();
-                match data_source.mapping.language.as_str() {
-                    "wasm/assemblyscript" => {
-                        self.handle_wasm_mapping(
-                            hash,
-                            data_source,
-                            arc_templates,
-                            schema,
-                            &mut stream,
-                        )
-                        .await
-                    }
-                    //Default use rust
-                    _ => {
-                        self.handle_rust_mapping(hash, data_source, mapping, schema, &mut stream)
-                            .await
-                    }
+                loop {
+                    sleep(Duration::from_millis(1000)).await;
+                    let response_handle_mapping = self
+                        .handle_mapping(hash, data_source, arc_templates.clone(), mapping, schema)
+                        .await;
+                    log::info!("Retry handle");
                 }
+
+                Ok(())
             }
             _ => Ok(()),
         }
+    }
+
+    async fn handle_mapping(
+        &mut self,
+        hash: &String,
+        data_source: &DataSource,
+        arc_templates: Arc<Vec<DataSourceTemplate>>,
+        mapping: &PathBuf,
+        schema: &PathBuf,
+    ) -> Result<(), Box<dyn Error>> {
+        //sleep(Duration::from_millis(1000)).await;
+        let chain_type = get_chain_type(data_source);
+        let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await?;
+        let get_blocks_request = GetBlocksRequest {
+            start_block_number: 0,
+            end_block_number: 1,
+            chain_type: chain_type as i32,
+        };
+        let mut stream: Streaming<GenericDataProto> = client
+            .list_blocks(Request::new(get_blocks_request.clone()))
+            .await?
+            .into_inner();
+        let mapping_response = match data_source.mapping.language.as_str() {
+            "wasm/assemblyscript" => {
+                self.handle_wasm_mapping(
+                    hash,
+                    data_source,
+                    arc_templates.clone(),
+                    schema,
+                    &mut stream,
+                )
+                .await
+            }
+            //Default use rust
+            _ => {
+                self.handle_rust_mapping(hash, data_source, mapping, schema, &mut stream)
+                    .await
+            }
+        };
+        if mapping_response.is_ok() {
+            log::info!("mapping_response Ok.");
+        } else {
+            log::error!("mapping_response Error: {:?}", &mapping_response);
+        }
+        mapping_response
     }
 
     async fn handle_wasm_mapping<P: AsRef<Path>>(
@@ -206,6 +232,7 @@ impl AdapterManager {
             data_source.clone(), //Arc::clone(&valid_module),
             templates,
         );
+
         while let Some(mut data) = stream.message().await? {
             let data_type = DataType::from_i32(data.data_type).unwrap();
             log::info!(
@@ -250,7 +277,7 @@ impl AdapterManager {
                 .await
             {
                 Ok(_) => log::info!("{} Load library successfully", &*COMPONENT_NAME),
-                Err(err) => println!("Load library with error {:?}", err),
+                Err(err) => log::error!("Load library with error {:?}", err),
             }
         }
         log::info!("{} Start mapping using rust", &*COMPONENT_NAME);
