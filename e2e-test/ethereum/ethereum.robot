@@ -215,6 +215,35 @@ Compile and Deploy WASM Uniswap V3 Exchange
     ...  ${json}
     Should be equal  ${deploy_res["status"]}  success
 
+
+###########################
+# Sushiswap Exchange WASM #
+###########################
+#Compile and Deploy Sushiswap Exchange WASM
+#    # Configuration
+#    Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
+#
+#    # Compile request
+#    ${object} =  Read Wasm Example  ../../user-example/ethereum/wasm/sushiswap-exchange  mappings
+#    ${compile_res}=  Request.Post Request
+#    ...  ${CODE_COMPILER}/compile/wasm
+#    ...  ${object}
+#    Should be equal  ${compile_res["status"]}  success
+#
+#    # Compile status
+#    Wait Until Keyword Succeeds
+#    ...  60x
+#    ...  10 sec
+#    ...  Pooling Status
+#    ...  ${compile_res["payload"]}
+#
+#    # Deploy
+#    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}"}
+#    ${deploy_res}=  Request.Post Request
+#    ...  ${CODE_COMPILER}/deploy/wasm
+#    ...  ${json}
+#    Should be equal  ${deploy_res["status"]}  success
+
 ###################
 # Helper Function #
 ###################
