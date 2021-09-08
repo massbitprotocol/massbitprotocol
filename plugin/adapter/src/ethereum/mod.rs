@@ -345,8 +345,7 @@ impl MessageHandler for EthereumHandlerProxy {
                 //     log::debug!("Do event handler: Event address {:?}", &event.event.address);
                 //     self.handler.handle_event(&event);
                 // }
-
-                Ok(())
+                store.flush(&data.block_hash, data.block_number)
             }
             _ => {
                 log::warn!(
