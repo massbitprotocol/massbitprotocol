@@ -60,7 +60,7 @@ impl MessageHandler for SolanaHandlerProxy {
                     self.handler.handle_transaction(&transaction);
                     self.handler.handle_log_messages(&log_messages);
                 }
-                Ok(())
+                store.flush(&data.block_hash, data.block_number)
             }
             _ => {
                 log::warn!(
