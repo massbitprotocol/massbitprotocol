@@ -238,8 +238,8 @@ impl AdapterManager {
     ) -> Result<(), Box<dyn Error>> {
         let store = StoreBuilder::create_store(indexer_hash.as_str(), &schema_path).unwrap();
         let mut indexer_state = IndexerState::new(Arc::new(store));
-        //self.store = Some(store);
-        //let wrap_indexer_state = Some(&indexer_state);
+
+        //Use unsafe to inject a store pointer into user's lib
         unsafe {
             match self
                 .load(
@@ -264,9 +264,6 @@ impl AdapterManager {
         if let Some(adapter_handler) = self.map_handlers.get_mut(indexer_hash.as_str()) {
             if let Some(handler_proxy) = adapter_handler.handler_proxies.get(&adapter_name) {
                 while let Some(mut data) = stream.message().await? {
-                    //let encoded_block: SolanaEncodedBlock =
-                    //    solana_decode(&mut data.payload).unwrap();
-                    //let mut data = data as GenericDataProto;
                     log::info!(
                         "{} Chain {:?} received data block = {:?}, hash = {:?}, data type = {:?}",
                         &*COMPONENT_NAME,
