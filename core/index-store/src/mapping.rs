@@ -18,19 +18,6 @@ use std::collections::HashMap;
 use std::convert::From;
 use std::error::Error;
 use std::sync::Arc;
-/*
-use structmap::{FromMap, ToMap};
-use structmap_derive::{FromMap, ToMap};
-
-#[derive(FromMap)]
-#[derive(Default, Clone, ToMap)]
-pub struct SolanaBlockTs {
-    pub id: String,
-    pub block_height: i64,
-    pub block_hash: String,
-    pub timestamp: String,
-}
-*/
 
 pub struct IndexerState {
     pub store: Arc<dyn WritableStore>,
