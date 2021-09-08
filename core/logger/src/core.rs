@@ -6,7 +6,6 @@
  **/
 use crate::helper::{log_to_console, log_to_file, message};
 use lazy_static::lazy_static;
-use log::Level::Info;
 use std::env;
 
 lazy_static! {

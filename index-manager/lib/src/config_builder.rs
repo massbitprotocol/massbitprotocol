@@ -5,14 +5,20 @@
 // Generic dependencies
 use std::path::PathBuf;
 use lazy_static::lazy_static;
+use serde::Deserialize;
 
 // Massbit dependencies
 use crate::config::{
     generate_mapping_name_and_type, generate_random_hash, get_index_name, get_mapping_language,
 };
-use crate::ipfs::{get_ipfs_file_by_hash, read_config_file};
+use crate::ipfs::{download_ipfs_file_by_hash, read_config_file};
 use crate::type_index::{IndexConfig, IndexIdentifier, Abi};
-use crate::type_request::DeployAbi;
+use crate::type_request::{DeployAbi, DeployParams};
+use std::fs;
+use serde_yaml::{Value};
+use std::collections::BTreeMap;
+use std::fs::File;
+use std::io::Read;
 
 lazy_static! {
     static ref GENERATED_FOLDER: String = String::from("index-manager/generated");
@@ -41,6 +47,7 @@ pub struct IndexConfigIpfsBuilder {
     mapping: PathBuf,
     abi: Vec<Abi>,
     hash: String,
+    subgraph: PathBuf,
 }
 
 impl Default for IndexConfigIpfsBuilder {
@@ -51,6 +58,7 @@ impl Default for IndexConfigIpfsBuilder {
             mapping: Default::default(),
             abi: Default::default(),
             hash: generate_random_hash(),
+            subgraph: Default::default(),
         }
     }
 }
@@ -66,23 +74,24 @@ impl IndexConfigIpfsBuilder {
         );
         let config_value = read_config_file(&self.config);
         let file_name = generate_mapping_name_and_type(&config_value);
-        self.mapping = get_ipfs_file_by_hash(&file_name, &self.hash, mapping).await;
+        self.mapping = download_ipfs_file_by_hash(&file_name, &self.hash, mapping).await;
         self
     }
 
     // Call to IPFS and download config to local storage
     pub async fn config(mut self, config: &String) -> IndexConfigIpfsBuilder {
-        self.config = get_ipfs_file_by_hash(
+        self.config = download_ipfs_file_by_hash(
             &String::from("project.yaml"),
             &self.hash,
             config,
         ).await;
+
         self
     }
 
     // Call to IPFS and download schema to local storage
     pub async fn schema(mut self, schema: &String) -> IndexConfigIpfsBuilder {
-        self.schema = get_ipfs_file_by_hash(
+        self.schema = download_ipfs_file_by_hash(
             &String::from("schema.graphql"),
             &self.hash,
             schema,
@@ -105,6 +114,24 @@ impl IndexConfigIpfsBuilder {
         }
     }
 
+    pub async fn subgraph(mut self, subgraph: &Option<String>) -> IndexConfigIpfsBuilder {
+        match subgraph {
+            Some(v) => {
+                self.subgraph = download_ipfs_file_by_hash(
+                    &String::from("subgraph.yaml"),
+                    &self.hash,
+                    v,
+                ).await;
+                self
+            }
+            None => {
+                println!(".SO mapping or this index type doesn't support ABIs");
+                self.subgraph = Default::default();
+                self
+            },
+        }
+    }
+
     pub fn build(self) -> IndexConfig {
         let config = read_config_file(&self.config);
         let name = get_index_name(&config);
@@ -114,6 +141,7 @@ impl IndexConfigIpfsBuilder {
             config: self.config,
             mapping: self.mapping,
             abi: Option::Some(self.abi),
+            subgraph: self.subgraph,
             identifier: IndexIdentifier {
                 name: name.clone(),
                 hash: self.hash.clone(),
@@ -171,7 +199,9 @@ impl IndexConfigLocalBuilder {
             schema: self.schema,
             config: self.config,
             mapping: self.mapping,
+            // TODO: Add logic for these type so we can restart indexers if needed
             abi: Default::default(),
+            subgraph: Default::default(),
             identifier: IndexIdentifier {
                 // TODO: populate with the value from the indexer query result
                 name: Default::default(),
@@ -191,7 +221,7 @@ async fn build_abi(abi_list: Vec<DeployAbi>, folder_name: &String) -> Vec<Abi>{
     for deploy_abi in abi_list {
         let abi = Abi {
             name: deploy_abi.name.clone(),
-            path: get_ipfs_file_by_hash(&deploy_abi.name, folder_name, &deploy_abi.hash).await
+            path: download_ipfs_file_by_hash(&deploy_abi.name, folder_name, &deploy_abi.hash).await
         };
         new_abi_list.push(abi);
     }

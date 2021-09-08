@@ -6,7 +6,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-jsonrpc-http-server = "15.0"
+jsonrpc-http-server = "14.2.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.40"
 log = "0.4.0"
@@ -32,6 +32,7 @@ ipfs-client = { path = "../../core/ipfs-client" }
 tokio02-spawn = { path = "../../core/tokio02-spawn" }
 massbit-chain-substrate = { path = "../../core/chain/substrate"}
 massbit-chain-solana = { path = "../../core/chain/solana" }
+#massbit-chain-ethereum = { path = "../../core/chain/ethereum" }
 index-store = { path = "../../core/index-store" }
 adapter = { path = "../../plugin/adapter" }
 
@@ -60,3 +61,18 @@ branch = "master"
 package = "sp-core"
 default-features = false
 features = ["full_crypto"]
+
+[dependencies.graph]
+package = "graph"
+git = "https://github.com/massbitprotocol/massbit-graph-node"
+branch = "anhhuy0501-patch-add-pub"
+
+[dependencies.graph-chain-ethereum]
+package = "graph-chain-ethereum"
+git = "https://github.com/massbitprotocol/massbit-graph-node"
+branch = "anhhuy0501-patch-add-pub"
+
+[dependencies.graph-core]
+package = "graph-core"
+git = "https://github.com/massbitprotocol/massbit-graph-node"
+branch = "anhhuy0501-patch-add-pub"

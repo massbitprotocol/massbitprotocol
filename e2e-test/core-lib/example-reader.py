@@ -5,27 +5,37 @@ import os
 def read_so_example(path):
     # Read mapping.rs
     mapping_file = open(os.path.join(path, "src", "mapping.rs"))
-    mapping = urllib.parse.quote_plus(mapping_file.read())
+    mapping = urllib.parse.quote(mapping_file.read())
     mapping_file.close()
 
     # Read project.yaml
-    project_file = open(os.path.join(path, "project.yaml"))
-    project = urllib.parse.quote_plus(project_file.read())
+    project_file = open(os.path.join(path, "subgraph.yaml"))
+    project = urllib.parse.quote(project_file.read())
     project_file.close()
 
     # Read schema.graphql
     schema_file = open(os.path.join(path, "schema.graphql"))
-    schema = urllib.parse.quote_plus(schema_file.read())
+    schema = urllib.parse.quote(schema_file.read())
     schema_file.close()
+
+    # Read abis
+    abis_files = os.listdir(os.path.join(path, "abis"))
+    abis_dict = {}
+    for name in abis_files:
+        f = open(os.path.join(path, "abis", name))
+        content = urllib.parse.quote(f.read())
+        abis_dict[name] = content
+        f.close()
 
     payload = {
         "mappings": {
             "mapping.rs": mapping,
         },
         "configs": {
-            "project.yaml": project,
+            "subgraph.yaml": project,
             "schema.graphql": schema
-        }
+        },
+        "abis": abis_dict,
     }
     print(payload)
     return payload
@@ -45,7 +55,7 @@ def read_wasm_example(path, custom_mapping_path):
     abis_dict = {}
     for name in abis_files:
         f = open(os.path.join(path, "abis", name))
-        content = urllib.parse.quote_plus(f.read())
+        content = urllib.parse.quote(f.read())
         abis_dict[name] = content
         f.close()
 
@@ -56,30 +66,30 @@ def read_wasm_example(path, custom_mapping_path):
         mapping_files = os.listdir(os.path.join(path, "src"))
         for name in mapping_files:
             f = open(os.path.join(path, "src", name))
-            content = urllib.parse.quote_plus(f.read())
+            content = urllib.parse.quote(f.read())
             mapping_dict[name] = content
             f.close()
     else:  # Read in /src/[custom_mapping_path]
         mapping_files = os.listdir(os.path.join(path, "src", custom_mapping_path))
         for name in mapping_files:
             f = open(os.path.join(path, "src", custom_mapping_path, name))
-            content = urllib.parse.quote_plus(f.read())
+            content = urllib.parse.quote(f.read())
             mapping_dict[custom_mapping_path + '/' + name] = content
             f.close()
 
     # Read subgraph.yaml
     subgraph_file = open(os.path.join(path, "subgraph.yaml"))
-    subgraph = urllib.parse.quote_plus(subgraph_file.read())
+    subgraph = urllib.parse.quote(subgraph_file.read())
     subgraph_file.close()
 
     # Read schema.graphql
     schema_file = open(os.path.join(path, "schema.graphql"))
-    schema = urllib.parse.quote_plus(schema_file.read())
+    schema = urllib.parse.quote(schema_file.read())
     schema_file.close()
 
     # Read package.json
     package_file = open(os.path.join(path, "package.json"))
-    package = urllib.parse.quote_plus(package_file.read())
+    package = urllib.parse.quote(package_file.read())
     package_file.close()
 
     payload = {

@@ -1,0 +1,15 @@
+[package]
+name = "utils"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "1.11", features = ["time", "sync", "macros", "test-util", "rt-multi-thread", "parking_lot"] }
+tokio-stream = { version = "0.1.7", features = ["sync"] }
+tokio-retry = "0.3.0"
+futures03 = { version = "0.3.1", package = "futures", features = ["compat"] }
+slog = "2.7.0"
+thiserror = "1.0.28"
+futures = "0.1.21"

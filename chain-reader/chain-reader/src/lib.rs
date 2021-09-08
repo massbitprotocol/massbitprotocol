@@ -20,12 +20,14 @@ lazy_static! {
             (ChainType::Substrate,ChainConfig{
                 url: "".to_string(),
                 ws: "".to_string(),
+                start_block: None,
             }),
             (ChainType::Solana,ChainConfig{
                 // ws: "wss://api.mainnet-beta.solana.com".to_string(),
                 // url: "https://mainnet-beta-solana.massbit.io".to_string(),
                 ws: "wss://api.mainnet-beta.solana.com".to_string(),
                 url: "https://api.mainnet-beta.solana.com".to_string(),
+                start_block: None,
 
             }),
             (ChainType::Ethereum,ChainConfig{
@@ -35,6 +37,8 @@ lazy_static! {
                 // url: "https://bsc-dataseed.binance.org".to_string(),
                 ws: "wss://rpc-mainnet.matic.network".to_string(),
                 url: "https://rpc-mainnet.matic.network".to_string(),
+                start_block: Some(18403764),
+                //start_block: Some(12580640),
             }),
         ].iter().cloned().collect(),
         url: "0.0.0.0:50051".to_string(),

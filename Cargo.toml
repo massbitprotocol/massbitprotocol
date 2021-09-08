@@ -7,8 +7,9 @@ members = [
     "core/chain/ethereum",
     "index-manager/main",
     "plugin/adapter",
-    "plugin/test-plugin",
-    "cli"
+    "plugin/runtime/wasm",
+    "cli",
+    "utils"
 ]
 exclude = ["code-compiler/generated"]
 
