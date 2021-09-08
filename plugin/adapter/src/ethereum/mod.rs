@@ -12,6 +12,7 @@ use graph::log::logger;
 use graph_chain_ethereum::trigger::EthereumBlockTriggerType;
 use graph_chain_ethereum::{
     chain::BlockFinality, trigger::EthereumTrigger, Chain, DataSource, DataSourceTemplate,
+    MappingTrigger,
 };
 use graph_mock::MockMetricsRegistry;
 use graph_runtime_wasm::ValidModule;
@@ -158,35 +159,43 @@ impl EthereumWasmHandlerProxy {
         //Trigger block
         let block_trigger: <Chain as Blockchain>::TriggerData =
             EthereumTrigger::Block(block_ptr.cheap_clone(), EthereumBlockTriggerType::Every);
-        let mapping_trigger = data_source
-            .match_and_decode(&block_trigger, block_finality.clone(), &logger)
-            .unwrap();
-        if let Some(trigger) = mapping_trigger {
-            log::info!("Block Mapping trigger found");
-            self.prepare_wasm_instance(
-                wasm_instance,
-                data_source,
-                registry.cheap_clone(),
-                block_ptr,
-            );
-            wasm_instance.as_mut().unwrap().handle_trigger(trigger);
+        match data_source.match_and_decode(&block_trigger, block_finality.clone(), &logger) {
+            Ok(mapping_trigger) => {
+                if let Some(trigger) = mapping_trigger {
+                    log::info!("Block Mapping trigger found");
+                    self.prepare_wasm_instance(
+                        wasm_instance,
+                        data_source,
+                        registry.cheap_clone(),
+                        block_ptr,
+                    );
+                    wasm_instance.as_mut().unwrap().handle_trigger(trigger);
+                }
+            }
+            Err(err) => {
+                log::error!("Try match EthereumTrigger::Block with error {:?}", err);
+            }
         }
+
         //Mapping trigger log
         eth_block.logs.iter().for_each(|log| {
             let arc_log = Arc::new(log.clone());
             let trigger: <Chain as Blockchain>::TriggerData = EthereumTrigger::Log(arc_log);
-            let mapping_trigger = data_source
-                .match_and_decode(&trigger, block_finality.clone(), logger)
-                .unwrap();
-            if let Some(trigger) = mapping_trigger {
-                log::info!("Log Mapping trigger found. Create wasm instance if not exits");
-                self.prepare_wasm_instance(
-                    wasm_instance,
-                    data_source,
-                    registry.cheap_clone(),
-                    block_ptr,
-                );
-                wasm_instance.as_mut().unwrap().handle_trigger(trigger);
+            match data_source.match_and_decode(&trigger, block_finality.clone(), logger) {
+                Ok(mapping_trigger) => {
+                    if let Some(trigger) = mapping_trigger {
+                        self.prepare_wasm_instance(
+                            wasm_instance,
+                            data_source,
+                            registry.cheap_clone(),
+                            block_ptr,
+                        );
+                        wasm_instance.as_mut().unwrap().handle_trigger(trigger);
+                    }
+                }
+                Err(err) => {
+                    log::error!("Try match EthereumTrigger::Log with error {:?}", err);
+                }
             }
         });
         if let Some(instance) = wasm_instance {
