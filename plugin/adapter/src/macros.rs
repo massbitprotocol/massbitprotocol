@@ -86,11 +86,11 @@ macro_rules! create_adapters {
                 ),*
             }
             impl MessageHandler for HandlerProxyType {
-                fn handle_rust_mapping(&self, message: &mut GenericDataProto) -> Result<(), Box<dyn Error>> {
+                fn handle_rust_mapping(&self, message: &mut GenericDataProto, store: &mut dyn Store) -> Result<(), Box<dyn Error>> {
                     match self {
                         $(
                         HandlerProxyType::$adapter(proxy) => {
-                            proxy.handle_rust_mapping(message)
+                            proxy.handle_rust_mapping(message, store)
                         }
                         )*
                     }
@@ -133,11 +133,8 @@ macro_rules! create_wasm_adapters {
     ($($adapter:ident),*) => {
         paste! {
             //use massbit_runtime_wasm::mapping::ValidModule;
-            use graph_chain_ethereum::{trigger::MappingTrigger, Chain, DataSource, DataSourceTemplate};
-            //use graph::data::subgraph::Mapping;
-            //use massbit_runtime_wasm::indexer::manifest::{Mapping, MappingBlockHandler};
-            use massbit_runtime_wasm::module::WasmInstance;
-            use massbit_runtime_wasm::mapping::MappingContext;
+            use graph_chain_ethereum::{DataSource, DataSourceTemplate};
+            //use massbit_runtime_wasm::mapping::MappingContext;
             use graph_runtime_wasm::ValidModule;
             //use graph_runtime_wasm::{ValidModule, MappingContext, WasmInstance};
 

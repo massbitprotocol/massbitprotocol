@@ -3,26 +3,18 @@ use graph::prelude::{
     BigDecimal, BigInt, BlockNumber, CheapClone, DataSourceTemplateInfo, StopwatchMetrics, Value,
 };
 use graph::runtime::{DeterministicHostError, HostExportError};
-use graph_chain_ethereum::{
-    runtime::{
-        abi::{AscUnresolvedContractCall, AscUnresolvedContractCall_0_0_4},
-        runtime_adapter::UnresolvedContractCall,
-    },
-    DataSource, Transport,
-};
-use graph_runtime_wasm::{
-    asc_abi::class::{AscEnumArray, EthereumValueKind},
-    error::DeterminismLevel,
-};
+use graph_chain_ethereum::{DataSource, Transport};
+use graph_runtime_wasm::error::DeterminismLevel;
 use massbit_common::consts::*;
 use massbit_common::prelude::{
     anyhow::{anyhow, Context},
+    bs58,
     ethabi::param_type::Reader,
-    ethabi::{decode, encode, Token, Uint},
+    ethabi::{decode, encode, Token},
     log, serde_json,
 };
 use never::Never;
-use slog::{b, info, record_static, trace};
+use slog::{b, info, record_static};
 use std::collections::HashMap;
 use std::str::FromStr;
 use wasmtime::Trap;
@@ -39,19 +31,16 @@ use crate::graph::components::metrics::stopwatch::StopwatchMetrics;
 use crate::graph::runtime::{asc_get, asc_new, AscPtr, DeterministicHostError, HostExportError};
  */
 use crate::prelude::{slog::warn, Arc, Logger, Version};
-use graph::blockchain::{
-    Blockchain, DataSource as DataSourceTrait, DataSourceTemplate, HostFn, HostFnCtx,
-};
-use graph::prelude::BlockPtr;
+use graph::blockchain::{Blockchain, DataSource as DataSourceTrait, DataSourceTemplate, HostFn};
 /*
 use massbit_chain_ethereum::contract_call::{
     ethereum_call, SimpleEthereumAdapter, SimpleEthereumCallCache,
 };
 */
-use crate::manifest::datasource::DataSourceContext;
+//use crate::manifest::datasource::DataSourceContext;
 use graph::components::store::{EntityKey, EntityType};
 use graph::components::subgraph::{BlockState, Entity};
-use graph::data::subgraph::DeploymentHash;
+use graph::data::subgraph::{DataSourceContext, DeploymentHash};
 //use graph_runtime_wasm::module::IntoTrap;
 use crate::module::IntoTrap;
 use graph::prelude::web3::Web3;
@@ -59,7 +48,6 @@ use massbit_chain_ethereum::contract_call::{
     ethereum_call, SimpleEthereumAdapter, SimpleEthereumCallCache,
 };
 use std::sync::Mutex;
-use std::time::Instant;
 
 impl IntoTrap for HostExportError {
     fn determinism_level(&self) -> DeterminismLevel {
@@ -117,7 +105,7 @@ impl<C: Blockchain> HostExports<C> {
         let message = message
             .map(|message| format!("message: {}", message))
             .unwrap_or_else(|| "no message".into());
-        let location = match (file_name, line_number, column_number) {
+        let _location = match (file_name, line_number, column_number) {
             (None, None, None) => "an unknown location".into(),
             (Some(file_name), None, None) => file_name,
             (Some(file_name), Some(line_number), None) => {
@@ -153,7 +141,7 @@ impl<C: Blockchain> HostExports<C> {
 
     pub(crate) fn store_set(
         &self,
-        logger: &Logger,
+        _logger: &Logger,
         state: &mut BlockState<C>,
         //proof_of_indexing: &SharedProofOfIndexing,
         entity_type: String,
@@ -224,7 +212,7 @@ impl<C: Blockchain> HostExports<C> {
 
     pub(crate) fn store_remove(
         &self,
-        logger: &Logger,
+        _logger: &Logger,
         state: &mut BlockState<C>,
         //proof_of_indexing: &SharedProofOfIndexing,
         entity_type: String,
@@ -406,7 +394,7 @@ impl<C: Blockchain> HostExports<C> {
 
     /// Useful for IPFS hashes stored as bytes
     pub(crate) fn bytes_to_base58(&self, bytes: Vec<u8>) -> Result<String, DeterministicHostError> {
-        Ok(::bs58::encode(&bytes).into_string())
+        Ok(bs58::encode(&bytes).into_string())
     }
 
     pub(crate) fn big_decimal_plus(
@@ -520,7 +508,7 @@ impl<C: Blockchain> HostExports<C> {
         Ok(())
     }
 
-    pub(crate) fn ens_name_by_hash(&self, hash: &str) -> Result<Option<String>, anyhow::Error> {
+    pub(crate) fn ens_name_by_hash(&self, _hash: &str) -> Result<Option<String>, anyhow::Error> {
         //Ok(self.store.find_ens_name(hash)?)
         Ok(None)
     }

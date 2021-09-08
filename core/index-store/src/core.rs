@@ -1,16 +1,10 @@
-use diesel::result::Error as DieselError;
-use diesel::{Connection, PgConnection, QueryResult, RunQueryDsl};
-use diesel_transaction_handles::TransactionalConnection;
+use diesel::{Connection, PgConnection, RunQueryDsl};
 use lazy_static::lazy_static;
-use std::collections::hash_map::RandomState;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::error::Error;
-use std::fmt::{self, Write};
-use std::ops::Deref;
-use std::sync::{mpsc, Arc, Mutex};
-use std::thread;
-use std::time::{self, Duration, Instant, SystemTime, SystemTimeError, UNIX_EPOCH};
-use structmap::value::Value;
+use std::fmt::Write;
+use std::sync::{Arc, Mutex};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use structmap::GenericMap;
 use tokio;
 use tokio_postgres::NoTls;
@@ -72,7 +66,7 @@ pub struct IndexStore {
 
 pub trait Store: Sync + Send {
     fn save(&mut self, entity_name: String, data: GenericMap);
-    fn flush(&mut self);
+    fn flush(&mut self, block_hash: &String, block_number: u64) -> Result<(), Box<dyn Error>>;
 }
 impl Store for IndexStore {
     fn save(&mut self, _entity_name: String, mut _data: GenericMap) {
@@ -91,8 +85,15 @@ impl Store for IndexStore {
             }
         }
     }
-    fn flush(&mut self) {
-        //Todo: flush data in buffer to db when stop Indexer or periodically
+
+    fn flush(&mut self, block_hash: &String, block_number: u64) -> Result<(), Box<dyn Error>> {
+        //todo!()
+        log::info!(
+            "Flush block with hash: {} and number: {}",
+            block_hash,
+            block_number
+        );
+        Ok(())
     }
 }
 /*
@@ -374,10 +375,10 @@ fn create_chain_dependencies(
     dependencies: &HashMap<String, Vec<String>>,
 ) -> Vec<String> {
     let mut res: Vec<String> = Vec::default();
-    let mut checking: Vec<String> = Vec::default();
+    //let mut checking: Vec<String> = Vec::default();
     if let Some(dep) = dependencies.get(table_name) {
         dep.iter().for_each(|ref_table| {
-            let mut tmp = create_chain_dependencies(ref_table, dependencies);
+            let tmp = create_chain_dependencies(ref_table, dependencies);
             tmp.iter().for_each(|item| {
                 if !res.contains(item) {
                     res.push(item.clone());

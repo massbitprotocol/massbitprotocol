@@ -1,14 +1,13 @@
 use crate::host_exports::HostExports;
-use graph::blockchain::{Blockchain, HostFn, HostFnCtx};
+use graph::blockchain::{Blockchain, HostFn};
 use graph::components::subgraph::BlockState;
 use graph::prelude::{BlockPtr, CheapClone, Logger};
-use graph::runtime::AscHeap;
 use graph_runtime_wasm::ValidModule;
 use massbit_common::prelude::anyhow;
 use massbit_common::prelude::anyhow::Error;
 use std::collections::BTreeMap;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 pub trait FromFile {
     fn from_file(file_path: impl AsRef<Path>) -> Result<ValidModule, anyhow::Error>;

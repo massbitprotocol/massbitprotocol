@@ -24,7 +24,7 @@ pub fn run(matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
 
 #[derive(Serialize)]
 pub struct EntityBinding {
-    pub entities: HashMap<String, (String, String)>,
+    pub entities: HashMap<String, String>,
 }
 
 fn generate_rust_entity(schema_path: &str, output: &str) -> Result<(), Box<dyn Error>> {
@@ -38,8 +38,7 @@ fn generate_rust_entity(schema_path: &str, output: &str) -> Result<(), Box<dyn E
     for (name, model) in layout.models.into_iter() {
         let mut entity = String::new();
         model.as_rust(&mut entity)?;
-        let table_name = name.clone().to_snake_case();
-        binding.entities.insert(name, (table_name, entity));
+        binding.entities.insert(name, entity);
     }
 
     let mut tera = Tera::default();

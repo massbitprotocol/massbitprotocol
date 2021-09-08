@@ -4,7 +4,7 @@ use crate::{
 };
 use log::{debug, info};
 use massbit_chain_solana::data_type::{
-    get_list_log_messages_from_encoded_block, SolanaEncodedBlock as Block,
+    get_list_log_messages_from_encoded_block, SolanaEncodedBlock as Block, SolanaEncodedBlock,
 };
 use solana_client::{pubsub_client::PubsubClient, rpc_client::RpcClient};
 use solana_transaction_status::UiTransactionEncoding;
@@ -118,11 +118,13 @@ fn get_block(client: Arc<RpcClient>, block_height: u64) -> Result<Block, Box<dyn
     let block = client.get_block_with_encoding(block_height, RPC_BLOCK_ENCODING);
     let elapsed = now.elapsed();
     match block {
-        Ok(block) => {
+        Ok(mut block) => {
             debug!(
                 "Finished RPC get Block: {:?}, time: {:?}, hash: {}",
                 block_height, elapsed, &block.blockhash
             );
+            //Todo: Remove this fields to avoid decode error
+            block.transactions = vec![];
             let timestamp = (&block).block_time.unwrap();
             let list_log_messages = get_list_log_messages_from_encoded_block(&block);
             let ext_block = Block {
