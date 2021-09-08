@@ -12,7 +12,6 @@ ${CODE_COMPILER}  http://localhost:5000
 ${INDEX_MANAGER}  http://localhost:3000
 
 *** Test Cases ***
-*** Test Cases ***
 ##########################
 # Test-ethereum-block SO #
 ##########################
@@ -188,15 +187,15 @@ ${INDEX_MANAGER}  http://localhost:3000
 #    Should be equal  ${deploy_res["status"]}  success
 
 
-#######################
-# Test-quickswap WASM #
-#######################
-Compile and Deploy WASM Test Quickswap
+############################
+# Uniswap V3 Exchange WASM #
+############################
+Compile and Deploy WASM Uniswap V3 Exchange
     # Configuration
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
     # Compile request
-    ${object} =  Read Wasm Example  ../../user-example/ethereum/wasm/quickswap  mappings
+    ${object} =  Read Wasm Example  ../../user-example/ethereum/wasm/uniswap-v3-exchange  mappings
     ${compile_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/compile/wasm
     ...  ${object}
@@ -210,7 +209,7 @@ Compile and Deploy WASM Test Quickswap
     ...  ${compile_res["payload"]}
 
     # Deploy
-    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}", "configs":{"model":"Factory"}}
+    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}"}
     ${deploy_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/deploy/wasm
     ...  ${json}
