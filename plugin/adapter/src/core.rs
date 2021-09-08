@@ -47,11 +47,10 @@ pub struct AdapterDeclaration {
 pub struct AdapterHandler {
     indexer_hash: String,
     pub lib: Arc<Library>,
-    //pub store: &'a dyn Store,
     pub handler_proxies: HashMap<String, HandlerProxyType>,
 }
 
-impl<'a> AdapterHandler {
+impl AdapterHandler {
     fn new(hash: String, lib: Arc<Library>) -> AdapterHandler {
         AdapterHandler {
             indexer_hash: hash,
