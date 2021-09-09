@@ -7,8 +7,8 @@ use anyhow::Error;
 use futures::stream;
 use futures::{Future, Stream};
 use futures03::{self, compat::Future01CompatExt};
-use graph::prelude::tokio::sync::Semaphore;
-use log::{debug, info};
+use graph::prelude::tokio::sync::{OwnedSemaphorePermit, Semaphore};
+use log::{debug, info, warn};
 use massbit_chain_ethereum::data_type::EthereumBlock as Block;
 use std::collections::HashMap;
 use std::error::Error as StdError;
@@ -19,7 +19,7 @@ use std::sync::{
 use std::time::Instant;
 use thiserror::Error;
 use tokio::sync::broadcast;
-use tokio::time::{sleep, Duration};
+use tokio::time::{sleep, timeout, Duration};
 use web3;
 use web3::transports::Batch;
 use web3::{
@@ -34,8 +34,9 @@ use web3::{
 const CHAIN_TYPE: ChainType = ChainType::Ethereum;
 const PULLING_INTERVAL: u64 = 200;
 const USE_WEBSOCKET: bool = false;
-const BLOCK_BATCH_SIZE: u64 = 10;
+const BLOCK_BATCH_SIZE: u64 = 5;
 const RETRY_GET_BLOCK_LIMIT: u32 = 10;
+const GET_BLOCK_TIMEOUT_SEC: u64 = 60;
 
 #[derive(Error, Debug)]
 pub enum IngestorError {
@@ -51,7 +52,7 @@ pub enum IngestorError {
 
 async fn wait_for_new_block_http(
     web3_http: &Web3<Transport>,
-    got_block_number: Option<u64>,
+    got_block_number: &Option<u64>,
 ) -> u64 {
     loop {
         let block_header = web3_http.eth().block(Web3BlockNumber::Latest.into()).wait();
@@ -64,6 +65,7 @@ async fn wait_for_new_block_http(
             }
         }
         sleep(Duration::from_millis(PULLING_INTERVAL)).await;
+        debug!("Wait for new ETHEREUM block at: {:?}", got_block_number);
     }
 }
 
@@ -107,14 +109,7 @@ pub fn get_logs(
     let logs = web3
         .eth()
         .logs(log_filter.clone())
-        .then(move |result| {
-            if result.is_err() {
-                debug!("error: {:#?}", result);
-            } else {
-                debug!("success getting log: {:#?}", result);
-            }
-            result
-        })
+        .then(move |result| result)
         .wait();
     let elapsed = now.elapsed();
     debug!("Elapsed getting log: {:.2?}", elapsed);
@@ -197,8 +192,83 @@ pub async fn get_receipts(
     receipts
 }
 
+async fn get_block(
+    block_number: u64,
+    permit: OwnedSemaphorePermit,
+    clone_web3: Web3<Transport>,
+    clone_version: String,
+    chan_clone: broadcast::Sender<GenericDataProto>,
+) {
+    debug!("Before permit block {}", block_number);
+    let _permit = permit;
+    debug!("After permit block {}", block_number);
+    // Get receipts
+    let mut block = clone_web3
+        .eth()
+        .block_with_txs(BlockId::Number(Web3BlockNumber::from(block_number)))
+        .wait();
+    debug!("After block_with_txs block {}", block_number);
+    for i in 0..RETRY_GET_BLOCK_LIMIT {
+        if block.is_err() {
+            info!("Getting ETHEREUM block {} retry {} times", block_number, i);
+            block = clone_web3
+                .eth()
+                .block_with_txs(BlockId::Number(Web3BlockNumber::from(block_number)))
+                .wait();
+        } else {
+            break;
+        }
+    }
+
+    if let Ok(Some(block)) = block {
+        //println!("Got ETHEREUM Block {:?}",block);
+        // Convert to generic
+        let block_hash = block.hash.clone().unwrap_or_default().to_string();
+
+        // Get receipts
+        info!("Getting ETHEREUM of block: {}", block_number);
+        let receipts = get_receipts(&block, &clone_web3).await;
+        info!(
+            "Got ETHEREUM {} receipts of block: {}",
+            receipts.len(),
+            block_number
+        );
+        // Get logs
+        let logs = get_logs(
+            &clone_web3,
+            Web3BlockNumber::from(block_number),
+            Web3BlockNumber::from(block_number),
+        )
+        .unwrap_or(Vec::new());
+
+        let eth_block = Block {
+            version: clone_version.clone(),
+            timestamp: block.timestamp.as_u64(),
+            block,
+            receipts,
+            logs,
+        };
+
+        let generic_data_proto =
+            _create_generic_block(block_hash, block_number, &eth_block, clone_version);
+        info!(
+            "Sending ETHEREUM as generic data: {:?}",
+            &generic_data_proto.block_number
+        );
+        let receiver_number = chan_clone.send(generic_data_proto).unwrap();
+        debug!(
+            "Finished Sending ETHEREUM as generic data: {}",
+            receiver_number
+        );
+    } else {
+        info!("Got ETHEREUM block error {:?}", &block);
+    }
+    info!("Finish tokio::spawn for getting block: {:?}", &block_number);
+}
+
 pub async fn loop_get_block(
     chan: broadcast::Sender<GenericDataProto>,
+    got_block_number: &mut Option<u64>,
 ) -> Result<(), Box<dyn StdError>> {
     info!("Start get block {:?}", CHAIN_TYPE);
     info!("Init Ethereum adapter");
@@ -222,7 +292,6 @@ pub async fn loop_get_block(
         .wait()
         .unwrap_or("Cannot get version".to_string());
 
-    let mut got_block_number = config.start_block;
     let sem = Arc::new(Semaphore::new(BLOCK_BATCH_SIZE as usize));
     loop {
         if exit.load(Ordering::Relaxed) {
@@ -232,8 +301,8 @@ pub async fn loop_get_block(
 
         let latest_block_number = wait_for_new_block_http(&web3, got_block_number).await;
 
-        if got_block_number == None {
-            got_block_number = Some(latest_block_number - 1);
+        if *got_block_number == None {
+            *got_block_number = Some(latest_block_number - 1);
         }
 
         let pending_block = latest_block_number - got_block_number.unwrap();
@@ -263,68 +332,28 @@ pub async fn loop_get_block(
             let chan_clone = chan.clone();
             let clone_web3 = web3.clone();
             // For limit number of spawn task
+            debug!(
+                "Wait for permit, permits available: {}",
+                sem.available_permits()
+            );
             let permit = Arc::clone(&sem).acquire_owned().await;
+            debug!(
+                "After gave permit, permits available: {}",
+                sem.available_permits()
+            );
+
             tokio::spawn(async move {
-                let _permit = permit;
-                // Get receipts
-                let mut block = clone_web3
-                    .eth()
-                    .block_with_txs(BlockId::Number(Web3BlockNumber::from(block_number)))
-                    .wait();
-
-                for i in 0..RETRY_GET_BLOCK_LIMIT {
-                    if block.is_err() {
-                        info!("Getting ETHEREUM block {} retry {} times", block_number, i);
-                        block = clone_web3
-                            .eth()
-                            .block_with_txs(BlockId::Number(Web3BlockNumber::from(block_number)))
-                            .wait();
-                    } else {
-                        break;
-                    }
-                }
-
-                if let Ok(Some(block)) = block {
-                    //println!("Got ETHEREUM Block {:?}",block);
-                    // Convert to generic
-                    let block_hash = block.hash.clone().unwrap_or_default().to_string();
-
-                    // Get receipts
-                    let receipts = get_receipts(&block, &clone_web3).await;
-                    info!(
-                        "Got ETHEREUM {} receipts of block: {}",
-                        receipts.len(),
-                        block_number
-                    );
-                    // Get logs
-                    let logs = get_logs(
-                        &clone_web3,
-                        Web3BlockNumber::from(block_number),
-                        Web3BlockNumber::from(block_number),
-                    )
-                    .unwrap_or(Vec::new());
-
-                    let eth_block = Block {
-                        version: clone_version.clone(),
-                        timestamp: block.timestamp.as_u64(),
-                        block,
-                        receipts,
-                        logs,
-                    };
-
-                    let generic_data_proto =
-                        _create_generic_block(block_hash, block_number, &eth_block, clone_version);
-                    info!(
-                        "Sending ETHEREUM as generic data: {:?}",
-                        &generic_data_proto.block_number
-                    );
-                    chan_clone.send(generic_data_proto).unwrap();
-                } else {
-                    info!("Got ETHEREUM block error {:?}", &block);
+                let res = timeout(
+                    Duration::from_secs(GET_BLOCK_TIMEOUT_SEC),
+                    get_block(block_number, permit, clone_web3, clone_version, chan_clone),
+                )
+                .await;
+                if res.is_err() {
+                    warn!("get_block timed out at block {}", &block_number);
                 }
             });
         }
-        got_block_number = Some(got_block_number.unwrap() + getting_block);
+        *got_block_number = Some(got_block_number.unwrap() + getting_block);
     }
     Ok(())
 }

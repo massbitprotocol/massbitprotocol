@@ -45,12 +45,14 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
         let (chan, _) = broadcast::channel(1024);
         // Clone broadcast channel
         let chan_sender = chan.clone();
-        fix_one_thread_not_receive(&chan);
+        fix_one_thread_not_receive(&chan_sender);
         match chain_type {
             // Spawn Substrate get_data
             ChainType::Substrate => {
                 // Spawn task
                 tokio::spawn(async move {
+                    //fix_one_thread_not_receive(&chan_sender);
+                    // Todo: add start at save block after restart
                     let mut count = 1;
                     loop {
                         let resp =
@@ -60,11 +62,14 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
                             "Restart {:?} response {:?}, {} time",
                             &chain_type, resp, count
                         );
+                        sleep(Duration::from_secs(1));
+                        count = count + 1;
                     }
                 });
                 let chan_sender = chan.clone();
                 // Spawn task
                 tokio::spawn(async move {
+                    //fix_one_thread_not_receive(&chan_sender);
                     let mut count = 1;
                     loop {
                         let resp = substrate_chain::loop_get_event(chan_sender.clone()).await;
@@ -72,6 +77,8 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
                             "Restart {:?} response {:?}, {} time",
                             &chain_type, resp, count
                         );
+                        sleep(Duration::from_secs(1));
+                        count = count + 1;
                     }
                 });
                 // add chan to chans
@@ -79,7 +86,9 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
             }
             ChainType::Solana => {
                 // Spawn task
+                //fix_one_thread_not_receive(&chan_sender);
                 tokio::spawn(async move {
+                    // Todo: add start at save block after restart
                     let mut count = 1;
                     loop {
                         let resp = solana_chain::loop_get_block(chan_sender.clone()).await;
@@ -87,6 +96,8 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
                             "Restart {:?} response {:?}, {} time",
                             &chain_type, resp, count
                         );
+                        sleep(Duration::from_secs(1));
+                        count = count + 1;
                     }
                 });
                 // add chan to chans
@@ -95,14 +106,21 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
             ChainType::Ethereum => {
                 // Spawn task
                 tokio::spawn(async move {
+                    // fix_one_thread_not_receive(&chan_sender);
                     let mut count = 1;
+                    let mut got_block_number = CONFIG.chains.get(&chain_type).unwrap().start_block;
                     loop {
-                        let resp = ethereum_chain::loop_get_block(chan_sender.clone()).await;
+                        let resp = ethereum_chain::loop_get_block(
+                            chan_sender.clone(),
+                            &mut got_block_number,
+                        )
+                        .await;
                         error!(
-                            "Restart {:?} response {:?}, {} time",
-                            &chain_type, resp, count
+                            "Restart {:?} response {:?}, at block {:?}, {} time",
+                            &chain_type, resp, &got_block_number, count
                         );
                         sleep(Duration::from_secs(1));
+                        count = count + 1;
                     }
                 });
                 // add chan to chans

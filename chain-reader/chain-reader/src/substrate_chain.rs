@@ -96,7 +96,7 @@ pub async fn loop_get_event(
 
         match _events {
             Ok(evts) => {
-                debug!("{:?}", evts);
+                //debug!("{:?}", evts);
                 for evt in &evts {
                     let ext_event = EventRecord {
                         // Todo: Need find the block number and add here
@@ -109,10 +109,10 @@ pub async fn loop_get_event(
                         // Todo: Need find the success add add here
                     };
                     let generic_data_proto = _create_generic_event(&ext_event);
-                    debug!(
-                        "Sending SUBSTRATE event as generic data: {:?}",
-                        generic_data_proto
-                    );
+                    // debug!(
+                    //     "Sending SUBSTRATE event as generic data: {:?}",
+                    //     generic_data_proto
+                    // );
                     chan.send(generic_data_proto).unwrap();
                 }
             }

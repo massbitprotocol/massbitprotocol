@@ -12,6 +12,7 @@ use index_store::postgres::store_builder::*;
 use index_store::{IndexerState, Store};
 use lazy_static::lazy_static;
 use libloading::Library;
+use massbit_common::prelude::tokio::time::{sleep, Duration};
 use serde_yaml::Value;
 use std::path::Path;
 use std::{

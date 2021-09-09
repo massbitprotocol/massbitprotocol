@@ -111,7 +111,7 @@ fn get_block(client: Arc<RpcClient>, block_height: u64) -> Result<Block, Box<dyn
     let block = client.get_block_with_encoding(block_height, RPC_BLOCK_ENCODING);
     let elapsed = now.elapsed();
     match block {
-        Ok(mut block) => {
+        Ok(block) => {
             debug!(
                 "Finished RPC get Block: {:?}, time: {:?}, hash: {}",
                 block_height, elapsed, &block.blockhash
