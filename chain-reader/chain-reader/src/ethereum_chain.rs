@@ -34,7 +34,7 @@ use web3::{
 const CHAIN_TYPE: ChainType = ChainType::Ethereum;
 const PULLING_INTERVAL: u64 = 200;
 const USE_WEBSOCKET: bool = false;
-const BLOCK_BATCH_SIZE: u64 = 5;
+const BLOCK_BATCH_SIZE: u64 = 10;
 const RETRY_GET_BLOCK_LIMIT: u32 = 10;
 const GET_BLOCK_TIMEOUT_SEC: u64 = 60;
 
