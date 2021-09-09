@@ -1,19 +1,19 @@
 use crate::core::{AdapterError, MessageHandler};
 pub use crate::stream_mod::{DataType, GenericDataProto};
 use crate::EthereumWasmHandlerProxy;
-use graph::blockchain::{Blockchain, DataSource as DataSourceTrait, HostFn};
-use graph::data::subgraph::DeploymentHash;
-use graph_chain_ethereum::{
-    chain::BlockFinality, trigger::EthereumTrigger, Chain, DataSource, DataSourceTemplate,
-};
-//use graph_runtime_wasm::WasmInstance;
 use graph::blockchain::types::{BlockHash, BlockPtr};
+use graph::blockchain::{Blockchain, DataSource as DataSourceTrait, HostFn};
 use graph::cheap_clone::CheapClone;
 use graph::components::metrics::stopwatch::StopwatchMetrics;
 use graph::components::store::{ModificationsAndCache, StoreError, WritableStore};
 use graph::components::subgraph::{BlockState, HostMetrics};
+use graph::data::subgraph::DeploymentHash;
 use graph::log::logger;
 use graph_chain_ethereum::trigger::EthereumBlockTriggerType;
+use graph_chain_ethereum::{
+    chain::BlockFinality, trigger::EthereumTrigger, Chain, DataSource, DataSourceTemplate,
+    MappingTrigger,
+};
 use graph_mock::MockMetricsRegistry;
 use graph_runtime_wasm::ValidModule;
 use index_store::postgres::store_builder::*;
@@ -24,14 +24,11 @@ use massbit_chain_ethereum::data_type::{
 };
 use massbit_common::prelude::anyhow;
 use massbit_runtime_wasm::host_exports::create_ethereum_call;
-use massbit_runtime_wasm::prelude::{Logger, Version};
+use massbit_runtime_wasm::prelude::Logger;
 use massbit_runtime_wasm::{slog, HostExports, MappingContext, WasmInstance};
 use std::convert::TryFrom;
 use std::time::Instant;
 use std::{error::Error, sync::Arc};
-
-const API_VERSION_0_0_4: Version = Version::new(0, 0, 4);
-//const API_VERSION_0_0_5: Version = Version::new(0, 0, 5);
 
 crate::prepare_adapter!(Ethereum, {
     handle_block: EthereumBlock,
@@ -162,35 +159,43 @@ impl EthereumWasmHandlerProxy {
         //Trigger block
         let block_trigger: <Chain as Blockchain>::TriggerData =
             EthereumTrigger::Block(block_ptr.cheap_clone(), EthereumBlockTriggerType::Every);
-        let mapping_trigger = data_source
-            .match_and_decode(&block_trigger, block_finality.clone(), &logger)
-            .unwrap();
-        if let Some(trigger) = mapping_trigger {
-            log::info!("Block Mapping trigger found");
-            self.prepare_wasm_instance(
-                wasm_instance,
-                data_source,
-                registry.cheap_clone(),
-                block_ptr,
-            );
-            wasm_instance.as_mut().unwrap().handle_trigger(trigger);
+        match data_source.match_and_decode(&block_trigger, block_finality.clone(), &logger) {
+            Ok(mapping_trigger) => {
+                if let Some(trigger) = mapping_trigger {
+                    log::info!("Block Mapping trigger found");
+                    self.prepare_wasm_instance(
+                        wasm_instance,
+                        data_source,
+                        registry.cheap_clone(),
+                        block_ptr,
+                    );
+                    wasm_instance.as_mut().unwrap().handle_trigger(trigger);
+                }
+            }
+            Err(err) => {
+                log::error!("Try match EthereumTrigger::Block with error {:?}", err);
+            }
         }
+
         //Mapping trigger log
         eth_block.logs.iter().for_each(|log| {
             let arc_log = Arc::new(log.clone());
             let trigger: <Chain as Blockchain>::TriggerData = EthereumTrigger::Log(arc_log);
-            let mapping_trigger = data_source
-                .match_and_decode(&trigger, block_finality.clone(), logger)
-                .unwrap();
-            if let Some(trigger) = mapping_trigger {
-                log::info!("Log Mapping trigger found. Create wasm instance if not exits");
-                self.prepare_wasm_instance(
-                    wasm_instance,
-                    data_source,
-                    registry.cheap_clone(),
-                    block_ptr,
-                );
-                wasm_instance.as_mut().unwrap().handle_trigger(trigger);
+            match data_source.match_and_decode(&trigger, block_finality.clone(), logger) {
+                Ok(mapping_trigger) => {
+                    if let Some(trigger) = mapping_trigger {
+                        self.prepare_wasm_instance(
+                            wasm_instance,
+                            data_source,
+                            registry.cheap_clone(),
+                            block_ptr,
+                        );
+                        wasm_instance.as_mut().unwrap().handle_trigger(trigger);
+                    }
+                }
+                Err(err) => {
+                    log::error!("Try match EthereumTrigger::Log with error {:?}", err);
+                }
             }
         });
         if let Some(instance) = wasm_instance {
@@ -259,7 +264,6 @@ pub fn load_wasm(
     block_ptr: &BlockPtr,
     //link_resolver: Arc<dyn LinkResolverTrait>,
 ) -> Result<WasmInstance<Chain>, anyhow::Error> {
-    let api_version = API_VERSION_0_0_4.clone();
     let stopwatch_metrics = StopwatchMetrics::new(
         Logger::root(slog::Discard, slog::o!()),
         DeploymentHash::new("_indexer").unwrap(),
@@ -279,7 +283,7 @@ pub fn load_wasm(
         datasource,
         network,
         Arc::clone(&templates),
-        api_version,
+        datasource.mapping.api_version.clone(),
     );
     //check if wasm module use import ethereum.call
     let host_fns: Vec<HostFn> = match valid_module.import_name_to_modules.get("ethereum.call") {

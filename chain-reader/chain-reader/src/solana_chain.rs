@@ -116,8 +116,6 @@ fn get_block(client: Arc<RpcClient>, block_height: u64) -> Result<Block, Box<dyn
                 "Finished RPC get Block: {:?}, time: {:?}, hash: {}",
                 block_height, elapsed, &block.blockhash
             );
-            //Todo: Remove this fields to avoid decode error
-            block.transactions = vec![];
             let timestamp = (&block).block_time.unwrap();
             let list_log_messages = get_list_log_messages_from_encoded_block(&block);
             let ext_block = Block {
