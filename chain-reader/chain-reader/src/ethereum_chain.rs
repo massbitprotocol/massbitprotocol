@@ -332,6 +332,7 @@ pub async fn loop_get_block(
         }
         got_block_number = Some(got_block_number.unwrap() + getting_block);
     }
+    Ok(())
 }
 
 fn _create_generic_block(
