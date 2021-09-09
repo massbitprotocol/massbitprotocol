@@ -11,6 +11,7 @@ use graph::prelude::tokio::sync::Semaphore;
 use log::{debug, info};
 use massbit_chain_ethereum::data_type::EthereumBlock as Block;
 use std::collections::HashMap;
+use std::error::Error as StdError;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
@@ -206,7 +207,9 @@ pub async fn get_receipts(
     receipts
 }
 
-pub async fn loop_get_block(chan: broadcast::Sender<GenericDataProto>) {
+pub async fn loop_get_block(
+    chan: broadcast::Sender<GenericDataProto>,
+) -> Result<(), Box<dyn StdError>> {
     info!("Start get block {:?}", CHAIN_TYPE);
     info!("Init Ethereum adapter");
     let exit = Arc::new(AtomicBool::new(false));

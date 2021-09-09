@@ -34,7 +34,9 @@ fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>) {
     });
 }
 
-pub async fn loop_get_block(chan: broadcast::Sender<GenericDataProto>) {
+pub async fn loop_get_block(
+    chan: broadcast::Sender<GenericDataProto>,
+) -> Result<(), Box<dyn Error>> {
     info!("Start get block Solana");
     let config = CONFIG.chains.get(&CHAIN_TYPE).unwrap();
     let json_rpc_url = config.url.clone();
@@ -98,6 +100,7 @@ pub async fn loop_get_block(chan: broadcast::Sender<GenericDataProto>) {
             }
         }
     }
+    Ok(())
 }
 
 fn _create_generic_block(block_hash: String, block_number: u64, block: &Block) -> GenericDataProto {

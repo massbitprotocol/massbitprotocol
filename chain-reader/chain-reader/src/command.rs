@@ -6,7 +6,10 @@ use crate::{
     grpc_stream::stream_mod::{streamout_server::StreamoutServer, ChainType},
     CONFIG,
 };
+use log::error;
 use std::collections::HashMap;
+use std::thread::sleep;
+use std::time::Duration;
 use tokio::sync::broadcast;
 use tonic::transport::Server;
 
@@ -38,12 +41,28 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
             ChainType::Substrate => {
                 // Spawn task
                 tokio::spawn(async move {
-                    substrate_chain::loop_get_block_and_extrinsic(chan_sender).await;
+                    let mut count = 1;
+                    loop {
+                        let resp =
+                            substrate_chain::loop_get_block_and_extrinsic(chan_sender.clone())
+                                .await;
+                        error!(
+                            "Restart {:?} response {:?}, {} time",
+                            &chain_type, resp, count
+                        );
+                    }
                 });
                 let chan_sender = chan.clone();
                 // Spawn task
                 tokio::spawn(async move {
-                    substrate_chain::loop_get_event(chan_sender).await;
+                    let mut count = 1;
+                    loop {
+                        let resp = substrate_chain::loop_get_event(chan_sender.clone()).await;
+                        error!(
+                            "Restart {:?} response {:?}, {} time",
+                            &chain_type, resp, count
+                        );
+                    }
                 });
                 // add chan to chans
                 chans.insert(ChainType::Substrate, chan);
@@ -51,7 +70,14 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
             ChainType::Solana => {
                 // Spawn task
                 tokio::spawn(async move {
-                    solana_chain::loop_get_block(chan_sender).await;
+                    let mut count = 1;
+                    loop {
+                        let resp = solana_chain::loop_get_block(chan_sender.clone()).await;
+                        error!(
+                            "Restart {:?} response {:?}, {} time",
+                            &chain_type, resp, count
+                        );
+                    }
                 });
                 // add chan to chans
                 chans.insert(ChainType::Solana, chan);
@@ -59,7 +85,15 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
             ChainType::Ethereum => {
                 // Spawn task
                 tokio::spawn(async move {
-                    ethereum_chain::loop_get_block(chan_sender).await;
+                    let mut count = 1;
+                    loop {
+                        let resp = ethereum_chain::loop_get_block(chan_sender.clone()).await;
+                        error!(
+                            "Restart {:?} response {:?}, {} time",
+                            &chain_type, resp, count
+                        );
+                        sleep(Duration::from_secs(1));
+                    }
                 });
                 // add chan to chans
                 chans.insert(ChainType::Ethereum, chan);

@@ -76,7 +76,9 @@ fn _create_generic_event(event: &EventRecord) -> GenericDataProto {
     generic_data
 }
 
-pub async fn loop_get_event(chan: broadcast::Sender<GenericDataProto>) {
+pub async fn loop_get_event(
+    chan: broadcast::Sender<GenericDataProto>,
+) -> Result<(), Box<dyn Error>> {
     let url = get_node_url_from_cli();
     let api = Api::<sr25519::Pair>::new(url).unwrap();
 
@@ -129,7 +131,9 @@ fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>) {
     });
 }
 
-pub async fn loop_get_block_and_extrinsic(chan: broadcast::Sender<GenericDataProto>) {
+pub async fn loop_get_block_and_extrinsic(
+    chan: broadcast::Sender<GenericDataProto>,
+) -> Result<(), Box<dyn Error>> {
     info!("Start get block and extrinsic Substrate");
     let url = get_node_url_from_cli();
     let api = Api::<sr25519::Pair>::new(url).unwrap();
