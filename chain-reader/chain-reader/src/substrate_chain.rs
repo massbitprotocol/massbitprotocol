@@ -86,7 +86,7 @@ pub async fn loop_get_event(
     let (events_in, events_out) = channel();
     api.subscribe_events(events_in).unwrap();
 
-    fix_one_thread_not_receive(&chan);
+    //fix_one_thread_not_receive(&chan);
     loop {
         let event_str = events_out.recv().unwrap();
 
@@ -121,16 +121,6 @@ pub async fn loop_get_event(
     }
 }
 
-fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>) {
-    // Todo: More clean solution for broadcast channel
-    let mut rx = chan.subscribe();
-    tokio::spawn(async move {
-        loop {
-            let _ = rx.recv().await;
-        }
-    });
-}
-
 pub async fn loop_get_block_and_extrinsic(
     chan: broadcast::Sender<GenericDataProto>,
 ) -> Result<(), Box<dyn Error>> {
@@ -142,7 +132,7 @@ pub async fn loop_get_block_and_extrinsic(
     let (send, recv) = channel();
     api.subscribe_finalized_heads(send).unwrap();
 
-    fix_one_thread_not_receive(&chan);
+    //fix_one_thread_not_receive(&chan);
 
     loop {
         // Get new header

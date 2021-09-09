@@ -49,16 +49,6 @@ pub enum IngestorError {
     Unknown(Error),
 }
 
-fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>) {
-    // Todo: More clean solution for broadcast channel
-    let mut rx = chan.subscribe();
-    tokio::spawn(async move {
-        loop {
-            let _ = rx.recv().await;
-        }
-    });
-}
-
 async fn wait_for_new_block_http(
     web3_http: &Web3<Transport>,
     got_block_number: Option<u64>,
@@ -232,7 +222,6 @@ pub async fn loop_get_block(
         .wait()
         .unwrap_or("Cannot get version".to_string());
 
-    fix_one_thread_not_receive(&chan);
     let mut got_block_number = config.start_block;
     let sem = Arc::new(Semaphore::new(BLOCK_BATCH_SIZE as usize));
     loop {
@@ -264,6 +253,12 @@ pub async fn loop_get_block(
         for block_number in
             (got_block_number.unwrap() + 1)..(got_block_number.unwrap() + 1 + getting_block)
         {
+            // Get block
+            info!(
+                "Getting ETHEREUM block {}, pending block {}",
+                block_number, pending_block
+            );
+
             let clone_version = version.clone();
             let chan_clone = chan.clone();
             let clone_web3 = web3.clone();
@@ -271,8 +266,6 @@ pub async fn loop_get_block(
             let permit = Arc::clone(&sem).acquire_owned().await;
             tokio::spawn(async move {
                 let _permit = permit;
-                // Get block
-                info!("Getting ETHEREUM block {}", block_number);
                 // Get receipts
                 let mut block = clone_web3
                     .eth()
@@ -294,7 +287,8 @@ pub async fn loop_get_block(
                 if let Ok(Some(block)) = block {
                     //println!("Got ETHEREUM Block {:?}",block);
                     // Convert to generic
-                    let block_hash = block.hash.clone().unwrap().to_string();
+                    let block_hash = block.hash.clone().unwrap_or_default().to_string();
+
                     // Get receipts
                     let receipts = get_receipts(&block, &clone_web3).await;
                     info!(

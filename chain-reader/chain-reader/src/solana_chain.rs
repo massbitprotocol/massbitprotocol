@@ -24,16 +24,6 @@ const VERSION: &str = "1.6.16";
 const BLOCK_AVAILABLE_MARGIN: u64 = 100;
 const RPC_BLOCK_ENCODING: UiTransactionEncoding = UiTransactionEncoding::Base64;
 
-fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>) {
-    // Todo: More clean solution for broadcast channel
-    let mut rx = chan.subscribe();
-    tokio::spawn(async move {
-        loop {
-            let _ = rx.recv().await;
-        }
-    });
-}
-
 pub async fn loop_get_block(
     chan: broadcast::Sender<GenericDataProto>,
 ) -> Result<(), Box<dyn Error>> {
@@ -48,7 +38,7 @@ pub async fn loop_get_block(
     let client = Arc::new(RpcClient::new(json_rpc_url.clone()));
 
     let mut last_indexed_slot: Option<u64> = None;
-    fix_one_thread_not_receive(&chan);
+    //fix_one_thread_not_receive(&chan);
     loop {
         if exit.load(Ordering::Relaxed) {
             eprintln!("{}", "exit".to_string());

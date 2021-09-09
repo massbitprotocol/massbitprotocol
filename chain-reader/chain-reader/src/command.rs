@@ -3,7 +3,7 @@ use crate::grpc_stream::StreamService;
 use crate::solana_chain;
 use crate::substrate_chain;
 use crate::{
-    grpc_stream::stream_mod::{streamout_server::StreamoutServer, ChainType},
+    grpc_stream::stream_mod::{streamout_server::StreamoutServer, ChainType, GenericDataProto},
     CONFIG,
 };
 use log::error;
@@ -26,6 +26,16 @@ pub struct ChainConfig {
     pub start_block: Option<u64>,
 }
 
+fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>) {
+    // Todo: More clean solution for broadcast channel
+    let mut rx = chan.subscribe();
+    tokio::spawn(async move {
+        loop {
+            let _ = rx.recv().await;
+        }
+    });
+}
+
 pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     // Broadcast Channel
     let mut chans = HashMap::new();
@@ -35,7 +45,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
         let (chan, _) = broadcast::channel(1024);
         // Clone broadcast channel
         let chan_sender = chan.clone();
-
+        fix_one_thread_not_receive(&chan);
         match chain_type {
             // Spawn Substrate get_data
             ChainType::Substrate => {
