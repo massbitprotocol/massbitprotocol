@@ -1,3 +1,9 @@
+#################### Init commands #######################
+init-code-compiler:
+	@echo "Installing all the dependencies for Code compiler ..."
+	pip install ipfshttpclient flask flask_cors
+
+#################### Test commands #######################
 create-git-hook:
 	@echo "Every push to origin need to run the E2E tests"
 	@echo "Creating symlink..."
@@ -33,11 +39,12 @@ test-run-all-and-up:
 	@echo "Running dashboard tests ..."
 	cd e2e-test/dashboard && robot dashboard.robot || true
 
+
 test-init:
 	@echo "Installing all the dependencies for E2E tests ..."
 	pip install robotframework robotframework-requests robotframework-databaselibrary psycopg2 rpaframework robotframework-seleniumlibrary robotframework-sshlibrary
 	@echo "Installing Webdriver for Selenium to run tests ..."
-	sudo pip pip install webdrivermanager
+	sudo pip install webdrivermanager
 	sudo webdrivermanager firefox chrome --linkpath /usr/local/bin
 
 create-list-user-example-json-file:
@@ -72,3 +79,37 @@ services-up:
 services-down:
 	@echo "Stop all service"
 	docker-compose -f docker-compose.min.yml down
+
+#################### Production commands ##################
+run-all-tmux:
+	@echo "A quick fix to bypass the not able to start tmux error"
+	export TERM=xterm
+
+	@echo "Run index-manager in tmux"
+	tmux new -d -s index-manager scripts/tmux-index-manager.sh
+
+	@echo "Run chain-reader in tmux"
+	tmux new -d -s chain-reader scripts/tmux-chain-reader.sh
+
+	@echo "Run code-compiler in tmux"
+	tmux new -d -s code-compiler scripts/tmux-code-compiler.sh
+
+kill-all-tmux:
+	@echo "Kill all tmux services"
+	tmux list-sessions | awk 'BEGIN{FS=":"}{print $1}' | xargs -n 1 tmux kill-session -t
+
+
+#################### Long running test commands ##################
+test-long-running-quickswap:
+	@echo "A quick fix to bypass the not able to start tmux error"
+	export TERM=xterm
+	@echo "Run index-manager in tmux"
+	tmux new -d -s index-manager scripts/tmux-index-manager.sh
+	@echo "Run chain-reader in tmux"
+	tmux new -d -s chain-reader scripts/tmux-chain-reader.sh
+	@echo "Run code-compiler in tmux"
+	tmux new -d -s code-compiler scripts/tmux-code-compiler.sh
+	@echo "Wait for the services to start"
+	sleep 60;
+	@echo "Running only the quickswap Ethereum test ..."
+	cd e2e-test/ethereum && robot ethereum.robot
