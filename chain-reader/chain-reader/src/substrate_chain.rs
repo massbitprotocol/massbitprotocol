@@ -10,6 +10,7 @@ use std::sync::mpsc::channel;
 use substrate_api_client::{rpc::json_req, utils::FromHexString, Api};
 use tokio::sync::broadcast;
 
+use crate::command::fix_one_thread_not_receive;
 #[cfg(feature = "std")]
 use codec::{Decode, Encode};
 use log::{debug, error, info};
@@ -17,7 +18,6 @@ use node_template_runtime::Block as OrgBlock;
 use node_template_runtime::Event;
 use std::env;
 use system;
-
 // Check https://github.com/tokio-rs/prost for enum converting in rust protobuf
 const CHAIN_TYPE: ChainType = ChainType::Substrate;
 const VERSION: &str = "1";
@@ -86,7 +86,7 @@ pub async fn loop_get_event(
     let (events_in, events_out) = channel();
     api.subscribe_events(events_in).unwrap();
 
-    //fix_one_thread_not_receive(&chan);
+    fix_one_thread_not_receive(&chan);
     loop {
         let event_str = events_out.recv().unwrap();
 

@@ -26,7 +26,7 @@ pub struct ChainConfig {
     pub start_block: Option<u64>,
 }
 
-fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>) {
+pub fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>) {
     // Todo: More clean solution for broadcast channel
     let mut rx = chan.subscribe();
     tokio::spawn(async move {
