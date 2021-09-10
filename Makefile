@@ -110,6 +110,6 @@ test-long-running-quickswap:
 	@echo "Run code-compiler in tmux"
 	tmux new -d -s code-compiler scripts/tmux-code-compiler.sh
 	@echo "Wait for the services to start"
-	sleep 60;
+	sleep 15;
 	@echo "Running only the quickswap Ethereum test ..."
 	cd e2e-test/ethereum && robot ethereum.robot
