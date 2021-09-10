@@ -54,10 +54,14 @@ pub async fn print_blocks(
         .await?
         .into_inner();
 
-    // For ethereum only
-    let file_hash = "/ipfs/QmVVrXLPKJYiXQqmR5LVmPTJBbYEQp4vgwve3hqXroHDp5".to_string();
-    let data_sources: Vec<DataSource> = get_data_source(&file_hash).await.unwrap();
-    // End For ethereum only
+    let mut file_hash = "".to_string();
+    let mut data_sources = vec![];
+    if chain_type == ChainType::Ethereum {
+        // For ethereum only
+        file_hash = "/ipfs/QmVVrXLPKJYiXQqmR5LVmPTJBbYEQp4vgwve3hqXroHDp5".to_string();
+        data_sources = get_data_source(&file_hash).await.unwrap();
+        // End For ethereum only
+    }
 
     println!("Waitting for data...");
     while let Some(data) = stream.message().await? {
@@ -249,7 +253,7 @@ async fn get_data_source(
     let unresolved: UnresolvedSubgraphManifest<Chain> = serde_yaml::from_value(value).unwrap();
     let resolver = Arc::new(LinkResolver::from(ipfs_clients));
 
-    debug!("Features {:?}", unresolved.features);
+    //debug!("Features {:?}", unresolved.features);
     let manifest = unresolved
         .resolve(&*resolver, &logger)
         .compat()
