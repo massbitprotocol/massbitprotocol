@@ -2,6 +2,7 @@
 Documentation          Check if our services are still running in production
 
 Library                SSHLibrary
+Library                String
 Suite Setup            Open Connection And Log In
 Suite Teardown         Close All Connections
 
@@ -18,8 +19,13 @@ ${WORK_DIRECTORY}      work/massbitprotocol
 #    Should Contain     ${output}          [Solana-Adapter]
 
 Check if Ethereum Adapter is still indexing
-    ${output}=         Execute Command    cd ${WORK_DIRECTORY}/log && tail -100 index-manager.log
-    Should Contain     ${output}          [Ethereum-Adapter]
+    # Check if the block data last occurence changes or not
+    ${output1}=                Execute Command    cd ${WORK_DIRECTORY}/log && grep -m -1 "Chain Ethereum received data block" index-manager.log | tail -1
+    sleep                      5 seconds
+    ${output2}=                Execute Command    cd ${WORK_DIRECTORY}/log && grep -m -1 "Chain Ethereum received data block" index-manager.log | tail -1
+    ${current_block}=          Fetch From Right    ${output2}    Chain Ethereum
+    Log to console             ${\n}${current_block}
+    Should Not Be Equal As Strings    ${output1}    ${output2}
 
 #Check if Chain Reader is still receiving Solana Data
 #    ${output}=         Execute Command    cd ${WORK_DIRECTORY}/log && tail -100 chain-reader.log
