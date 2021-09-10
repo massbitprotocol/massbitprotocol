@@ -37,8 +37,7 @@ lazy_static! {
                 // url: "https://bsc-dataseed.binance.org".to_string(),
                 ws: "wss://rpc-mainnet.matic.network".to_string(),
                 url: "https://rpc-mainnet.matic.network".to_string(),
-                start_block: Some(5484000),  // Quickswap start block: https://github.com/QuickSwap/QuickSwap-subgraph/blob/master/subgraph.yaml#L16
-                //start_block: Some(12580640),
+                start_block: Some(11799000),  // (9-3-2021) Quickswap https://polygonscan.com/txs?a=0x5757371414417b8C6CAad45bAeF941aBc7d3Ab32&p=37
             }),
         ].iter().cloned().collect(),
         url: "0.0.0.0:50051".to_string(),
