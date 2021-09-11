@@ -24,17 +24,9 @@ const VERSION: &str = "1.6.16";
 const BLOCK_AVAILABLE_MARGIN: u64 = 100;
 const RPC_BLOCK_ENCODING: UiTransactionEncoding = UiTransactionEncoding::Base64;
 
-fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>) {
-    // Todo: More clean solution for broadcast channel
-    let mut rx = chan.subscribe();
-    tokio::spawn(async move {
-        loop {
-            let _ = rx.recv().await;
-        }
-    });
-}
-
-pub async fn loop_get_block(chan: broadcast::Sender<GenericDataProto>) {
+pub async fn loop_get_block(
+    chan: broadcast::Sender<GenericDataProto>,
+) -> Result<(), Box<dyn Error>> {
     info!("Start get block Solana");
     let config = CONFIG.chains.get(&CHAIN_TYPE).unwrap();
     let json_rpc_url = config.url.clone();
@@ -46,7 +38,7 @@ pub async fn loop_get_block(chan: broadcast::Sender<GenericDataProto>) {
     let client = Arc::new(RpcClient::new(json_rpc_url.clone()));
 
     let mut last_indexed_slot: Option<u64> = None;
-    fix_one_thread_not_receive(&chan);
+    //fix_one_thread_not_receive(&chan);
     loop {
         if exit.load(Ordering::Relaxed) {
             eprintln!("{}", "exit".to_string());
@@ -98,6 +90,7 @@ pub async fn loop_get_block(chan: broadcast::Sender<GenericDataProto>) {
             }
         }
     }
+    Ok(())
 }
 
 fn _create_generic_block(block_hash: String, block_number: u64, block: &Block) -> GenericDataProto {
@@ -118,7 +111,7 @@ fn get_block(client: Arc<RpcClient>, block_height: u64) -> Result<Block, Box<dyn
     let block = client.get_block_with_encoding(block_height, RPC_BLOCK_ENCODING);
     let elapsed = now.elapsed();
     match block {
-        Ok(mut block) => {
+        Ok(block) => {
             debug!(
                 "Finished RPC get Block: {:?}, time: {:?}, hash: {}",
                 block_height, elapsed, &block.blockhash

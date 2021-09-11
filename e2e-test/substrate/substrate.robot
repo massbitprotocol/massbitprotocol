@@ -20,8 +20,8 @@ Deploy test-block, then check if data was inserted into DB
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
     # Remove table if exists
-    Delete Table If Exists  __diesel_schema_migrations
-    Delete Table If Exists  substrate_block
+    Delete Table If Exists  sgd0.__diesel_schema_migrations
+    Delete Table If Exists  sgd0.substrate_block
 
     # Compile request
     ${object} =  Read So Example  ../../user-example/substrate/so/test-block
@@ -49,7 +49,7 @@ Deploy test-block, then check if data was inserted into DB
     ...  20x
     ...  5 sec
     ...  Pooling Database Data
-    ...  SELECT * FROM substrate_block FETCH FIRST ROW ONLY
+    ...  SELECT * FROM sgd0.substrate_block FETCH FIRST ROW ONLY
 
 ########################
 # Test-substrate-event #
@@ -59,8 +59,8 @@ Deploy test-event, then check if data was inserted into DB
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
     # Remove table if exists
-    Delete Table If Exists  __diesel_schema_migrations
-    Delete Table If Exists  substrate_event
+    Delete Table If Exists  sgd0.__diesel_schema_migrations
+    Delete Table If Exists  sgd0.substrate_event
 
     # Compile request
     ${object} =  Read So Example  ../../user-example/substrate/so/test-event
@@ -88,7 +88,7 @@ Deploy test-event, then check if data was inserted into DB
     ...  20x
     ...  5 sec
     ...  Pooling Database Data
-    ...  SELECT * FROM substrate_event FETCH FIRST ROW ONLY
+    ...  SELECT * FROM sgd0.substrate_event FETCH FIRST ROW ONLY
 
 ############################
 # Test-substrate-extrinsic #
@@ -98,8 +98,8 @@ Deploy test-extrinsic, then check if data was inserted into DB
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
     # Remove table if exists
-    Delete Table If Exists  __diesel_schema_migrations
-    Delete Table If Exists  substrate_extrinsic
+    Delete Table If Exists  sgd0.__diesel_schema_migrations
+    Delete Table If Exists  sgd0.substrate_extrinsic
 
     # Compile request
     ${object} =  Read So Example  ../../user-example/substrate/so/test-extrinsic
@@ -127,7 +127,7 @@ Deploy test-extrinsic, then check if data was inserted into DB
     ...  20x
     ...  5 sec
     ...  Pooling Database Data
-    ...  SELECT * FROM substrate_extrinsic FETCH FIRST ROW ONLY
+    ...  SELECT * FROM sgd0.substrate_extrinsic FETCH FIRST ROW ONLY
 
 ###################
 # Helper Function #

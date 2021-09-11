@@ -10,6 +10,7 @@ use std::sync::mpsc::channel;
 use substrate_api_client::{rpc::json_req, utils::FromHexString, Api};
 use tokio::sync::broadcast;
 
+use crate::command::fix_one_thread_not_receive;
 #[cfg(feature = "std")]
 use codec::{Decode, Encode};
 use log::{debug, error, info};
@@ -17,7 +18,6 @@ use node_template_runtime::Block as OrgBlock;
 use node_template_runtime::Event;
 use std::env;
 use system;
-
 // Check https://github.com/tokio-rs/prost for enum converting in rust protobuf
 const CHAIN_TYPE: ChainType = ChainType::Substrate;
 const VERSION: &str = "1";
@@ -76,7 +76,9 @@ fn _create_generic_event(event: &EventRecord) -> GenericDataProto {
     generic_data
 }
 
-pub async fn loop_get_event(chan: broadcast::Sender<GenericDataProto>) {
+pub async fn loop_get_event(
+    chan: broadcast::Sender<GenericDataProto>,
+) -> Result<(), Box<dyn Error>> {
     let url = get_node_url_from_cli();
     let api = Api::<sr25519::Pair>::new(url).unwrap();
 
@@ -94,7 +96,7 @@ pub async fn loop_get_event(chan: broadcast::Sender<GenericDataProto>) {
 
         match _events {
             Ok(evts) => {
-                debug!("{:?}", evts);
+                //debug!("{:?}", evts);
                 for evt in &evts {
                     let ext_event = EventRecord {
                         // Todo: Need find the block number and add here
@@ -107,10 +109,10 @@ pub async fn loop_get_event(chan: broadcast::Sender<GenericDataProto>) {
                         // Todo: Need find the success add add here
                     };
                     let generic_data_proto = _create_generic_event(&ext_event);
-                    debug!(
-                        "Sending SUBSTRATE event as generic data: {:?}",
-                        generic_data_proto
-                    );
+                    // debug!(
+                    //     "Sending SUBSTRATE event as generic data: {:?}",
+                    //     generic_data_proto
+                    // );
                     chan.send(generic_data_proto).unwrap();
                 }
             }
@@ -119,17 +121,9 @@ pub async fn loop_get_event(chan: broadcast::Sender<GenericDataProto>) {
     }
 }
 
-fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>) {
-    // Todo: More clean solution for broadcast channel
-    let mut rx = chan.subscribe();
-    tokio::spawn(async move {
-        loop {
-            let _ = rx.recv().await;
-        }
-    });
-}
-
-pub async fn loop_get_block_and_extrinsic(chan: broadcast::Sender<GenericDataProto>) {
+pub async fn loop_get_block_and_extrinsic(
+    chan: broadcast::Sender<GenericDataProto>,
+) -> Result<(), Box<dyn Error>> {
     info!("Start get block and extrinsic Substrate");
     let url = get_node_url_from_cli();
     let api = Api::<sr25519::Pair>::new(url).unwrap();
@@ -138,7 +132,7 @@ pub async fn loop_get_block_and_extrinsic(chan: broadcast::Sender<GenericDataPro
     let (send, recv) = channel();
     api.subscribe_finalized_heads(send).unwrap();
 
-    fix_one_thread_not_receive(&chan);
+    //fix_one_thread_not_receive(&chan);
 
     loop {
         // Get new header
