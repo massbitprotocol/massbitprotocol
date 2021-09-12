@@ -11,10 +11,4 @@ massbit-chain-substrate = { path = "../core/chain/substrate"}
 
 [dependencies.node-template-runtime]
 git = "https://github.com/scs/substrate-api-client-test-node"
-branch = "bump-to-polkadot-v0.9.2"
-
-[dependencies.sp-runtime]
-git = "https://github.com/paritytech/substrate.git"
-branch = "master"
-package = "sp-runtime"
-default-features=false
+branch = "polkadot-v0.9.2"

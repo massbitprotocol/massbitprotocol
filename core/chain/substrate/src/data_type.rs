@@ -1,10 +1,11 @@
 use codec::{Decode, Encode};
+use frame_system;
 use node_template_runtime;
 use std::error::Error;
 
 type Number = u32;
 type Date = i64;
-type Event = system::EventRecord<node_template_runtime::Event, node_template_runtime::Hash>;
+type Event = frame_system::EventRecord<node_template_runtime::Event, node_template_runtime::Hash>;
 type Extrinsic = node_template_runtime::UncheckedExtrinsic;
 type Block = node_template_runtime::Block;
 type Hash = node_template_runtime::Hash;

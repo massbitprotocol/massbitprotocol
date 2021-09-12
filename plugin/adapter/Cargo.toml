@@ -35,25 +35,25 @@ prost           =   "0.7" # Chain Reader Client
 [dependencies.graph]
 package = "graph"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
-branch = "anhhuy0501-patch-add-pub"
+branch = "main"
 [dependencies.graph-core]
 package = "graph-core"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
-branch = "anhhuy0501-patch-add-pub"
+branch = "main"
 [dependencies.graph-chain-ethereum]
 package = "graph-chain-ethereum"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
-branch = "anhhuy0501-patch-add-pub"
+branch = "main"
 
 [dependencies.graph-runtime-wasm]
 package = "graph-runtime-wasm"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
-branch = "anhhuy0501-patch-add-pub"
+branch = "main"
 
 [dependencies.graph-mock]
 package = "graph-mock"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
-branch = "anhhuy0501-patch-add-pub"
+branch = "main"
 
 #rev =   "428b3d0"
 #[dependencies.node-template-runtime]
