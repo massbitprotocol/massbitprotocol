@@ -13,23 +13,26 @@ use tokio::sync::broadcast;
 use crate::command::fix_one_thread_not_receive;
 #[cfg(feature = "std")]
 use codec::{Decode, Encode};
+use frame_system;
 use log::{debug, error, info};
 use node_template_runtime::Block as OrgBlock;
 use node_template_runtime::Event;
+use sp_keyring::AccountKeyring;
 use std::env;
-use system;
+use substrate_api_client::rpc::WsRpcClient;
+
 // Check https://github.com/tokio-rs/prost for enum converting in rust protobuf
 const CHAIN_TYPE: ChainType = ChainType::Substrate;
 const VERSION: &str = "1";
 
 fn get_block_and_hash_from_header(
-    api: &Api<sr25519::Pair>,
+    api: &Api<sr25519::Pair, WsRpcClient>,
     header: Header,
 ) -> Result<(Block, String), Box<dyn Error>> {
     // Get block number
     let block_number = header.number;
     // Get Call rpc to block hash
-    let hash = api.get_request(json_req::chain_get_block_hash(Some(block_number)).to_string())?;
+    let hash = api.get_request(json_req::chain_get_block_hash(Some(block_number)))?;
     let hash = hash.unwrap();
     let block_hash = Hash::from_hex(hash.clone());
 
@@ -80,7 +83,12 @@ pub async fn loop_get_event(
     chan: broadcast::Sender<GenericDataProto>,
 ) -> Result<(), Box<dyn Error>> {
     let url = get_node_url_from_cli();
-    let api = Api::<sr25519::Pair>::new(url).unwrap();
+    let signer = AccountKeyring::Alice.pair();
+    let client = WsRpcClient::new(&url);
+
+    let api = Api::new(client)
+        .map(|api| api.set_signer(signer.clone()))
+        .unwrap();
 
     info!("Subscribe to events");
     let (events_in, events_out) = channel();
@@ -92,7 +100,7 @@ pub async fn loop_get_event(
 
         let _unhex = Vec::from_hex(event_str).unwrap();
         let mut _er_enc = _unhex.as_slice();
-        let _events = Vec::<system::EventRecord<Event, Hash>>::decode(&mut _er_enc);
+        let _events = Vec::<frame_system::EventRecord<Event, Hash>>::decode(&mut _er_enc);
 
         match _events {
             Ok(evts) => {
@@ -126,7 +134,12 @@ pub async fn loop_get_block_and_extrinsic(
 ) -> Result<(), Box<dyn Error>> {
     info!("Start get block and extrinsic Substrate");
     let url = get_node_url_from_cli();
-    let api = Api::<sr25519::Pair>::new(url).unwrap();
+    let signer = AccountKeyring::Alice.pair();
+    let client = WsRpcClient::new(&url);
+
+    let api = Api::new(client)
+        .map(|api| api.set_signer(signer.clone()))
+        .unwrap();
 
     info!("Subscribing to finalized heads");
     let (send, recv) = channel();
