@@ -14,7 +14,7 @@ use crate::command::fix_one_thread_not_receive;
 #[cfg(feature = "std")]
 use codec::{Decode, Encode};
 use frame_system;
-use log::{debug, error, info};
+use log::{error, info};
 use node_template_runtime::Block as OrgBlock;
 use node_template_runtime::Event;
 use sp_keyring::AccountKeyring;
