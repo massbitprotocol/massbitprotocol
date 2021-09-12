@@ -24,17 +24,17 @@ massbit-common      = { path = "../../core/common"}
 [dependencies.graph]
 package = "graph"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
-branch = "anhhuy0501-patch-add-pub"
+branch = "main"
 [dependencies.graph-node]
 package = "graph-node"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
-branch = "anhhuy0501-patch-add-pub"
+branch = "main"
 
 [dependencies.graph-store-postgres]
 package = "graph-store-postgres"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
-branch = "anhhuy0501-patch-add-pub"
+branch = "main"
 [dependencies.graph-mock]
 package = "graph-mock"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
-branch = "anhhuy0501-patch-add-pub"
+branch = "main"

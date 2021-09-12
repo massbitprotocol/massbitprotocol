@@ -62,38 +62,38 @@ web3 = { git = "https://github.com/graphprotocol/rust-web3", branch = "master" }
 [dependencies.graph]
 package = "graph"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
-branch = "anhhuy0501-patch-add-pub"
+branch = "main"
 
 [dependencies.graph-node]
 package = "graph-node"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
-branch = "anhhuy0501-patch-add-pub"
+branch = "main"
 
 [dependencies.graph-chain-ethereum]
 package = "graph-chain-ethereum"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
-branch = "anhhuy0501-patch-add-pub"
+branch = "main"
 
 [dependencies.graph-store-postgres]
 package = "graph-store-postgres"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
-branch = "anhhuy0501-patch-add-pub"
+branch = "main"
 
 [dependencies.graph-runtime-wasm]
 package = "graph-runtime-wasm"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
-branch = "anhhuy0501-patch-add-pub"
+branch = "main"
 #rev =   "428b3d0"
 
 [dependencies.graph-runtime-derive]
 package = "graph-runtime-derive"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
-branch = "anhhuy0501-patch-add-pub"
+branch = "main"
 
 [dependencies.graph-mock]
 package = "graph-mock"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
-branch = "anhhuy0501-patch-add-pub"
+branch = "main"
 #[dependencies.web3]
 #package = "web3"
 #git = "https://github.com/graphprotocol/rust-web3"
