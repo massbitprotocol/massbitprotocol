@@ -16,7 +16,7 @@ bs58 = "0.4.0"
 [dependencies.solana-client]
 package = "solana-client"
 git = "https://github.com/massbitprotocol/solana.git"
-brach = "main"
+branch = "main"
 
 [dependencies.solana-program]
 package = "solana-program"
