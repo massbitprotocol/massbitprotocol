@@ -33,6 +33,7 @@ massbit-chain-substrate = { path = "../../core/chain/substrate"}
 massbit-chain-solana = { path = "../../core/chain/solana" }
 index-store = { path = "../../core/index-store" }
 adapter = { path = "../../plugin/adapter" }
+postgres = "0.19.1"
 
 [build-dependencies]
 tonic-build = "0.4" # Chain Reader Client

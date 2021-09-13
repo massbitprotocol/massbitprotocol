@@ -73,8 +73,8 @@ impl WritableStore for PostgresIndexStore {
         unimplemented!()
     }
 
-    fn get(&self, key: EntityKey) -> Result<Option<Entity>, QueryExecutionError> {
-        let conn = self.get_conn().map_err(|e| StoreError::Unknown(e))?;
+    fn get(&self, key: &EntityKey) -> Result<Option<Entity>, QueryExecutionError> {
+        let conn = self.get_conn()?;
         //let layout = self.layout(&conn, site)?;
 
         // We should really have callers pass in a block number; but until
@@ -216,12 +216,17 @@ impl WritableStore for PostgresIndexStore {
         Ok(())
     }
      */
+
+    fn shard(&self) -> &str {
+        todo!()
+    }
 }
 
 impl PostgresIndexStore {
-    fn get_conn(&self) -> Result<PooledConnection<ConnectionManager<PgConnection>>, Error> {
+    fn get_conn(&self) -> Result<PooledConnection<ConnectionManager<PgConnection>>, StoreError> {
         self.connection.get_with_timeout_warning(&self.logger)
     }
+
     fn apply_entity_modifications(
         &self,
         conn: &PgConnection,

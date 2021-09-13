@@ -27,6 +27,7 @@ use adapter::core::AdapterManager;
 
 // Graph dependencies
 use graph::data::subgraph::UnresolvedSubgraphManifest;
+use graph::data::subgraph::SPEC_VERSION_0_0_4;
 use graph::data::subgraph::{SubgraphAssignmentProviderError, SubgraphManifest};
 use graph::ipfs_client::IpfsClient;
 use graph::log::logger;
@@ -151,7 +152,7 @@ async fn get_manifest(
 
     debug!("Features {:?}", unresolved.features);
     let manifest = unresolved
-        .resolve(&*resolver, &logger)
+        .resolve(&*resolver, &logger, SPEC_VERSION_0_0_4.clone())
         .compat()
         .await
         .map_err(SubgraphAssignmentProviderError::ResolveError)?;
