@@ -2,8 +2,8 @@ pub mod relational;
 pub mod store_builder;
 use graph::components::metrics::stopwatch::StopwatchMetrics;
 use graph::components::store::{
-    EntityKey, EntityModification, EntityType, StoreError, StoreEvent, StoredDynamicDataSource,
-    WritableStore,
+    EntityCollection, EntityFilter, EntityKey, EntityModification, EntityOrder, EntityRange,
+    EntityType, StoreError, StoreEvent, StoredDynamicDataSource, WritableStore,
 };
 use graph::components::subgraph::Entity;
 use graph::data::query::QueryExecutionError;
@@ -20,6 +20,9 @@ use massbit_common::prelude::diesel::{
 use massbit_common::prelude::slog::Logger;
 use std::sync::Arc;
 
+use crate::core::{IndexStore, QueryableStore};
+use crate::postgres::relational::LayoutExt;
+use crate::Value;
 use massbit_common::prelude::{
     anyhow::{anyhow, Error},
     async_trait::async_trait,
@@ -47,6 +50,39 @@ impl PostgresIndexStore {
     }
 }
 
+impl QueryableStore for PostgresIndexStore {
+    fn query(
+        &self,
+        entity_type: String,
+        filter: Option<EntityFilter>,
+        order: EntityOrder,
+        range: EntityRange,
+    ) -> Vec<Entity> {
+        match self.get_conn() {
+            Ok(conn) => {
+                match self.layout.filter::<Entity>(
+                    &self.logger,
+                    &conn,
+                    EntityType::new(entity_type),
+                    filter,
+                    order,
+                    range,
+                ) {
+                    Ok(vec) => vec,
+                    Err(err) => {
+                        log::error!("{:?}", &err);
+                        vec![]
+                    }
+                }
+            }
+            Err(err) => {
+                log::error!("{:?}", &err);
+                vec![]
+            }
+        }
+    }
+}
+impl IndexStore for PostgresIndexStore {}
 #[async_trait]
 impl WritableStore for PostgresIndexStore {
     fn block_ptr(&self) -> Result<Option<BlockPtr>, Error> {
@@ -173,49 +209,6 @@ impl WritableStore for PostgresIndexStore {
     async fn load_dynamic_data_sources(&self) -> Result<Vec<StoredDynamicDataSource>, StoreError> {
         todo!()
     }
-    /*
-    fn transact_block_operations(&self, mods: Vec<EntityModification>) -> Result<(), StoreError> {
-        mods.iter()
-            .for_each(|modification| println!("{:?}", modification));
-        self.with_conn(|conn, _| {
-            let event = conn.transaction(|| -> Result<_, StoreError> {
-                // Emit a store event for the changes we are about to make. We
-                // wait with sending it until we have done all our other work
-                // so that we do not hold a lock on the notification queue
-                // for longer than we have to
-                let event: StoreEvent = mods.iter().collect();
-
-                //let section = stopwatch.start_section("apply_entity_modifications");
-                let count = self.apply_entity_modifications(&conn, mods)?;
-                /*
-                deployment::update_entity_count(
-                    &conn,
-                    site.as_ref(),
-                    layout.count_query.as_str(),
-                    count,
-                )?;
-                //section.end();
-
-                dynds::insert(&conn, &site.deployment, data_sources, &block_ptr_to)?;
-
-                if !deterministic_errors.is_empty() {
-                    deployment::insert_subgraph_errors(
-                        &conn,
-                        &site.deployment,
-                        deterministic_errors,
-                        block_ptr_to.block_number(),
-                    )?;
-                }
-
-                deployment::forward_block_ptr(&conn, &site.deployment, block_ptr_to)?;
-                */
-                Ok(event)
-            })?;
-            event
-        });
-        Ok(())
-    }
-     */
 }
 
 impl PostgresIndexStore {
@@ -319,7 +312,7 @@ impl PostgresIndexStore {
         section.end();
         */
         let _section = stopwatch.start_section("apply_entity_modifications_update");
-        log::info!("Update entity {:?} with value {:?}", &entity_type, data);
+        //log::info!("Update entity {:?} with value {:?}", &entity_type, data);
         //Original code update current record and insert new one
         self.layout
             .update(conn, &entity_type, data, block_ptr.number, stopwatch)
