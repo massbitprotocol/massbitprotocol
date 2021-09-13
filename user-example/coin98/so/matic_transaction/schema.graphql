@@ -1,0 +1,22 @@
+type DailyActiveAddress @entity {
+    id: ID!
+    chain: String!
+    counter: BigInt!
+}
+type DailyNewAddress @entity {
+    id: ID!
+    chain: String!
+    counter: BigInt!
+}
+type DailyTransaction @entity {
+    id: ID!
+    date: String!
+    counter: BigInt!
+}
+type MaticTransactionTable @entity {
+    id: ID!
+    sender: String!
+    date: String!
+    timestamp: BigInt!
+}
+
