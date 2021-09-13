@@ -18,11 +18,11 @@ jobs:
         with:
           profile: minimal
           toolchain: 1.54.0
-          target: wasm32-unknown-unknown
           override: true
       - name: Install missing dependencies
         run: |
           sudo apt update
+          rustup toolchain install nightly
           sudo apt install -y cmake pkg-config libssl-dev git gcc build-essential clang libclang-dev libpq-dev libudev-dev zlib1g-dev llvm make
           rustup component add rustfmt
       - uses: Swatinem/rust-cache@v1
