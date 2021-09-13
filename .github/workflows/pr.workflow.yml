@@ -15,8 +15,6 @@ jobs:
         os: [ubuntu-latest]
         rust: [nightly-2021-05-21]
         make:
-          - name: Install dependencies
-            task: "install-dependencies"
           - name: Test
             task: "cargo-test"
         include:
