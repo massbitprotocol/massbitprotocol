@@ -37,6 +37,7 @@ hex-literal = "0.3"
 sp-core = { default-features = false, version = "3.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.2", features = ["full_crypto"] }
 sp-keyring = { version = "3.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.2" }
 frame-system = { default-features = false,  version = "3.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.2" }
+clap = { version = "2.33.3", features = ["yaml"] }
 
 massbit-chain-substrate = { path = "../../core/chain/substrate" }
 massbit-chain-solana = { path = "../../core/chain/solana" }
@@ -53,10 +54,6 @@ default-features = true
 [dependencies.node-template-runtime]
 git = "https://github.com/scs/substrate-api-client-test-node"
 branch = "polkadot-v0.9.2"
-
-[dependencies.clap]
-version = "2.33"
-features = ["yaml"]
 
 [dependencies.codec]
 package = "parity-scale-codec"

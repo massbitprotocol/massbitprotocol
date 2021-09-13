@@ -86,7 +86,6 @@ def compile_so(data, hash):
     abis = data["abis"]
 
     # Populating stub data
-    populate_stub(generated_folder, "Cargo.lock")
     populate_stub(generated_folder, "Cargo.toml")
     copy_tree("stub/target", generated_folder + "/target")
 
