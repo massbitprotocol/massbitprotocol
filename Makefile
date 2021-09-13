@@ -71,9 +71,3 @@ services-up:
 services-down:
 	@echo "Stop all service"
 	docker-compose -f docker-compose.min.yml down
-
-#################### CI ##########################
-cargo-test:
-	sudo apt install -y cmake pkg-config libssl-dev git gcc build-essential clang libclang-dev libpq-dev libudev-dev zlib1g-dev llvm make
-	rustup target add wasm32-unknown-unknown
-	cargo test
