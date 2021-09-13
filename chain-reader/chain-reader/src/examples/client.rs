@@ -3,8 +3,12 @@ use clap::{App, Arg};
 use crate::stream_mod::{
     streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
 };
+use graph::data::subgraph::SubgraphAssignmentProviderError;
 use graph::data::subgraph::UnresolvedSubgraphManifest;
+use graph::data::subgraph::SPEC_VERSION_0_0_4;
 use graph::ipfs_client::IpfsClient;
+use graph::log::logger;
+use graph_chain_ethereum::{Chain, DataSource};
 use graph_core::LinkResolver;
 use log::{debug, info, warn};
 use massbit_chain_ethereum::data_type::{decode as ethereum_decode, get_events, EthereumBlock};
@@ -13,10 +17,6 @@ use massbit_chain_solana::data_type::{
     SolanaLogMessages, SolanaTransaction,
 };
 use massbit_chain_substrate::data_type::{SubstrateBlock, SubstrateEventRecord};
-
-use graph::data::subgraph::SubgraphAssignmentProviderError;
-use graph::log::logger;
-use graph_chain_ethereum::{Chain, DataSource};
 
 use massbit_chain_substrate::data_type::{decode, get_extrinsics_from_block};
 
@@ -255,7 +255,7 @@ async fn get_data_source(
 
     //debug!("Features {:?}", unresolved.features);
     let manifest = unresolved
-        .resolve(&*resolver, &logger)
+        .resolve(&*resolver, &logger, SPEC_VERSION_0_0_4.clone())
         .compat()
         .await
         .map_err(SubgraphAssignmentProviderError::ResolveError)?;
