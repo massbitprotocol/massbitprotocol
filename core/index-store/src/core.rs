@@ -266,15 +266,15 @@ fn create_query(_entity_name: &str, buffer: &Vec<GenericMap>) -> Option<String> 
                         .map(|(_, v)| {
                             let mut str_val = String::new();
                             if let Some(r) = v.bool() {
-                                write!(str_val, "{}", r);
+                                write!(str_val, "{}", r).unwrap();
                             } else if let Some(r) = v.f64() {
-                                write!(str_val, "{}", r);
+                                write!(str_val, "{}", r).unwrap();
                             } else if let Some(r) = v.i64() {
-                                write!(str_val, "{}", r);
+                                write!(str_val, "{}", r).unwrap();
                             } else if let Some(r) = v.u64() {
-                                write!(str_val, "{}", r);
+                                write!(str_val, "{}", r).unwrap();
                             } else if let Some(r) = v.string() {
-                                write!(str_val, "'{}'", r);
+                                write!(str_val, "'{}'", r).unwrap();
                             }
                             str_val
                         })

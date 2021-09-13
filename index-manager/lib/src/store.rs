@@ -81,7 +81,7 @@ impl IndexStore {
     pub fn run_raw_query(connection: &PgConnection, raw_query: &String) {
         let query = diesel::sql_query(raw_query.clone());
         log::info!("[Index Manager Store] Running raw_query: {}", raw_query);
-        query.execute(connection);
+        query.execute(connection).unwrap();
     }
 
     pub fn migrate_with_ddl_gen_plugin(index_name: &String, schema: &PathBuf, config: &PathBuf) {
