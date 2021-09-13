@@ -96,6 +96,7 @@ impl StoreBuilder {
             &shard_name,
             &shard_config,
             registry.cheap_clone(),
+            Arc::new(vec![]),
         );
         match Self::create_relational_schema(schema_path, &connection) {
             Ok(layout) => {

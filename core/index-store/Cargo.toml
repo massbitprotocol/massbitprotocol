@@ -11,7 +11,6 @@ diesel_transaction_handles = "0.1.1"
 Inflector = "0.11.3"
 tokio = {version = "1.2.0", features = ["full"]} # Required by Tonic
 tokio-postgres      =  "0.7.2"
-#postgres           = "0.19.1"
 structmap           = "0.1.5"
 lazy_static         = "1.2.0"
 log                 = "0.4.0"
@@ -25,6 +24,7 @@ massbit-common      = { path = "../../core/common"}
 package = "graph"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
 branch = "main"
+
 [dependencies.graph-node]
 package = "graph-node"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
@@ -34,6 +34,7 @@ branch = "main"
 package = "graph-store-postgres"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
 branch = "main"
+
 [dependencies.graph-mock]
 package = "graph-mock"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
