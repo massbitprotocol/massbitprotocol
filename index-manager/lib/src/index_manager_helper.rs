@@ -74,7 +74,7 @@ pub async fn start_new_index(params: DeployParams) -> Result<(), Box<dyn Error>>
     IndexStore::insert_new_indexer(&index_config);
 
     // Start the adapter for the index
-    adapter_init(&index_config, &manifest).await;
+    adapter_init(&index_config, &manifest).await?;
 
     Ok(())
 }
