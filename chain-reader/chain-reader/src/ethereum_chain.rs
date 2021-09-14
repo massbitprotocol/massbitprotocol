@@ -18,8 +18,9 @@ use std::sync::{
 };
 use std::time::Instant;
 use thiserror::Error;
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, mpsc};
 use tokio::time::{sleep, timeout, Duration};
+use tonic::Status;
 use web3;
 use web3::transports::Batch;
 use web3::{
@@ -197,7 +198,7 @@ async fn get_block(
     permit: OwnedSemaphorePermit,
     clone_web3: Web3<Transport>,
     clone_version: String,
-    chan_clone: broadcast::Sender<GenericDataProto>,
+    chan_clone: mpsc::Sender<Result<GenericDataProto, Status>>,
 ) {
     debug!("Before permit block {}", block_number);
     let _permit = permit;
@@ -255,11 +256,7 @@ async fn get_block(
             "Sending ETHEREUM as generic data: {:?}",
             &generic_data_proto.block_number
         );
-        let receiver_number = chan_clone.send(generic_data_proto).unwrap();
-        debug!(
-            "Finished Sending ETHEREUM as generic data: {}",
-            receiver_number
-        );
+        chan_clone.send(Ok(generic_data_proto)).await;
     } else {
         info!("Got ETHEREUM block error {:?}", &block);
     }
@@ -267,7 +264,7 @@ async fn get_block(
 }
 
 pub async fn loop_get_block(
-    chan: broadcast::Sender<GenericDataProto>,
+    chan: mpsc::Sender<Result<GenericDataProto, Status>>,
     got_block_number: &mut Option<u64>,
 ) -> Result<(), Box<dyn StdError>> {
     info!("Start get block {:?}", CHAIN_TYPE);
@@ -329,7 +326,6 @@ pub async fn loop_get_block(
             );
 
             let clone_version = version.clone();
-            let chan_clone = chan.clone();
             let clone_web3 = web3.clone();
             // For limit number of spawn task
             debug!(
@@ -341,7 +337,7 @@ pub async fn loop_get_block(
                 "After gave permit, permits available: {}",
                 sem.available_permits()
             );
-
+            let chan_clone = chan.clone();
             tokio::spawn(async move {
                 let res = timeout(
                     Duration::from_secs(GET_BLOCK_TIMEOUT_SEC),

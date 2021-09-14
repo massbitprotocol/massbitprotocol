@@ -103,29 +103,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
                 // add chan to chans
                 chans.insert(ChainType::Solana, chan);
             }
-            ChainType::Ethereum => {
-                // Spawn task
-                tokio::spawn(async move {
-                    // fix_one_thread_not_receive(&chan_sender);
-                    let mut count = 1;
-                    let mut got_block_number = CONFIG.chains.get(&chain_type).unwrap().start_block;
-                    loop {
-                        let resp = ethereum_chain::loop_get_block(
-                            chan_sender.clone(),
-                            &mut got_block_number,
-                        )
-                        .await;
-                        error!(
-                            "Restart {:?} response {:?}, at block {:?}, {} time",
-                            &chain_type, resp, &got_block_number, count
-                        );
-                        sleep(Duration::from_secs(1));
-                        count = count + 1;
-                    }
-                });
-                // add chan to chans
-                chans.insert(ChainType::Ethereum, chan);
-            }
+            ChainType::Ethereum => {}
         }
     }
 
