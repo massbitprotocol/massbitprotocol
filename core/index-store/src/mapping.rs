@@ -84,7 +84,7 @@ impl Store for IndexerState {
             }
         }
         if result.is_none() {
-            match self.store.get(key) {
+            match self.store.get(&key) {
                 Ok(val) => {
                     result = val;
                 }
