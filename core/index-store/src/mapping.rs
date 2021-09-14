@@ -20,6 +20,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::convert::From;
 use std::error::Error;
 use std::sync::Arc;
+use tokio::time::Instant;
 
 pub struct IndexerState {
     pub store: Arc<dyn IndexStore>,
@@ -77,15 +78,18 @@ impl Store for IndexerState {
             entity_type: EntityType::new(entity_type.clone()),
             entity_id: entity_id.clone(),
         };
+        let start = Instant::now();
         let mut result = None;
         if let Ok(cached_entity) = self.entity_cache.get(&key) {
             if cached_entity.is_some() {
+                //log::info!("Get entity from cache in {:?}",start.elapsed());
                 result = cached_entity
             }
         }
         if result.is_none() {
             match self.store.get(&key) {
                 Ok(val) => {
+                    //log::info!("Get entity from db in {:?}",start.elapsed());
                     result = val;
                 }
                 Err(err) => {

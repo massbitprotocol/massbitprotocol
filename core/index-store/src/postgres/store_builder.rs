@@ -10,9 +10,6 @@ use massbit_common::prelude::{
     slog::{self, Logger},
 };
 use std::sync::Arc;
-/*
-use crate::store::postgres::ConnectionPool;
- */
 use super::relational::LayoutExt;
 use super::PostgresIndexStore;
 use diesel::prelude::*;
@@ -54,7 +51,7 @@ const CONN_POOL_SIZE: u32 = 20;
 
 pub struct StoreBuilder {}
 impl StoreBuilder {
-    pub fn create_store<'a, P: AsRef<Path>>(
+    pub fn create_store<P: AsRef<Path>>(
         _indexer: &str,
         schema_path: P,
     ) -> Result<PostgresIndexStore, anyhow::Error> {
@@ -98,6 +95,8 @@ impl StoreBuilder {
             registry.cheap_clone(),
             Arc::new(vec![]),
         );
+        //Skip run migration in connection_pool
+        connection.skip_setup();
         match Self::create_relational_schema(schema_path, &connection) {
             Ok(layout) => {
                 //let entity_dependencies = layout.create_dependencies();
