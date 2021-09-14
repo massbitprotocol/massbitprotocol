@@ -4,6 +4,8 @@ members = [
     "core/chain/substrate",
     "core/chain/solana",
     "core/chain/ethereum",
+    "core/drive",
+    "core/index-store",
     "index-manager/main",
     "plugin/adapter",
     "plugin/runtime/wasm",

@@ -8,6 +8,8 @@ use adapter::{{ chain_type }}::*;
 use adapter::core::PluginRegistrar;
 use index_store::core::Store;
 use std::error::Error;
+pub use index_store::{Entity, EntityFilter, EntityOrder, EntityRange, Value};
+pub use index_store::{EntityValue, FromEntity, FromValueTrait, ToMap, ValueFrom};
 
 #[doc(hidden)]
 #[no_mangle]
