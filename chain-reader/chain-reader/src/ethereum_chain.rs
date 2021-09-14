@@ -336,7 +336,7 @@ pub async fn loop_get_block(
                 "Wait for permit, permits available: {}",
                 sem.available_permits()
             );
-            let permit = Arc::clone(&sem).acquire_owned().await;
+            let permit = Arc::clone(&sem).acquire_owned().await?;
             debug!(
                 "After gave permit, permits available: {}",
                 sem.available_permits()

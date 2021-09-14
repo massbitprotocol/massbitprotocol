@@ -10,31 +10,10 @@ fn main() {
         .subcommand(
             App::new("codegen")
                 .about("Generate Rust code & SQL migrations from GraphQL schema")
-                .arg(
-                    Arg::new("config")
-                        .about("project yaml file path")
-                        .takes_value(true)
-                        .short('c')
-                        .long("config"),
-                )
-                .arg(
-                    Arg::new("schema")
-                        .about("graphql schema file path")
-                        .takes_value(true)
-                        .short('s'),
-                )
-                .arg(
-                    Arg::new("output")
-                        .about("codegen output directory")
-                        .takes_value(true)
-                        .short('o'),
-                )
-                .arg(
-                    Arg::new("mapping_gen")
-                        .about("generate mapping file or not")
-                        .takes_value(false)
-                        .short('m'),
-                ),
+                .arg(Arg::with_name("config").takes_value(true).short("c"))
+                .arg(Arg::with_name("schema").takes_value(true).short("s"))
+                .arg(Arg::with_name("output").takes_value(true).short("o"))
+                .arg(Arg::with_name("mapping_gen").takes_value(false).short("m")),
         )
         .get_matches();
 

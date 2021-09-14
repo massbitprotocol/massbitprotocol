@@ -21,7 +21,6 @@ serde_yaml = "0.8"
 anyhow = "1.0"
 diesel = { version = "1.4.0", features = ["postgres"] }
 reqwest = "0.10.8"
-postgres = "0.15"
 lazy_static = "1.2.0"
 rand = "0.8.4"
 strum_macros = "0.21.1"
@@ -32,47 +31,28 @@ ipfs-client = { path = "../../core/ipfs-client" }
 tokio02-spawn = { path = "../../core/tokio02-spawn" }
 massbit-chain-substrate = { path = "../../core/chain/substrate"}
 massbit-chain-solana = { path = "../../core/chain/solana" }
-#massbit-chain-ethereum = { path = "../../core/chain/ethereum" }
 index-store = { path = "../../core/index-store" }
 adapter = { path = "../../plugin/adapter" }
+postgres = "0.19.1"
 
 [build-dependencies]
 tonic-build = "0.4" # Chain Reader Client
 
 [dependencies.node-template-runtime]
 git = "https://github.com/scs/substrate-api-client-test-node"
-branch = "bump-to-polkadot-v0.9.2"
-
-[dependencies.sp-runtime]
-git = "https://github.com/paritytech/substrate.git"
-branch = "master"
-package = "sp-runtime"
-default-features=false
-
-[dependencies.system]
-git = "https://github.com/paritytech/substrate.git"
-branch = "master"
-package = "frame-system"
-optional = false
-
-[dependencies.sp-core]
-git = "https://github.com/paritytech/substrate.git"
-branch = "master"
-package = "sp-core"
-default-features = false
-features = ["full_crypto"]
+branch = "polkadot-v0.9.2"
 
 [dependencies.graph]
 package = "graph"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
-branch = "anhhuy0501-patch-add-pub"
+branch = "main"
 
 [dependencies.graph-chain-ethereum]
 package = "graph-chain-ethereum"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
-branch = "anhhuy0501-patch-add-pub"
+branch = "main"
 
 [dependencies.graph-core]
 package = "graph-core"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
-branch = "anhhuy0501-patch-add-pub"
+branch = "main"

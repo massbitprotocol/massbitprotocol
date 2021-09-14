@@ -33,7 +33,7 @@ pub async fn adapter_init(
             &index_config.schema,
             manifest,
         )
-        .await;
+        .await?;
     /*
     if get_mapping_language(&config_value).to_string().contains("wasm") {
         log::info!("Handling .wasm file");

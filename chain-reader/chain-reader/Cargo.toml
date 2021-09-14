@@ -19,72 +19,41 @@ dotenv          = "0.15.0"
 multiqueue      = "0.3.2"
 broadcaster     = "1.0.0"
 lazy_static     = "1.4.0"
-logger          = { path = "../../core/logger" }
-#ws              = { version = "0.9.1", optional = true, features = ["ssl"] }
 hex             = { version = "0.4.3", default-features = false }
 serde           = { version = "1.0", optional = false }
 serde_json      = { version = "1.0", optional = false }
 thiserror       = { version = "1.0", optional =false }
 primitive-types = { version = "0.6.1", optional = true, features = ["codec"] }
-
-pallet-timestamp = { version = "3.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "master" }
-pallet-balances = { version = "3.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "master" }
-
-# For protobuf
 tonic = "0.4"
 prost = "0.7"
 futures-core = "0.3"
 futures-util = "0.3"
 tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "sync", "time"] }
 tokio-stream = "0.1"
-
 async-stream = "0.2"
 rand = "0.7"
 serde_yaml = "0.8"
+hex-literal = "0.3"
+sp-core = { default-features = false, version = "3.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.2", features = ["full_crypto"] }
+sp-keyring = { version = "3.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.2" }
+frame-system = { default-features = false,  version = "3.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.2" }
+clap = { version = "2.33.3", features = ["yaml"] }
 
 massbit-chain-substrate = { path = "../../core/chain/substrate" }
 massbit-chain-solana = { path = "../../core/chain/solana" }
 massbit-chain-ethereum = { path = "../../core/chain/ethereum" }
 ipfs-client = { path = "../../core/ipfs-client" }
+logger = { path = "../../core/logger" }
 
 [dependencies.substrate-api-client]
 git = "https://github.com/scs/substrate-api-client.git"
-branch = "master"
+branch = "polkadot-v0.9.2"
 package = "substrate-api-client"
 default-features = true
 
-
-[dependencies.sp-core]
-git = "https://github.com/paritytech/substrate.git"
-branch = "master"
-package = "sp-core"
-default-features = false
-features = ["full_crypto"]
-
-[dependencies.sc-rpc-api]
-git = "https://github.com/paritytech/substrate.git"
-branch = "master"
-optional = true
-
 [dependencies.node-template-runtime]
 git = "https://github.com/scs/substrate-api-client-test-node"
-branch = "bump-to-polkadot-v0.9.2"
-
-[dependencies.system]
-git = "https://github.com/paritytech/substrate.git"
-branch = "master"
-package = "frame-system"
-optional = false
-
-
-#[dev-dependencies.keyring]
-#git = "https://github.com/paritytech/substrate.git"
-#branch = "master"
-#package = "sp-keyring"
-
-[dependencies.clap]
-version = "2.33"
-features = ["yaml"]
+branch = "polkadot-v0.9.2"
 
 [dependencies.codec]
 package = "parity-scale-codec"
@@ -92,58 +61,40 @@ features = ["derive"]
 version = "2.0.0"
 default-features = false
 
-
-############# Solana
 [dependencies.solana-client]
 package = "solana-client"
 git = "https://github.com/massbitprotocol/solana.git"
-#path = "../../../../solana/solana_offical/solana/client"
-#/home/huy/work/block_chain/solana/solana_offical/solana/client
-#branch = "master"
+branch = "main"
 
 [dependencies.solana-transaction-status]
 package = "solana-transaction-status"
 git = "https://github.com/massbitprotocol/solana.git"
-#tag = "v1.7.4"
-#branch = "v1.7"
-#path = "../../../../solana/solana_offical/solana/transaction-status"
+branch = "main"
 
-############# End solana
-
-############# Ethereum
 [dependencies.web3]
 package = "web3"
 git = "https://github.com/graphprotocol/rust-web3"
 branch = "master"
 
-hex-literal = "0.3"
-hex = "1.7.9"
-
 [dependencies.graph-chain-ethereum]
 package = "graph-chain-ethereum"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
-#rev = "c87281e4d09a0b15b235646dc4b0ae5569da4be2"
-branch = "anhhuy0501-patch-add-pub"
+branch = "main"
 
 [dependencies.graph]
 package = "graph"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
-#rev = "c87281e4d09a0b15b235646dc4b0ae5569da4be2"
-branch = "anhhuy0501-patch-add-pub"
+branch = "main"
 
 [dependencies.graph-core]
 package = "graph-core"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
-#rev = "c87281e4d09a0b15b235646dc4b0ae5569da4be2"
-branch = "anhhuy0501-patch-add-pub"
+branch = "main"
 
 [dependencies.graph-runtime-wasm]
 package = "graph-runtime-wasm"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
-#rev = "c87281e4d09a0b15b235646dc4b0ae5569da4be2"
-branch = "anhhuy0501-patch-add-pub"
-
-############# End Ethereum
+branch = "main"
 
 [features]
 default = ["std"]
@@ -160,15 +111,3 @@ tonic-build = "0.4"
 [[bin]] # Bin to run gRPC server
 name = "chain-reader"
 path = "src/chain-reader.rs"
-
-[[bin]] # Bin to run gRPC client
-name = "client"
-path = "src/examples/client.rs"
-
-[[bin]] # Bin to run examples
-name = "test"
-path = "src/examples/test.rs"
-
-[[bin]] # Bin to run examples
-name = "test-ethereum"
-path = "src/examples/test_ethereum.rs"

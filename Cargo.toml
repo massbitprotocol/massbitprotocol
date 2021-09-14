@@ -1,7 +1,6 @@
 [workspace]
 members = [
     "chain-reader/chain-reader",
-    "mock",
     "core/chain/substrate",
     "core/chain/solana",
     "core/chain/ethereum",

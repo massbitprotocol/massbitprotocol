@@ -8,28 +8,11 @@ edition = "2018"
 [dependencies]
 serde = "1.0.126"
 serde_json = "1.0.64"
+frame-system = { default-features = false,  version = "3.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.2" }
 
 [dependencies.node-template-runtime]
 git = "https://github.com/scs/substrate-api-client-test-node"
-branch = "bump-to-polkadot-v0.9.2"
-
-[dependencies.system]
-git = "https://github.com/paritytech/substrate.git"
-branch = "master"
-package = "frame-system"
-optional = false
-
-[dependencies.sp-runtime]
-git = "https://github.com/paritytech/substrate.git"
-branch = "master"
-package = "sp-runtime"
-default-features=false
-
-[dependencies.support]
-git = "https://github.com/paritytech/substrate.git"
-branch = "master"
-package = "frame-support"
-default-features=false
+branch = "polkadot-v0.9.2"
 
 [dependencies.codec]
 package = "parity-scale-codec"

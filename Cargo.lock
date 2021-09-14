@@ -4271,17 +4271,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "massbit-drive"
-version = "0.0.0"
-dependencies = [
- "Inflector",
- "graph",
- "proc-macro2 1.0.24",
- "quote 1.0.9",
- "syn 1.0.64",
-]
-
-[[package]]
 name = "massbit-runtime-wasm"
 version = "0.1.0"
 dependencies = [
