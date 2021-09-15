@@ -10,7 +10,8 @@ members = [
     "plugin/adapter",
     "plugin/runtime/wasm",
     "cli",
-    "utils"
+    "utils",
+    "chain/ethereum"
 ]
 exclude = ["code-compiler/generated"]
 
