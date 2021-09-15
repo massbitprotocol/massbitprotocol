@@ -1,3 +1,6 @@
+import hashlib
+import json
+import shutil
 import urllib.parse
 import os
 import subprocess
@@ -9,6 +12,11 @@ from distutils.dir_util import copy_tree
 from helper.helper import write_to_disk, populate_stub, get_abi_files, upload_abi_to_ipfs, replace_abi_with_hash, \
     get_index_manager_url
 
+success_file = "success.txt"
+error_file = "error.txt"
+
+success_codegen_file = "success-codegen.txt"
+error_codegen_file = "error-codegen.txt"
 
 class CargoCodegen(threading.Thread):
     """
@@ -37,10 +45,10 @@ class CargoCodegen(threading.Thread):
                                              shell=True, universal_newlines=True, cwd=self.generated_folder)
         except subprocess.CalledProcessError as exc:
             print("Codegen has failed. The result can be found in: " + self.generated_folder)
-            write_to_disk(self.generated_folder + "/error-codegen.txt", exc.output)
+            write_to_disk(self.generated_folder + "/"+error-codegen.txt, exc.output)
         else:
             print("Codegen was success. The result can be found in: " + self.generated_folder)
-            write_to_disk(self.generated_folder + "/success-codegen.txt", output)
+            write_to_disk(self.generated_folder + "/"+success_codegen_file, output)
 
 
 class CargoGenAndBuild(threading.Thread):
@@ -69,11 +77,26 @@ class CargoGenAndBuild(threading.Thread):
             write_to_disk(self.generated_folder + "/error.txt", exc.output)
         else:
             print("Compilation was success. The result can be found in: " + self.generated_folder)
-            write_to_disk(self.generated_folder + "/success.txt", output)
+            write_to_disk(self.generated_folder + "/" + success_file, output)
 
 
-def compile_so(data, hash):
-    generated_folder = "generated/" + hash
+def compile_so(data, use_precompile=True):
+    # Create hash for generated folder name
+    dump_data = json.dumps(data).encode('utf-8')
+    print(dump_data)
+    hash = hashlib.md5(dump_data).hexdigest()
+    generated_folder = os.path.join("generated", hash)
+    success_file_full = os.path.join(generated_folder,success_file)
+    success_codegen_file_full = os.path.join(generated_folder,success_codegen_file)
+
+    # Check if we could reuse the precompile
+    if use_precompile and os.path.isfile(success_file_full) and os.path.isfile(success_codegen_file_full):
+        return hash
+
+    # Remove the exist folder
+    if os.path.isdir(generated_folder):
+        shutil.rmtree(generated_folder)
+
 
     # Create new folder
     os.mkdir(generated_folder)
@@ -100,6 +123,7 @@ def compile_so(data, hash):
     print("Generating code + compiling for: " + hash + ". This will take a while!")
     cargo_gen_and_build = CargoGenAndBuild(generated_folder)
     cargo_gen_and_build.start()
+
 
 
 def deploy_so(data):

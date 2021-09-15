@@ -17,26 +17,27 @@ lazy_static! {
     // Load default config
     pub static ref CONFIG: Config = Config{
         chains: [
-            // ChainConfig{
-            //     url: "".to_string(),
-            //     ws: "".to_string(),
-            //     start_block: None,
-            //     chain_type: ChainType::Substrate,
-            //     network: "mainnet".to_string()
-            // },
-            // ChainConfig{
-            //     ws: "ws://api.mainnet-beta.solana.com".to_string(),
-            //     // url: "https://mainnet-beta-solana.massbit.io".to_string(),
-            //     //url: "https://api.mainnet-beta.solana.com".to_string(),
-            //     url: "https://solana-api.projectserum.com".to_string(),
-            //
-            //     start_block: None,
-            //     chain_type: ChainType::Solana,
-            //     network: "mainnet".to_string()
-            // },
+            ChainConfig{
+                url: "".to_string(),
+                ws: "".to_string(),
+                start_block: None,
+                chain_type: ChainType::Substrate,
+                network: "mainnet".to_string()
+            },
+            ChainConfig{
+                ws: "ws://api.mainnet-beta.solana.com".to_string(),
+                // url: "https://mainnet-beta-solana.massbit.io".to_string(),
+                //url: "https://api.mainnet-beta.solana.com".to_string(),
+                url: "https://solana-api.projectserum.com".to_string(),
+
+                start_block: None,
+                chain_type: ChainType::Solana,
+                network: "mainnet".to_string()
+            },
             ChainConfig{
                 ws: "wss://rpc-mainnet.matic.network".to_string(),
-                url: "https://rpc-mainnet.matic.network".to_string(),
+                //url: "https://rpc-mainnet.matic.network".to_string(),
+                url: "https://polygon-rpc.com/".to_string(),
                 start_block: Some(18403764),
                 chain_type: ChainType::Ethereum,
                 network: "matic".to_string()

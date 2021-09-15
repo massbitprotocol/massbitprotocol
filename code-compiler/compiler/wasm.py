@@ -1,10 +1,20 @@
+import hashlib
+import json
+import shutil
 import urllib.parse
 import os
 import subprocess
 import threading
 import requests
 import yaml
-from helper.helper import write_to_disk, get_abi_files, upload_abi_to_ipfs, ipfs_client_init, get_index_manager_url, is_template_exist, replace_abi_with_hash
+from helper.helper import write_to_disk, get_abi_files, upload_abi_to_ipfs, ipfs_client_init, get_index_manager_url, \
+    is_template_exist, replace_abi_with_hash
+
+success_file = "success.txt"
+error_file = "error.txt"
+
+success_codegen_file = "success-codegen.txt"
+error_codegen_file = "error-codegen.txt"
 
 
 class WasmCodegenAndBuild(threading.Thread):
@@ -24,17 +34,32 @@ class WasmCodegenAndBuild(threading.Thread):
             output = subprocess.check_output(["npm install && npm run codegen && npm run build"],
                                              stderr=subprocess.STDOUT,
                                              shell=True, universal_newlines=True, cwd=self.generated_folder)
+
         except subprocess.CalledProcessError as exc:
             print("Compilation has failed. The result can be found in: " + self.generated_folder)
-            write_to_disk(self.generated_folder + "/error.txt", exc.output)
+            write_to_disk(self.generated_folder + "/"+error_file, exc.output)
         else:
             print("Compilation was success. The result can be found in: " + self.generated_folder)
-            write_to_disk(self.generated_folder + "/success.txt", output)
+            write_to_disk(self.generated_folder + "/"+success_file, output)
 
 
-def compile_wasm(data, hash):
-    # Create new folder
-    generated_folder = "generated/" + hash
+def compile_wasm(data, use_precompile=True):
+    # Create hash for generated folder name
+    dump_data = json.dumps(data).encode('utf-8')
+    print(dump_data)
+    hash = hashlib.md5(dump_data).hexdigest()
+
+    generated_folder = os.path.join("generated", hash)
+    success_file_full = os.path.join(generated_folder, success_file)
+    success_codegen_file_full = os.path.join(generated_folder, success_codegen_file)
+
+    # Check if we could reuse the precompile
+    if use_precompile and os.path.isfile(success_file_full):
+        return hash
+
+    # Remove the exist folder
+    if os.path.isdir(generated_folder):
+        shutil.rmtree(generated_folder)
 
     # URL-decode the data
     mappings = data["mappings"]
@@ -102,7 +127,7 @@ def deploy_wasm(data):
     deploy_to_index_manager(parsed_subgraph_res, ds_mapping_res, schema_res, abi_res)
 
 
-def parse_subgraph(subgraph_path, parsed_subgraph_path, schema_res, abi_res, ds_mapping_res, tp_mapping_res = None):
+def parse_subgraph(subgraph_path, parsed_subgraph_path, schema_res, abi_res, ds_mapping_res, tp_mapping_res=None):
     """
     Parse subgraph.yaml and create a new parsed_subgraph.yaml with IPFS hash populated
     """
@@ -159,5 +184,3 @@ def get_tp_mapping_path(subgraph_path, compilation_id):
     subgraph = yaml.safe_load(stream)
     stream.close()
     return os.path.join("./generated", compilation_id, "build", subgraph['templates'][0]['mapping']['file'])
-
-

@@ -33,7 +33,7 @@ ${INDEX_MANAGER}  http://localhost:3000
 #    # Compile status
 #    Wait Until Keyword Succeeds
 #    ...  60x
-#    ...  10 sec
+#    ...  3 sec
 #    ...  Pooling Status
 #    ...  ${compile_res["payload"]}
 #
@@ -47,7 +47,7 @@ ${INDEX_MANAGER}  http://localhost:3000
 #    # Check that there is a table with data in it
 #    Wait Until Keyword Succeeds
 #    ...  10x
-#    ...  5 sec
+#    ...  3 sec
 #    ...  Pooling Database Data
 #    ...  SELECT * FROM sgd0.solana_block_ts FETCH FIRST ROW ONLY
 
@@ -73,7 +73,7 @@ Deploy test-solana-transaction, then check if data was inserted into DB
     # Compile status
     Wait Until Keyword Succeeds
     ...  60x
-    ...  10 sec
+    ...  3 sec
     ...  Pooling Status
     ...  ${compile_res["payload"]}
 
@@ -87,7 +87,7 @@ Deploy test-solana-transaction, then check if data was inserted into DB
     # Check that there is a table with data in it
     Wait Until Keyword Succeeds
     ...  10x
-    ...  5 sec
+    ...  3 sec
     ...  Pooling Database Data
     ...  SELECT * FROM sgd0.solana_transaction_ts FETCH FIRST ROW ONLY
 
@@ -113,7 +113,7 @@ Deploy test-solana-log-messages, then check if data was inserted into DB
     # Compile status
     Wait Until Keyword Succeeds
     ...  60x
-    ...  10 sec
+    ...  3 sec
     ...  Pooling Status
     ...  ${compile_res["payload"]}
 
@@ -128,7 +128,7 @@ Deploy test-solana-log-messages, then check if data was inserted into DB
     # Check that there is a table with data in it
     Wait Until Keyword Succeeds
     ...  10x
-    ...  5 sec
+    ...  3 sec
     ...  Pooling Database Data
     ...  SELECT * FROM sgd0.solana_log_messages_ts FETCH FIRST ROW ONLY
 
@@ -158,7 +158,7 @@ Deploy test-solana-log-messages, then check if data was inserted into DB
 #    # Compile status
 #    Wait Until Keyword Succeeds
 #    ...  60x
-#    ...  10 sec
+#    ...  3 sec
 #    ...  Pooling Status
 #    ...  ${compile_res["payload"]}
 #
@@ -203,7 +203,7 @@ Deploy test-solana-index-serum, then check if data was inserted into DB
     # Compile status
     Wait Until Keyword Succeeds
     ...  60x
-    ...  10 sec
+    ...  3 sec
     ...  Pooling Status
     ...  ${compile_res["payload"]}
 
@@ -217,13 +217,13 @@ Deploy test-solana-index-serum, then check if data was inserted into DB
     # Check that there is a table with data in it
     Wait Until Keyword Succeeds
     ...  10x
-    ...  5 sec
+    ...  3 sec
     ...  Pooling Database Data
     ...  SELECT * FROM sgd0.serum_transaction FETCH FIRST ROW ONLY
 
     Wait Until Keyword Succeeds
     ...  10x
-    ...  5 sec
+    ...  3 sec
     ...  Pooling Database Data
     ...  SELECT * FROM sgd0.serum_transaction_account FETCH FIRST ROW ONLY
 
