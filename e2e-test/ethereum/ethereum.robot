@@ -6,6 +6,7 @@ Library  DatabaseLibrary
 Library  ../core-lib/request.py
 Library  ../core-lib/pgconnection.py
 Library  ../core-lib/example-reader.py
+Library  String
 
 *** Variables ***
 ${CODE_COMPILER}  http://localhost:5000
@@ -31,12 +32,16 @@ Deploy test-ethereum-block, then check if data was inserted into DB
     ...  ${object}
     Should be equal  ${compile_res["status"]}  success
 
+    Log to console             ${\n}Finished Compile request
+
     # Compile status
     Wait Until Keyword Succeeds
     ...  60x
-    ...  10 sec
+    ...  3 sec
     ...  Pooling Status
     ...  ${compile_res["payload"]}
+
+    Log to console             ${\n}Finished Compile status check request
 
     # Deploy
     ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}"}
@@ -45,14 +50,16 @@ Deploy test-ethereum-block, then check if data was inserted into DB
     ...  ${json}
     Should be equal  ${deploy_res["status"]}  success
 
+    Log to console             ${\n}Finished Deploy
+
     # Check that there is a table with data in it
     Wait Until Keyword Succeeds
     ...  10x
-    ...  5 sec
+    ...  3 sec
     ...  Pooling Database Data
     ...  SELECT * FROM sgd0.ethereum_block_table FETCH FIRST ROW ONLY
 
-
+    Log to console             ${\n}Finished Check inserting data into DB
 ################################
 # Test-ethereum-transaction SO #
 ################################
@@ -73,8 +80,8 @@ Deploy test-ethereum-transaction, then check if data was inserted into DB
 
     # Compile status
     Wait Until Keyword Succeeds
-    ...  60x
-    ...  10 sec
+    ...  120x
+    ...  3 sec
     ...  Pooling Status
     ...  ${compile_res["payload"]}
 
@@ -88,48 +95,56 @@ Deploy test-ethereum-transaction, then check if data was inserted into DB
     # Check that there is a table with data in it
     Wait Until Keyword Succeeds
     ...  10x
-    ...  5 sec
+    ...  3 sec
     ...  Pooling Database Data
     ...  SELECT * FROM sgd0.ethereum_transaction_table FETCH FIRST ROW ONLY
 
-################################
-# Test-ethereum-event SO #
-################################
-Deploy test-ethereum-event, then check if data was inserted into DB
-    # Configuration
-    Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
-
-    # Remove table if exists
-    Delete Table If Exists  sgd0.__diesel_schema_migrations
-    Delete Table If Exists  sgd0.ethereum_event_table
-
-    # Compile request
-    ${object} =  Read So Example  ../../user-example/ethereum/so/test-ethereum-event
-    ${compile_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/compile/so
-    ...  ${object}
-    Should be equal  ${compile_res["status"]}  success
-
-    # Compile status
-    Wait Until Keyword Succeeds
-    ...  60x
-    ...  10 sec
-    ...  Pooling Status
-    ...  ${compile_res["payload"]}
-
-    # Deploy
-    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}"}
-    ${deploy_res}=  Request.Post Request
-    ...  ${CODE_COMPILER}/deploy/so
-    ...  ${json}
-    Should be equal  ${deploy_res["status"]}  success
-
-    # Check that there is a table with data in it
-    Wait Until Keyword Succeeds
-    ...  10x
-    ...  5 sec
-    ...  Pooling Database Data
-    ...  SELECT * FROM sgd0.ethereum_event_table FETCH FIRST ROW ONLY
+#################################
+## Test-ethereum-event SO #
+#################################
+#Deploy test-ethereum-event, then check if data was inserted into DB
+#    # Configuration
+#    Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
+#
+#    # Remove table if exists
+#    Delete Table If Exists  sgd0.__diesel_schema_migrations
+#    Delete Table If Exists  sgd0.ethereum_event_table
+#
+#    # Compile request
+#    ${object} =  Read So Example  ../../user-example/ethereum/so/test-ethereum-event
+#    ${compile_res}=  Request.Post Request
+#    ...  ${CODE_COMPILER}/compile/so
+#    ...  ${object}
+#    Should be equal  ${compile_res["status"]}  success
+#
+#    Log to console             ${\n}Finished Compile request
+#
+#    # Compile status
+#    Wait Until Keyword Succeeds
+#    ...  120x
+#    ...  3 sec
+#    ...  Pooling Status
+#    ...  ${compile_res["payload"]}
+#
+#    Log to console             ${\n}Finished Compile
+#
+#    # Deploy
+#    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}"}
+#    ${deploy_res}=  Request.Post Request
+#    ...  ${CODE_COMPILER}/deploy/so
+#    ...  ${json}
+#    Should be equal  ${deploy_res["status"]}  success
+#
+#    Log to console             ${\n}Finished Deploy
+#
+#    # Check that there is a table with data in it
+#    Wait Until Keyword Succeeds
+#    ...  10x
+#    ...  3 sec
+#    ...  Pooling Database Data
+#    ...  SELECT * FROM sgd0.ethereum_event_table FETCH FIRST ROW ONLY
+#
+#    Log to console             ${\n}Finished Check Inserting Data in DB
 
 ############################
 # Test-ethereum-block WASM #
@@ -148,7 +163,7 @@ Compile and Deploy WASM Test Ethereum Block
     # Compile status
     Wait Until Keyword Succeeds
     ...  60x
-    ...  10 sec
+    ...  3 sec
     ...  Pooling Status
     ...  ${compile_res["payload"]}
 
@@ -176,7 +191,7 @@ Compile and Deploy WASM Test Ethereum Block
 #    # Compile status
 #    Wait Until Keyword Succeeds
 #    ...  60x
-#    ...  10 sec
+#    ...  3 sec
 #    ...  Pooling Status
 #    ...  ${compile_res["payload"]}
 #
@@ -205,7 +220,7 @@ Compile and Deploy WASM Test Quickswap
     # Compile status
     Wait Until Keyword Succeeds
     ...  60x
-    ...  10 sec
+    ...  3 sec
     ...  Pooling Status
     ...  ${compile_res["payload"]}
 

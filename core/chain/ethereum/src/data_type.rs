@@ -14,6 +14,7 @@ use web3::types::{Block, Log, Transaction, TransactionReceipt, H256, U256};
 
 use graph::blockchain::{Blockchain, DataSource as _};
 use graph::log::logger;
+use graph::prelude::Logger;
 use graph_chain_ethereum::chain::BlockFinality;
 use graph_chain_ethereum::{Chain, DataSource, MappingTrigger};
 
@@ -57,13 +58,18 @@ pub fn decode(payload: &mut Vec<u8>) -> Result<EthereumBlock, Box<dyn Error>> {
     Ok(block)
 }
 
-pub fn get_events(eth_block: &EthereumBlock, data_source: &DataSource) -> Vec<EthereumEvent> {
+pub fn get_events(
+    eth_block: &EthereumBlock,
+    data_source: &DataSource,
+    logger: &Logger,
+) -> Vec<EthereumEvent> {
     let block = Arc::new(eth_block.block.clone());
-
+    // let logger = graph::log::logger(true);
     eth_block
         .logs
         .iter()
         .filter_map(|log| {
+            // Copy from: https://github.com/massbitprotocol/massbit-graph-node/blob/main/chain/ethereum/src/data_source.rs#L491
             let transaction = if log.transaction_hash != block.hash {
                 block
                     .transaction_for_log(&log)
@@ -82,7 +88,7 @@ pub fn get_events(eth_block: &EthereumBlock, data_source: &DataSource) -> Vec<Et
             // Get params
             let trigger: <Chain as Blockchain>::TriggerData =
                 EthereumTrigger::Log(Arc::new(log.clone()));
-            let logger = logger(true);
+
             let block_finality: Arc<<Chain as Blockchain>::Block> =
                 Arc::new(BlockFinality::Final(block.clone()));
             let mapping_trigger = data_source

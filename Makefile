@@ -8,30 +8,59 @@ remove-all-git-hook:
 	@echo "Removing all symlinks..."
 	rm .git/hooks/*
 
+
+#This test for run all test when the component already up
 test-run-all:
 	@echo "Running health check tests ..."
 	cd e2e-test/health-check && robot health-check.robot || true
+
 	@echo "Running substrate tests ..."
 	cd e2e-test/substrate && robot substrate.robot
+
+	make restart-chain-reader-index-manager
+
 	@echo "Running solana tests ..."
 	cd e2e-test/solana && robot solana.robot
+
+	make restart-chain-reader-index-manager
+
 	@echo "Running ethereum tests ..."
 	cd e2e-test/ethereum && robot ethereum.robot
 
+#This test start/restart all service and run all test
 test-run-all-and-up:
-	@echo "Run all services"
-	bash run.sh
-	sleep 10;
+	@echo "Close all services before running test"
+	make services-down
+	make kill-all-tmux || true
+
+	@echo "Restart services before running test"
+
+	tmux new -d -s services "make services-up"
+	sleep 5;
+	make run-all-tmux
+	tmux ls
+	sleep 5;
+
 	@echo "Running health check tests ..."
 	cd e2e-test/health-check && robot health-check.robot || true
+
 	@echo "Running substrate tests ..."
-	cd e2e-test/substrate && robot substrate.robot
+	cd e2e-test/substrate && robot substrate.robot || true
+
+	make restart-chain-reader-index-manager
+
 	@echo "Running solana tests ..."
-	cd e2e-test/solana && robot solana.robot
+	cd e2e-test/solana && robot solana.robot || true
+
+	make restart-chain-reader-index-manager
+
 	@echo "Running ethereum tests ..."
-	cd e2e-test/ethereum && robot ethereum.robot
-	@echo "Running dashboard tests ..."
-	cd e2e-test/dashboard && robot dashboard.robot || true
+	cd e2e-test/ethereum && robot ethereum.robot || true
+
+	make restart-chain-reader-index-manager
+
+#	@echo "Running dashboard tests ..."
+#	cd e2e-test/dashboard && robot dashboard.robot || true
 
 test-init:
 	@echo "Installing all the dependencies for E2E tests ..."
@@ -52,7 +81,7 @@ deploy:
     --header 'Content-Type: application/json' \
     --data-raw '{"configs": {"model": "Factory" }, "compilation_id": "$(id)" }'
 
-run-indexer-manager:
+run-index-manager:
 	@echo "Run index-manager"
 	cargo run --bin index-manager-main
 
@@ -71,3 +100,38 @@ services-up:
 services-down:
 	@echo "Stop all service"
 	docker-compose -f docker-compose.min.yml down
+
+#################### Production commands ##################
+run-all-tmux:
+	@echo "A quick fix to bypass the not able to start tmux error"
+	export TERM=xterm
+
+	@echo "Run index-manager in tmux"
+	tmux new -d -s index-manager "make run-index-manager"
+
+	@echo "Run chain-reader in tmux"
+	tmux new -d -s chain-reader "make run-chain-reader"
+
+	@echo "Run code-compiler in tmux"
+	tmux new -d -s code-compiler "make run-code-compiler"
+
+kill-all-tmux:
+	@echo "Kill all tmux services"
+	pkill chain-reader || true
+	pkill code-compiler || true #Fixme: this cmd cannot kill code-compiler yet
+	pkill index-manager || true
+	tmux list-sessions | awk 'BEGIN{FS=":"}{print $1}' | xargs -n 1 tmux kill-session -t
+	tmux ls
+
+restart-chain-reader-index-manager:
+	@echo "Run index-manager in tmux"
+	pkill chain-reader || true
+	tmux kill-session -t chain-reader || true
+	pkill index-manager || true
+	tmux kill-session -t index-manager || true
+	sleep 3
+
+	@echo "Run run-chain-reader and index-manager tmux"
+	tmux new -d -s chain-reader "make run-chain-reader"
+	tmux new -d -s index-manager "make run-index-manager"
+	sleep 3

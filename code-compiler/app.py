@@ -2,7 +2,7 @@ from compiler.so import deploy_so, compile_so
 from compiler.wasm import compile_wasm, deploy_wasm
 from flask import Flask, request
 from flask_cors import CORS, cross_origin
-
+import hashlib
 
 ################
 # Config Flask #
@@ -13,12 +13,14 @@ app = Flask(__name__)
 cors = CORS(app)
 
 
+
 @app.route("/compile/so", methods=['POST'])
 @cross_origin()
 def compile_handler():
     data = request.json
-    deployment_hash = random_hash()  # Random hash should be used as folder name for each new deployment
-    compile_so(data, deployment_hash)
+    #deployment_hash = random_hash()  # Random hash should be used as folder name for each new deployment
+
+    deployment_hash = compile_so(data)
     return {
                "status": "success",
                "payload": deployment_hash,
@@ -30,8 +32,8 @@ def compile_handler():
 @cross_origin()
 def compile_wasm_handler():
     data = request.json
-    deployment_hash = random_hash()  # Random hash should be used as folder name for each new deployment
-    compile_wasm(data, deployment_hash)
+    # deployment_hash = random_hash()  # Random hash should be used as folder name for each new deployment
+    deployment_hash = compile_wasm(data)
     return {
                "status": "success",
                "payload": deployment_hash,

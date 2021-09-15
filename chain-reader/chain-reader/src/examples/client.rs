@@ -43,7 +43,7 @@ pub async fn print_blocks(
     chain_type: ChainType,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     println!("Creating Stream ...");
-
+    let logger = graph::log::logger(true);
     let mut file_hash = "".to_string();
     let mut data_sources = vec![];
     let mut network = "".to_string();
@@ -156,7 +156,7 @@ pub async fn print_blocks(
 
                     for data_source in &data_sources {
                         //println!("data_source: {:#?}", &data_source);
-                        let events = get_events(&block, data_source);
+                        let events = get_events(&block, data_source, &logger);
 
                         // for event in events {
                         //     println!("Ethereum Event address: {:?}", &event.event.address);
