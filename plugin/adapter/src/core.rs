@@ -163,11 +163,13 @@ impl AdapterManager {
     ) -> Result<(), Box<dyn Error>> {
         //sleep(Duration::from_millis(1000)).await;
         let chain_type = get_chain_type(data_source);
+        let network = data_source.network.clone().unwrap_or(Default::default());
         let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await?;
         let get_blocks_request = GetBlocksRequest {
             start_block_number: 0,
             end_block_number: 1,
             chain_type: chain_type as i32,
+            network,
         };
         let mut stream: Streaming<GenericDataProto> = client
             .list_blocks(Request::new(get_blocks_request.clone()))

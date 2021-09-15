@@ -1,3 +1,4 @@
+use crate::command::NetworkType;
 use crate::Transport;
 use crate::{
     grpc_stream::stream_mod::{ChainType, DataType, GenericDataProto},
@@ -198,6 +199,7 @@ async fn get_block(
     clone_web3: Web3<Transport>,
     clone_version: String,
     chan_clone: broadcast::Sender<GenericDataProto>,
+    network: &NetworkType,
 ) {
     debug!("Before permit block {}", block_number);
     let _permit = permit;
@@ -210,7 +212,10 @@ async fn get_block(
     debug!("After block_with_txs block {}", block_number);
     for i in 0..RETRY_GET_BLOCK_LIMIT {
         if block.is_err() {
-            info!("Getting ETHEREUM block {} retry {} times", block_number, i);
+            info!(
+                "Getting ETHEREUM-{} block {} retry {} times",
+                network, block_number, i
+            );
             block = clone_web3
                 .eth()
                 .block_with_txs(BlockId::Number(Web3BlockNumber::from(block_number)))
@@ -221,15 +226,15 @@ async fn get_block(
     }
 
     if let Ok(Some(block)) = block {
-        //println!("Got ETHEREUM Block {:?}",block);
         // Convert to generic
         let block_hash = block.hash.clone().unwrap_or_default().to_string();
 
         // Get receipts
-        info!("Getting ETHEREUM of block: {}", block_number);
+        info!("Getting ETHEREUM-{} of block: {}", network, block_number);
         let receipts = get_receipts(&block, &clone_web3).await;
         info!(
-            "Got ETHEREUM {} receipts of block: {}",
+            "Got ETHEREUM-{} {} receipts of block: {}",
+            network,
             receipts.len(),
             block_number
         );
@@ -252,16 +257,16 @@ async fn get_block(
         let generic_data_proto =
             _create_generic_block(block_hash, block_number, &eth_block, clone_version);
         info!(
-            "Sending ETHEREUM as generic data: {:?}",
-            &generic_data_proto.block_number
+            "Sending ETHEREUM-{} as generic data: {:?}",
+            network, &generic_data_proto.block_number
         );
         let receiver_number = chan_clone.send(generic_data_proto).unwrap();
         debug!(
-            "Finished Sending ETHEREUM as generic data: {}",
-            receiver_number
+            "Finished Sending ETHEREUM-{} as generic data: {}",
+            network, receiver_number
         );
     } else {
-        info!("Got ETHEREUM block error {:?}", &block);
+        info!("Got ETHEREUM-{} block error {:?}", network, &block);
     }
     info!("Finish tokio::spawn for getting block: {:?}", &block_number);
 }
@@ -269,11 +274,12 @@ async fn get_block(
 pub async fn loop_get_block(
     chan: broadcast::Sender<GenericDataProto>,
     got_block_number: &mut Option<u64>,
+    network: NetworkType,
 ) -> Result<(), Box<dyn StdError>> {
     info!("Start get block {:?}", CHAIN_TYPE);
     info!("Init Ethereum adapter");
     let exit = Arc::new(AtomicBool::new(false));
-    let config = CONFIG.chains.get(&CHAIN_TYPE).unwrap();
+    let config = CONFIG.get_chain_config(&CHAIN_TYPE, &network).unwrap();
     let websocket_url = config.ws.clone();
     let http_url = config.url.clone();
 
@@ -308,7 +314,7 @@ pub async fn loop_get_block(
         let pending_block = latest_block_number - got_block_number.unwrap();
 
         if pending_block >= 1 {
-            info!("ETHEREUM pending block: {}", pending_block);
+            info!("ETHEREUM-{} pending block: {}", &network, pending_block);
         }
 
         // Number of getting block
@@ -324,8 +330,8 @@ pub async fn loop_get_block(
         {
             // Get block
             info!(
-                "Getting ETHEREUM block {}, pending block {}",
-                block_number, pending_block
+                "Getting ETHEREUM-{} block {}, pending block {}",
+                &network, block_number, pending_block
             );
 
             let clone_version = version.clone();
@@ -341,11 +347,18 @@ pub async fn loop_get_block(
                 "After gave permit, permits available: {}",
                 sem.available_permits()
             );
-
+            let clone_network = network.clone();
             tokio::spawn(async move {
                 let res = timeout(
                     Duration::from_secs(GET_BLOCK_TIMEOUT_SEC),
-                    get_block(block_number, permit, clone_web3, clone_version, chan_clone),
+                    get_block(
+                        block_number,
+                        permit,
+                        clone_web3,
+                        clone_version,
+                        chan_clone,
+                        &clone_network,
+                    ),
                 )
                 .await;
                 if res.is_err() {
