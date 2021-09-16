@@ -1,22 +1,13 @@
-type DailyActiveAddress @entity {
-    id: ID!
-    chain: String!
-    counter: BigInt!
-}
-type DailyNewAddress @entity {
-    id: ID!
-    chain: String!
-    counter: BigInt!
-}
-type DailyTransaction @entity {
-    id: ID!
-    date: String!
-    counter: BigInt!
-}
 type MaticTransactionTable @entity {
     id: ID!
+    block_hash: String
+    block_number: BigInt
+    nonce: BigInt
     sender: String!
+    receiver: String
+    value: BigInt!
+    gas: BigInt!
+    gas_price: BigInt!
     date: String!
     timestamp: BigInt!
 }
-
