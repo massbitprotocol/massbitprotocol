@@ -77,4 +77,4 @@ if __name__ == '__main__':
             last_index_manager_size = index_manager_size
             print("Running")
 
-        time.sleep(5)
+        time.sleep(300)
