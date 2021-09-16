@@ -6,7 +6,7 @@ schema:
 dataSources:
   - kind: ethereum
     name: Matic-Transaction
-    network: mainnet
+    network: matic
     source:
       abi: MaticTransaction
     mapping:
