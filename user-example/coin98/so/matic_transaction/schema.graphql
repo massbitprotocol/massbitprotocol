@@ -1,4 +1,4 @@
-type MaticTransactionTable @entity {
+type MaticTransaction @entity {
     id: ID!
     block_hash: String
     block_number: BigInt
@@ -8,6 +8,5 @@ type MaticTransactionTable @entity {
     value: BigInt!
     gas: BigInt!
     gas_price: BigInt!
-    date: String!
     timestamp: BigInt!
 }
