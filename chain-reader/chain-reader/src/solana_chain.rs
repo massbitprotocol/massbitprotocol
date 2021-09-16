@@ -1,3 +1,4 @@
+use crate::command::NetworkType;
 use crate::{
     grpc_stream::stream_mod::{ChainType, DataType, GenericDataProto},
     CONFIG,
@@ -26,12 +27,14 @@ const RPC_BLOCK_ENCODING: UiTransactionEncoding = UiTransactionEncoding::Base64;
 
 pub async fn loop_get_block(
     chan: broadcast::Sender<GenericDataProto>,
+    network: &NetworkType,
 ) -> Result<(), Box<dyn Error>> {
     info!("Start get block Solana");
-    let config = CONFIG.chains.get(&CHAIN_TYPE).unwrap();
+    let config = CONFIG.get_chain_config(&CHAIN_TYPE, &network).unwrap();
     let json_rpc_url = config.url.clone();
     let websocket_url = config.ws.clone();
-    info!("Init Solana client");
+    info!("Init Solana client, url: {}", json_rpc_url);
+    //let (mut subscription_client, receiver) = PubsubClient::slot_subscribe(&websocket_url).unwrap();
     let (mut subscription_client, receiver) = PubsubClient::slot_subscribe(&websocket_url).unwrap();
     info!("Finished init Solana client");
     let exit = Arc::new(AtomicBool::new(false));

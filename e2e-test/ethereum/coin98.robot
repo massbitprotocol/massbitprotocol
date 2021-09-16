@@ -33,7 +33,7 @@ Deploy Matic-Transaction, then check if data was inserted into DB
     # Compile status
     Wait Until Keyword Succeeds
     ...  60x
-    ...  10 sec
+    ...  3 sec
     ...  Pooling Status
     ...  ${compile_res["payload"]}
 
@@ -47,7 +47,7 @@ Deploy Matic-Transaction, then check if data was inserted into DB
     # Check that there is a table with data in it
     Wait Until Keyword Succeeds
     ...  10x
-    ...  5 sec
+    ...  3 sec
     ...  Pooling Database Data
     ...  SELECT * FROM matic_transaction_table FETCH FIRST ROW ONLY
 
