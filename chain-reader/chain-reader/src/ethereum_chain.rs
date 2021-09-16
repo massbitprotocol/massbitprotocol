@@ -305,7 +305,11 @@ pub async fn loop_get_block(
         let pending_block = latest_block_number - got_block_number.unwrap();
 
         if pending_block >= 1 {
-            info!("ETHEREUM pending block: {}", pending_block);
+            info!(
+                "ETHEREUM pending block: {}, Channel capacity: {}",
+                pending_block,
+                chan.capacity()
+            );
         }
 
         // Number of getting block

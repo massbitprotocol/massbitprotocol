@@ -49,7 +49,7 @@ impl Streamout for StreamService {
         tokio::spawn(async move {
             let mut count = 1;
             let mut got_block_number = CONFIG.chains.get(&chain_type).unwrap().start_block;
-            info!("Channel capacity: {}", tx.capacity());
+
             loop {
                 let resp = ethereum_chain::loop_get_block(tx.clone(), &mut got_block_number).await;
                 error!(
