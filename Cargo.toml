@@ -11,7 +11,8 @@ members = [
     "plugin/runtime/wasm",
     "cli",
     "utils",
-    "chain/ethereum"
+    "chain/ethereum",
+    "massbit"
 ]
 exclude = ["code-compiler/generated"]
 

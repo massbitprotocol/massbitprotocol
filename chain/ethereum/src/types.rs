@@ -1,3 +1,4 @@
+use massbit::prelude::*;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use web3::types::{Block, Log, Transaction, TransactionReceipt, H256};
