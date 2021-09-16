@@ -3,7 +3,6 @@ pub use crate::stream_mod::{
     streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
 };
 pub use crate::{HandlerProxyType, PluginRegistrar, WasmHandlerProxyType};
-//use graph::blockchain::DataSource as _;
 use graph::data::subgraph::SubgraphManifest;
 use graph_chain_ethereum::Chain;
 use graph_chain_ethereum::{DataSource, DataSourceTemplate};
@@ -12,12 +11,13 @@ use index_store::postgres::store_builder::*;
 use index_store::{IndexerState, Store};
 use lazy_static::lazy_static;
 use libloading::Library;
-use massbit_common::prelude::tokio::time::{sleep, Duration};
+use massbit_common::prelude::tokio::time::sleep;
 use serde_yaml::Value;
 use std::path::Path;
 use std::{
     alloc::System, collections::HashMap, env, error::Error, ffi::OsStr, fmt, path::PathBuf,
     sync::Arc,
+    time::{Instant, Duration}
 };
 use tonic::{Request, Streaming};
 
@@ -286,20 +286,24 @@ impl AdapterManager {
         if let Some(adapter_handler) = self.map_handlers.get_mut(indexer_hash.as_str()) {
             if let Some(handler_proxy) = adapter_handler.handler_proxies.get(&adapter_name) {
                 while let Some(mut data) = stream.message().await? {
-                    log::info!(
-                        "{} Chain {:?} received data block = {:?}, hash = {:?}, data type = {:?}",
-                        &*COMPONENT_NAME,
-                        ChainType::from_i32(data.chain_type).unwrap(),
-                        data.block_number,
-                        data.block_hash,
-                        DataType::from_i32(data.data_type).unwrap()
-                    );
+                    let start = Instant::now();
                     match handler_proxy.handle_rust_mapping(&mut data, &mut indexer_state) {
                         Err(err) => {
                             log::error!("{} Error while handle received message", err);
                         }
-                        _ => {}
+                        _ => {
+                            //log::info!("Handler")
+                        }
                     }
+                    log::info!(
+                        "{} Process chain {:?} with data block = {:?} hash = {:?}, data type = {:?} in {:?}",
+                        &*COMPONENT_NAME,
+                        ChainType::from_i32(data.chain_type).unwrap(),
+                        data.block_number,
+                        data.block_hash,
+                        DataType::from_i32(data.data_type).unwrap(),
+                        start.elapsed()
+                    );
                 }
             } else {
                 log::debug!(
