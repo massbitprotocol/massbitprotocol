@@ -186,7 +186,7 @@ impl WritableStore for PostgresIndexStore {
         &self,
         ids_for_type: BTreeMap<&EntityType, Vec<&str>>,
     ) -> Result<BTreeMap<EntityType, Vec<Entity>>, StoreError> {
-        log::info!("Get many ids for type {:?}", ids_for_type);
+        //log::info!("Get many ids for type {:?}", ids_for_type);
         if ids_for_type.is_empty() {
             return Ok(BTreeMap::new());
         }

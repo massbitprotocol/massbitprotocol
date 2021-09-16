@@ -116,8 +116,9 @@ impl Store for IndexerState {
             StoreError::Unknown(e.into())
         }) {
             // Transact entity modifications into the store
-            if mods.len() > 0 {
-                //let store = self.store.clone();
+            let length = mods.len();
+            if length > 0 {
+                let start = Instant::now();
                 let block_ptr = BlockPtr {
                     hash: BlockHash::from(block_hash.as_bytes().to_vec()),
                     number: block_number as i32,
@@ -130,7 +131,7 @@ impl Store for IndexerState {
                     vec![],
                 ) {
                     Ok(_) => {
-                        log::info!("Transact block operation successfully");
+                        log::info!("Transact block operation with {} records successfully in {:?}", length, start.elapsed());
                     }
                     Err(err) => {
                         log::error!("Transact block operation with error {:?}", &err);
