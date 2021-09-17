@@ -18,7 +18,12 @@ RUN $HOME/.cargo/bin/rustup default 1.53.0-x86_64-unknown-linux-gnu
 RUN $HOME/.cargo/bin/rustup target add wasm32-unknown-unknown --toolchain 1.53.0-x86_64-unknown-linux-gnu
 RUN $HOME/.cargo/bin/rustup show
 
+# Install NPM
+RUN apt install -y npm
+RUN curl -fsSL https://deb.nodesource.com/setup_14.x | bash -
+RUN apt-get install -y nodejs
 
+# Install python
 RUN ls
 RUN apt install -y python3 python3-pip wget unzip
 RUN pip3 install -U Flask
