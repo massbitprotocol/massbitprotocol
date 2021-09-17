@@ -16,7 +16,7 @@ def send_email(text,sent_to):
     # SET THE INFO ABOUT THE SAID EMAIL
     # =============================================================================
     sent_from = gmail_user
-    sent_subject = "Running report!"
+    sent_subject = "PSOP - Running report!"
     sent_body = (text)
 
     email_text = """\

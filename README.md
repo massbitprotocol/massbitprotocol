@@ -13,13 +13,13 @@ Running with public BSC/Ethereum/Solana node
 - SSD or HDD
 
 Running with local BSC/Ethereum/Solana node
-- https://docs.solana.com/running-validator/validator-reqs
+- Use the hardware recommendation from https://docs.solana.com/running-validator/validator-reqs
 
 ## How to start
 Running with public BSC/Ethereum/Solana Node
 ```shell
 docker-compose -f docker.compose.prod.yml up
-make index-quickswap   # To index only Quickswap on Polygon Chain
+make index-quickswap   # To start indexing Quickswap on Polygon Chain
 ```
 
 Running with local BSC/Ethereum/Solana Node
@@ -27,42 +27,8 @@ Running with local BSC/Ethereum/Solana Node
 - Modify chain-reader/chain-reader/src/lib.rs pointing to your local ws and http url
 - ```shell
   docker-compose -f docker.compose.prod.yml up
-  make index-quickswap   # To index only Quickswap on Polygon Chain
+  make index-quickswap   # To start indexing Quickswap on Polygon Chain
   ```
-
-## Dockerize (For Dev)
-### Auto create new docker version:
-- Add the massbitprotocol repo, create a new release tag, it will automatically build new docker version and upload to docker hub
-- Check the new images here: https://registry.hub.docker.com/u/sprise
-
-### Manually build other services:
-- dashboard: Go to this repo https://github.com/massbitprotocol/dashboard and run the below commands
-  - `docker build --tag sprise/dashboard:[new_version_id] -f Dockerfile -t dashboard .`
-  - `docker push sprise/dashboard:[new_version_id]`
-- massbit graphql-engine console: Go to this repo https://github.com/massbitprotocol/graphql-engine and run the below commands
-  - `docker build --tag sprise/hasura-console:[new_version_id] -f Dockerfile -t hasura-console .`
-  - `docker push sprise/hasura-console:[new_version_id]`
-
-### Manually create new docker version with tag
-Build new images
-- Run `docker build --tag sprise/chain-reader:[new_version_id] -f chain-reader/Dockerfile -t chain-reader .` to build chain-reader
-- Run `docker build --tag sprise/indexer:[new_version_id] -f indexer/Dockerfile -t indexer .` to build indexer
-- Run `docker build --tag sprise/code-compiler:[new_version_id] -f code-compiler/Dockerfile -t code-compiler .` to build code-compiler
-- Run `docker build --tag sprise/dashboard:[new_version_id] -f frontend/dashboard/Dockerfile -t dashboard .` to build the dashboard with the latest code from massbitprocol/dashboard git
-
-Deploy new images to Docker Hub:
-- `docker push sprise/chain-reader:[new_version_id]`
-- `docker push sprise/indexer:[new_version_id]`
-- `docker push sprise/code-compiler:[new_version_id]`
-- `docker push sprise/dashboard:[new_version_id]`
-
-Check the new images here: https://registry.hub.docker.com/u/sprise
-
-To start those images in prod: `docker-compose -f docker-compose.prod.yml up`
-
-Note:
-- The 3 Rust services (substrate-node, chain-reader, indexer) we need to build them separately because their build time is long and we need wait-for-it.sh script implemented.
-- The code-compiler needs to know the context of massbitprotcol source folder so it can run the `cargo build` for the /compile api
 
 ## Development
 ### Run all services
