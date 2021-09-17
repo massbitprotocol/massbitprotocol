@@ -203,7 +203,7 @@ Compile and Deploy WASM Test Quickswap
 
     # Compile status
     Wait Until Keyword Succeeds
-    ...  60x
+    ...  30x
     ...  10 sec
     ...  Pooling Status
     ...  ${compile_res["payload"]}
