@@ -6,8 +6,7 @@ use crate::{
 use anyhow::Error;
 use futures::stream;
 use futures::{Future, Stream};
-use futures03::{self, compat::Future01CompatExt};
-use graph::prelude::tokio::sync::{OwnedSemaphorePermit, Semaphore};
+use futures03::compat::Future01CompatExt;
 use log::{debug, info, warn};
 use massbit_chain_ethereum::data_type::EthereumBlock as Block;
 use std::collections::HashMap;
@@ -19,10 +18,12 @@ use std::sync::{
 use std::time::Instant;
 use thiserror::Error;
 use tokio::sync::{broadcast, mpsc};
+use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use tokio::time::{sleep, timeout, Duration};
 use tonic::Status;
 use web3;
 use web3::transports::Batch;
+use web3::types::Res;
 use web3::{
     types::{
         Block as EthBlock, BlockId, BlockNumber as Web3BlockNumber, Filter, FilterBuilder, Log,
@@ -198,8 +199,7 @@ async fn get_block(
     permit: OwnedSemaphorePermit,
     clone_web3: Web3<Transport>,
     clone_version: String,
-    chan_clone: mpsc::Sender<Result<GenericDataProto, Status>>,
-) {
+) -> Result<GenericDataProto, Box<dyn std::error::Error + Send + Sync + 'static>> {
     debug!("Before permit block {}", block_number);
     let _permit = permit;
     debug!("After permit block {}", block_number);
@@ -252,13 +252,10 @@ async fn get_block(
 
         let generic_data_proto =
             _create_generic_block(block_hash, block_number, &eth_block, clone_version);
-        info!(
-            "Sending ETHEREUM as generic data: {:?}",
-            &generic_data_proto.block_number
-        );
-        chan_clone.send(Ok(generic_data_proto)).await;
+        return Ok(generic_data_proto);
     } else {
         info!("Got ETHEREUM block error {:?}", &block);
+        return Err("Got ETHEREUM block error".into());
     }
     info!("Finish tokio::spawn for getting block: {:?}", &block_number);
 }
@@ -320,6 +317,7 @@ pub async fn loop_get_block(
             getting_block = pending_block;
         }
 
+        let mut tasks = vec![];
         for block_number in
             (got_block_number.unwrap() + 1)..(got_block_number.unwrap() + 1 + getting_block)
         {
@@ -336,22 +334,48 @@ pub async fn loop_get_block(
                 "Wait for permit, permits available: {}",
                 sem.available_permits()
             );
-            let permit = Arc::clone(&sem).acquire_owned().await;
+            let permit = Arc::clone(&sem).acquire_owned().await.unwrap();
             debug!(
                 "After gave permit, permits available: {}",
                 sem.available_permits()
             );
             let chan_clone = chan.clone();
 
-            let res = timeout(
-                Duration::from_secs(GET_BLOCK_TIMEOUT_SEC),
-                get_block(block_number, permit, clone_web3, clone_version, chan_clone),
-            )
-            .await;
-            if res.is_err() {
-                warn!("get_block timed out at block {}", &block_number);
-            }
+            //let blocks_clone = blocks.clone();
+            tasks.push(tokio::spawn(async move {
+                let res = timeout(
+                    Duration::from_secs(GET_BLOCK_TIMEOUT_SEC),
+                    get_block(block_number, permit, clone_web3, clone_version),
+                )
+                .await;
+
+                if res.is_err() {
+                    warn!("get_block timed out at block {}", &block_number);
+                };
+                res.unwrap()
+            }));
         }
+
+        let blocks: Vec<Result<_, _>> = futures03::future::join_all(tasks).await;
+
+        let mut blocks: Vec<GenericDataProto> = blocks
+            .into_iter()
+            .filter_map(|res_block| {
+                if let Ok(Ok(block)) = res_block {
+                    Some(block)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        blocks.sort_by(|a, b| a.block_number.cmp(&b.block_number));
+        println!("results");
+
+        for block in blocks.into_iter() {
+            let chan_clone = chan.clone();
+            chan_clone.send(Ok(block as GenericDataProto)).await;
+        }
+
         *got_block_number = Some(got_block_number.unwrap() + getting_block);
     }
     Ok(())
