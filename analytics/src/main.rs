@@ -3,6 +3,9 @@ use diesel_migrations::embed_migrations;
 use crate::stream_mod::{
     streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
 };
+use analytics::ethereum::process_ethereum_block;
+use analytics::solana::process_solana_block;
+use analytics::substrate::process_substrate_block;
 use graph::data::subgraph::UnresolvedSubgraphManifest;
 use graph::ipfs_client::IpfsClient;
 use graph_core::LinkResolver;
@@ -104,13 +107,13 @@ pub async fn start_client(
     // Not use start_block_number start_block_number yet
     match chain_type {
         ChainType::Ethereum => {
-
+            process_ethereum_block(&client, &network)
         },
         ChainType::Solana => {
-
+            process_solana_block(&client)
         },
         ChainType::Substrate => {
-
+            process_substrate_block(&client)
         },
         _ => {}
     }
@@ -155,48 +158,7 @@ pub async fn start_client(
                 debug!("Elapsed processing solana block: {:.2?}", elapsed);
             }
             ChainType::Solana => {
-                let now = Instant::now();
-                match DataType::from_i32(data.data_type) {
-                    Some(DataType::Block) => {
-                        let encoded_block: SolanaEncodedBlock =
-                            solana_decode(&mut data.payload).unwrap();
-                        // Decode
-                        let block = convert_solana_encoded_block_to_solana_block(encoded_block);
-                        let mut print_flag = true;
-                        for origin_transaction in block.clone().block.transactions {
-                            let log_messages = origin_transaction
-                                .clone()
-                                .meta
-                                .unwrap()
-                                .log_messages
-                                .clone();
-                            let transaction = SolanaTransaction {
-                                block_number: ((&block).block.block_height.unwrap() as u32),
-                                transaction: origin_transaction.clone(),
-                                log_messages: log_messages.clone(),
-                                success: false,
-                            };
-                            let log_messages = SolanaLogMessages {
-                                block_number: ((&block).block.block_height.unwrap() as u32),
-                                log_messages: log_messages.clone(),
-                                transaction: origin_transaction.clone(),
-                            };
 
-                            // Print first data only bc it too many.
-                            if print_flag {
-                                info!("Recieved SOLANA TRANSACTION with Block number: {:?}, trainsation: {:?}", &transaction.block_number, &transaction.transaction.transaction.signatures);
-                                info!("Recieved SOLANA LOG_MESSAGES with Block number: {:?}, log_messages: {:?}", &log_messages.block_number, &log_messages.log_messages.unwrap().get(0));
-
-                                print_flag = false;
-                            }
-                        }
-                    }
-                    _ => {
-                        warn!("Not support this type in Solana");
-                    }
-                }
-                let elapsed = now.elapsed();
-                debug!("Elapsed processing solana block: {:.2?}", elapsed);
             }
             ChainType::Ethereum => match DataType::from_i32(data.data_type) {
                 Some(DataType::Block) => {
