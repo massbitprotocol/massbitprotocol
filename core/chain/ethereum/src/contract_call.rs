@@ -195,7 +195,7 @@ impl SimpleEthereumAdapter {
             .ok()
             .flatten();
         drop(guard);
-        debug!("cache_result: {:?}", &cache_result);
+        info!("cache_result: {:?}", &cache_result);
         // Check if we have it cached, if not do the call and cache.
         Box::new(
             match cache_result {
@@ -508,7 +508,7 @@ fn eth_call(
         args: unresolved_call.function_args.clone(),
     };
 
-    debug!("call: {:?}", &call);
+    info!("call: {:?}", &call);
     // Run Ethereum call in tokio runtime
     let logger1 = logger.clone();
     //let call_cache = call_cache.clone();

@@ -11,5 +11,6 @@ tokio-stream = { version = "0.1.7", features = ["sync"] }
 tokio-retry = "0.3.0"
 futures03 = { version = "0.3.1", package = "futures", features = ["compat"] }
 slog = "2.7.0"
+log = "0.4.14"
 thiserror = "1.0.28"
 futures = "0.1.21"

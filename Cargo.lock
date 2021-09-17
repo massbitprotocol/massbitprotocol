@@ -10068,6 +10068,7 @@ version = "0.1.0"
 dependencies = [
  "futures 0.1.31",
  "futures 0.3.16",
+ "log 0.4.14",
  "slog",
  "thiserror",
  "tokio 1.11.0",
