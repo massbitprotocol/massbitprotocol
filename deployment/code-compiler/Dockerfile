@@ -21,9 +21,11 @@ RUN $HOME/.cargo/bin/rustup show
 
 RUN ls
 RUN apt install -y python3 python3-pip wget unzip
+# TODO use requirements.txt instead of manually instead these lib
 RUN pip3 install -U Flask
 RUN pip3 install -U flask-cors
 RUN pip3 install -U ipfshttpclient
+RUN pip3 install -U pyyaml
 RUN wget --no-verbose https://code-compiler-built-target.s3.ap-southeast-2.amazonaws.com/target.zip
 RUN ls -ll
 COPY ./ massbitprotocol
