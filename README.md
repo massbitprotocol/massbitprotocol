@@ -5,6 +5,13 @@ And to achieve that, the easiest solution is to develop with some existing featu
 
 ## Prerequisites
 - Docker
+- Python
+
+```shell
+make init-docker
+make init-python
+make init-test
+```
 
 ## Hardware requirements
 Running with public BSC/Ethereum/Solana node
@@ -18,7 +25,7 @@ Running with local BSC/Ethereum/Solana node
 ## How to start
 Running with public BSC/Ethereum/Solana Node
 ```shell
-docker-compose -f docker.compose.prod.yml up
+make services-prod-up
 make index-quickswap   # To start indexing Quickswap on Polygon Chain
 ```
 
@@ -26,7 +33,7 @@ Running with local BSC/Ethereum/Solana Node
 - Start your BSC/Ethereum/Solana node
 - Modify chain-reader/chain-reader/src/lib.rs pointing to your local ws and http url
 - ```shell
-  docker-compose -f docker.compose.prod.yml up
+  make services-prod-up
   make index-quickswap   # To start indexing Quickswap on Polygon Chain
   ```
 

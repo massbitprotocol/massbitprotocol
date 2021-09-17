@@ -3,6 +3,30 @@ init-code-compiler:
 	@echo "Installing all the dependencies for Code compiler ..."
 	pip install ipfshttpclient flask flask_cors
 
+init-docker:
+	@echo "Installing docker"
+	sudo apt update
+	sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
+	curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+	sudo add-apt-repository 'deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable'
+	sudo apt update
+	apt-cache policy docker-ce
+	sudo apt install -y docker-ce docker-compose
+	sudo groupadd docker
+	sudo gpasswd -a $USER docker
+	sudo setfacl -m user:$USER:rw /var/run/docker.sock
+
+init-python:
+	sudo apt install -y python3
+	sudo apt install -y python3.8
+	sudo rm /usr/bin/python3
+	sudo ln -s python3.8 /usr/bin/python3
+	sudo apt install -y python3-pip wget unzip
+
+init-test:
+	@echo "Installing all the dependencies for E2E tests ..."
+	pip install robotframework robotframework-requests robotframework-databaselibrary psycopg2 rpaframework robotframework-seleniumlibrary robotframework-sshlibrary
+
 #################### Test commands #######################
 create-git-hook:
 	@echo "Every push to origin need to run the E2E tests"
@@ -39,14 +63,6 @@ test-run-all-and-up:
 	@echo "Running dashboard tests ..."
 	cd e2e-test/dashboard && robot dashboard.robot || true
 
-
-test-init:
-	@echo "Installing all the dependencies for E2E tests ..."
-	pip install robotframework robotframework-requests robotframework-databaselibrary psycopg2 rpaframework robotframework-seleniumlibrary robotframework-sshlibrary
-	@echo "Installing Webdriver for Selenium to run tests ..."
-	sudo pip install webdrivermanager
-	sudo webdrivermanager firefox chrome --linkpath /usr/local/bin
-
 create-list-user-example-json-file:
 	@echo "Create list user examples json file ..."
 	cd user-example && python create_example_json.py
@@ -72,13 +88,21 @@ run-code-compiler:
 	cd code-compiler/ && python app.py
 
 
-services-up:
-	@echo "Run all service"
+services-dev-up:
+	@echo "Run all services in dev mode"
 	docker-compose -f docker-compose.min.yml up
 
-services-down:
-	@echo "Stop all service"
+services-dev-down:
+	@echo "Stop all services"
 	docker-compose -f docker-compose.min.yml down
+
+services-prod-up:
+	@echo "Run all services in production mode"
+	docker-compose -f docker-compose.prod.yml up
+
+services-prod-down:
+	@echo "Stop all services"
+	docker-compose -f docker-compose.prod.yml down
 
 #################### Production commands ##################
 run-all-tmux:
