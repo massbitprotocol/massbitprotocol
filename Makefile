@@ -12,7 +12,7 @@ init-docker:
 	sudo apt update
 	apt-cache policy docker-ce
 	sudo apt install -y docker-ce docker-compose
-	sudo groupadd docker
+	sudo groupadd docker || true
 	sudo gpasswd -a $USER docker
 	sudo setfacl -m user:$USER:rw /var/run/docker.sock
 
@@ -21,11 +21,15 @@ init-python:
 	sudo apt install -y python3.8
 	sudo rm /usr/bin/python3
 	sudo ln -s python3.8 /usr/bin/python3
-	sudo apt install -y python3-pip wget unzip
+	sudo apt install -y python3-pip python-pip wget unzip libpq-dev python3-dev
+	sudo pip3 install setuptools-rust
+	sudo pip3 install --upgrade pip
+	sudo pip3 install PyQtWebEngine
 
 init-test:
 	@echo "Installing all the dependencies for E2E tests ..."
-	pip install robotframework robotframework-requests robotframework-databaselibrary psycopg2 rpaframework robotframework-seleniumlibrary robotframework-sshlibrary
+	pip3 install robotframework robotframework-requests robotframework-databaselibrary rpaframework
+	pip3 install psycopg2 rpaframework robotframework-seleniumlibrary robotframework-sshlibrary
 
 #################### Test commands #######################
 create-git-hook:

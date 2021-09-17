@@ -6,8 +6,10 @@ And to achieve that, the easiest solution is to develop with some existing featu
 ## Prerequisites
 - Docker
 - Python
+- make
 
 ```shell
+sudo apt install make
 make init-docker
 make init-python
 make init-test
