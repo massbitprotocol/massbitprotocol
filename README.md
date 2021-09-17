@@ -17,7 +17,7 @@ make init-test
 Running with public BSC/Ethereum/Solana node
 - CPU: 16 cores
 - Ram: 32 GB
-- SSD or HDD
+- SSD or HDD: 200 GB
 
 Running with local BSC/Ethereum/Solana node
 - Use the hardware recommendation from https://docs.solana.com/running-validator/validator-reqs
