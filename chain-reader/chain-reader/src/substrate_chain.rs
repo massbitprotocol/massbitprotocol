@@ -94,7 +94,7 @@ pub async fn loop_get_event(
     let (events_in, events_out) = channel();
     api.subscribe_events(events_in).unwrap();
 
-    fix_one_thread_not_receive(&chan);
+    //fix_one_thread_not_receive(&chan);
     loop {
         let event_str = events_out.recv().unwrap();
 

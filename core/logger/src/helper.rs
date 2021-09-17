@@ -2,20 +2,37 @@
  *** This file is to help setup the logger based on the RUST_LOG and RUST_LOG_TYPE options
  **/
 use chrono::Local;
-use env_logger::Builder;
+use env_logger::{Builder, Env};
+use log::LevelFilter;
 use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Config, Root};
 use log4rs::encode::pattern::PatternEncoder;
 use std::io::Write;
+use log4rs::append::rolling_file::{RollingFileAppender, policy};
+use log4rs::append::console::ConsoleAppender;
 
 pub fn log_to_file(file_name: &String, log_level: &String) {
-    let date = Local::now().format("%Y-%m-%dT%H:%M:%S");
-    let logfile = FileAppender::builder()
-        .encoder(Box::new(PatternEncoder::default()))
-        .build(format!("log/{}-{}.log", file_name, date)) // set the file name based on the current date
+    let one_mb = 1000000;
+    let trigger = policy::compound::trigger::size::SizeTrigger::new(one_mb * 100); // unit here is Byte
+
+    // 25-8-2021: Hughie
+    // Lazily concat string so we get log with the name of component
+    // We can't use format! because we need the {}, maybe try with string escape later
+    let owned_string_one: String = "log/".to_owned();
+    let owned_string_two: String = (owned_string_one + file_name).to_owned();
+    let name_with_gz_extension: String =  owned_string_two.clone() + ".{}.gz";
+    let name_with_log_extension: String =  owned_string_two + ".log";
+
+    let roller = policy::compound::roll::fixed_window::FixedWindowRoller::builder()
+        .build(name_with_gz_extension.as_str(), 10000).unwrap(); // We could reach up to 1TB with 100 MB per file * 10.000 files
+    let policy = policy::compound::CompoundPolicy::new(Box::new(trigger), Box::new(roller));
+    let file = RollingFileAppender::builder()
+        .encoder(Box::new(PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S.%3f %Z)} {l} [{t} - {T}] {m}{n}")))
+        .build(name_with_log_extension, Box::new(policy))
         .unwrap();
+
     let config = Config::builder()
-        .appender(Appender::builder().build("logfile", Box::new(logfile)))
+        .appender(Appender::builder().build("logfile", Box::new(file)))
         .build(
             Root::builder()
                 .appender("logfile")
@@ -31,9 +48,9 @@ pub fn log_to_console(log_level: &String) {
             writeln!(
                 buf,
                 "{} [{}] - [{}] {}",
-                Local::now().format("%Y-%m-%dT%H:%M:%S.%f"), // Reformat to human-readable timestamp
+                Local::now().format("%Y-%m-%dT%H:%M:%S"), // Reformat to human-readable timestamp
                 record.level(),
-                record.module_path().unwrap(),
+                record.module_path_static().unwrap(),
                 record.args(),
             )
         })

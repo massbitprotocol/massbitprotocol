@@ -19,8 +19,9 @@ use std::sync::{
 };
 use std::time::Instant;
 use thiserror::Error;
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, mpsc};
 use tokio::time::{sleep, timeout, Duration};
+use tonic::Status;
 use web3;
 use web3::transports::Batch;
 use web3::{
@@ -198,8 +199,7 @@ async fn get_block(
     permit: OwnedSemaphorePermit,
     clone_web3: Web3<Transport>,
     clone_version: String,
-    chan_clone: broadcast::Sender<GenericDataProto>,
-    network: &NetworkType,
+    chan_clone: mpsc::Sender<Result<GenericDataProto, Status>>,
 ) {
     debug!("Before permit block {}", block_number);
     let _permit = permit;
@@ -212,10 +212,7 @@ async fn get_block(
     debug!("After block_with_txs block {}", block_number);
     for i in 0..RETRY_GET_BLOCK_LIMIT {
         if block.is_err() {
-            info!(
-                "Getting ETHEREUM-{} block {} retry {} times",
-                network, block_number, i
-            );
+            info!("Getting ETHEREUM block {} retry {} times", block_number, i);
             block = clone_web3
                 .eth()
                 .block_with_txs(BlockId::Number(Web3BlockNumber::from(block_number)))
@@ -226,15 +223,15 @@ async fn get_block(
     }
 
     if let Ok(Some(block)) = block {
+        //println!("Got ETHEREUM Block {:?}",block);
         // Convert to generic
         let block_hash = block.hash.clone().unwrap_or_default().to_string();
 
         // Get receipts
-        info!("Getting ETHEREUM-{} of block: {}", network, block_number);
+        info!("Getting ETHEREUM of block: {}", block_number);
         let receipts = get_receipts(&block, &clone_web3).await;
         info!(
-            "Got ETHEREUM-{} {} receipts of block: {}",
-            network,
+            "Got ETHEREUM {} receipts of block: {}",
             receipts.len(),
             block_number
         );
@@ -257,24 +254,19 @@ async fn get_block(
         let generic_data_proto =
             _create_generic_block(block_hash, block_number, &eth_block, clone_version);
         info!(
-            "Sending ETHEREUM-{} as generic data: {:?}",
-            network, &generic_data_proto.block_number
+            "Sending ETHEREUM as generic data: {:?}",
+            &generic_data_proto.block_number
         );
-        let receiver_number = chan_clone.send(generic_data_proto).unwrap();
-        debug!(
-            "Finished Sending ETHEREUM-{} as generic data: {}",
-            network, receiver_number
-        );
+        chan_clone.send(Ok(generic_data_proto)).await;
     } else {
-        info!("Got ETHEREUM-{} block error {:?}", network, &block);
+        info!("Got ETHEREUM block error {:?}", &block);
     }
     info!("Finish tokio::spawn for getting block: {:?}", &block_number);
 }
 
 pub async fn loop_get_block(
-    chan: broadcast::Sender<GenericDataProto>,
+    chan: mpsc::Sender<Result<GenericDataProto, Status>>,
     got_block_number: &mut Option<u64>,
-    network: NetworkType,
 ) -> Result<(), Box<dyn StdError>> {
     info!("Start get block {:?}", CHAIN_TYPE);
     info!("Init Ethereum adapter");
@@ -314,7 +306,11 @@ pub async fn loop_get_block(
         let pending_block = latest_block_number - got_block_number.unwrap();
 
         if pending_block >= 1 {
-            info!("ETHEREUM-{} pending block: {}", &network, pending_block);
+            info!(
+                "ETHEREUM pending block: {}, Channel capacity: {}",
+                pending_block,
+                chan.capacity()
+            );
         }
 
         // Number of getting block
@@ -330,35 +326,27 @@ pub async fn loop_get_block(
         {
             // Get block
             info!(
-                "Getting ETHEREUM-{} block {}, pending block {}",
-                &network, block_number, pending_block
+                "Getting ETHEREUM block {}, pending block {}",
+                block_number, pending_block
             );
 
             let clone_version = version.clone();
-            let chan_clone = chan.clone();
             let clone_web3 = web3.clone();
             // For limit number of spawn task
             debug!(
                 "Wait for permit, permits available: {}",
                 sem.available_permits()
             );
-            let permit = Arc::clone(&sem).acquire_owned().await?;
+            let permit = Arc::clone(&sem).acquire_owned().await;
             debug!(
                 "After gave permit, permits available: {}",
                 sem.available_permits()
             );
-            let clone_network = network.clone();
+            let chan_clone = chan.clone();
             tokio::spawn(async move {
                 let res = timeout(
                     Duration::from_secs(GET_BLOCK_TIMEOUT_SEC),
-                    get_block(
-                        block_number,
-                        permit,
-                        clone_web3,
-                        clone_version,
-                        chan_clone,
-                        &clone_network,
-                    ),
+                    get_block(block_number, permit, clone_web3, clone_version, chan_clone),
                 )
                 .await;
                 if res.is_err() {

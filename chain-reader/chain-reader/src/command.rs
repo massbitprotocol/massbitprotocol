@@ -6,7 +6,6 @@ use crate::{
     grpc_stream::stream_mod::{streamout_server::StreamoutServer, ChainType, GenericDataProto},
     CONFIG,
 };
-use graph::semver::Op;
 use log::error;
 use std::collections::HashMap;
 use std::thread::sleep;
@@ -46,7 +45,7 @@ pub struct ChainConfig {
     pub network: NetworkType,
 }
 
-pub fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>) {
+fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>) {
     // Todo: More clean solution for broadcast channel
     let mut rx = chan.subscribe();
     tokio::spawn(async move {
@@ -69,7 +68,6 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
         // Clone broadcast channel
         let chan_sender = chan.clone();
         fix_one_thread_not_receive(&chan_sender);
-        let network_clone = network.clone();
         match chain_type {
             // Spawn Substrate get_data
             ChainType::Substrate => {
@@ -115,8 +113,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
                     // Todo: add start at save block after restart
                     let mut count = 1;
                     loop {
-                        let resp =
-                            solana_chain::loop_get_block(chan_sender.clone(), &network_clone).await;
+                        let resp = solana_chain::loop_get_block(chan_sender.clone()).await;
                         error!(
                             "Restart {:?} response {:?}, {} time",
                             &chain_type, resp, count
@@ -128,33 +125,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
                 // add chan to chans
                 //chans.insert(ChainType::Solana, chan);
             }
-            ChainType::Ethereum => {
-                // Spawn task
-                tokio::spawn(async move {
-                    // fix_one_thread_not_receive(&chan_sender);
-                    let mut count = 1;
-                    let mut got_block_number = CONFIG
-                        .get_chain_config(&chain_type, &network_clone)
-                        .unwrap()
-                        .start_block;
-                    loop {
-                        let resp = ethereum_chain::loop_get_block(
-                            chan_sender.clone(),
-                            &mut got_block_number,
-                            network_clone.clone(),
-                        )
-                        .await;
-                        error!(
-                            "Restart {:?} response {:?}, at block {:?}, {} time",
-                            &chain_type, resp, &got_block_number, count
-                        );
-                        sleep(Duration::from_secs(1));
-                        count = count + 1;
-                    }
-                });
-                // add chan to chans
-                //chans.insert(ChainType::Ethereum, chan);
-            }
+            ChainType::Ethereum => {}
         }
         // add chan to chans
         chans.insert((chain_type, network), chan);

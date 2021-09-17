@@ -11,7 +11,7 @@ use index_store::postgres::store_builder::*;
 use index_store::{IndexerState, Store};
 use lazy_static::lazy_static;
 use libloading::Library;
-use massbit_common::prelude::tokio::time::sleep;
+use massbit_common::prelude::tokio::time::{sleep, Duration};
 use serde_yaml::Value;
 use std::path::Path;
 use std::{
@@ -163,13 +163,11 @@ impl AdapterManager {
     ) -> Result<(), Box<dyn Error>> {
         //sleep(Duration::from_millis(1000)).await;
         let chain_type = get_chain_type(data_source);
-        let network = data_source.network.clone().unwrap_or(Default::default());
         let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await?;
         let get_blocks_request = GetBlocksRequest {
             start_block_number: 0,
             end_block_number: 1,
             chain_type: chain_type as i32,
-            network,
         };
         let mut stream: Streaming<GenericDataProto> = client
             .list_blocks(Request::new(get_blocks_request.clone()))

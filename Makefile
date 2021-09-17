@@ -1,3 +1,9 @@
+#################### Init commands #######################
+init-code-compiler:
+	@echo "Installing all the dependencies for Code compiler ..."
+	pip install ipfshttpclient flask flask_cors
+
+#################### Test commands #######################
 create-git-hook:
 	@echo "Every push to origin need to run the E2E tests"
 	@echo "Creating symlink..."
@@ -57,10 +63,6 @@ test-run-all-and-up:
 	@echo "Running ethereum tests ..."
 	cd e2e-test/ethereum && robot ethereum.robot || true
 
-	make restart-chain-reader-index-manager
-
-#	@echo "Running dashboard tests ..."
-#	cd e2e-test/dashboard && robot dashboard.robot || true
 
 test-init:
 	@echo "Installing all the dependencies for E2E tests ..."
@@ -107,31 +109,33 @@ run-all-tmux:
 	export TERM=xterm
 
 	@echo "Run index-manager in tmux"
-	tmux new -d -s index-manager "make run-index-manager"
+	tmux new -d -s index-manager scripts/tmux-index-manager.sh
 
 	@echo "Run chain-reader in tmux"
-	tmux new -d -s chain-reader "make run-chain-reader"
+	tmux new -d -s chain-reader scripts/tmux-chain-reader.sh
 
 	@echo "Run code-compiler in tmux"
-	tmux new -d -s code-compiler "make run-code-compiler"
+	tmux new -d -s code-compiler scripts/tmux-code-compiler.sh
 
 kill-all-tmux:
 	@echo "Kill all tmux services"
-	pkill chain-reader || true
-	pkill code-compiler || true #Fixme: this cmd cannot kill code-compiler yet
-	pkill index-manager || true
 	tmux list-sessions | awk 'BEGIN{FS=":"}{print $1}' | xargs -n 1 tmux kill-session -t
-	tmux ls
 
-restart-chain-reader-index-manager:
+
+#################### Long running test commands ##################
+test-long-running-quickswap:
+	@echo "A quick fix to bypass the not able to start tmux error"
+	export TERM=xterm
 	@echo "Run index-manager in tmux"
-	pkill chain-reader || true
-	tmux kill-session -t chain-reader || true
-	pkill index-manager || true
-	tmux kill-session -t index-manager || true
-	sleep 3
-
-	@echo "Run run-chain-reader and index-manager tmux"
-	tmux new -d -s chain-reader "make run-chain-reader"
-	tmux new -d -s index-manager "make run-index-manager"
-	sleep 3
+	tmux new -d -s index-manager scripts/tmux-index-manager.sh
+	@echo "Run chain-reader in tmux"
+	tmux new -d -s chain-reader scripts/tmux-chain-reader.sh
+	@echo "Run code-compiler in tmux"
+	tmux new -d -s code-compiler scripts/tmux-code-compiler.sh
+	@echo "Wait for the services to start"
+	sleep 15;
+	@echo "Running only the quickswap Ethereum test ..."
+	cd e2e-test/ethereum && robot ethereum.robot
+	@echo "Running report email services"
+	tmux new -d -s report_email "cd e2e-test && python check_log.py"
+	tmux ls

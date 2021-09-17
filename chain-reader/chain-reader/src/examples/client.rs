@@ -66,6 +66,15 @@ pub async fn print_blocks(
         .await?
         .into_inner();
 
+    let mut file_hash = "".to_string();
+    let mut data_sources = vec![];
+    if chain_type == ChainType::Ethereum {
+        // For ethereum only
+        file_hash = "/ipfs/QmVVrXLPKJYiXQqmR5LVmPTJBbYEQp4vgwve3hqXroHDp5".to_string();
+        data_sources = get_data_source(&file_hash).await.unwrap();
+        // End For ethereum only
+    }
+
     println!("Waitting for data...");
     while let Some(data) = stream.message().await? {
         let mut data = data as GenericDataProto;

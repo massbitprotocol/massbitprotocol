@@ -27,7 +27,6 @@ const RPC_BLOCK_ENCODING: UiTransactionEncoding = UiTransactionEncoding::Base64;
 
 pub async fn loop_get_block(
     chan: broadcast::Sender<GenericDataProto>,
-    network: &NetworkType,
 ) -> Result<(), Box<dyn Error>> {
     info!("Start get block Solana");
     let config = CONFIG.get_chain_config(&CHAIN_TYPE, &network).unwrap();

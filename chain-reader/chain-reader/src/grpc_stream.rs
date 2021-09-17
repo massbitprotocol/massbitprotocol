@@ -1,7 +1,8 @@
 use tokio::sync::{broadcast, mpsc};
 use tokio_stream::wrappers::ReceiverStream;
 
-use crate::command::NetworkType;
+use crate::ethereum_chain;
+use crate::CONFIG;
 use log::{error, info};
 use std::collections::HashMap;
 use stream_mod::{
@@ -44,26 +45,19 @@ impl Streamout for StreamService {
         let chain_type: ChainType = ChainType::from_i32(request.get_ref().chain_type).unwrap();
         let network: NetworkType = request.get_ref().network.clone();
 
-        // tx, rx for out stream gRPC
         let (tx, rx) = mpsc::channel(1024);
 
-        // Create new channel for connect between input and output stream
-        println!(
-            "chains: {:?}, chain_type: {:?}, network: {}",
-            &self.chans, chain_type, network
-        );
-
-        let mut rx_chan = self.chans.get(&(chain_type, network)).unwrap().subscribe();
-
         tokio::spawn(async move {
+            let mut count = 1;
+            let mut got_block_number = CONFIG.chains.get(&chain_type).unwrap().start_block;
+
             loop {
-                // Getting generic_data
-                let generic_data = rx_chan.recv().await.unwrap();
-                // Send generic_data to queue"
-                let res = tx.send(Ok(generic_data)).await;
-                if res.is_err() {
-                    error!("Cannot send data to RPC client queue, error: {:?}", res);
-                }
+                let resp = ethereum_chain::loop_get_block(tx.clone(), &mut got_block_number).await;
+                error!(
+                    "Restart {:?} response {:?}, at block {:?}, {} time",
+                    &chain_type, resp, &got_block_number, count
+                );
+                count = count + 1;
             }
         });
         Ok(Response::new(ReceiverStream::new(rx)))
