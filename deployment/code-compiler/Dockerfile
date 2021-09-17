@@ -23,9 +23,15 @@ RUN apt install -y npm
 RUN curl -fsSL https://deb.nodesource.com/setup_14.x | bash -
 RUN apt-get install -y nodejs
 
-# Install python
+# Install and upgrade to python 3.8
 RUN ls
-RUN apt install -y python3.8 python3-pip wget unzip
+RUN apt install -y python3
+RUN apt install -y python3.8
+RUN rm /usr/bin/python3
+RUN ln -s python3.8 /usr/bin/python3
+
+# Install python lib
+RUN apt install -y python3-pip wget unzip
 RUN pip3 install -U Flask
 RUN pip3 install -U flask-cors
 RUN pip3 install -U ipfshttpclient
