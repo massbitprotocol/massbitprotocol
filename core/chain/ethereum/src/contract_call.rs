@@ -189,7 +189,7 @@ impl SimpleEthereumAdapter {
             .ok()
             .flatten();
         drop(guard);
-        info!("cache_result: {:?}", &cache_result);
+        debug!("cache_result: {:?}", &cache_result);
         // Check if we have it cached, if not do the call and cache.
         Box::new(
             match cache_result {
@@ -502,7 +502,7 @@ fn eth_call(
         args: unresolved_call.function_args.clone(),
     };
 
-    info!("Ethereum Contract call: {:?}", &call);
+    debug!("call: {:?}", &call);
     //let call_cache = call_cache.clone();
     let result_contract_call = eth_adapter
         .contract_call(call.clone(), call_cache.clone())
