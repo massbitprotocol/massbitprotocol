@@ -88,6 +88,60 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "250f629c0161ad8107cf89319e990051fae62832fd343083bea452d93e2205fd"
 
 [[package]]
+name = "analytics"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-stream 0.2.1",
+ "bigdecimal",
+ "broadcaster",
+ "clap",
+ "diesel",
+ "diesel_migrations",
+ "dotenv",
+ "env_logger 0.9.0",
+ "frame-system",
+ "futures 0.1.31",
+ "futures-core",
+ "futures-util",
+ "graph 0.24.0",
+ "graph-chain-ethereum",
+ "graph-core",
+ "graph-runtime-wasm",
+ "hex",
+ "hex-literal",
+ "http 0.1.21",
+ "ipfs-client",
+ "jsonrpc-core 14.2.0",
+ "lazy_static",
+ "log 0.4.14",
+ "logger",
+ "massbit-chain-ethereum",
+ "massbit-chain-solana",
+ "massbit-chain-substrate",
+ "multiqueue",
+ "node-template-runtime",
+ "parity-scale-codec 2.1.1",
+ "primitive-types 0.6.2",
+ "prost",
+ "rand 0.7.3",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "solana-client",
+ "solana-transaction-status",
+ "sp-core",
+ "sp-keyring",
+ "substrate-api-client",
+ "thiserror",
+ "tokio 1.11.0",
+ "tokio-stream",
+ "tonic",
+ "tonic-build",
+ "web3",
+]
+
+[[package]]
 name = "ansi_term"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
