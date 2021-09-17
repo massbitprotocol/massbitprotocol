@@ -342,16 +342,15 @@ pub async fn loop_get_block(
                 sem.available_permits()
             );
             let chan_clone = chan.clone();
-            tokio::spawn(async move {
-                let res = timeout(
-                    Duration::from_secs(GET_BLOCK_TIMEOUT_SEC),
-                    get_block(block_number, permit, clone_web3, clone_version, chan_clone),
-                )
-                .await;
-                if res.is_err() {
-                    warn!("get_block timed out at block {}", &block_number);
-                }
-            });
+
+            let res = timeout(
+                Duration::from_secs(GET_BLOCK_TIMEOUT_SEC),
+                get_block(block_number, permit, clone_web3, clone_version, chan_clone),
+            )
+            .await;
+            if res.is_err() {
+                warn!("get_block timed out at block {}", &block_number);
+            }
         }
         *got_block_number = Some(got_block_number.unwrap() + getting_block);
     }
