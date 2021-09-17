@@ -102,7 +102,7 @@ services-dev-down:
 
 services-prod-up:
 	@echo "Run all services in production mode"
-	docker-compose -f docker-compose.prod.yml up
+	docker-compose -f docker-compose.prod.yml up -d
 
 services-prod-down:
 	@echo "Stop all services"
