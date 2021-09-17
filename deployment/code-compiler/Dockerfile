@@ -25,7 +25,7 @@ RUN apt-get install -y nodejs
 
 # Install python
 RUN ls
-RUN apt install -y python3 python3-pip wget unzip
+RUN apt install -y python3.8 python3-pip wget unzip
 RUN pip3 install -U Flask
 RUN pip3 install -U flask-cors
 RUN pip3 install -U ipfshttpclient
