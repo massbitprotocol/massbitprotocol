@@ -12,7 +12,6 @@ ${CODE_COMPILER}  http://localhost:5000
 ${INDEX_MANAGER}  http://localhost:3000
 
 *** Test Cases ***
-*** Test Cases ***
 ##########################
 # Test-ethereum-block SO #
 ##########################

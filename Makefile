@@ -116,3 +116,10 @@ test-long-running-quickswap:
 	@echo "Running report email services"
 	tmux new -d -s report_email "cd e2e-test && python check_log.py"
 	tmux ls
+
+index-quickswap:
+	@echo "Running only the quickswap Ethereum test ..."
+	cd e2e-test/ethereum && robot ethereum.robot
+	@echo "Running report email services"
+	tmux new -d -s report_email "cd e2e-test && python check_log.py"
+	tmux ls
