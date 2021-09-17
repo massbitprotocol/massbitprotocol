@@ -5,7 +5,7 @@ import subprocess
 import time
 
 
-def send_email(text,sent_to):
+def send_email(text, sent_to):
     # =============================================================================
     # SET EMAIL LOGIN REQUIREMENTS
     # =============================================================================
@@ -45,6 +45,7 @@ Subject: %s
             print("Error: %s!\n\n" % exception)
             time.sleep(1)
 
+
 def get_file_size(file):
     if os.path.isfile(file):
         return os.path.getsize(file)
@@ -54,19 +55,21 @@ def get_file_size(file):
 
 
 if __name__ == '__main__':
-    sent_to = ['anhhuy0501@gmail.com', 'codelightnotify@gmail.com', 'vuviettai@gmail.com', 'phanthanhhuy1996@gmail.com', 'nguyenmanhdat2903@gmail.com']
-    text = "The test stopped running"
+    homedir = os.path.expanduser("~")
+    print(homedir)
+    sent_to = ['anhhuy0501@gmail.com', 'codelightnotify@gmail.com', 'vuviettai@gmail.com', 'phanthanhhuy1996@gmail.com',
+               'nguyenmanhdat2903@gmail.com']
+    text = f"The test on {homedir} PC stopped running"
     chain_reader = "../log/chain-reader.log"
     index_manager = "../log/index-manager.log"
-    last_chain_reader_size=0
-    last_index_manager_size=0
+    last_chain_reader_size = 0
+    last_index_manager_size = 0
     while True:
         chain_reader_size = get_file_size(chain_reader)
         index_manager_size = get_file_size(index_manager)
 
         print(f"chain_reader_size: {chain_reader_size}")
         print(f"index_manager_size: {index_manager_size}")
-
 
         if index_manager_size == last_index_manager_size or chain_reader_size == last_index_manager_size:
             print("Stopping")
