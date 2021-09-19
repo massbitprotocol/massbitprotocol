@@ -12,7 +12,7 @@ use index_store::postgres::store_builder::*;
 use index_store::{IndexerState, Store};
 use lazy_static::lazy_static;
 use libloading::Library;
-use massbit_common::prelude::tokio::time::{sleep, Duration};
+use massbit_common::prelude::tokio::time::{sleep, timeout, Duration};
 use serde_yaml::Value;
 use std::path::Path;
 use std::{
@@ -20,6 +20,7 @@ use std::{
     sync::Arc,
 };
 use tonic::{Request, Streaming};
+use tonic::transport::Channel;
 
 lazy_static! {
     static ref CHAIN_READER_URL: String =
@@ -29,6 +30,8 @@ lazy_static! {
     static ref GENERATED_FOLDER: String = String::from("index-manager/generated/");
     static ref COMPONENT_NAME: String = String::from("[Adapter-Manager]");
 }
+const GET_BLOCK_TIMEOUT_SEC: u64 = 60;
+
 #[global_allocator]
 static ALLOCATOR: System = System;
 
@@ -139,64 +142,73 @@ impl AdapterManager {
                     &data_source.kind,
                     &data_source.mapping.language
                 );
-                loop {
-                    sleep(Duration::from_millis(1000)).await;
-                    let response_handle_mapping = self
-                        .handle_mapping(hash, data_source, arc_templates.clone(), mapping, schema)
-                        .await;
-                    log::info!("Retry handle");
+                let chain_type = get_chain_type(data_source);
+                let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await?;
+                match data_source.mapping.language.as_str() {
+                    "wasm/assemblyscript" => {
+                        self.handle_wasm_mapping(
+                            hash,
+                            data_source,
+                            arc_templates.clone(),
+                            schema,
+                            &mut client,
+                        ).await
+                    }
+                    //Default use rust
+                    _ => {
+                        self.handle_rust_mapping(hash, data_source, mapping, schema, &mut client)
+                            .await
+                    }
                 }
-
-                Ok(())
             }
             _ => Ok(()),
         }
     }
 
-    async fn handle_mapping(
-        &mut self,
-        hash: &String,
-        data_source: &DataSource,
-        arc_templates: Arc<Vec<DataSourceTemplate>>,
-        mapping: &PathBuf,
-        schema: &PathBuf,
-    ) -> Result<(), Box<dyn Error>> {
-        //sleep(Duration::from_millis(1000)).await;
-        let chain_type = get_chain_type(data_source);
-        let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await?;
-        let get_blocks_request = GetBlocksRequest {
-            start_block_number: 0,
-            end_block_number: 1,
-            chain_type: chain_type as i32,
-        };
-        let mut stream: Streaming<GenericDataProto> = client
-            .list_blocks(Request::new(get_blocks_request.clone()))
-            .await?
-            .into_inner();
-        let mapping_response = match data_source.mapping.language.as_str() {
-            "wasm/assemblyscript" => {
-                self.handle_wasm_mapping(
-                    hash,
-                    data_source,
-                    arc_templates.clone(),
-                    schema,
-                    &mut stream,
-                )
-                .await
-            }
-            //Default use rust
-            _ => {
-                self.handle_rust_mapping(hash, data_source, mapping, schema, &mut stream)
-                    .await
-            }
-        };
-        if mapping_response.is_ok() {
-            log::info!("mapping_response Ok.");
-        } else {
-            log::error!("mapping_response Error: {:?}", &mapping_response);
-        }
-        mapping_response
-    }
+    // async fn handle_mapping(
+    //     &mut self,
+    //     hash: &String,
+    //     data_source: &DataSource,
+    //     arc_templates: Arc<Vec<DataSourceTemplate>>,
+    //     mapping: &PathBuf,
+    //     schema: &PathBuf,
+    // ) -> Result<(), Box<dyn Error>> {
+    //     //sleep(Duration::from_millis(1000)).await;
+    //     let chain_type = get_chain_type(data_source);
+    //     let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await?;
+    //     let get_blocks_request = GetBlocksRequest {
+    //         start_block_number: 0,
+    //         end_block_number: 1,
+    //         chain_type: chain_type as i32,
+    //     };
+    //     let mut stream: Streaming<GenericDataProto> = client
+    //         .list_blocks(Request::new(get_blocks_request.clone()))
+    //         .await?
+    //         .into_inner();
+    //     let mapping_response = match data_source.mapping.language.as_str() {
+    //         "wasm/assemblyscript" => {
+    //             self.handle_wasm_mapping(
+    //                 hash,
+    //                 data_source,
+    //                 arc_templates.clone(),
+    //                 schema,
+    //                 &mut client,
+    //             )
+    //             .await
+    //         }
+    //         //Default use rust
+    //         _ => {
+    //             self.handle_rust_mapping(hash, data_source, mapping, schema, &mut client)
+    //                 .await
+    //         }
+    //     };
+    //     if mapping_response.is_ok() {
+    //         log::info!("mapping_response Ok.");
+    //     } else {
+    //         log::error!("mapping_response Error: {:?}", &mapping_response);
+    //     }
+    //     mapping_response
+    // }
 
     async fn handle_wasm_mapping<P: AsRef<Path>>(
         &mut self,
@@ -204,7 +216,7 @@ impl AdapterManager {
         data_source: &DataSource,
         templates: Arc<Vec<DataSourceTemplate>>,
         schema_path: P,
-        stream: &mut Streaming<GenericDataProto>,
+        client: &mut StreamoutClient<Channel>,
     ) -> Result<(), Box<dyn Error>> {
         let store =
             Arc::new(StoreBuilder::create_store(indexer_hash.as_str(), &schema_path).unwrap());
@@ -218,6 +230,19 @@ impl AdapterManager {
             .get(0)
             .unwrap()
             .to_string();
+        //Todo: store indexer state including start_block in db
+        let mut start_block = data_source.source.start_block as u64;
+        let chain_type = get_chain_type(data_source);
+        //Create stream from start_block
+        let mut get_blocks_request = GetBlocksRequest {
+            start_block_number: start_block as u64,
+            end_block_number: 1,
+            chain_type: chain_type as i32,
+        };
+        let mut stream: Streaming<GenericDataProto> = client
+            .list_blocks(Request::new(get_blocks_request.clone()))
+            .await?
+            .into_inner();
         let mut handler_proxy = WasmHandlerProxyType::create_proxy(
             &adapter_name,
             indexer_hash,
@@ -225,26 +250,45 @@ impl AdapterManager {
             data_source.clone(), //Arc::clone(&valid_module),
             templates,
         );
-
-        while let Some(mut data) = stream.message().await? {
-            let data_type = DataType::from_i32(data.data_type).unwrap();
-            log::info!(
-                "{} Chain {:?} received data block = {:?}, hash = {:?}, data type = {:?}",
-                &*COMPONENT_NAME,
-                ChainType::from_i32(data.chain_type).unwrap(),
-                data.block_number,
-                data.block_hash,
-                data_type
-            );
-            if let Some(ref mut proxy) = handler_proxy {
-                match proxy.handle_wasm_mapping(&mut data) {
+        if let Some(ref mut proxy) = handler_proxy {
+            loop {
+                match timeout(
+                    Duration::from_secs(GET_BLOCK_TIMEOUT_SEC),
+                    stream.message(),
+                ).await? {
+                    Ok(res) => {
+                        if let Some(mut data) = res {
+                            let data_type = DataType::from_i32(data.data_type).unwrap();
+                            log::info!(
+                                "{} Chain {:?} received data block = {:?}, hash = {:?}, data type = {:?}",
+                                &*COMPONENT_NAME,
+                                ChainType::from_i32(data.chain_type).unwrap(),
+                                data.block_number,
+                                data.block_hash,
+                                data_type
+                            );
+                            match proxy.handle_wasm_mapping(&mut data) {
+                                Err(err) => {
+                                    log::error!("{} Error while handle received message", err);
+                                    start_block = data.block_number;
+                                }
+                                Ok(_) => {
+                                    start_block = data.block_number + 1;
+                                }
+                            }
+                        }
+                    },
                     Err(err) => {
-                        log::error!("{} Error while handle received message", err);
+                        log::info!("Error while get message from reader stream {:?}. Recreate stream", err);
+                        get_blocks_request.start_block_number = start_block;
+                        stream = client
+                            .list_blocks(Request::new(get_blocks_request.clone()))
+                            .await?
+                            .into_inner();
                     }
-                    _ => {}
                 }
             }
-        }
+        };
         Ok(())
     }
 
@@ -254,7 +298,7 @@ impl AdapterManager {
         data_source: &DataSource,
         mapping_path: P,
         schema_path: P,
-        stream: &mut Streaming<GenericDataProto>,
+        client: &mut StreamoutClient<Channel>,
     ) -> Result<(), Box<dyn Error>> {
         let store = StoreBuilder::create_store(indexer_hash.as_str(), &schema_path).unwrap();
         let mut indexer_state = IndexerState::new(Arc::new(store));
@@ -283,20 +327,52 @@ impl AdapterManager {
             .to_string();
         if let Some(adapter_handler) = self.map_handlers.get_mut(indexer_hash.as_str()) {
             if let Some(handler_proxy) = adapter_handler.handler_proxies.get(&adapter_name) {
-                while let Some(mut data) = stream.message().await? {
-                    log::info!(
-                        "{} Chain {:?} received data block = {:?}, hash = {:?}, data type = {:?}",
-                        &*COMPONENT_NAME,
-                        ChainType::from_i32(data.chain_type).unwrap(),
-                        data.block_number,
-                        data.block_hash,
-                        DataType::from_i32(data.data_type).unwrap()
-                    );
-                    match handler_proxy.handle_rust_mapping(&mut data, &mut indexer_state) {
+                let mut start_block = data_source.source.start_block as u64;
+                let chain_type = get_chain_type(data_source);
+                //Create stream from start_block
+                let mut get_blocks_request = GetBlocksRequest {
+                    start_block_number: start_block,
+                    end_block_number: 1,
+                    chain_type: chain_type as i32,
+                };
+                let mut stream: Streaming<GenericDataProto> = client
+                    .list_blocks(Request::new(get_blocks_request.clone()))
+                    .await?
+                    .into_inner();
+                loop {
+                    match timeout(
+                        Duration::from_secs(GET_BLOCK_TIMEOUT_SEC),
+                        stream.message(),
+                    ).await? {
+                        Ok(res) => {
+                            if let Some(mut data) = res {
+                                log::info!(
+                                    "{} Chain {:?} received data block = {:?}, hash = {:?}, data type = {:?}",
+                                    &*COMPONENT_NAME,
+                                    ChainType::from_i32(data.chain_type).unwrap(),
+                                    data.block_number,
+                                    data.block_hash,
+                                    DataType::from_i32(data.data_type).unwrap()
+                                );
+                                match handler_proxy.handle_rust_mapping(&mut data, &mut indexer_state) {
+                                    Err(err) => {
+                                        log::error!("{} Error while handle received message", err);
+                                        start_block = data.block_number;
+                                    }
+                                    Ok(_) => {
+                                        start_block = data.block_number + 1;
+                                    }
+                                }
+                            }
+                        },
                         Err(err) => {
-                            log::error!("{} Error while handle received message", err);
+                            log::info!("Error while get message from reader stream {:?}. Recreate stream", err);
+                            get_blocks_request.start_block_number = start_block;
+                            stream = client
+                                .list_blocks(Request::new(get_blocks_request.clone()))
+                                .await?
+                                .into_inner();
                         }
-                        _ => {}
                     }
                 }
             } else {
