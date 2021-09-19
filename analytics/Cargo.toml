@@ -9,6 +9,7 @@ edition = "2018"
 diesel          = { version = "1.4.7", features = ["postgres", "numeric"] }
 diesel_migrations = "1.4.0"
 bigdecimal      = "0.1.2"
+#num-bigint      = "0.2.6"
 futures         = "0.1.31"
 http            = "0.1.21" # must be compatible with the version rust-web3 uses
 anyhow          = "1.0.42"

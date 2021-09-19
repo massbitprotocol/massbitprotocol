@@ -39,7 +39,9 @@ lazy_static! {
                 //url: "https://rpc-mainnet.matic.network".to_string(),
                 url: "https://polygon-rpc.com/".to_string(),
                 //start_block: Some(18403764),
-                start_block: Some(18404360),
+                //start_block: Some(18404360),
+                //start_block: Some(18504360),
+                start_block: Some(18551330),
                 chain_type: ChainType::Ethereum,
                 network: "matic".to_string()
             },

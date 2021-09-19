@@ -6,13 +6,20 @@ use tonic::{
     transport::{Channel, Server},
     Request, Response, Status,
 };
+use log::{debug, info, warn};
+use std::time::Instant;
+use massbit_chain_solana::data_type::{
+    convert_solana_encoded_block_to_solana_block, decode as solana_decode, SolanaEncodedBlock,
+    SolanaLogMessages, SolanaTransaction,
+};
 
-pub fn process_solana_block(client: &StreamoutClient<Channel>) ->  Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+pub async fn process_solana_block(mut client: StreamoutClient<Channel>)
+    ->  Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     let get_blocks_request = GetBlocksRequest {
         start_block_number: 0,
         end_block_number: 1,
-        chain_type: chain_type as i32,
-        network,
+        chain_type: ChainType::Solana as i32,
+        network: String::from(""),
     };
     let mut stream = client
         .list_blocks(Request::new(get_blocks_request))
@@ -64,5 +71,6 @@ pub fn process_solana_block(client: &StreamoutClient<Channel>) ->  Result<(), Bo
         }
         let elapsed = now.elapsed();
         debug!("Elapsed processing solana block: {:.2?}", elapsed);
-    }
+    };
+    Ok(())
 }

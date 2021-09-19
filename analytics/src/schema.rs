@@ -24,15 +24,15 @@ table! {
 table! {
     matic_block (block_hash) {
         block_hash -> Text,
-        block_height -> Int8,
+        block_number -> Nullable<Int8>,
         transaction_number -> Nullable<Int8>,
         timestamp -> Int8,
         validated_by -> Nullable<Text>,
         reward -> Nullable<Numeric>,
-        difficulty -> Nullable<Int8>,
-        total_difficulty -> Nullable<Int8>,
+        difficulty -> Nullable<Numeric>,
+        total_difficulty -> Nullable<Numeric>,
         size -> Nullable<Int8>,
-        gas -> Nullable<Numeric>,
+        gas_used -> Nullable<Numeric>,
         gas_limit -> Nullable<Numeric>,
         extra_data -> Nullable<Bytea>,
     }
@@ -47,7 +47,7 @@ table! {
         sender -> Text,
         receiver -> Nullable<Text>,
         value -> Numeric,
-        gas_limit -> Numeric,
+        gas -> Numeric,
         gas_price -> Numeric,
         timestamp -> Int8,
     }
