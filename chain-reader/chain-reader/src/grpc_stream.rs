@@ -48,8 +48,7 @@ impl Streamout for StreamService {
 
         tokio::spawn(async move {
             // let mut count = 1;
-            let mut got_block_number = Some(start_block);
-
+            let mut got_block_number = Some(start_block - 1);
             let resp = ethereum_chain::loop_get_block(tx.clone(), &mut got_block_number).await;
 
             error!("Stop loop_get_block at block {:?}", got_block_number);
