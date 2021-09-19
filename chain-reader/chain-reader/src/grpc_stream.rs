@@ -42,22 +42,17 @@ impl Streamout for StreamService {
         request: Request<GetBlocksRequest>,
     ) -> Result<Response<Self::ListBlocksStream>, Status> {
         info!("Request = {:?}", request);
-        let chain_type: ChainType = ChainType::from_i32(request.get_ref().chain_type).unwrap();
-
+        //let chain_type: ChainType = ChainType::from_i32(request.get_ref().chain_type).unwrap();
+        let start_block = request.get_ref().start_block_number;
         let (tx, rx) = mpsc::channel(1024);
 
         tokio::spawn(async move {
-            let mut count = 1;
-            let mut got_block_number = CONFIG.chains.get(&chain_type).unwrap().start_block;
+            // let mut count = 1;
+            let mut got_block_number = Some(start_block);
 
-            loop {
-                let resp = ethereum_chain::loop_get_block(tx.clone(), &mut got_block_number).await;
-                error!(
-                    "Restart {:?} response {:?}, at block {:?}, {} time",
-                    &chain_type, resp, &got_block_number, count
-                );
-                count = count + 1;
-            }
+            let resp = ethereum_chain::loop_get_block(tx.clone(), &mut got_block_number).await;
+
+            error!("Stop loop_get_block at block {:?}", got_block_number);
         });
         Ok(Response::new(ReceiverStream::new(rx)))
     }
