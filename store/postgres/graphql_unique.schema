@@ -1,6 +1,0 @@
-type AccountAggregation @entity {
-    account: String!
-    date: Date!
-    count: Int!
-} @unique(account, date)
-

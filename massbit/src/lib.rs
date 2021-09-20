@@ -1,5 +1,13 @@
-pub mod blockchain;
+/// Traits and types for all system components.
 pub mod components;
+
+/// Common data types used throughout Massbit.
+pub mod data;
+
+pub mod blockchain;
+
+pub use petgraph;
+pub use stable_hash;
 
 /// A prelude that makes all system component traits and data types available.
 ///
@@ -20,9 +28,12 @@ pub mod prelude {
     pub use futures03::future::{FutureExt as _, TryFutureExt};
     pub use futures03::sink::SinkExt as _;
     pub use futures03::stream::{StreamExt as _, TryStreamExt};
+    pub use hex;
     pub use lazy_static::lazy_static;
+    pub use serde;
     pub use serde_derive::{Deserialize, Serialize};
     pub use serde_json;
+    pub use serde_yaml;
     pub use std::convert::TryFrom;
     pub use std::fmt::Debug;
     pub use std::iter::FromIterator;
@@ -30,6 +41,11 @@ pub mod prelude {
     pub use std::sync::Arc;
     pub use std::time::Duration;
     pub use thiserror;
+    pub use tiny_keccak;
     pub use tokio;
     pub use web3;
+
+    pub use crate::blockchain::BlockPtr;
+
+    pub use crate::components::store::BlockNumber;
 }
