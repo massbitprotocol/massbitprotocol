@@ -24,7 +24,7 @@ Deploy Matic-Transaction, then check if data was inserted into DB
     Delete Table If Exists  matic_transaction_table
 
     # Compile request
-    ${object} =  Read So Example  ../../user-example/coin98/so/matic_transaction
+    ${object} =  Read So Example  ../../user-example/polygon/so/matic_transaction
     ${compile_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/compile/so
     ...  ${object}
