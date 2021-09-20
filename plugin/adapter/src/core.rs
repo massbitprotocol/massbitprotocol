@@ -21,6 +21,7 @@ use std::{
 };
 use tonic::{Request, Streaming};
 use tonic::transport::Channel;
+use tower::timeout::Timeout;
 
 lazy_static! {
     static ref CHAIN_READER_URL: String =
@@ -31,7 +32,7 @@ lazy_static! {
     static ref COMPONENT_NAME: String = String::from("[Adapter-Manager]");
 }
 const GET_BLOCK_TIMEOUT_SEC: u64 = 10;
-
+const GET_STREAM_TIMEOUT_SEC: u64 = 30;
 #[global_allocator]
 static ALLOCATOR: System = System;
 
@@ -143,7 +144,11 @@ impl AdapterManager {
                     &data_source.mapping.language
                 );
                 let chain_type = get_chain_type(data_source);
-                let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await?;
+
+                let channel = Channel::from_static(CHAIN_READER_URL.as_str()).connect().await?;
+                let timeout_channel = Timeout::new(channel, Duration::from_secs(GET_BLOCK_TIMEOUT_SEC));
+                let mut client = StreamoutClient::new(timeout_channel);
+                //let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await?;
                 match data_source.mapping.language.as_str() {
                     "wasm/assemblyscript" => {
                         self.handle_wasm_mapping(
@@ -215,7 +220,7 @@ impl AdapterManager {
         data_source: &DataSource,
         templates: Arc<Vec<DataSourceTemplate>>,
         schema_path: P,
-        client: &mut StreamoutClient<Channel>,
+        client: &mut StreamoutClient<Timeout<Channel>>,
     ) -> Result<(), Box<dyn Error>> {
         let store =
             Arc::new(StoreBuilder::create_store(indexer_hash.as_str(), &schema_path).unwrap());
@@ -294,7 +299,7 @@ impl AdapterManager {
         data_source: &DataSource,
         mapping_path: P,
         schema_path: P,
-        client: &mut StreamoutClient<Channel>,
+        client: &mut StreamoutClient<Timeout<Channel>>,
     ) -> Result<(), Box<dyn Error>> {
         let store = StoreBuilder::create_store(indexer_hash.as_str(), &schema_path).unwrap();
         let mut indexer_state = IndexerState::new(Arc::new(store));
@@ -409,7 +414,7 @@ impl AdapterManager {
     }
 }
 async fn try_create_stream(
-    client: &mut StreamoutClient<Channel>, chain_type: &ChainType, start_block: u64) -> Streaming<GenericDataProto> {
+    client: &mut StreamoutClient<Timeout<Channel>>, chain_type: &ChainType, start_block: u64) -> Streaming<GenericDataProto> {
     log::info!("Create new stream from block {}", start_block);
     let get_blocks_request = GetBlocksRequest {
         start_block_number: start_block,
@@ -418,16 +423,29 @@ async fn try_create_stream(
     };
     loop {
         match client
-            .list_blocks(Request::new(get_blocks_request.clone()))
-            .await {
+            .list_blocks(Request::new(get_blocks_request.clone())).await {
             Ok(res) => {
                 return res.into_inner();
             },
             Err(err) => {
-                log::info!("Create new stream with error {:?}", err);
-                sleep(Duration::from_secs(10)).await;
+                log::info!("Create new stream with error {:?}", &err);
+                sleep(Duration::from_secs(GET_STREAM_TIMEOUT_SEC)).await;
             }
         }
+        // let response = timeout(
+        //     Duration::from_secs(GET_STREAM_TIMEOUT_SEC),
+        //     client
+        //         .list_blocks(Request::new(get_blocks_request.clone()))
+        // ).await;
+        // match response {
+        //     Ok(Ok(res)) => {
+        //         return res.into_inner();
+        //     },
+        //     _ => {
+        //         log::info!("Create new stream with error {:?}", &response);
+        //         sleep(Duration::from_secs(GET_STREAM_TIMEOUT_SEC)).await;
+        //     }
+        // }
     }
 }
 // General trait for handling message,
