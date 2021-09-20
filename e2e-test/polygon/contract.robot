@@ -21,7 +21,7 @@ Compile and Deploy WASM Test Quickswap
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
     # Compile request
-    ${object} =  Read Wasm Example  ../../user-example/ethereum/wasm/quickswap  mappings
+    ${object} =  Read Wasm Example  ../../user-example/polygon/wasm/quickswap  mappings
     ${compile_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/compile/wasm
     ...  ${object}
