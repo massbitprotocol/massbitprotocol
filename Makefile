@@ -14,18 +14,24 @@ test-run-all:
 	@echo "Running health check tests ..."
 	cd e2e-test/health-check && robot health-check.robot || true
 
-	@echo "Running substrate tests ..."
+	@echo "Running basic substrate tests ..."
 	cd e2e-test/substrate && robot basic.robot
-
 	make restart-chain-reader-index-manager
 
-	@echo "Running solana tests ..."
+	@echo "Running basic solana tests ..."
 	cd e2e-test/solana && robot basic.robot
-
 	make restart-chain-reader-index-manager
 
-	@echo "Running ethereum tests ..."
+	@echo "Running basic ethereum tests ..."
 	cd e2e-test/ethereum && robot basic.robot
+	make restart-chain-reader-index-manager
+
+	@echo "Running basic polygon tests ..."
+	cd e2e-test/polygon && robot basic.robot
+	make restart-chain-reader-index-manager
+
+	@echo "Running basic bsc tests ..."
+	cd e2e-test/bsc && robot basic.robot
 
 #This test start/restart all service and run all test
 test-run-all-and-up:
@@ -44,23 +50,25 @@ test-run-all-and-up:
 	@echo "Running health check tests ..."
 	cd e2e-test/health-check && robot health-check.robot || true
 
-	@echo "Running substrate tests ..."
+	@echo "Running basic substrate tests ..."
 	cd e2e-test/substrate && robot basic.robot || true
-
 	make restart-chain-reader-index-manager
 
-	@echo "Running solana tests ..."
+	@echo "Running basic solana tests ..."
 	cd e2e-test/solana && robot basic.robot || true
-
 	make restart-chain-reader-index-manager
 
-	@echo "Running ethereum tests ..."
+	@echo "Running basic ethereum tests ..."
 	cd e2e-test/ethereum && robot basic.robot || true
-
 	make restart-chain-reader-index-manager
 
-#	@echo "Running dashboard tests ..."
-#	cd e2e-test/dashboard && robot dashboard.robot || true
+	@echo "Running basic polygon tests ..."
+	cd e2e-test/polygon && robot basic.robot
+	make restart-chain-reader-index-manager
+
+	@echo "Running basic bsc tests ..."
+	cd e2e-test/bsc && robot basic.robot
+
 
 test-init:
 	@echo "Installing all the dependencies for E2E tests ..."
