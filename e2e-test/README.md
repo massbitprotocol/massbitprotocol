@@ -43,20 +43,21 @@ make test-run-all
 
 ## Run a test
 ```shell
-robot [test-name].robot
+robot [test-type].robot
 ```
 Example
 ```
-robot substrate.robot 
-robot solana.robot 
-robot health-check.robot 
+robot basic.robot 
+robot advanced.robot 
+robot chain.robot 
+robot contract.robot 
 ```
 
 ## Note
 Because of our current test design, when we run the tests it will automatically delete the tables in the DB.
 Doing so will affect the Index Manager when the INDEX_MANAGER_RESTART_INDEX option is enabled because the Index Manager will look for those tables when it restarts.
 
-So make sure INDEX_MANAGER_RESTART_INDEX is set to false or we need to redesign our tests, so they don't delete migrations table and index detail tables
+So make sure INDEX_MANAGER_RESTART_INDEX is set to false, or we need to redesign our tests, so they don't delete migrations table and index detail tables
 
 ## Log
 Open log.html in your browser

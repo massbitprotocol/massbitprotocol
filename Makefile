@@ -15,17 +15,17 @@ test-run-all:
 	cd e2e-test/health-check && robot health-check.robot || true
 
 	@echo "Running substrate tests ..."
-	cd e2e-test/substrate && robot substrate.robot
+	cd e2e-test/substrate && robot basic.robot
 
 	make restart-chain-reader-index-manager
 
 	@echo "Running solana tests ..."
-	cd e2e-test/solana && robot solana.robot
+	cd e2e-test/solana && robot basic.robot
 
 	make restart-chain-reader-index-manager
 
 	@echo "Running ethereum tests ..."
-	cd e2e-test/ethereum && robot ethereum.robot
+	cd e2e-test/ethereum && robot basic.robot
 
 #This test start/restart all service and run all test
 test-run-all-and-up:
@@ -45,17 +45,17 @@ test-run-all-and-up:
 	cd e2e-test/health-check && robot health-check.robot || true
 
 	@echo "Running substrate tests ..."
-	cd e2e-test/substrate && robot substrate.robot || true
+	cd e2e-test/substrate && robot basic.robot || true
 
 	make restart-chain-reader-index-manager
 
 	@echo "Running solana tests ..."
-	cd e2e-test/solana && robot solana.robot || true
+	cd e2e-test/solana && robot basic.robot || true
 
 	make restart-chain-reader-index-manager
 
 	@echo "Running ethereum tests ..."
-	cd e2e-test/ethereum && robot ethereum.robot || true
+	cd e2e-test/ethereum && robot basic.robot || true
 
 	make restart-chain-reader-index-manager
 
