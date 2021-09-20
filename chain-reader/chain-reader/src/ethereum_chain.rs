@@ -7,6 +7,7 @@ use anyhow::Error;
 use futures::stream;
 use futures::{Future, Stream};
 use futures03::compat::Future01CompatExt;
+use graph::runtime::IndexForAscTypeId::EthereumBlock;
 use log::{debug, info, warn};
 use massbit_chain_ethereum::data_type::EthereumBlock as Block;
 use std::collections::HashMap;
@@ -69,6 +70,16 @@ async fn wait_for_new_block_http(
         sleep(Duration::from_millis(PULLING_INTERVAL)).await;
         debug!("Wait for new ETHEREUM block at: {:?}", got_block_number);
     }
+}
+
+async fn mock_wait_for_new_block_http(
+    web3_http: &Web3<Transport>,
+    got_block_number: &Option<u64>,
+) -> u64 {
+    sleep(Duration::from_millis(1)).await;
+    let latest_block_number = 20_000_000;
+    debug!("Wait for new ETHEREUM block at: {}", &latest_block_number);
+    latest_block_number
 }
 
 // Todo: add subscribe for get new block
@@ -260,6 +271,30 @@ async fn get_block(
     info!("Finish tokio::spawn for getting block: {:?}", &block_number);
 }
 
+async fn mock_get_block(
+    block_number: u64,
+    permit: OwnedSemaphorePermit,
+    clone_web3: Web3<Transport>,
+    clone_version: String,
+) -> Result<GenericDataProto, Box<dyn std::error::Error + Send + Sync + 'static>> {
+    debug!("Before permit block {}", block_number);
+    let _permit = permit;
+    debug!("After permit block {}", block_number);
+    sleep(Duration::from_millis(20)).await;
+    let block_hash = H256::from([1u8; 32]).to_string();
+    let eth_block = Block {
+        version: "".to_string(),
+        timestamp: 0,
+        block: Default::default(),
+        receipts: Default::default(),
+        logs: vec![],
+    };
+    let generic_data_proto =
+        _create_generic_block(block_hash, block_number, &eth_block, clone_version);
+    //debug!("generic_data_proto: {:?}", &generic_data_proto);
+    return Ok(generic_data_proto);
+}
+
 pub async fn loop_get_block(
     chan: mpsc::Sender<Result<GenericDataProto, Status>>,
     got_block_number: &mut Option<u64>,
@@ -293,7 +328,7 @@ pub async fn loop_get_block(
             break;
         }
 
-        let latest_block_number = wait_for_new_block_http(&web3, got_block_number).await;
+        let latest_block_number = mock_wait_for_new_block_http(&web3, got_block_number).await;
 
         if *got_block_number == None {
             *got_block_number = Some(latest_block_number - 1);
@@ -345,7 +380,8 @@ pub async fn loop_get_block(
             tasks.push(tokio::spawn(async move {
                 let res = timeout(
                     Duration::from_secs(GET_BLOCK_TIMEOUT_SEC),
-                    get_block(block_number, permit, clone_web3, clone_version),
+                    //get_block(block_number, permit, clone_web3, clone_version),
+                    mock_get_block(block_number, permit, clone_web3, clone_version),
                 )
                 .await;
 

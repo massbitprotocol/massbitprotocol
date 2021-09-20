@@ -64,20 +64,20 @@ impl MessageHandler for EthereumWasmHandlerProxy {
                 };
                 let data_sources = self.data_sources.clone();
                 log::info!("Cloned data_sources at {:?}", start.elapsed());
-                data_sources.into_iter().for_each(|data_source| {
-                    //wasm_instance for each datasource
-                    let mut wasm_instance: Option<WasmInstance<Chain>> = None;
-                    self.matching_block(
-                        &logger,
-                        &mut wasm_instance,
-                        &data_source,
-                        &eth_block,
-                        block_finality.clone(),
-                        &block_ptr,
-                        registry.cheap_clone(),
-                        stopwatch.cheap_clone(),
-                    );
-                });
+                // data_sources.into_iter().for_each(|data_source| {
+                //     //wasm_instance for each datasource
+                //     let mut wasm_instance: Option<WasmInstance<Chain>> = None;
+                //     self.matching_block(
+                //         &logger,
+                //         &mut wasm_instance,
+                //         &data_source,
+                //         &eth_block,
+                //         block_finality.clone(),
+                //         &block_ptr,
+                //         registry.cheap_clone(),
+                //         stopwatch.cheap_clone(),
+                //     );
+                // });
             }
             _ => {}
         }
