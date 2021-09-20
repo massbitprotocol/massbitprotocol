@@ -129,12 +129,8 @@ def read_mapping_content(path, subgraph_name):
         # Go 1 level deeper
         mapping_path_lvl_1 = os.path.join(mapping_path, folder)
         for file_lvl_1 in get_file(mapping_path_lvl_1):
-            mapping = update_payload(mapping,
-                                     os.path.join(root_name, folder, file_lvl_1),
-                                     os.path.join(mapping_path_lvl_1, file_lvl_1))
+            mapping[os.path.join(root_name, folder, file_lvl_1)] = read_file_content(os.path.join(mapping_path_lvl_1, file_lvl_1))
 
     for file in get_file(mapping_path):
-        mapping = update_payload(mapping,
-                                 os.path.join(root_name, file),
-                                 os.path.join(mapping_path, file))
+        mapping[os.path.join(root_name, file)] = read_file_content(os.path.join(mapping_path, file))
     return mapping
