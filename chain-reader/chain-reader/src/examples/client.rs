@@ -37,34 +37,40 @@ pub mod stream_mod {
 }
 
 const URL: &str = "http://127.0.0.1:50051";
+const MAX_COUNT: i32 = 3;
 
 pub async fn print_blocks(
     mut client: StreamoutClient<Channel>,
     chain_type: ChainType,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+    // Debug
+    let mut count = 0;
+
     // Not use start_block_number start_block_number yet
     let get_blocks_request = GetBlocksRequest {
-        start_block_number: 0,
+        start_block_number: 1,
         end_block_number: 1,
         chain_type: chain_type as i32,
     };
     println!("Creating Stream ...");
-    let mut stream = client
-        .list_blocks(Request::new(get_blocks_request))
-        .await?
-        .into_inner();
+    let mut stream = Some(
+        client
+            .list_blocks(Request::new(get_blocks_request))
+            .await?
+            .into_inner(),
+    );
 
     let mut file_hash = "".to_string();
-    let mut data_sources = vec![];
-    if chain_type == ChainType::Ethereum {
-        // For ethereum only
-        file_hash = "/ipfs/QmVVrXLPKJYiXQqmR5LVmPTJBbYEQp4vgwve3hqXroHDp5".to_string();
-        data_sources = get_data_source(&file_hash).await.unwrap();
-        // End For ethereum only
-    }
+    let mut data_sources: Vec<DataSource> = vec![];
+    // if chain_type == ChainType::Ethereum {
+    //     // For ethereum only
+    //     file_hash = "/ipfs/QmVVrXLPKJYiXQqmR5LVmPTJBbYEQp4vgwve3hqXroHDp5".to_string();
+    //     data_sources = get_data_source(&file_hash).await.unwrap();
+    //     // End For ethereum only
+    // }
 
     println!("Waitting for data...");
-    while let Some(data) = stream.message().await? {
+    while let Some(data) = stream.as_mut().unwrap().message().await? {
         let mut data = data as GenericDataProto;
         println!(
             "Received chain: {:?}, data block = {:?}, hash = {:?}, data type = {:?}",
@@ -151,14 +157,19 @@ pub async fn print_blocks(
                         &block.block.number.unwrap().as_u64()
                     );
 
-                    for data_source in &data_sources {
-                        //println!("data_source: {:#?}", &data_source);
-                        let events = get_events(&block, data_source);
-
-                        // for event in events {
-                        //     println!("Ethereum Event address: {:?}", &event.event.address);
-                        // }
+                    count += 1;
+                    if count >= MAX_COUNT {
+                        break;
                     }
+
+                    // for data_source in &data_sources {
+                    //     //println!("data_source: {:#?}", &data_source);
+                    //     let events = get_events(&block, data_source);
+                    //
+                    //     // for event in events {
+                    //     //     println!("Ethereum Event address: {:?}", &event.event.address);
+                    //     // }
+                    // }
                 }
                 _ => {
                     warn!("Not support this type in Ethereum");
@@ -166,6 +177,9 @@ pub async fn print_blocks(
             },
         }
     }
+    //drop(stream);
+    //stream = None;
+    loop {}
 
     Ok(())
 }

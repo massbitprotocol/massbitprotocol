@@ -19,8 +19,8 @@ use std::{
     alloc::System, collections::HashMap, env, error::Error, ffi::OsStr, fmt, path::PathBuf,
     sync::Arc,
 };
-use tonic::{Request, Streaming};
 use tonic::transport::Channel;
+use tonic::{Request, Streaming};
 use tower::timeout::Timeout;
 
 lazy_static! {
@@ -145,8 +145,11 @@ impl AdapterManager {
                 );
                 let chain_type = get_chain_type(data_source);
 
-                let channel = Channel::from_static(CHAIN_READER_URL.as_str()).connect().await?;
-                let timeout_channel = Timeout::new(channel, Duration::from_secs(GET_BLOCK_TIMEOUT_SEC));
+                let channel = Channel::from_static(CHAIN_READER_URL.as_str())
+                    .connect()
+                    .await?;
+                let timeout_channel =
+                    Timeout::new(channel, Duration::from_secs(GET_BLOCK_TIMEOUT_SEC));
                 let mut client = StreamoutClient::new(timeout_channel);
                 //let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await?;
                 match data_source.mapping.language.as_str() {
@@ -157,7 +160,8 @@ impl AdapterManager {
                             arc_templates.clone(),
                             schema,
                             &mut client,
-                        ).await
+                        )
+                        .await
                     }
                     //Default use rust
                     _ => {
@@ -249,13 +253,13 @@ impl AdapterManager {
             loop {
                 match opt_stream {
                     None => {
-                        opt_stream = Some(try_create_stream(client, &chain_type, start_block).await);
-                    },
+                        opt_stream =
+                            Some(try_create_stream(client, &chain_type, start_block).await);
+                    }
                     Some(ref mut stream) => {
-                        let response = timeout(
-                            Duration::from_secs(GET_BLOCK_TIMEOUT_SEC),
-                            stream.message(),
-                        ).await;
+                        let response =
+                            timeout(Duration::from_secs(GET_BLOCK_TIMEOUT_SEC), stream.message())
+                                .await;
                         match response {
                             Ok(Ok(res)) => {
                                 if let Some(mut data) = res {
@@ -270,7 +274,10 @@ impl AdapterManager {
                                     );
                                     match proxy.handle_wasm_mapping(&mut data) {
                                         Err(err) => {
-                                            log::error!("{} Error while handle received message", err);
+                                            log::error!(
+                                                "{} Error while handle received message",
+                                                err
+                                            );
                                             start_block = data.block_number;
                                         }
                                         Ok(_) => {
@@ -334,13 +341,15 @@ impl AdapterManager {
                 loop {
                     match opt_stream {
                         None => {
-                            opt_stream = Some(try_create_stream(client, &chain_type, start_block).await);
-                        },
+                            opt_stream =
+                                Some(try_create_stream(client, &chain_type, start_block).await);
+                        }
                         Some(ref mut stream) => {
                             let response = timeout(
                                 Duration::from_secs(GET_BLOCK_TIMEOUT_SEC),
                                 stream.message(),
-                            ).await;
+                            )
+                            .await;
                             match response {
                                 Ok(Ok(res)) => {
                                     if let Some(mut data) = res {
@@ -353,9 +362,14 @@ impl AdapterManager {
                                             data.block_hash,
                                             DataType::from_i32(data.data_type).unwrap()
                                         );
-                                        match handler_proxy.handle_rust_mapping(&mut data, &mut indexer_state) {
+                                        match handler_proxy
+                                            .handle_rust_mapping(&mut data, &mut indexer_state)
+                                        {
                                             Err(err) => {
-                                                log::error!("{} Error while handle received message", err);
+                                                log::error!(
+                                                    "{} Error while handle received message",
+                                                    err
+                                                );
                                                 start_block = data.block_number;
                                             }
                                             Ok(_) => {
@@ -363,7 +377,7 @@ impl AdapterManager {
                                             }
                                         }
                                     }
-                                },
+                                }
                                 _ => {
                                     log::info!("Error while get message from reader stream {:?}. Recreate stream", &response);
                                     opt_stream = None;
@@ -414,19 +428,24 @@ impl AdapterManager {
     }
 }
 async fn try_create_stream(
-    client: &mut StreamoutClient<Timeout<Channel>>, chain_type: &ChainType, start_block: u64) -> Streaming<GenericDataProto> {
+    client: &mut StreamoutClient<Timeout<Channel>>,
+    chain_type: &ChainType,
+    start_block: u64,
+) -> Streaming<GenericDataProto> {
     log::info!("Create new stream from block {}", start_block);
     let get_blocks_request = GetBlocksRequest {
         start_block_number: start_block,
         end_block_number: 0,
-        chain_type: *chain_type as i32
+        chain_type: *chain_type as i32,
     };
     loop {
         match client
-            .list_blocks(Request::new(get_blocks_request.clone())).await {
+            .list_blocks(Request::new(get_blocks_request.clone()))
+            .await
+        {
             Ok(res) => {
                 return res.into_inner();
-            },
+            }
             Err(err) => {
                 log::info!("Create new stream with error {:?}", &err);
                 sleep(Duration::from_secs(GET_STREAM_TIMEOUT_SEC)).await;

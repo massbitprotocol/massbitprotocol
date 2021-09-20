@@ -11,6 +11,8 @@ use stream_mod::{
 };
 use tonic::{Request, Response, Status};
 
+const QUEUE_BUFFER: usize = 1024;
+
 pub mod stream_mod {
     tonic::include_proto!("chaindata");
 }
@@ -44,14 +46,16 @@ impl Streamout for StreamService {
         info!("Request = {:?}", request);
         //let chain_type: ChainType = ChainType::from_i32(request.get_ref().chain_type).unwrap();
         let start_block = request.get_ref().start_block_number;
-        let (tx, rx) = mpsc::channel(1024);
+        let (tx, rx) = mpsc::channel(QUEUE_BUFFER);
 
         tokio::spawn(async move {
-            // let mut count = 1;
-            let mut got_block_number = Some(start_block - 1);
-            let resp = ethereum_chain::loop_get_block(tx.clone(), &mut got_block_number).await;
+            let start_block = match start_block {
+                0 => None,
+                _ => Some(start_block),
+            };
+            let resp = ethereum_chain::loop_get_block(tx.clone(), &start_block).await;
 
-            error!("Stop loop_get_block at block {:?}", got_block_number);
+            error!("Stop loop_get_block, error: {:?}", resp);
         });
         Ok(Response::new(ReceiverStream::new(rx)))
     }
