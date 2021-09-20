@@ -374,7 +374,6 @@ pub async fn loop_get_block(
                 "After gave permit, permits available: {}",
                 sem.available_permits()
             );
-            let chan_clone = chan.clone();
 
             //let blocks_clone = blocks.clone();
             tasks.push(tokio::spawn(async move {
@@ -408,8 +407,7 @@ pub async fn loop_get_block(
         println!("results");
 
         for block in blocks.into_iter() {
-            let chan_clone = chan.clone();
-            chan_clone.send(Ok(block as GenericDataProto)).await;
+            chan.send(Ok(block as GenericDataProto)).await;
         }
 
         *got_block_number = Some(got_block_number.unwrap() + getting_block);
