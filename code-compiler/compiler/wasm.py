@@ -70,7 +70,7 @@ def compile_wasm(data, use_precompile=True):
 
     # Save the formatted data from request to disk, ready for compiling
     for file_name in mappings:
-        write_to_disk(os.path.join(generated_folder, "src", file_name), urllib.parse.unquote(mappings[file_name]))
+        write_to_disk(os.path.join(generated_folder, file_name), urllib.parse.unquote(mappings[file_name]))
     for file_name in abis:
         write_to_disk(os.path.join(generated_folder, "abis", file_name), urllib.parse.unquote(abis[file_name]))
     write_to_disk(os.path.join(generated_folder, "subgraph.yaml"), subgraph)
