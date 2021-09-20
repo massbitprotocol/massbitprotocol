@@ -20,7 +20,7 @@ Compile and Deploy Pancakeswap Exchange WASM
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
     # Compile request
-    ${object} =  Read Wasm Example  ../../user-example/bsc/wasm/pancakeswap-exchange  mappings
+    ${object} =  Read Wasm Example  ../../user-example/bsc/wasm/pancakeswap-exchange
     ${compile_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/compile/wasm
     ...  ${object}
