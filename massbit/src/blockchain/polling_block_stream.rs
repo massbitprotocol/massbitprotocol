@@ -1,11 +1,27 @@
-use crate::blockchain::block_stream::BlockWithTriggers;
-use crate::blockchain::Blockchain;
-use crate::prelude::*;
 use futures03::{stream::Stream, Future, FutureExt};
+use std::cmp;
 use std::collections::VecDeque;
+use std::task::{Context, Poll};
+
+use crate::blockchain::block_stream::{BlockStreamEvent, BlockWithTriggers, TriggersAdapter};
+use crate::blockchain::{BlockStream, Blockchain};
+use crate::components::store::{ChainStore, BLOCK_NUMBER_MAX};
+use crate::prelude::*;
+
+lazy_static! {
+    pub static ref STREAM_BLOCK_RANGE_SIZE: i32 = std::env::var("STREAM_BLOCK_RANGE_SIZE")
+        .ok()
+        .map(|s| {
+            s.parse::<i32>().unwrap_or_else(|_| {
+                panic!("STREAM_BLOCK_RANGE_SIZE must be a number, but is `{}`", s)
+            })
+        })
+        .unwrap_or(100);
+}
 
 #[cfg(debug_assertions)]
 use fail::fail_point;
+
 enum BlockStreamState<C>
 where
     C: Blockchain,
@@ -17,7 +33,7 @@ where
 
     /// The BlockStream is reconciling the indexer store state with the chain store state.
     ///
-    /// Valid next states: YieldingBlocks, Idle
+    /// Valid next states: YieldingBlocks
     Reconciliation(Pin<Box<dyn Future<Output = Result<NextBlocks<C>, Error>> + Send>>),
 
     /// The BlockStream is emitting blocks that must be processed in order to bring the indexer
@@ -25,12 +41,6 @@ where
     ///
     /// Valid next states: BeginReconciliation
     YieldingBlocks(Box<VecDeque<BlockWithTriggers<C>>>),
-
-    /// The BlockStream has reconciled the indexer store and chain store states.
-    /// No more work is needed until a chain head update.
-    ///
-    /// Valid next states: BeginReconciliation
-    Idle,
 }
 
 /// A single next step to take in reconciling the state of the indexer store with the state of the
@@ -41,13 +51,6 @@ where
 {
     /// Move forwards, processing one or more blocks. Second element is the block range size.
     ProcessDescendantBlocks(Vec<BlockWithTriggers<C>>, BlockNumber),
-
-    /// This step is a no-op, but we need to check again for a next step.
-    Retry,
-
-    /// indexer pointer now matches chain head pointer.
-    /// Reconciliation is complete.
-    Done,
 }
 
 struct BlockStreamContext<C>
@@ -56,13 +59,7 @@ where
 {
     adapter: Arc<C::TriggersAdapter>,
     filter: Arc<C::TriggerFilter>,
-    start_blocks: Vec<BlockNumber>,
-    previous_triggers_per_block: f64,
-    // Not a BlockNumber, but the difference between two block numbers
-    previous_block_range_size: BlockNumber,
-    // Not a BlockNumber, but the difference between two block numbers
-    max_block_range_size: BlockNumber,
-    target_triggers_per_block_range: u64,
+    stream_block_number: BlockNumber,
 }
 
 impl<C: Blockchain> Clone for BlockStreamContext<C> {
@@ -70,11 +67,7 @@ impl<C: Blockchain> Clone for BlockStreamContext<C> {
         Self {
             adapter: self.adapter.clone(),
             filter: self.filter.clone(),
-            start_blocks: self.start_blocks.clone(),
-            previous_triggers_per_block: self.previous_triggers_per_block,
-            previous_block_range_size: self.previous_block_range_size,
-            max_block_range_size: self.max_block_range_size,
-            target_triggers_per_block_range: self.target_triggers_per_block_range,
+            stream_block_number: self.stream_block_number,
         }
     }
 }
@@ -91,8 +84,6 @@ where
 {
     /// Blocks and range size
     Blocks(VecDeque<BlockWithTriggers<C>>, BlockNumber),
-
-    Done,
 }
 
 impl<C> PollingBlockStream<C>
@@ -102,56 +93,117 @@ where
     pub fn new(
         adapter: Arc<C::TriggersAdapter>,
         filter: Arc<C::TriggerFilter>,
-        start_blocks: Vec<BlockNumber>,
-        max_block_range_size: BlockNumber,
-        target_triggers_per_block_range: u64,
+        stream_block_number: BlockNumber,
     ) -> Self {
         PollingBlockStream {
             state: BlockStreamState::BeginReconciliation,
             ctx: BlockStreamContext {
                 adapter,
                 filter,
-                start_blocks,
-
-                // A high number here forces a slow start, with a range of 1.
-                previous_triggers_per_block: 1_000_000.0,
-                previous_block_range_size: 1,
-                max_block_range_size,
-                target_triggers_per_block_range,
+                stream_block_number,
             },
         }
     }
 }
 
-// impl<C> BlockStreamContext<C>
-// where
-//     C: Blockchain,
-// {
-//     async fn next_blocks(&self) -> Result<NextBlocks<C>, Error> {
-//         let ctx = self.clone();
-//
-//         loop {
-//             match ctx.get_next_step().await? {
-//                 ReconciliationStep::ProcessDescendantBlocks(next_blocks, range_size) => {
-//                     return Ok(NextBlocks::Blocks(
-//                         next_blocks.into_iter().collect(),
-//                         range_size,
-//                     ));
-//                 }
-//                 ReconciliationStep::Retry => {
-//                     continue;
-//                 }
-//                 ReconciliationStep::Done => {
-//                     return Ok(NextBlocks::Done);
-//                 }
-//             }
-//         }
-//     }
-//
-//     /// Determine the next reconciliation step. Does not modify Store or ChainStore.
-//     async fn get_next_step(&self) -> Result<ReconciliationStep<C>, Error> {
-//         let ctx = self.clone();
-//         let start_blocks = self.start_blocks.clone();
-//         let max_block_range_size = self.max_block_range_size;
-//     }
-// }
+impl<C> BlockStreamContext<C>
+where
+    C: Blockchain,
+{
+    async fn next_blocks(&self) -> Result<NextBlocks<C>, Error> {
+        let ctx = self.clone();
+
+        loop {
+            match ctx.get_next_step().await? {
+                ReconciliationStep::ProcessDescendantBlocks(next_blocks, range_size) => {
+                    return Ok(NextBlocks::Blocks(
+                        next_blocks.into_iter().collect(),
+                        range_size,
+                    ));
+                }
+            }
+        }
+    }
+
+    /// Determine the next reconciliation step. Does not modify Store or ChainStore.
+    async fn get_next_step(&self) -> Result<ReconciliationStep<C>, Error> {
+        // Start with first block after stream ptr; if the ptr is None,
+        // then we start with the genesis block
+        let from = self.stream_block_number + 1;
+
+        let blocks = self
+            .adapter
+            .scan_triggers(from, from + *STREAM_BLOCK_RANGE_SIZE, &self.filter)
+            .await?;
+
+        Ok(ReconciliationStep::ProcessDescendantBlocks(
+            blocks,
+            *STREAM_BLOCK_RANGE_SIZE,
+        ))
+    }
+}
+
+impl<C: Blockchain> BlockStream<C> for PollingBlockStream<C> {}
+
+impl<C: Blockchain> Stream for PollingBlockStream<C> {
+    type Item = Result<BlockStreamEvent<C>, Error>;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let result = loop {
+            match &mut self.state {
+                BlockStreamState::BeginReconciliation => {
+                    // Start the reconciliation process by asking for blocks
+                    let ctx = self.ctx.clone();
+                    let fut = async move { ctx.next_blocks().await };
+                    self.state = BlockStreamState::Reconciliation(fut.boxed());
+                }
+
+                // Waiting for the reconciliation to complete or yield blocks
+                BlockStreamState::Reconciliation(next_blocks_future) => {
+                    match next_blocks_future.poll_unpin(cx) {
+                        Poll::Ready(Ok(NextBlocks::Blocks(next_blocks, block_range_size))) => {
+                            let total_triggers =
+                                next_blocks.iter().map(|b| b.trigger_count()).sum::<usize>();
+                            if total_triggers > 0 {
+                                info!("Processing {} triggers", total_triggers);
+                            }
+
+                            self.ctx.stream_block_number =
+                                self.ctx.stream_block_number + block_range_size;
+
+                            // Switch to yielding state until next_blocks is depleted
+                            self.state = BlockStreamState::YieldingBlocks(Box::new(next_blocks));
+
+                            // Yield the first block in next_blocks
+                            continue;
+                        }
+                        Poll::Pending => {
+                            break Poll::Pending;
+                        }
+                        Poll::Ready(Err(e)) => {
+                            break Poll::Ready(Some(Err(e)));
+                        }
+                    }
+                }
+
+                // Yielding blocks from reconciliation process
+                BlockStreamState::YieldingBlocks(ref mut next_blocks) => {
+                    match next_blocks.pop_front() {
+                        // Yield one block
+                        Some(next_block) => {
+                            break Poll::Ready(Some(Ok(BlockStreamEvent::ProcessBlock(
+                                next_block,
+                            ))));
+                        }
+
+                        // Done yielding blocks
+                        None => {
+                            self.state = BlockStreamState::BeginReconciliation;
+                        }
+                    }
+                }
+            }
+        };
+        result
+    }
+}

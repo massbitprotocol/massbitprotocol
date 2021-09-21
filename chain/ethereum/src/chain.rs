@@ -7,6 +7,8 @@ use massbit::blockchain::{
 
 use crate::data_source::DataSource;
 use crate::types::{LightEthereumBlock, LightEthereumBlockExt};
+use crate::TriggerFilter;
+use massbit::blockchain::block_stream::BlockWithTriggers;
 
 pub struct Chain {}
 
@@ -73,4 +75,13 @@ impl Block for BlockFinality {
 pub struct TriggersAdapter {}
 
 #[async_trait]
-impl TriggersAdapterTrait<Chain> for TriggersAdapter {}
+impl TriggersAdapterTrait<Chain> for TriggersAdapter {
+    async fn scan_triggers(
+        &self,
+        from: BlockNumber,
+        to: BlockNumber,
+        filter: &TriggerFilter,
+    ) -> Result<Vec<BlockWithTriggers<Chain>>, Error> {
+        todo!()
+    }
+}

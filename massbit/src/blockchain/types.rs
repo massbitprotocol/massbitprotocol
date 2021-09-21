@@ -36,7 +36,7 @@ impl From<Vec<u8>> for BlockHash {
     }
 }
 
-/// A block hash and block number from a specific Ethereum block.
+/// A block hash and block number from a specific block.
 ///
 /// Block numbers are signed 32 bit integers
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

@@ -14,6 +14,7 @@ use std::{
     str::FromStr,
     sync::Arc,
 };
+use web3::types::H256;
 
 use crate::components::store::BlockNumber;
 

@@ -10,3 +10,4 @@ pub mod types;
 
 pub use crate::adapter::{EthereumAdapter as EthereumAdapterTrait, TriggerFilter};
 pub use crate::chain::Chain;
+pub use crate::types::{EthereumCall, LightEthereumBlock, LightEthereumBlockExt};

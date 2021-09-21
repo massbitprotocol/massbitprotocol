@@ -1,9 +1,9 @@
 use ethabi::{Function, ParamType, Token};
-use mockall::{automock, predicate::*};
 use std::cmp;
 use std::collections::{HashMap, HashSet};
+use std::fmt;
 use tiny_keccak::keccak256;
-use web3::types::{Address, H256};
+use web3::types::{Address, Log, H256};
 
 use massbit::prelude::*;
 use massbit::{
@@ -22,6 +22,35 @@ pub type FunctionSelector = [u8; 4];
 enum LogFilterNode {
     Contract(Address),
     Event(EventSignature),
+}
+
+/// Corresponds to an `eth_getLogs` call.
+#[derive(Clone)]
+pub struct EthGetLogsFilter {
+    pub contracts: Vec<Address>,
+    pub event_signatures: Vec<EventSignature>,
+}
+
+impl fmt::Display for EthGetLogsFilter {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.contracts.len() == 1 {
+            write!(
+                f,
+                "contract {:?}, {} events",
+                self.contracts[0],
+                self.event_signatures.len()
+            )
+        } else if self.event_signatures.len() == 1 {
+            write!(
+                f,
+                "event {:?}, {} contracts",
+                self.event_signatures[0],
+                self.contracts.len()
+            )
+        } else {
+            write!(f, "unreachable")
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -92,6 +121,75 @@ impl EthereumLogFilter {
             self.contracts_and_events_graph.add_edge(s, t, ());
         }
         self.wildcard_events.extend(wildcard_events);
+    }
+
+    /// An empty filter is one that never matches.
+    pub fn is_empty(&self) -> bool {
+        // Destructure to make sure we're checking all fields.
+        let EthereumLogFilter {
+            contracts_and_events_graph,
+            wildcard_events,
+        } = self;
+        contracts_and_events_graph.edge_count() == 0 && wildcard_events.is_empty()
+    }
+
+    /// Filters for `eth_getLogs` calls. The filters will not return false positives. This attempts
+    /// to balance between having granular filters but too many calls and having few calls but too
+    /// broad filters causing the Ethereum endpoint to timeout.
+    pub fn eth_get_logs_filters(self) -> impl Iterator<Item = EthGetLogsFilter> {
+        let mut filters = Vec::new();
+
+        // First add the wildcard event filters.
+        for wildcard_event in self.wildcard_events {
+            filters.push(EthGetLogsFilter {
+                contracts: vec![],
+                event_signatures: vec![wildcard_event],
+            })
+        }
+
+        // The current algorithm is to repeatedly find the maximum cardinality vertex and turn all
+        // of its edges into a filter. This is nice because it is neutral between filtering by
+        // contract or by events, if there are many events that appear on only one data source
+        // we'll filter by many events on a single contract, but if there is an event that appears
+        // on a lot of data sources we'll filter by many contracts with a single event.
+        //
+        // From a theoretical standpoint we're finding a vertex cover, and this is not the optimal
+        // algorithm to find a minimum vertex cover, but should be fine as an approximation.
+        //
+        // One optimization we're not doing is to merge nodes that have the same neighbors into a
+        // single node. For example if a subgraph has two data sources, each with the same two
+        // events, we could cover that with a single filter and no false positives. However that
+        // might cause the filter to become too broad, so at the moment it seems excessive.
+        let mut g = self.contracts_and_events_graph;
+        while g.edge_count() > 0 {
+            // If there are edges, there are vertexes.
+            let max_vertex = g.nodes().max_by_key(|&n| g.neighbors(n).count()).unwrap();
+            let mut filter = match max_vertex {
+                LogFilterNode::Contract(address) => EthGetLogsFilter {
+                    contracts: vec![address],
+                    event_signatures: vec![],
+                },
+                LogFilterNode::Event(event_sig) => EthGetLogsFilter {
+                    contracts: vec![],
+                    event_signatures: vec![event_sig],
+                },
+            };
+            for neighbor in g.neighbors(max_vertex) {
+                match neighbor {
+                    LogFilterNode::Contract(address) => filter.contracts.push(address),
+                    LogFilterNode::Event(event_sig) => filter.event_signatures.push(event_sig),
+                }
+            }
+
+            // Sanity checks:
+            // - The filter is not a wildcard because all nodes have neighbors.
+            // - The graph is bipartite.
+            assert!(filter.contracts.len() > 0 && filter.event_signatures.len() > 0);
+            assert!(filter.contracts.len() == 1 || filter.event_signatures.len() == 1);
+            filters.push(filter);
+            g.remove_node(max_vertex);
+        }
+        filters.into_iter()
     }
 }
 
@@ -257,6 +355,15 @@ impl EthereumBlockFilter {
 ///
 /// Implementations may be implemented against an in-process Ethereum node
 /// or a remote node over RPC.
-#[automock]
 #[async_trait]
-pub trait EthereumAdapter: Send + Sync + 'static {}
+pub trait EthereumAdapter: Send + Sync + 'static {
+    fn block_hash_by_block_number(
+        &self,
+        block_number: BlockNumber,
+    ) -> Box<dyn Future<Item = Option<H256>, Error = Error> + Send>;
+
+    fn load_blocks(
+        &self,
+        block_hashes: HashSet<H256>,
+    ) -> Box<dyn Stream<Item = LightEthereumBlock, Error = Error> + Send>;
+}
