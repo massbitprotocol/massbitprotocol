@@ -52,14 +52,6 @@ pub trait Blockchain: Debug + Sized + Send + Sync + Unpin + 'static {
 
     /// Trigger filter used as input to the triggers adapter.
     type TriggerFilter: TriggerFilter<Self>;
-
-    fn triggers_adapter(&self) -> Result<Arc<Self::TriggersAdapter>, Error>;
-
-    async fn new_block_stream(
-        &self,
-        start_blocks: Vec<BlockNumber>,
-        filter: Arc<Self::TriggerFilter>,
-    ) -> Result<Box<dyn BlockStream<Self>>, Error>;
 }
 
 pub trait TriggerFilter<C: Blockchain>: Default + Clone + Send + Sync {

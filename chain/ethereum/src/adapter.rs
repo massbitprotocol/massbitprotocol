@@ -65,12 +65,16 @@ impl EthereumLogFilter {
         for ds in iter {
             for event_sig in ds.mapping.event_handlers.iter().map(|e| e.topic0()) {
                 match ds.source.address {
-                    Some(contract) => this.contracts_and_events_graph.add_edge(
-                        LogFilterNode::Contract(contract),
-                        LogFilterNode::Event(event_sig),
-                        (),
-                    ),
-                    None => this.wildcard_events.insert(event_sig),
+                    Some(contract) => {
+                        this.contracts_and_events_graph.add_edge(
+                            LogFilterNode::Contract(contract),
+                            LogFilterNode::Event(event_sig),
+                            (),
+                        );
+                    }
+                    None => {
+                        this.wildcard_events.insert(event_sig);
+                    }
                 }
             }
         }
@@ -139,6 +143,43 @@ impl EthereumCallFilter {
                         .insert(address, (proposed_start_block, new_sigs));
                 }
             }
+        }
+    }
+}
+
+impl FromIterator<(BlockNumber, Address, FunctionSelector)> for EthereumCallFilter {
+    fn from_iter<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = (BlockNumber, Address, FunctionSelector)>,
+    {
+        let mut lookup: HashMap<Address, (BlockNumber, HashSet<FunctionSelector>)> = HashMap::new();
+        iter.into_iter()
+            .for_each(|(start_block, address, function_signature)| {
+                if !lookup.contains_key(&address) {
+                    lookup.insert(address, (start_block, HashSet::default()));
+                }
+                lookup.get_mut(&address).map(|set| {
+                    if set.0 > start_block {
+                        set.0 = start_block
+                    }
+                    set.1.insert(function_signature);
+                    set
+                });
+            });
+        EthereumCallFilter {
+            contract_addresses_function_signatures: lookup,
+        }
+    }
+}
+
+impl From<EthereumBlockFilter> for EthereumCallFilter {
+    fn from(ethereum_block_filter: EthereumBlockFilter) -> Self {
+        Self {
+            contract_addresses_function_signatures: ethereum_block_filter
+                .contract_addresses
+                .into_iter()
+                .map(|(start_block_opt, address)| (address, (start_block_opt, HashSet::default())))
+                .collect::<HashMap<Address, (BlockNumber, HashSet<FunctionSelector>)>>(),
         }
     }
 }

@@ -1874,9 +1874,11 @@ name = "ethereum"
 version = "0.1.0"
 dependencies = [
  "ethabi 12.0.0-graph",
+ "http 0.1.21",
  "jsonrpc-core 14.2.0",
  "massbit",
  "mockall 0.10.2",
+ "serde",
  "tiny-keccak 1.5.0",
  "url 2.2.2",
  "web3",
@@ -4153,9 +4155,11 @@ dependencies = [
  "hex",
  "lazy_static",
  "petgraph 0.6.0",
+ "semver 1.0.4",
  "serde",
  "serde_derive",
  "serde_json",
+ "serde_plain",
  "serde_yaml",
  "stable-hash",
  "thiserror",

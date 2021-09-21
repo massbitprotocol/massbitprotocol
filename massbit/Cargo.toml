@@ -12,17 +12,19 @@ async-trait = "0.1.51"
 futures = "0.1.21"
 futures03 = { version = "0.3.17", package = "futures", features = ["compat"] }
 lazy_static = "1.4.0"
-serde = "1.0.130"
-serde_derive = "1.0.130"
-serde_json = "1.0.67"
+semver = {version = "1.0.3", features = ["serde"]}
+serde = { version = "1.0.126", features = ["rc"] }
+serde_derive = "1.0.125"
+serde_json = "1.0"
+serde_yaml = "0.8"
 thiserror = "1.0.29"
 tokio = { version = "1.11.0", features = ["time", "sync", "macros", "test-util", "rt-multi-thread", "parking_lot"] }
 tokio-stream = { version = "0.1.7", features = ["sync"] }
 tokio-retry = "0.3.0"
 fail = { version = "0.4", features = ["failpoints"] }
 web3 = { git = "https://github.com/graphprotocol/rust-web3", branch = "master" }
-serde_yaml = "0.8.21"
 hex = "0.4.3"
 tiny-keccak = "1.5.0"
 stable-hash = { git = "https://github.com/graphprotocol/stable-hash" }
 petgraph = "0.6.0"
+serde_plain = "1.0.0"
