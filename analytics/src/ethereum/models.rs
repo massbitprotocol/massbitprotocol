@@ -36,7 +36,7 @@ pub struct MaticTransaction {
     pub sender: String,
     pub receiver: Option<String>,
     pub value: BigDecimal,
-    pub gas: BigDecimal,
+    pub gas_limit: BigDecimal,
     pub gas_price: BigDecimal,
     pub timestamp: i64
 }
@@ -129,7 +129,7 @@ impl  From<&Transaction> for MaticTransaction {
             None => BigDecimal::from(0),
             Some(val) => val
         };
-        let gas = match BigDecimal::from_u128(trans.gas.as_u128()) {
+        let gas_limit = match BigDecimal::from_u128(trans.gas.as_u128()) {
             None => BigDecimal::from(0),
             Some(val) => val
         };
@@ -145,7 +145,7 @@ impl  From<&Transaction> for MaticTransaction {
             sender,
             receiver,
             value,
-            gas,
+            gas_limit,
             gas_price,
             timestamp: 0,
         }

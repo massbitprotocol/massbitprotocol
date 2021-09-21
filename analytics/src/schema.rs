@@ -1,27 +1,4 @@
 table! {
-    daily_matic_address_transaction (id) {
-        id -> Int4,
-        address -> Nullable<Text>,
-        transaction_date -> Date,
-        transaction_count -> Numeric,
-        transaction_volume -> Numeric,
-        gas -> Numeric,
-    }
-}
-
-table! {
-    daily_transaction (id) {
-        id -> Int4,
-        network -> Varchar,
-        transaction_date -> Date,
-        transaction_count -> Numeric,
-        transaction_volume -> Numeric,
-        gas -> Numeric,
-        average_gas_price -> Numeric,
-    }
-}
-
-table! {
     matic_block (block_hash) {
         block_hash -> Text,
         block_number -> Nullable<Int8>,
@@ -39,6 +16,29 @@ table! {
 }
 
 table! {
+    matic_daily_address_transaction (id) {
+        id -> Int4,
+        address -> Nullable<Text>,
+        transaction_date -> Date,
+        transaction_count -> Numeric,
+        transaction_volume -> Numeric,
+        gas -> Numeric,
+    }
+}
+
+table! {
+    matic_daily_transaction (id) {
+        id -> Int4,
+        network -> Varchar,
+        transaction_date -> Date,
+        transaction_count -> Numeric,
+        transaction_volume -> Numeric,
+        gas -> Numeric,
+        average_gas_price -> Numeric,
+    }
+}
+
+table! {
     matic_transaction (transaction_hash) {
         transaction_hash -> Text,
         block_hash -> Nullable<Text>,
@@ -47,15 +47,15 @@ table! {
         sender -> Text,
         receiver -> Nullable<Text>,
         value -> Numeric,
-        gas -> Numeric,
+        gas_limit -> Numeric,
         gas_price -> Numeric,
         timestamp -> Int8,
     }
 }
 
 allow_tables_to_appear_in_same_query!(
-    daily_matic_address_transaction,
-    daily_transaction,
     matic_block,
+    matic_daily_address_transaction,
+    matic_daily_transaction,
     matic_transaction,
 );
