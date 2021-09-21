@@ -42,34 +42,85 @@ remove-all-git-hook:
 	@echo "Removing all symlinks..."
 	rm .git/hooks/*
 
-test-run-all:
+test-run-contract:
 	@echo "Running health check tests ..."
 	cd e2e-test/health-check && robot health-check.robot || true
-	@echo "Running substrate tests ..."
-	cd e2e-test/substrate && robot substrate.robot
-	@echo "Running solana tests ..."
-	cd e2e-test/solana && robot solana.robot
-	@echo "Running ethereum tests ..."
-	cd e2e-test/ethereum && robot ethereum.robot
 
-test-run-all-and-up:
-	@echo "Run all services"
-	bash run.sh
-	sleep 10;
+	@echo "Running polygon contract tests ..."
+	cd e2e-test/polygon && robot contract.robot
+	make restart-chain-reader-index-manager
+
+	@echo "Running bsc contract tests ..."
+	cd e2e-test/bsc && robot contract.robot
+
+test-run-chain:
 	@echo "Running health check tests ..."
 	cd e2e-test/health-check && robot health-check.robot || true
-	@echo "Running substrate tests ..."
-	cd e2e-test/substrate && robot substrate.robot
-	@echo "Running solana tests ..."
-	cd e2e-test/solana && robot solana.robot
-	@echo "Running ethereum tests ..."
-	cd e2e-test/ethereum && robot ethereum.robot
-	@echo "Running dashboard tests ..."
-	cd e2e-test/dashboard && robot dashboard.robot || true
+
+	@echo "Running polygon contract tests ..."
+	cd e2e-test/polygon && robot chain.robot
+
+
+#This test for run all test when the component already up
+test-run-basic:
+	@echo "Running health check tests ..."
+	cd e2e-test/health-check && robot health-check.robot || true
+
+	@echo "Running basic substrate tests ..."
+	cd e2e-test/substrate && robot basic.robot
+	make restart-chain-reader-index-manager
+
+	@echo "Running basic solana tests ..."
+	cd e2e-test/solana && robot basic.robot
+	make restart-chain-reader-index-manager
+
+	@echo "Running basic ethereum tests ..."
+	cd e2e-test/ethereum && robot basic.robot
+	make restart-chain-reader-index-manager
+
+
+#This test start/restart all service and run all test
+test-run-basic-and-up:
+	@echo "Close all services before running test"
+	make services-down
+	make kill-all-tmux || true
+
+	@echo "Restart services before running test"
+	make services-up
+	#tmux new -d -s services "make services-up"
+	sleep 5;
+	make run-all-tmux
+	tmux ls
+	sleep 5;
+
+	@echo "Running health check tests ..."
+	cd e2e-test/health-check && robot health-check.robot || true
+
+	@echo "Running basic substrate tests ..."
+	cd e2e-test/substrate && robot basic.robot || true
+	make restart-chain-reader-index-manager
+
+	@echo "Running basic solana tests ..."
+	cd e2e-test/solana && robot basic.robot || true
+	make restart-chain-reader-index-manager
+
+	@echo "Running basic ethereum tests ..."
+	cd e2e-test/ethereum && robot basic.robot || true
+	make restart-chain-reader-index-manager
+
 
 create-list-user-example-json-file:
 	@echo "Create list user examples json file ..."
 	cd user-example && python create_example_json.py
+
+restart-chain-reader-index-manager:
+	@echo "Stop index-manager and chain-reader in tmux"
+	tmux kill-session -t chain-reader
+	tmux kill-session -t index-manager
+	@echo "Run index-manager in tmux"
+	tmux new -d -s index-manager scripts/tmux-index-manager.sh
+	@echo "Run chain-reader in tmux"
+	tmux new -d -s chain-reader scripts/tmux-chain-reader.sh
 
 #################### Dev commands ##########################
 
@@ -79,7 +130,7 @@ deploy:
     --header 'Content-Type: application/json' \
     --data-raw '{"configs": {"model": "Factory" }, "compilation_id": "$(id)" }'
 
-run-indexer-manager:
+run-index-manager:
 	@echo "Run index-manager"
 	cargo run --bin index-manager-main
 
@@ -90,7 +141,6 @@ run-chain-reader:
 run-code-compiler:
 	@echo "Run code-compiler"
 	cd code-compiler/ && python app.py
-
 
 services-dev-up:
 	@echo "Run all services in dev mode"
@@ -140,7 +190,8 @@ test-long-running-quickswap:
 	@echo "Wait for the services to start"
 	sleep 15;
 	@echo "Running only the quickswap Ethereum test ..."
-	cd e2e-test/ethereum && robot ethereum.robot
+	cd e2e-test/ethereum && robot ethereum.robot ;
+
 	@echo "Running report email services"
 	tmux new -d -s report_email "cd e2e-test && python check_log.py"
 	tmux ls
@@ -151,3 +202,7 @@ index-quickswap:
 	@echo "Running report email services"
 	tmux new -d -s report_email "cd e2e-test && python check_log.py"
 	tmux ls
+
+test-long-running-quickswap-run-test-only:
+	@echo "Running only the quickswap Ethereum test ..."
+	cd e2e-test/ethereum && robot ethereum.robot

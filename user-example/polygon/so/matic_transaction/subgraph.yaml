@@ -1,0 +1,24 @@
+specVersion: 0.0.2
+description: Transaction for Matic
+repository: https://github.com/massbitprotocol/massbitprotocol/tree/main/user-example
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: Matic-Transaction
+    network: matic
+    source:
+      abi: MaticTransaction
+    mapping:
+      kind: ethereum/TransactionHandler
+      apiVersion: 0.0.4
+      language: rust
+      entities:
+        - MaticTransaction
+      handlers:
+        - handler: handleTransaction
+          kind: ethereum/TransactionHandler
+      file: ./src/mapping.rs
+      abis:
+        - name: MaticTransaction
+          file: ./abis/MaticTransaction.json

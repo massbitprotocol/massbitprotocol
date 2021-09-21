@@ -1,11 +1,14 @@
 use diesel::{Connection, PgConnection, RunQueryDsl};
+use graph::components::store::{EntityFilter, EntityOrder, EntityRange, WritableStore};
+use graph::data::query::QueryExecutionError;
+use graph::data::store::{Entity, Value};
 use lazy_static::lazy_static;
+use massbit_common::prelude::structmap::GenericMap;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::Write;
 use std::sync::{Arc, Mutex};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
-use structmap::GenericMap;
 use tokio;
 use tokio_postgres::NoTls;
 
@@ -57,168 +60,165 @@ impl TableBuffer {
         res
     }
 }
-#[derive(Clone)]
-pub struct IndexStore {
-    pub connection_string: String,
-    buffer: HashMap<String, TableBuffer>,
-    entity_dependencies: HashMap<String, Vec<String>>,
+
+pub trait QueryableStore: Sync + Send {
+    fn query(
+        &self,
+        entity_type: String,
+        filter: Option<EntityFilter>,
+        order: EntityOrder,
+        range: EntityRange,
+    ) -> Vec<Entity>;
+}
+pub trait ToWritableStore {
+    fn to_writable_store<'a>(self: Arc<Self>) -> Arc<dyn WritableStore + 'a>
+    where
+        Self: 'a;
+}
+pub trait IndexStore: WritableStore + QueryableStore + ToWritableStore {}
+
+impl<T: WritableStore> ToWritableStore for T {
+    fn to_writable_store<'a>(self: Arc<Self>) -> Arc<dyn WritableStore + 'a>
+    where
+        Self: 'a,
+    {
+        self
+    }
 }
 
-pub trait Store: Sync + Send {
-    fn save(&mut self, entity_name: String, data: GenericMap);
+pub trait Store: QueryableStore + Sync + Send {
+    fn save(&mut self, entity_name: String, data: Entity);
+    fn get(&mut self, entity_name: String, entity_id: &String) -> Option<Entity>;
     fn flush(&mut self, block_hash: &String, block_number: u64) -> Result<(), Box<dyn Error>>;
 }
-impl Store for IndexStore {
-    fn save(&mut self, _entity_name: String, mut _data: GenericMap) {
-        match self.buffer.get_mut(_entity_name.as_str()) {
-            //Create buffer for first call
-            None => {
-                let mut tab_buf = TableBuffer::new();
-                tab_buf.push(_data);
-                self.buffer.insert(_entity_name, tab_buf);
-            }
-            //Put data into buffer then perform flush to db if buffer size exceeds BATCH_SIZE
-            //or elapsed time from last save exceeds PERIOD
-            Some(tab_buf) => {
-                tab_buf.push(_data);
-                self.check_and_flush(&_entity_name);
-            }
-        }
-    }
-
-    fn flush(&mut self, block_hash: &String, block_number: u64) -> Result<(), Box<dyn Error>> {
-        //todo!()
-        log::info!(
-            "Flush block with hash: {} and number: {}",
-            block_hash,
-            block_number
-        );
-        Ok(())
-    }
-}
+// impl Store for IndexStore {
+//     fn save(&mut self, _entity_name: String, mut _data: GenericMap) {
+//         match self.buffer.get_mut(_entity_name.as_str()) {
+//             //Create buffer for first call
+//             None => {
+//                 let mut tab_buf = TableBuffer::new();
+//                 tab_buf.push(_data);
+//                 self.buffer.insert(_entity_name, tab_buf);
+//             }
+//             //Put data into buffer then perform flush to db if buffer size exceeds BATCH_SIZE
+//             //or elapsed time from last save exceeds PERIOD
+//             Some(tab_buf) => {
+//                 tab_buf.push(_data);
+//                 self.check_and_flush(&_entity_name);
+//             }
+//         }
+//     }
+//
+//     fn get(&self, entity_name: String, entity_id: String) -> Option<GenericMap> {
+//         todo!()
+//     }
+//
+//     fn flush(&mut self, block_hash: &String, block_number: u64) -> Result<(), Box<dyn Error>> {
+//         //todo!()
+//         log::info!(
+//             "Flush block with hash: {} and number: {}",
+//             block_hash,
+//             block_number
+//         );
+//         Ok(())
+//     }
+// }
 /*
  * 2021-07-27
  * vuvietai: add dependent insert
  */
-impl IndexStore {
-    pub async fn new(connection: &str) -> IndexStore {
-        //let dependencies = HashMap::new();
-
-        let dependencies = match get_entity_dependencies(connection, "public").await {
-            Ok(res) => res,
-            Err(err) => {
-                log::error!(
-                    "{} Cannot load relationship from db: {:?}",
-                    &*COMPONENT_NAME,
-                    err
-                );
-                HashMap::new()
-            }
-        };
-
-        IndexStore {
-            connection_string: connection.to_string(),
-            buffer: HashMap::new(),
-            entity_dependencies: dependencies,
-        }
-    }
-    fn check_and_flush(&mut self, _entity_name: &String) {
-        if let Some(table_buf) = self.buffer.get(_entity_name.as_str()) {
-            let size = table_buf.size();
-            if size >= BATCH_SIZE || (table_buf.elapsed_since_last_flush() >= PERIOD && size > 0) {
-                //Todo: move this init connection to new fn.
-                let con = PgConnection::establish(&self.connection_string)
-                    .expect(&format!("Error connecting to {}", self.connection_string));
-                let buffer = &mut self.buffer;
-                //Todo: implement multiple levels of relationship (chain dependencies)
-                let dependencies = self.entity_dependencies.get(_entity_name.as_str());
-                match dependencies {
-                    Some(deps) => {
-                        deps.iter().for_each(|reference| {
-                            log::info!(
-                                "{} Flush reference data into table {}",
-                                &*COMPONENT_NAME,
-                                reference.as_str()
-                            );
-                            if let Some(ref_buf) = buffer.get_mut(reference.as_str()) {
-                                let buf_data = ref_buf.move_buffer();
-                                flush_entity(reference, &buf_data, &con);
-                            }
-                        });
-                    }
-                    None => {}
-                };
-                if let Some(table_buf) = buffer.get_mut(_entity_name.as_str()) {
-                    let buf_data = table_buf.move_buffer();
-                    log::info!(
-                        "{} Flush data into table {}",
-                        &*COMPONENT_NAME,
-                        _entity_name.as_str()
-                    );
-                    flush_entity(_entity_name, &buf_data, &con);
-                }
-                /*
-                con.transaction::<(), DieselError, _>(|| {
-                    match dependencies {
-                        Some(deps) => {
-                            deps.iter().rev().for_each(|reference|{
-                                log::info!("Flush reference data into table {}", reference.as_str());
-                                if let Some(ref_buf) = buffer.get_mut(reference.as_str()) {
-                                    let buf_data = ref_buf.move_buffer();
-                                    flush_entity(reference, &buf_data, &con);
-                                }
-                            });
-                        },
-                        None => {}
-                    };
-                    if let Some(table_buf) = buffer.get_mut(_entity_name.as_str()) {
-                        let buf_data = table_buf.move_buffer();
-                        log::info!("Flush data into table {}", _entity_name.as_str());
-                        flush_entity(_entity_name, &buf_data, &con);
-                    }
-                    Ok(())
-                    // If we want to roll back the transaction, but don't have an
-                    // actual error to return, we can return `RollbackTransaction`.
-                    //Err(DieselError::RollbackTransaction)
-                });
-                 */
-            }
-        };
-    }
-    /*
-    fn check_and_flush(&mut self, _entity_name: String) {
-        let now = Instant::now();
-        let elapsed = match self.last_store {
-            None => 0,  //First save
-            Some(last) => now.duration_since(last).as_millis()
-        };
-        match self.buffer.get_mut(_entity_name.as_str()) {
-            None => {}
-            Some(vec) => {
-                let size = vec.len();
-                if size >= BATCH_SIZE || (elapsed >= PERIOD && size > 0) {
-                    let start = Instant::now();
-                    match create_query(_entity_name, vec) {
-                        None => {},
-                        Some(query) => {
-                            let con = PgConnection::establish(&self.connection_string).expect(&format!("Error connecting to {}", self.connection_string));
-                            match diesel::sql_query(query.as_str()).execute(&con) {
-                                Ok(_) => {}
-                                Err(err) => {
-                                    log::error!("[Index-Store] Error {:?} while insert querey {:?}.", err, query.as_str());
-                                }
-                            }
-                            self.last_store = Some(Instant::now());
-                            vec.clear();
-                            log::info!("[Index-Store] Insert {:?} records in: {:?} ms.", size, start.elapsed());
-                        }
-                    }
-                }
-            }
-        };
-    }
-     */
-}
+// #[derive(Clone)]
+// pub struct IndexStore {
+//     pub connection_string: String,
+//     buffer: HashMap<String, TableBuffer>,
+//     entity_dependencies: HashMap<String, Vec<String>>,
+// }
+// impl IndexStore {
+//     pub async fn new(connection: &str) -> IndexStore {
+//         //let dependencies = HashMap::new();
+//
+//         let dependencies = match get_entity_dependencies(connection, "public").await {
+//             Ok(res) => res,
+//             Err(err) => {
+//                 log::error!(
+//                     "{} Cannot load relationship from db: {:?}",
+//                     &*COMPONENT_NAME,
+//                     err
+//                 );
+//                 HashMap::new()
+//             }
+//         };
+//
+//         IndexStore {
+//             connection_string: connection.to_string(),
+//             buffer: HashMap::new(),
+//             entity_dependencies: dependencies,
+//         }
+//     }
+//     fn check_and_flush(&mut self, _entity_name: &String) {
+//         if let Some(table_buf) = self.buffer.get(_entity_name.as_str()) {
+//             let size = table_buf.size();
+//             if size >= BATCH_SIZE || (table_buf.elapsed_since_last_flush() >= PERIOD && size > 0) {
+//                 //Todo: move this init connection to new fn.
+//                 let con = PgConnection::establish(&self.connection_string)
+//                     .expect(&format!("Error connecting to {}", self.connection_string));
+//                 let buffer = &mut self.buffer;
+//                 //Todo: implement multiple levels of relationship (chain dependencies)
+//                 let dependencies = self.entity_dependencies.get(_entity_name.as_str());
+//                 match dependencies {
+//                     Some(deps) => {
+//                         deps.iter().for_each(|reference| {
+//                             log::info!(
+//                                 "{} Flush reference data into table {}",
+//                                 &*COMPONENT_NAME,
+//                                 reference.as_str()
+//                             );
+//                             if let Some(ref_buf) = buffer.get_mut(reference.as_str()) {
+//                                 let buf_data = ref_buf.move_buffer();
+//                                 flush_entity(reference, &buf_data, &con);
+//                             }
+//                         });
+//                     }
+//                     None => {}
+//                 };
+//                 if let Some(table_buf) = buffer.get_mut(_entity_name.as_str()) {
+//                     let buf_data = table_buf.move_buffer();
+//                     log::info!(
+//                         "{} Flush data into table {}",
+//                         &*COMPONENT_NAME,
+//                         _entity_name.as_str()
+//                     );
+//                     flush_entity(_entity_name, &buf_data, &con);
+//                 }
+//                 /*
+//                 con.transaction::<(), DieselError, _>(|| {
+//                     match dependencies {
+//                         Some(deps) => {
+//                             deps.iter().rev().for_each(|reference|{
+//                                 log::info!("Flush reference data into table {}", reference.as_str());
+//                                 if let Some(ref_buf) = buffer.get_mut(reference.as_str()) {
+//                                     let buf_data = ref_buf.move_buffer();
+//                                     flush_entity(reference, &buf_data, &con);
+//                                 }
+//                             });
+//                         },
+//                         None => {}
+//                     };
+//                     if let Some(table_buf) = buffer.get_mut(_entity_name.as_str()) {
+//                         let buf_data = table_buf.move_buffer();
+//                         log::info!("Flush data into table {}", _entity_name.as_str());
+//                         flush_entity(_entity_name, &buf_data, &con);
+//                     }
+//                     Ok(())
+//                     // If we want to roll back the transaction, but don't have an
+//                     // actual error to return, we can return `RollbackTransaction`.
+//                     //Err(DieselError::RollbackTransaction)
+//                 });
+//                  */
+//             }
+//         };
+//     }
+// }
 //fn flush_entity(table_name : &String, _buffer : &Vec<GenericMap>, conn: &TransactionalConnection<PgConnection>) -> QueryResult<usize> {
 fn flush_entity(table_name: &String, _buffer: &Vec<GenericMap>, conn: &PgConnection) {
     let start = Instant::now();
@@ -266,15 +266,15 @@ fn create_query(_entity_name: &str, buffer: &Vec<GenericMap>) -> Option<String> 
                         .map(|(_, v)| {
                             let mut str_val = String::new();
                             if let Some(r) = v.bool() {
-                                write!(str_val, "{}", r);
+                                write!(str_val, "{}", r).unwrap();
                             } else if let Some(r) = v.f64() {
-                                write!(str_val, "{}", r);
+                                write!(str_val, "{}", r).unwrap();
                             } else if let Some(r) = v.i64() {
-                                write!(str_val, "{}", r);
+                                write!(str_val, "{}", r).unwrap();
                             } else if let Some(r) = v.u64() {
-                                write!(str_val, "{}", r);
+                                write!(str_val, "{}", r).unwrap();
                             } else if let Some(r) = v.string() {
-                                write!(str_val, "'{}'", r);
+                                write!(str_val, "'{}'", r).unwrap();
                             }
                             str_val
                         })

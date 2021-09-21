@@ -32,6 +32,7 @@ pub async fn print_blocks(
         start_block_number: 0,
         end_block_number: 1,
         chain_type: chain_type as i32,
+        network: "".to_string(),
     };
     let mut stream = client
         .list_blocks(Request::new(get_blocks_request))

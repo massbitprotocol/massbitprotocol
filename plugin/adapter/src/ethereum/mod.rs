@@ -343,8 +343,10 @@ impl MessageHandler for EthereumHandlerProxy {
                     self.handler.handle_transaction(&transaction);
                 }
 
+                // Todo: add event for rust plugin, now do not support (use wasm plugin instead).
                 // Create event
-                // let events = get_events(&block);
+                // let logger = graph::log::logger(false);
+                // let events = get_events(&block, data_source, &logger);
                 // for event in events {
                 //     log::debug!("Do event handler: Event address {:?}", &event.event.address);
                 //     self.handler.handle_event(&event);

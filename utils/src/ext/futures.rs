@@ -1,8 +1,6 @@
 use futures03::channel::oneshot;
-use futures03::{future::Fuse, Future, FutureExt, Stream};
-use std::fmt::{Debug, Display};
+use futures03::{future::Fuse, Future, FutureExt};
 use std::pin::Pin;
-use std::sync::{Arc, Mutex, Weak};
 use std::task::Context;
 use std::time::Duration;
 use tokio::macros::support::Poll;

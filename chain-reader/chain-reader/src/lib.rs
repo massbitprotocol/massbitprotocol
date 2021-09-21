@@ -17,29 +17,45 @@ lazy_static! {
     // Load default config
     pub static ref CONFIG: Config = Config{
         chains: [
-            // (ChainType::Substrate,ChainConfig{
-            //     url: "".to_string(),
-            //     ws: "".to_string(),
-            //     start_block: None,
-            // }),
-            // (ChainType::Solana,ChainConfig{
-            //     // ws: "wss://api.mainnet-beta.solana.com".to_string(),
-            //     // url: "https://mainnet-beta-solana.massbit.io".to_string(),
-            //     ws: "wss://api.mainnet-beta.solana.com".to_string(),
-            //     url: "https://api.mainnet-beta.solana.com".to_string(),
-            //     start_block: None,
-            //
-            // }),
-            (ChainType::Ethereum,ChainConfig{
-                //ws: "wss://main-light.eth.linkpool.io/ws".to_string(),
-                //url: "https://main-light.eth.linkpool.io".to_string(),
-                // ws: "wss://bsc-ws-node.nariox.org:443".to_string(),
-                // url: "https://bsc-dataseed.binance.org".to_string(),
+            ChainConfig{
+                url: "".to_string(),
+                ws: "".to_string(),
+                start_block: None,
+                chain_type: ChainType::Substrate,
+                network: "mainnet".to_string()
+            },
+            ChainConfig{
+                ws: "ws://api.mainnet-beta.solana.com".to_string(),
+                // url: "https://mainnet-beta-solana.massbit.io".to_string(),
+                //url: "https://api.mainnet-beta.solana.com".to_string(),
+                url: "https://solana-api.projectserum.com".to_string(),
+
+                start_block: None,
+                chain_type: ChainType::Solana,
+                network: "mainnet".to_string()
+            },
+            ChainConfig{
                 ws: "wss://rpc-mainnet.matic.network".to_string(),
                 //url: "https://rpc-mainnet.matic.network".to_string(),
                 url: "https://polygon-rpc.com/".to_string(),
-                start_block: Some(11799000),  // (9-3-2021) Quickswap https://polygonscan.com/txs?a=0x5757371414417b8C6CAad45bAeF941aBc7d3Ab32&p=37
-            }),
+                start_block: Some(18403764),
+                chain_type: ChainType::Ethereum,
+                network: "matic".to_string()
+            },
+            ChainConfig{
+                ws: "wss://bsc-ws-node.nariox.org:443".to_string(),
+                url: "https://bsc-dataseed.binance.org".to_string(),
+                start_block: None,
+                chain_type: ChainType::Ethereum,
+                network: "bsc".to_string()
+            },
+            ChainConfig{
+                ws: "wss://main-light.eth.linkpool.io/ws".to_string(),
+                url: "https://main-light.eth.linkpool.io".to_string(),
+                start_block: None,
+                chain_type: ChainType::Ethereum,
+                network: "ethereum".to_string()
+            },
         ].iter().cloned().collect(),
         url: "0.0.0.0:50051".to_string(),
     };

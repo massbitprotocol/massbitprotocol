@@ -4,21 +4,18 @@ use futures::prelude::*;
 use log::{debug, info};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::Duration;
 
-// The graph
 use graph::blockchain::types::BlockPtr;
-use graph::blockchain::{BlockHash, HostFnCtx};
+use graph::blockchain::HostFnCtx;
 use graph::cheap_clone::CheapClone;
 use graph::log::logger;
 use graph::prelude::ethabi::ParamType;
+use graph::prelude::lazy_static;
 use graph::prelude::{
     error, ethabi,
     ethabi::{Token, Uint},
-    tiny_keccak, trace, BlockNumber, EthereumCallCache, Future01CompatExt, MappingABI,
+    tiny_keccak, trace, BlockNumber, Future01CompatExt, MappingABI,
 };
-use graph::prelude::{lazy_static, tokio};
 use graph::runtime::{asc_get, asc_new, AscPtr, HostExportError};
 use graph::semver::Version;
 use graph_chain_ethereum::runtime::abi::{
@@ -31,10 +28,7 @@ use graph_runtime_wasm::asc_abi::class::{AscEnumArray, EthereumValueKind};
 // Web3
 use std::time::Instant;
 use web3::api::Web3;
-use web3::types::{
-    Address, Block, BlockId, BlockNumber as Web3BlockNumber, Bytes, CallRequest, Filter,
-    FilterBuilder, Log, Transaction, TransactionReceipt, H160, H256,
-};
+use web3::types::{Address, BlockId, Bytes, CallRequest};
 
 use futures03::{FutureExt, TryFutureExt};
 use utils::futures::retry;
@@ -195,7 +189,7 @@ impl SimpleEthereumAdapter {
             .ok()
             .flatten();
         drop(guard);
-        debug!("cache_result: {:?}", &cache_result);
+        info!("cache_result: {:?}", &cache_result);
         // Check if we have it cached, if not do the call and cache.
         Box::new(
             match cache_result {
@@ -219,16 +213,16 @@ impl SimpleEthereumAdapter {
                             // Todo: Avoid block handler execution on writing to the cache. Now use on-mem db so it is not a problem.
                             //let _ = graph::spawn_blocking_allow_panic(move || {
                             debug!("Start writing cache");
-                            cache
+                            let _ = cache
                                 .lock()
                                 .unwrap()
                                 .set_call(call.address, &call_data, call.block_ptr, &for_cache)
                                 .map_err(|e| {
                                     error!(logger, "call cache set error";
                                                    "error" => e.to_string())
-                                });
+                                })
+                                .unwrap();
                             debug!("Finished writing cache!");
-                            //                            });
                             result.0
                         }),
                     )
@@ -509,10 +503,8 @@ fn eth_call(
     };
 
     debug!("call: {:?}", &call);
-    // Run Ethereum call in tokio runtime
-    let logger1 = logger.clone();
     //let call_cache = call_cache.clone();
-    let mut result_contract_call = eth_adapter
+    let result_contract_call = eth_adapter
         .contract_call(call.clone(), call_cache.clone())
         .wait();
 

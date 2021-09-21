@@ -31,6 +31,7 @@ message GetBlocksRequest {
   uint64 start_block_number = 1;
   uint64 end_block_number = 2;
   ChainType chain_type = 3;
+  string network = 4;
 }
 
 message HelloReply {
