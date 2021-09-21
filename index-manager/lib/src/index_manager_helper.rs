@@ -116,7 +116,7 @@ async fn get_manifest(
     file_hash: &String,
 ) -> Result<SubgraphManifest<Chain>, SubgraphAssignmentProviderError> {
     let logger = logger(true);
-    let ipfs_addresses = vec![String::from("0.0.0.0:5001")];
+    let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await;
 
     let file_bytes = ipfs_clients[0]

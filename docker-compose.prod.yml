@@ -75,6 +75,12 @@ services:
     environment:
       # Pointing to our substrate container
       NODE_SERVER: ws://substrate-node
+      # Log config
+      RUST_LOG_TYPE: file
+      RUST_LOG: debug
+    volumes:
+      # Mount the log to host, so we can monitor the process
+      - ./log:/log
 
   indexer:
     image: sprise/indexer:latest
@@ -92,6 +98,12 @@ services:
       DATABASE_CONNECTION_STRING: postgres://graph-node:let-me-in@postgres
       # Pointing to our IPFS container
       IPFS_ADDRESS: ipfs:5001
+      # Log config
+      RUST_LOG_TYPE: file
+      RUST_LOG: debug
+    volumes:
+      # Mount the log to host, so we can monitor the process
+      - ./log:/log
 
   dashboard:
     image: sprise/dashboard:1.3

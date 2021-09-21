@@ -3,6 +3,34 @@ init-code-compiler:
 	@echo "Installing all the dependencies for Code compiler ..."
 	pip install ipfshttpclient flask flask_cors
 
+init-docker:
+	@echo "Installing docker"
+	sudo apt update
+	sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
+	curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+	sudo add-apt-repository 'deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable'
+	sudo apt update
+	apt-cache policy docker-ce
+	sudo apt install -y docker-ce docker-compose
+	sudo groupadd docker || true
+	sudo gpasswd -a $USER docker
+	sudo setfacl -m user:$USER:rw /var/run/docker.sock
+
+init-python:
+	sudo apt install -y python3
+	sudo apt install -y python3.8
+	sudo rm /usr/bin/python3
+	sudo ln -s python3.8 /usr/bin/python3
+	sudo apt install -y python3-pip python-pip wget unzip libpq-dev python3-dev
+	sudo pip3 install setuptools-rust
+	sudo pip3 install --upgrade pip
+	sudo pip3 install PyQtWebEngine
+
+init-test:
+	@echo "Installing all the dependencies for E2E tests ..."
+	pip3 install robotframework robotframework-requests robotframework-databaselibrary rpaframework
+	pip3 install psycopg2 rpaframework robotframework-seleniumlibrary robotframework-sshlibrary
+
 #################### Test commands #######################
 create-git-hook:
 	@echo "Every push to origin need to run the E2E tests"
@@ -14,6 +42,9 @@ remove-all-git-hook:
 	@echo "Removing all symlinks..."
 	rm .git/hooks/*
 
+test-run-contract:
+	@echo "Running health check tests ..."
+	cd e2e-test/health-check && robot health-check.robot || true
 
 test-run-contract:
 	@echo "Running health check tests ..."
@@ -25,7 +56,6 @@ test-run-contract:
 
 	@echo "Running bsc contract tests ..."
 	cd e2e-test/bsc && robot contract.robot
-
 
 test-run-chain:
 	@echo "Running health check tests ..."
@@ -122,13 +152,21 @@ run-code-compiler:
 	@echo "Run code-compiler"
 	cd code-compiler/ && python app.py
 
-services-up:
-	@echo "Run all service"
+services-dev-up:
+	@echo "Run all services in dev mode"
 	docker-compose -f docker-compose.min.yml up
 
-services-down:
-	@echo "Stop all service"
+services-dev-down:
+	@echo "Stop all services"
 	docker-compose -f docker-compose.min.yml down
+
+services-prod-up:
+	@echo "Run all services in production mode"
+	docker-compose -f docker-compose.prod.yml up -d
+
+services-prod-down:
+	@echo "Stop all services"
+	docker-compose -f docker-compose.prod.yml down
 
 #################### Production commands ##################
 run-all-tmux:
@@ -162,12 +200,19 @@ test-long-running-quickswap:
 	@echo "Wait for the services to start"
 	sleep 15;
 	@echo "Running only the quickswap Ethereum test ..."
-	cd e2e-test/ethereum && robot ethereum.robot ;
+	cd e2e-test/polygon && robot -t "Compile and Deploy WASM Test Quickswap" basic.robot;
 
 	@echo "Running report email services"
 	tmux new -d -s report_email "cd e2e-test && python check_log.py"
 	tmux ls
 
-test-long-running-quickswap-run-test-only:
+index-quickswap:
 	@echo "Running only the quickswap Ethereum test ..."
-	cd e2e-test/ethereum && robot ethereum.robot
+	cd e2e-test/polygon && robot -t "Compile and Deploy WASM Test Quickswap" basic.robot
+	@echo "Running report email services"
+	tmux new -d -s report_email "cd e2e-test && python check_log.py"
+	tmux ls
+
+test-long-running-quickswap-run-test-only:
+	@echo "Running only the quickswap Polygon test ..."
+	cd e2e-test/polygon && robot -t "Compile and Deploy WASM Test Quickswap" basic.robot

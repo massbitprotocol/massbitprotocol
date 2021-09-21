@@ -18,18 +18,27 @@ RUN $HOME/.cargo/bin/rustup default 1.53.0-x86_64-unknown-linux-gnu
 RUN $HOME/.cargo/bin/rustup target add wasm32-unknown-unknown --toolchain 1.53.0-x86_64-unknown-linux-gnu
 RUN $HOME/.cargo/bin/rustup show
 
+# Install NPM
+RUN apt install -y npm
+RUN curl -fsSL https://deb.nodesource.com/setup_14.x | bash -
+RUN apt-get install -y nodejs
 
+# Install and upgrade to python 3.8
 RUN ls
-RUN apt install -y python3 python3-pip wget unzip
+RUN apt install -y python3
+RUN apt install -y python3.8
+RUN rm /usr/bin/python3
+RUN ln -s python3.8 /usr/bin/python3
+
+# Install python lib
+RUN apt install -y python3-pip wget unzip
 RUN pip3 install -U Flask
 RUN pip3 install -U flask-cors
 RUN pip3 install -U ipfshttpclient
-RUN wget --no-verbose https://code-compiler-built-target.s3.ap-southeast-2.amazonaws.com/target.zip
+RUN pip3 install -U pyyaml
 RUN ls -ll
 COPY ./ massbitprotocol
 RUN ls -ll
-RUN unzip -qo target.zip -d massbitprotocol/code-compiler/stub
 
 WORKDIR "massbitprotocol/code-compiler"
-
 CMD python3 app.py
