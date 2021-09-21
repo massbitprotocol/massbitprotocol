@@ -1,15 +1,13 @@
-use ethabi::Token;
-use graph::util::futures::retry;
-use massbit::components::store::EthereumCallCache;
-use massbit::prelude::web3::types::H256;
-use std::collections::HashSet;
-use web3::Web3;
-
 use crate::adapter::{
     EthereumAdapter as EthereumAdapterTrait, EthereumContractCall, EthereumContractCallError,
 };
 use crate::transport::Transport;
 use crate::types::LightEthereumBlock;
+use ethabi::Token;
+use massbit::components::store::EthereumCallCache;
+use massbit::prelude::web3::types::H256;
+use std::collections::HashSet;
+use web3::Web3;
 
 use massbit::prelude::*;
 
@@ -47,14 +45,6 @@ impl EthereumAdapterTrait for EthereumAdapter {
         &self,
         block_hashes: HashSet<H256>,
     ) -> Box<dyn Stream<Item = LightEthereumBlock, Error = Error> + Send> {
-        todo!()
-    }
-
-    fn contract_call(
-        &self,
-        call: EthereumContractCall,
-        cache: Arc<dyn EthereumCallCache>,
-    ) -> Box<dyn Future<Item = Vec<Token>, Error = EthereumContractCallError> + Send> {
         todo!()
     }
 }

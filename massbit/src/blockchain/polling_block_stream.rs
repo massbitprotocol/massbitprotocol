@@ -123,38 +123,35 @@ where
     }
 }
 
-impl<C> BlockStreamContext<C>
-where
-    C: Blockchain,
-{
-    // async fn next_blocks(&self) -> Result<NextBlocks<C>, Error> {
-    //     let ctx = self.clone();
-    //
-    //     loop {
-    //         match ctx.get_next_step().await? {
-    //             ReconciliationStep::ProcessDescendantBlocks(next_blocks, range_size) => {
-    //                 return Ok(NextBlocks::Blocks(
-    //                     next_blocks.into_iter().collect(),
-    //                     range_size,
-    //                 ));
-    //             }
-    //             ReconciliationStep::Retry => {
-    //                 continue;
-    //             }
-    //             ReconciliationStep::Done => {
-    //                 // Reconciliation is complete, so try to mark indexer as Synced
-    //                 ctx.update_indexer_synced_status()?;
-    //
-    //                 return Ok(NextBlocks::Done);
-    //             }
-    //         }
-    //     }
-    // }
-    //
-    // /// Determine the next reconciliation step. Does not modify Store or ChainStore.
-    // async fn get_next_step(&self) -> Result<ReconciliationStep<C>, Error> {
-    //     let ctx = self.clone();
-    //     let start_blocks = self.start_blocks.clone();
-    //     let max_block_range_size = self.max_block_range_size;
-    // }
-}
+// impl<C> BlockStreamContext<C>
+// where
+//     C: Blockchain,
+// {
+//     async fn next_blocks(&self) -> Result<NextBlocks<C>, Error> {
+//         let ctx = self.clone();
+//
+//         loop {
+//             match ctx.get_next_step().await? {
+//                 ReconciliationStep::ProcessDescendantBlocks(next_blocks, range_size) => {
+//                     return Ok(NextBlocks::Blocks(
+//                         next_blocks.into_iter().collect(),
+//                         range_size,
+//                     ));
+//                 }
+//                 ReconciliationStep::Retry => {
+//                     continue;
+//                 }
+//                 ReconciliationStep::Done => {
+//                     return Ok(NextBlocks::Done);
+//                 }
+//             }
+//         }
+//     }
+//
+//     /// Determine the next reconciliation step. Does not modify Store or ChainStore.
+//     async fn get_next_step(&self) -> Result<ReconciliationStep<C>, Error> {
+//         let ctx = self.clone();
+//         let start_blocks = self.start_blocks.clone();
+//         let max_block_range_size = self.max_block_range_size;
+//     }
+// }
