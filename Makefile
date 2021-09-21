@@ -46,6 +46,10 @@ test-run-contract:
 	@echo "Running health check tests ..."
 	cd e2e-test/health-check && robot health-check.robot || true
 
+test-run-contract:
+	@echo "Running health check tests ..."
+	cd e2e-test/health-check && robot health-check.robot || true
+
 	@echo "Running polygon contract tests ..."
 	cd e2e-test/polygon && robot contract.robot
 	make restart-chain-reader-index-manager
@@ -108,6 +112,12 @@ test-run-basic-and-up:
 	cd e2e-test/ethereum && robot basic.robot || true
 	make restart-chain-reader-index-manager
 
+test-init:
+	@echo "Installing all the dependencies for E2E tests ..."
+	pip install robotframework robotframework-requests robotframework-databaselibrary psycopg2 rpaframework robotframework-seleniumlibrary robotframework-sshlibrary
+	@echo "Installing Webdriver for Selenium to run tests ..."
+	sudo pip install webdrivermanager
+	sudo webdrivermanager firefox chrome --linkpath /usr/local/bin
 
 create-list-user-example-json-file:
 	@echo "Create list user examples json file ..."
@@ -190,7 +200,7 @@ test-long-running-quickswap:
 	@echo "Wait for the services to start"
 	sleep 15;
 	@echo "Running only the quickswap Ethereum test ..."
-	cd e2e-test/ethereum && robot ethereum.robot ;
+	cd e2e-test/polygon && robot -t "Compile and Deploy WASM Test Quickswap" basic.robot;
 
 	@echo "Running report email services"
 	tmux new -d -s report_email "cd e2e-test && python check_log.py"
@@ -198,11 +208,11 @@ test-long-running-quickswap:
 
 index-quickswap:
 	@echo "Running only the quickswap Ethereum test ..."
-	cd e2e-test/ethereum && python3 -m robot ethereum.robot
+	cd e2e-test/polygon && robot -t "Compile and Deploy WASM Test Quickswap" basic.robot
 	@echo "Running report email services"
 	tmux new -d -s report_email "cd e2e-test && python check_log.py"
 	tmux ls
 
 test-long-running-quickswap-run-test-only:
-	@echo "Running only the quickswap Ethereum test ..."
-	cd e2e-test/ethereum && robot ethereum.robot
+	@echo "Running only the quickswap Polygon test ..."
+	cd e2e-test/polygon && robot -t "Compile and Deploy WASM Test Quickswap" basic.robot
