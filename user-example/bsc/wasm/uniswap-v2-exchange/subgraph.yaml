@@ -34,7 +34,8 @@ dataSources:
 templates:
   - kind: ethereum/contract
     name: Pair
-    network: rinkeby
+    # Hughie: the old version was rinkeby but it was conflicted with graph cli so we change to mainnet
+    network: mainnet
     source:
       abi: Pair
     mapping:
