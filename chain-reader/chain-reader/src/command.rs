@@ -1,4 +1,3 @@
-use crate::ethereum_chain;
 use crate::grpc_stream::StreamService;
 use crate::solana_chain;
 use crate::substrate_chain;

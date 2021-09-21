@@ -12,7 +12,7 @@ use tokio::sync::broadcast;
 
 #[cfg(feature = "std")]
 use codec::{Decode, Encode};
-use log::{debug, error, info};
+use log::{error, info};
 use node_template_runtime::Block as OrgBlock;
 use node_template_runtime::Event;
 use std::env;

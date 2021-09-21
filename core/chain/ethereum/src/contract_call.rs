@@ -16,7 +16,7 @@ use graph::prelude::ethabi::ParamType;
 use graph::prelude::{
     error, ethabi,
     ethabi::{Token, Uint},
-    tiny_keccak, trace, BlockNumber, EthereumCallCache, Future01CompatExt, MappingABI,
+    tiny_keccak, trace, BlockNumber, Future01CompatExt, MappingABI,
 };
 use graph::prelude::{lazy_static, tokio};
 use graph::runtime::{asc_get, asc_new, AscPtr, HostExportError};
@@ -219,7 +219,7 @@ impl SimpleEthereumAdapter {
                             // Todo: Avoid block handler execution on writing to the cache. Now use on-mem db so it is not a problem.
                             //let _ = graph::spawn_blocking_allow_panic(move || {
                             debug!("Start writing cache");
-                            cache
+                            let _ = cache
                                 .lock()
                                 .unwrap()
                                 .set_call(call.address, &call_data, call.block_ptr, &for_cache)
@@ -510,9 +510,7 @@ fn eth_call(
 
     info!("call: {:?}", &call);
     // Run Ethereum call in tokio runtime
-    let logger1 = logger.clone();
-    //let call_cache = call_cache.clone();
-    let mut result_contract_call = eth_adapter
+    let result_contract_call = eth_adapter
         .contract_call(call.clone(), call_cache.clone())
         .wait();
 

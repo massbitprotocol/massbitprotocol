@@ -8,7 +8,6 @@ use futures::stream;
 use futures::{Future, Stream};
 use futures03::compat::Future01CompatExt;
 use lazy_static::lazy_static;
-use log::Level::Debug;
 use log::{debug, info, warn};
 use massbit_chain_ethereum::data_type::EthereumBlock as Block;
 use std::collections::HashMap;
@@ -19,13 +18,12 @@ use std::sync::{
 };
 use std::time::Instant;
 use thiserror::Error;
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::mpsc;
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use tokio::time::{sleep, timeout, Duration};
 use tonic::Status;
 use web3;
 use web3::transports::Batch;
-use web3::types::Res;
 use web3::{
     types::{
         Block as EthBlock, BlockId, BlockNumber as Web3BlockNumber, Filter, FilterBuilder, Log,
@@ -41,10 +39,9 @@ const USE_WEBSOCKET: bool = false;
 const BLOCK_BATCH_SIZE: u64 = 10;
 const RETRY_GET_BLOCK_LIMIT: u32 = 10;
 const GET_BLOCK_TIMEOUT_SEC: u64 = 60;
-const SEND_BLOCK_TIMEOUT_SEC: u64 = 10;
 
 lazy_static! {
-    pub static ref WEP3: Arc<Web3<Transport>> = {
+    pub static ref WEB3: Arc<Web3<Transport>> = {
         let config = CONFIG.chains.get(&CHAIN_TYPE).unwrap();
         let websocket_url = config.ws.clone();
         let http_url = config.url.clone();
@@ -275,7 +272,6 @@ async fn get_block(
         info!("Got ETHEREUM block error {:?}", &block);
         return Err("Got ETHEREUM block error".into());
     }
-    info!("Finish tokio::spawn for getting block: {:?}", &block_number);
 }
 
 pub async fn loop_get_block(
@@ -285,20 +281,8 @@ pub async fn loop_get_block(
     info!("Start get block {:?}", CHAIN_TYPE);
     info!("Init Ethereum adapter");
     let exit = Arc::new(AtomicBool::new(false));
-    // let config = CONFIG.chains.get(&CHAIN_TYPE).unwrap();
-    // let websocket_url = config.ws.clone();
-    // let http_url = config.url.clone();
-    //
-    // let (transport_event_loop, transport) = match USE_WEBSOCKET {
-    //     false => Transport::new_rpc(&http_url, Default::default()),
-    //     true => Transport::new_ws(&websocket_url),
-    // };
-    //std::mem::forget(transport_event_loop);
-
-    //let WEP3 = Arc::new(Web3::new(transport));
-
     // Get version
-    let version = WEP3
+    let version = WEB3
         .net()
         .version()
         .wait()
@@ -314,7 +298,7 @@ pub async fn loop_get_block(
             eprintln!("{}", "exit".to_string());
             break;
         }
-        let latest_block_number = wait_for_new_block_http(&WEP3, &got_block_number).await;
+        let latest_block_number = wait_for_new_block_http(&WEB3, &got_block_number).await;
 
         if got_block_number == None {
             got_block_number = Some(latest_block_number - 1);
@@ -350,7 +334,7 @@ pub async fn loop_get_block(
             );
 
             let clone_version = version.clone();
-            let clone_web3 = WEP3.clone();
+            let clone_web3 = WEB3.clone();
             // For limit number of spawn task
             debug!(
                 "Wait for permit, permits available: {}",
@@ -368,10 +352,10 @@ pub async fn loop_get_block(
                     get_block(block_number, permit, clone_web3, clone_version),
                 )
                 .await;
-
                 if res.is_err() {
                     warn!("get_block timed out at block {}", &block_number);
                 };
+                info!("Finish tokio::spawn for getting block: {:?}", &block_number);
                 res.unwrap()
             }));
         }
@@ -396,21 +380,11 @@ pub async fn loop_get_block(
             debug!("gRPC sending block {}", &block_number);
             if !chan.is_closed() {
                 let send_res = chan.send(Ok(block as GenericDataProto)).await;
-                // let timeout_res = timeout(
-                //     Duration::from_secs(SEND_BLOCK_TIMEOUT_SEC),
-                //     chan.send(Ok(block as GenericDataProto)),
-                // )
-                // .await;
-
-                // if let Ok(send_res) = timeout_res {
                 if send_res.is_ok() {
                     info!("gRPC successfully sending block {}", &block_number);
                 } else {
                     warn!("gRPC unsuccessfully sending block {}", &block_number);
                 }
-                // } else {
-                //     warn!("gRPC sending timed out at block {}", &block_number);
-                // }
             } else {
                 return Err("Stream is closed!".into());
             }

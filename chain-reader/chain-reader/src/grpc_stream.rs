@@ -2,7 +2,6 @@ use tokio::sync::{broadcast, mpsc};
 use tokio_stream::wrappers::ReceiverStream;
 
 use crate::ethereum_chain;
-use crate::CONFIG;
 use log::{error, info};
 use std::collections::HashMap;
 use stream_mod::{
