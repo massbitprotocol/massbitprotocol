@@ -8,6 +8,7 @@ remove-all-git-hook:
 	@echo "Removing all symlinks..."
 	rm .git/hooks/*
 
+
 test-run-contract:
 	@echo "Running health check tests ..."
 	cd e2e-test/health-check && robot health-check.robot || true
@@ -20,8 +21,16 @@ test-run-contract:
 	cd e2e-test/bsc && robot contract.robot
 
 
+test-run-chain:
+	@echo "Running health check tests ..."
+	cd e2e-test/health-check && robot health-check.robot || true
+
+	@echo "Running polygon contract tests ..."
+	cd e2e-test/polygon && robot chain.robot
+
+
 #This test for run all test when the component already up
-test-run-all:
+test-run-basic:
 	@echo "Running health check tests ..."
 	cd e2e-test/health-check && robot health-check.robot || true
 
@@ -39,7 +48,7 @@ test-run-all:
 
 
 #This test start/restart all service and run all test
-test-run-all-and-up:
+test-run-basic-and-up:
 	@echo "Close all services before running test"
 	make services-down
 	make kill-all-tmux || true

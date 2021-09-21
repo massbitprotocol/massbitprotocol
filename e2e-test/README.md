@@ -1,28 +1,30 @@
 # E2E Test for Substrate and Solana template
 
 ## Testing coverage
-Solana
-- block (done)
-- transaction (done)
-- log message (done)
-- index serum (done)
-- five tables (done)
+Core tests:
+- BSC has 1 contract test (quickswap)
+- Ethereum has 3 basic tests (block, transaction, event)
+- Polygon has 1 contract test (quickswap), 1 chain test (transaction metrics)
+- Solana has 3 basic tests (block, transaction, log messages), 2 advanced tests (serum, five tables to test compound type)
+- Substrate has 3 basic tests (block, transaction, event)
+- Cardano has none tests yet.
 
-Substrate
-- block (done)
-- extrinsic (done)
-- event (done)
+Health check tests:
+- code-compiler 
+- index-manager 
+- dashboard 
+- hasura graphql-engine 
+- hasura console
+- solana proxy 
+- IPFS 
+- chain-reader (to be added)
+- Postgres DB (to be added)
 
-Health check for all services
-- code-compiler (done)
-- index-manager (done)
-- dashboard (done)
-- hasura graphql-engine (done)
-- hasura console (done)
-- solana proxy (done)
-- IPFS (done)
-- chain-reader
-- Postgres DB
+Frontend Selenium tests:
+- Dashboard
+
+Production tests:
+- Can be used when metric / logging is not enabled in the production server
 
 Detail testing plan: https://app.gitbook.com/@hughie/s/massbit/e2e-test-planning
 
@@ -30,21 +32,23 @@ Detail testing plan: https://app.gitbook.com/@hughie/s/massbit/e2e-test-planning
 ```shell
 cd [to_project_root]
 make test-init
-make create-git-hook
+make create-git-hook  # optional
 ```
 - Make sure you have started all the services 
 - If you don't want tests to run in every git push, you can run `make remove-all-git-hook`
 
-## Run all test
-```shell
-cd [to_project_root]
-make test-run-all
-```
 
-## Run a test
+## Run test
+E2E tests have 4 categories:
+- Basic: test block, event, transaction
+- Advanced: compound type,...
+- Chain: get metrics from the chain (trading volume, active address from BSC/Ethereum/Polygon)
+- Contract: get metrics from the contract (pancakeswap, uniswap)
+
 ```shell
 robot [test-type].robot
 ```
+
 Example
 ```
 robot basic.robot 
