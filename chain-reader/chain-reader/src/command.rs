@@ -1,4 +1,3 @@
-use crate::ethereum_chain;
 use crate::grpc_stream::StreamService;
 use crate::solana_chain;
 use crate::substrate_chain;
@@ -8,6 +7,7 @@ use crate::{
 };
 use graph::semver::Op;
 use log::error;
+use massbit_common::NetworkType;
 use std::collections::HashMap;
 use std::thread::sleep;
 use std::time::Duration;
@@ -34,8 +34,6 @@ impl Config {
         return None;
     }
 }
-
-pub type NetworkType = String;
 
 #[derive(Clone, Debug)]
 pub struct ChainConfig {
@@ -128,33 +126,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
                 // add chan to chans
                 //chans.insert(ChainType::Solana, chan);
             }
-            ChainType::Ethereum => {
-                // Spawn task
-                tokio::spawn(async move {
-                    // fix_one_thread_not_receive(&chan_sender);
-                    let mut count = 1;
-                    let mut got_block_number = CONFIG
-                        .get_chain_config(&chain_type, &network_clone)
-                        .unwrap()
-                        .start_block;
-                    loop {
-                        let resp = ethereum_chain::loop_get_block(
-                            chan_sender.clone(),
-                            &mut got_block_number,
-                            network_clone.clone(),
-                        )
-                        .await;
-                        error!(
-                            "Restart {:?} response {:?}, at block {:?}, {} time",
-                            &chain_type, resp, &got_block_number, count
-                        );
-                        sleep(Duration::from_secs(1));
-                        count = count + 1;
-                    }
-                });
-                // add chan to chans
-                //chans.insert(ChainType::Ethereum, chan);
-            }
+            ChainType::Ethereum => {}
         }
         // add chan to chans
         chans.insert((chain_type, network), chan);

@@ -189,7 +189,7 @@ impl SimpleEthereumAdapter {
             .ok()
             .flatten();
         drop(guard);
-        debug!("cache_result: {:?}", &cache_result);
+        info!("cache_result: {:?}", &cache_result);
         // Check if we have it cached, if not do the call and cache.
         Box::new(
             match cache_result {
@@ -213,7 +213,7 @@ impl SimpleEthereumAdapter {
                             // Todo: Avoid block handler execution on writing to the cache. Now use on-mem db so it is not a problem.
                             //let _ = graph::spawn_blocking_allow_panic(move || {
                             debug!("Start writing cache");
-                            cache
+                            let _ = cache
                                 .lock()
                                 .unwrap()
                                 .set_call(call.address, &call_data, call.block_ptr, &for_cache)

@@ -318,7 +318,7 @@ where
                         );
                     } else if attempt_count >= log_after {
                         // See also b05e1594-e408-4047-aefb-71fc60d70e8f
-                        debug!(
+                        slog::info!(
                             logger,
                             "Trying again after {} failed (attempt #{}) with result {:?}",
                             &operation_name,
