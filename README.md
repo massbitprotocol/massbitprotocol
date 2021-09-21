@@ -22,6 +22,7 @@ Running with public BSC/Ethereum/Solana node
 - SSD or HDD: 200 GB
 
 Running with local BSC/Ethereum/Solana node
+- The node needs to be Full Archival Node
 - Use the hardware recommendation from https://docs.solana.com/running-validator/validator-reqs
 
 ## How to start
