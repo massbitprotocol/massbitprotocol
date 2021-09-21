@@ -1,3 +1,37 @@
+#################### Init commands #######################
+init-code-compiler:
+	@echo "Installing all the dependencies for Code compiler ..."
+	pip install ipfshttpclient flask flask_cors
+
+init-docker:
+	@echo "Installing docker"
+	sudo apt update
+	sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
+	curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+	sudo add-apt-repository 'deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable'
+	sudo apt update
+	apt-cache policy docker-ce
+	sudo apt install -y docker-ce docker-compose
+	sudo groupadd docker || true
+	sudo gpasswd -a $USER docker
+	sudo setfacl -m user:$USER:rw /var/run/docker.sock
+
+init-python:
+	sudo apt install -y python3
+	sudo apt install -y python3.8
+	sudo rm /usr/bin/python3
+	sudo ln -s python3.8 /usr/bin/python3
+	sudo apt install -y python3-pip python-pip wget unzip libpq-dev python3-dev
+	sudo pip3 install setuptools-rust
+	sudo pip3 install --upgrade pip
+	sudo pip3 install PyQtWebEngine
+
+init-test:
+	@echo "Installing all the dependencies for E2E tests ..."
+	pip3 install robotframework robotframework-requests robotframework-databaselibrary rpaframework
+	pip3 install psycopg2 rpaframework robotframework-seleniumlibrary robotframework-sshlibrary
+
+#################### Test commands #######################
 create-git-hook:
 	@echo "Every push to origin need to run the E2E tests"
 	@echo "Creating symlink..."
@@ -8,34 +42,56 @@ remove-all-git-hook:
 	@echo "Removing all symlinks..."
 	rm .git/hooks/*
 
-
-#This test for run all test when the component already up
-test-run-all:
+test-run-contract:
 	@echo "Running health check tests ..."
 	cd e2e-test/health-check && robot health-check.robot || true
 
-	@echo "Running substrate tests ..."
-	cd e2e-test/substrate && robot substrate.robot
+test-run-contract:
+	@echo "Running health check tests ..."
+	cd e2e-test/health-check && robot health-check.robot || true
 
+	@echo "Running polygon contract tests ..."
+	cd e2e-test/polygon && robot contract.robot
 	make restart-chain-reader-index-manager
 
-	@echo "Running solana tests ..."
-	cd e2e-test/solana && robot solana.robot
+	@echo "Running bsc contract tests ..."
+	cd e2e-test/bsc && robot contract.robot
 
+test-run-chain:
+	@echo "Running health check tests ..."
+	cd e2e-test/health-check && robot health-check.robot || true
+
+	@echo "Running polygon contract tests ..."
+	cd e2e-test/polygon && robot chain.robot
+
+
+#This test for run all test when the component already up
+test-run-basic:
+	@echo "Running health check tests ..."
+	cd e2e-test/health-check && robot health-check.robot || true
+
+	@echo "Running basic substrate tests ..."
+	cd e2e-test/substrate && robot basic.robot
 	make restart-chain-reader-index-manager
 
-	@echo "Running ethereum tests ..."
-	cd e2e-test/ethereum && robot ethereum.robot
+	@echo "Running basic solana tests ..."
+	cd e2e-test/solana && robot basic.robot
+	make restart-chain-reader-index-manager
+
+	@echo "Running basic ethereum tests ..."
+	cd e2e-test/ethereum && robot basic.robot
+	make restart-chain-reader-index-manager
+
 
 #This test start/restart all service and run all test
-test-run-all-and-up:
+test-run-basic-and-up:
 	@echo "Close all services before running test"
 	make services-down
 	make kill-all-tmux || true
 
 	@echo "Restart services before running test"
-
-	tmux new -d -s services "make services-up"
+	make services-up
+	#tmux new -d -s services "make services-up"
 	sleep 5;
 	make run-all-tmux
 	tmux ls
@@ -44,23 +100,17 @@ test-run-all-and-up:
 	@echo "Running health check tests ..."
 	cd e2e-test/health-check && robot health-check.robot || true
 
-	@echo "Running substrate tests ..."
-	cd e2e-test/substrate && robot substrate.robot || true
-
+	@echo "Running basic substrate tests ..."
+	cd e2e-test/substrate && robot basic.robot || true
 	make restart-chain-reader-index-manager
 
-	@echo "Running solana tests ..."
-	cd e2e-test/solana && robot solana.robot || true
-
+	@echo "Running basic solana tests ..."
+	cd e2e-test/solana && robot basic.robot || true
 	make restart-chain-reader-index-manager
 
-	@echo "Running ethereum tests ..."
-	cd e2e-test/ethereum && robot ethereum.robot || true
-
+	@echo "Running basic ethereum tests ..."
+	cd e2e-test/ethereum && robot basic.robot || true
 	make restart-chain-reader-index-manager
-
-#	@echo "Running dashboard tests ..."
-#	cd e2e-test/dashboard && robot dashboard.robot || true
 
 test-init:
 	@echo "Installing all the dependencies for E2E tests ..."
@@ -72,6 +122,15 @@ test-init:
 create-list-user-example-json-file:
 	@echo "Create list user examples json file ..."
 	cd user-example && python create_example_json.py
+
+restart-chain-reader-index-manager:
+	@echo "Stop index-manager and chain-reader in tmux"
+	tmux kill-session -t chain-reader
+	tmux kill-session -t index-manager
+	@echo "Run index-manager in tmux"
+	tmux new -d -s index-manager scripts/tmux-index-manager.sh
+	@echo "Run chain-reader in tmux"
+	tmux new -d -s chain-reader scripts/tmux-chain-reader.sh
 
 #################### Dev commands ##########################
 
@@ -93,13 +152,21 @@ run-code-compiler:
 	@echo "Run code-compiler"
 	cd code-compiler/ && python app.py
 
-services-up:
-	@echo "Run all service"
+services-dev-up:
+	@echo "Run all services in dev mode"
 	docker-compose -f docker-compose.min.yml up
 
-services-down:
-	@echo "Stop all service"
+services-dev-down:
+	@echo "Stop all services"
 	docker-compose -f docker-compose.min.yml down
+
+services-prod-up:
+	@echo "Run all services in production mode"
+	docker-compose -f docker-compose.prod.yml up -d
+
+services-prod-down:
+	@echo "Stop all services"
+	docker-compose -f docker-compose.prod.yml down
 
 #################### Production commands ##################
 run-all-tmux:
@@ -107,31 +174,45 @@ run-all-tmux:
 	export TERM=xterm
 
 	@echo "Run index-manager in tmux"
-	tmux new -d -s index-manager "make run-index-manager"
+	tmux new -d -s index-manager scripts/tmux-index-manager.sh
 
 	@echo "Run chain-reader in tmux"
-	tmux new -d -s chain-reader "make run-chain-reader"
+	tmux new -d -s chain-reader scripts/tmux-chain-reader.sh
 
 	@echo "Run code-compiler in tmux"
-	tmux new -d -s code-compiler "make run-code-compiler"
+	tmux new -d -s code-compiler scripts/tmux-code-compiler.sh
 
 kill-all-tmux:
 	@echo "Kill all tmux services"
-	pkill chain-reader || true
-	pkill code-compiler || true #Fixme: this cmd cannot kill code-compiler yet
-	pkill index-manager || true
 	tmux list-sessions | awk 'BEGIN{FS=":"}{print $1}' | xargs -n 1 tmux kill-session -t
+
+
+#################### Long running test commands ##################
+test-long-running-quickswap:
+	@echo "A quick fix to bypass the not able to start tmux error"
+	export TERM=xterm
+	@echo "Run index-manager in tmux"
+	tmux new -d -s index-manager scripts/tmux-index-manager.sh
+	@echo "Run chain-reader in tmux"
+	tmux new -d -s chain-reader scripts/tmux-chain-reader.sh
+	@echo "Run code-compiler in tmux"
+	tmux new -d -s code-compiler scripts/tmux-code-compiler.sh
+	@echo "Wait for the services to start"
+	sleep 15;
+	@echo "Running only the quickswap Ethereum test ..."
+	cd e2e-test/polygon && robot -t "Compile and Deploy WASM Test Quickswap" basic.robot;
+
+	@echo "Running report email services"
+	tmux new -d -s report_email "cd e2e-test && python check_log.py"
 	tmux ls
 
-restart-chain-reader-index-manager:
-	@echo "Run index-manager in tmux"
-	pkill chain-reader || true
-	tmux kill-session -t chain-reader || true
-	pkill index-manager || true
-	tmux kill-session -t index-manager || true
-	sleep 3
+index-quickswap:
+	@echo "Running only the quickswap Ethereum test ..."
+	cd e2e-test/polygon && robot -t "Compile and Deploy WASM Test Quickswap" basic.robot
+	@echo "Running report email services"
+	tmux new -d -s report_email "cd e2e-test && python check_log.py"
+	tmux ls
 
-	@echo "Run run-chain-reader and index-manager tmux"
-	tmux new -d -s chain-reader "make run-chain-reader"
-	tmux new -d -s index-manager "make run-index-manager"
-	sleep 3
+test-long-running-quickswap-run-test-only:
+	@echo "Running only the quickswap Polygon test ..."
+	cd e2e-test/polygon && robot -t "Compile and Deploy WASM Test Quickswap" basic.robot

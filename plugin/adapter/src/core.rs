@@ -4,6 +4,7 @@ pub use crate::stream_mod::{
 };
 pub use crate::{HandlerProxyType, PluginRegistrar, WasmHandlerProxyType};
 use graph::data::subgraph::SubgraphManifest;
+use graph::semver::Op;
 use graph_chain_ethereum::Chain;
 use graph_chain_ethereum::{DataSource, DataSourceTemplate};
 use graph_runtime_wasm::ValidModule;
@@ -11,15 +12,17 @@ use index_store::postgres::store_builder::*;
 use index_store::{IndexerState, Store};
 use lazy_static::lazy_static;
 use libloading::Library;
-use massbit_common::prelude::tokio::time::sleep;
+use massbit_common::prelude::tokio::time::{sleep, timeout, Duration};
+use massbit_common::NetworkType;
 use serde_yaml::Value;
 use std::path::Path;
 use std::{
     alloc::System, collections::HashMap, env, error::Error, ffi::OsStr, fmt, path::PathBuf,
     sync::Arc,
-    time::{Instant, Duration}
 };
+use tonic::transport::Channel;
 use tonic::{Request, Streaming};
+use tower::timeout::Timeout;
 
 lazy_static! {
     static ref CHAIN_READER_URL: String =
@@ -29,6 +32,8 @@ lazy_static! {
     static ref GENERATED_FOLDER: String = String::from("index-manager/generated/");
     static ref COMPONENT_NAME: String = String::from("[Adapter-Manager]");
 }
+const GET_BLOCK_TIMEOUT_SEC: u64 = 30;
+const GET_STREAM_TIMEOUT_SEC: u64 = 30;
 #[global_allocator]
 static ALLOCATOR: System = System;
 
@@ -36,8 +41,6 @@ static ALLOCATOR: System = System;
 pub struct AdapterDeclaration {
     pub register: unsafe extern "C" fn(&mut dyn PluginRegistrar),
 }
-//adapter_type => HandlerProxyType
-
 pub struct AdapterHandler {
     indexer_hash: String,
     pub lib: Arc<Library>,
@@ -69,22 +72,6 @@ impl WasmAdapter {
         }
     }
 }
-/*
-pub struct AdapterManager<'a> {
-    pub store: &'a dyn Store,
-    pub libs: Vec<Rc<Library>>,
-    handler_proxies: MapProxies,
-}
-impl<'a> AdapterManager<'a> {
-    pub fn new(store: &mut dyn Store) -> AdapterManager {
-        AdapterManager {
-            store,
-            libs: vec![],
-            handler_proxies: HashMap::default(),
-        }
-    }
-}
-*/
 
 pub struct AdapterManager {
     //store: Option<dyn Store>,
@@ -139,65 +126,33 @@ impl AdapterManager {
                     &data_source.kind,
                     &data_source.mapping.language
                 );
-                loop {
-                    sleep(Duration::from_millis(1000)).await;
-                    let response_handle_mapping = self
-                        .handle_mapping(hash, data_source, arc_templates.clone(), mapping, schema)
-                        .await;
-                    log::info!("Retry handle");
+                //let chain_type = get_chain_type(data_source);
+                let channel = Channel::from_static(CHAIN_READER_URL.as_str())
+                    .connect()
+                    .await?;
+                let timeout_channel =
+                    Timeout::new(channel, Duration::from_secs(GET_BLOCK_TIMEOUT_SEC));
+                let mut client = StreamoutClient::new(timeout_channel);
+                match data_source.mapping.language.as_str() {
+                    "wasm/assemblyscript" => {
+                        self.handle_wasm_mapping(
+                            hash,
+                            data_source,
+                            arc_templates.clone(),
+                            schema,
+                            &mut client,
+                        )
+                        .await
+                    }
+                    //Default use rust
+                    _ => {
+                        self.handle_rust_mapping(hash, data_source, mapping, schema, &mut client)
+                            .await
+                    }
                 }
-
-                Ok(())
             }
             _ => Ok(()),
         }
-    }
-
-    async fn handle_mapping(
-        &mut self,
-        hash: &String,
-        data_source: &DataSource,
-        arc_templates: Arc<Vec<DataSourceTemplate>>,
-        mapping: &PathBuf,
-        schema: &PathBuf,
-    ) -> Result<(), Box<dyn Error>> {
-        //sleep(Duration::from_millis(1000)).await;
-        let chain_type = get_chain_type(data_source);
-        let network = data_source.network.clone().unwrap_or(Default::default());
-        let mut client = StreamoutClient::connect(CHAIN_READER_URL.clone()).await?;
-        let get_blocks_request = GetBlocksRequest {
-            start_block_number: 0,
-            end_block_number: 1,
-            chain_type: chain_type as i32,
-            network,
-        };
-        let mut stream: Streaming<GenericDataProto> = client
-            .list_blocks(Request::new(get_blocks_request.clone()))
-            .await?
-            .into_inner();
-        let mapping_response = match data_source.mapping.language.as_str() {
-            "wasm/assemblyscript" => {
-                self.handle_wasm_mapping(
-                    hash,
-                    data_source,
-                    arc_templates.clone(),
-                    schema,
-                    &mut stream,
-                )
-                .await
-            }
-            //Default use rust
-            _ => {
-                self.handle_rust_mapping(hash, data_source, mapping, schema, &mut stream)
-                    .await
-            }
-        };
-        if mapping_response.is_ok() {
-            log::info!("mapping_response Ok.");
-        } else {
-            log::error!("mapping_response Error: {:?}", &mapping_response);
-        }
-        mapping_response
     }
 
     async fn handle_wasm_mapping<P: AsRef<Path>>(
@@ -206,7 +161,7 @@ impl AdapterManager {
         data_source: &DataSource,
         templates: Arc<Vec<DataSourceTemplate>>,
         schema_path: P,
-        stream: &mut Streaming<GenericDataProto>,
+        client: &mut StreamoutClient<Timeout<Channel>>,
     ) -> Result<(), Box<dyn Error>> {
         let store =
             Arc::new(StoreBuilder::create_store(indexer_hash.as_str(), &schema_path).unwrap());
@@ -220,6 +175,10 @@ impl AdapterManager {
             .get(0)
             .unwrap()
             .to_string();
+        //Todo: store indexer state including start_block in db
+        let mut start_block = data_source.source.start_block as u64;
+        let chain_type = get_chain_type(data_source);
+        let mut opt_stream: Option<Streaming<GenericDataProto>> = None;
         let mut handler_proxy = WasmHandlerProxyType::create_proxy(
             &adapter_name,
             indexer_hash,
@@ -227,26 +186,74 @@ impl AdapterManager {
             data_source.clone(), //Arc::clone(&valid_module),
             templates,
         );
-
-        while let Some(mut data) = stream.message().await? {
-            let data_type = DataType::from_i32(data.data_type).unwrap();
-            log::info!(
-                "{} Chain {:?} received data block = {:?}, hash = {:?}, data type = {:?}",
-                &*COMPONENT_NAME,
-                ChainType::from_i32(data.chain_type).unwrap(),
-                data.block_number,
-                data.block_hash,
-                data_type
-            );
-            if let Some(ref mut proxy) = handler_proxy {
-                match proxy.handle_wasm_mapping(&mut data) {
-                    Err(err) => {
-                        log::error!("{} Error while handle received message", err);
+        if let Some(ref mut proxy) = handler_proxy {
+            loop {
+                match opt_stream {
+                    None => {
+                        log::info!(
+                            "Wasm mapping get new stream for chain {:?} from block {}.",
+                            &chain_type,
+                            start_block
+                        );
+                        opt_stream = try_create_stream(
+                            client,
+                            &chain_type,
+                            start_block,
+                            &data_source.network,
+                        )
+                        .await;
+                        if opt_stream.is_none() {
+                            //Sleep for a while and reconnect
+                            sleep(Duration::from_secs(GET_STREAM_TIMEOUT_SEC)).await;
+                        }
                     }
-                    _ => {}
+                    Some(ref mut stream) => {
+                        let response =
+                            timeout(Duration::from_secs(GET_BLOCK_TIMEOUT_SEC), stream.message())
+                                .await;
+                        match response {
+                            Ok(Ok(res)) => {
+                                if let Some(mut data) = res {
+                                    let data_type = DataType::from_i32(data.data_type).unwrap();
+                                    let data_chain_type =
+                                        ChainType::from_i32(data.chain_type).unwrap();
+                                    log::info!(
+                                        "{} Chain {:?} received data block = {:?}, hash = {:?}, data type = {:?}",
+                                        &*COMPONENT_NAME,
+                                        &data_chain_type,
+                                        data.block_number,
+                                        data.block_hash,
+                                        data_type
+                                    );
+                                    if data_chain_type == chain_type {
+                                        match proxy.handle_wasm_mapping(&mut data) {
+                                            Err(err) => {
+                                                log::error!(
+                                                    "{} Error while handle received message",
+                                                    err
+                                                );
+                                                start_block = data.block_number;
+                                            }
+                                            Ok(_) => {
+                                                start_block = data.block_number + 1;
+                                            }
+                                        }
+                                    } else {
+                                        log::error!("Chain type is not matched. Received {:?}, expected {:?}", data_chain_type, chain_type)
+                                    }
+                                } else {
+                                    log::warn!("Stream message response: {:?}", res)
+                                }
+                            }
+                            _ => {
+                                log::info!("Error while get message from reader stream {:?}. Destroy old stream", &response);
+                                opt_stream = None;
+                            }
+                        }
+                    }
                 }
             }
-        }
+        };
         Ok(())
     }
 
@@ -256,7 +263,7 @@ impl AdapterManager {
         data_source: &DataSource,
         mapping_path: P,
         schema_path: P,
-        stream: &mut Streaming<GenericDataProto>,
+        client: &mut StreamoutClient<Timeout<Channel>>,
     ) -> Result<(), Box<dyn Error>> {
         let store = StoreBuilder::create_store(indexer_hash.as_str(), &schema_path).unwrap();
         let mut indexer_state = IndexerState::new(Arc::new(store));
@@ -285,25 +292,76 @@ impl AdapterManager {
             .to_string();
         if let Some(adapter_handler) = self.map_handlers.get_mut(indexer_hash.as_str()) {
             if let Some(handler_proxy) = adapter_handler.handler_proxies.get(&adapter_name) {
-                while let Some(mut data) = stream.message().await? {
-                    let start = Instant::now();
-                    match handler_proxy.handle_rust_mapping(&mut data, &mut indexer_state) {
-                        Err(err) => {
-                            log::error!("{} Error while handle received message", err);
+                let mut start_block = data_source.source.start_block as u64;
+                let chain_type = get_chain_type(data_source);
+                let mut opt_stream: Option<Streaming<GenericDataProto>> = None;
+                log::info!(
+                    "Rust mapping get new stream for chain {:?} from block {}.",
+                    &chain_type,
+                    start_block
+                );
+                loop {
+                    match opt_stream {
+                        None => {
+                            opt_stream = try_create_stream(
+                                client,
+                                &chain_type,
+                                start_block,
+                                &data_source.network,
+                            )
+                            .await;
+                            if opt_stream.is_none() {
+                                //Sleep for a while and reconnect
+                                sleep(Duration::from_secs(GET_STREAM_TIMEOUT_SEC)).await;
+                            }
                         }
-                        _ => {
-                            //log::info!("Handler")
+                        Some(ref mut stream) => {
+                            let response = timeout(
+                                Duration::from_secs(GET_BLOCK_TIMEOUT_SEC),
+                                stream.message(),
+                            )
+                            .await;
+                            match response {
+                                Ok(Ok(res)) => {
+                                    if let Some(mut data) = res {
+                                        let data_type = DataType::from_i32(data.data_type).unwrap();
+                                        let data_chain_type =
+                                            ChainType::from_i32(data.chain_type).unwrap();
+                                        log::info!(
+                                            "{} Chain {:?} received data block = {:?}, hash = {:?}, data type = {:?}",
+                                            &*COMPONENT_NAME,
+                                            &data_chain_type,
+                                            data.block_number,
+                                            data.block_hash,
+                                            DataType::from_i32(data.data_type).unwrap()
+                                        );
+                                        if data_chain_type == chain_type {
+                                            match handler_proxy
+                                                .handle_rust_mapping(&mut data, &mut indexer_state)
+                                            {
+                                                Err(err) => {
+                                                    log::error!(
+                                                        "{} Error while handle received message",
+                                                        err
+                                                    );
+                                                    start_block = data.block_number;
+                                                }
+                                                Ok(_) => {
+                                                    start_block = data.block_number + 1;
+                                                }
+                                            }
+                                        } else {
+                                            log::error!("Chain type is not matched. Received {:?}, expected {:?}", data_chain_type, chain_type)
+                                        }
+                                    }
+                                }
+                                _ => {
+                                    log::info!("Error while get message from reader stream {:?}. Recreate stream", &response);
+                                    opt_stream = None;
+                                }
+                            }
                         }
                     }
-                    log::info!(
-                        "{} Process chain {:?} with data block = {:?} hash = {:?}, data type = {:?} in {:?}",
-                        &*COMPONENT_NAME,
-                        ChainType::from_i32(data.chain_type).unwrap(),
-                        data.block_number,
-                        data.block_hash,
-                        DataType::from_i32(data.data_type).unwrap(),
-                        start.elapsed()
-                    );
                 }
             } else {
                 log::debug!(
@@ -346,7 +404,32 @@ impl AdapterManager {
         Ok(())
     }
 }
-
+async fn try_create_stream(
+    client: &mut StreamoutClient<Timeout<Channel>>,
+    chain_type: &ChainType,
+    start_block: u64,
+    network: &Option<NetworkType>,
+) -> Option<Streaming<GenericDataProto>> {
+    log::info!("Create new stream from block {}", start_block);
+    let get_blocks_request = GetBlocksRequest {
+        start_block_number: start_block,
+        end_block_number: 0,
+        chain_type: *chain_type as i32,
+        network: network.clone().unwrap_or(Default::default()),
+    };
+    match client
+        .list_blocks(Request::new(get_blocks_request.clone()))
+        .await
+    {
+        Ok(res) => {
+            return Some(res.into_inner());
+        }
+        Err(err) => {
+            log::info!("Create new stream with error {:?}", &err);
+        }
+    }
+    return None;
+}
 // General trait for handling message,
 // every adapter proxies must implement this trait
 pub trait MessageHandler {

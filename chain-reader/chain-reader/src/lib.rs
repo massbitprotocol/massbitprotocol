@@ -45,20 +45,20 @@ lazy_static! {
                 chain_type: ChainType::Ethereum,
                 network: "matic".to_string()
             },
-            // ChainConfig{
-            //     ws: "wss://bsc-ws-node.nariox.org:443".to_string(),
-            //     url: "https://bsc-dataseed.binance.org".to_string(),
-            //     start_block: None,
-            //     chain_type: ChainType::Ethereum,
-            //     network: "bsc".to_string()
-            // },
-            // ChainConfig{
-            //     ws: "wss://main-light.eth.linkpool.io/ws".to_string(),
-            //     url: "https://main-light.eth.linkpool.io".to_string(),
-            //     start_block: None,
-            //     chain_type: ChainType::Ethereum,
-            //     network: "ethereum".to_string()
-            // },
+            ChainConfig{
+                ws: "wss://bsc-ws-node.nariox.org:443".to_string(),
+                url: "https://bsc-dataseed.binance.org".to_string(),
+                start_block: None,
+                chain_type: ChainType::Ethereum,
+                network: "bsc".to_string()
+            },
+            ChainConfig{
+                ws: "wss://main-light.eth.linkpool.io/ws".to_string(),
+                url: "https://main-light.eth.linkpool.io".to_string(),
+                start_block: None,
+                chain_type: ChainType::Ethereum,
+                network: "ethereum".to_string()
+            },
         ].iter().cloned().collect(),
         url: "0.0.0.0:50051".to_string(),
     };

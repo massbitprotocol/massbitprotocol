@@ -1,4 +1,3 @@
-use crate::command::NetworkType;
 use crate::Transport;
 use crate::{
     grpc_stream::stream_mod::{ChainType, DataType, GenericDataProto},
@@ -7,10 +6,11 @@ use crate::{
 use anyhow::Error;
 use futures::stream;
 use futures::{Future, Stream};
-use futures03::{self, compat::Future01CompatExt};
-use graph::prelude::tokio::sync::{OwnedSemaphorePermit, Semaphore};
+use futures03::compat::Future01CompatExt;
+use lazy_static::lazy_static;
 use log::{debug, info, warn};
 use massbit_chain_ethereum::data_type::EthereumBlock as Block;
+use massbit_common::NetworkType;
 use std::collections::HashMap;
 use std::error::Error as StdError;
 use std::sync::{
@@ -19,8 +19,10 @@ use std::sync::{
 };
 use std::time::Instant;
 use thiserror::Error;
-use tokio::sync::broadcast;
+use tokio::sync::mpsc;
+use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use tokio::time::{sleep, timeout, Duration};
+use tonic::Status;
 use web3;
 use web3::transports::Batch;
 use web3::{
@@ -38,6 +40,25 @@ const USE_WEBSOCKET: bool = false;
 const BLOCK_BATCH_SIZE: u64 = 10;
 const RETRY_GET_BLOCK_LIMIT: u32 = 10;
 const GET_BLOCK_TIMEOUT_SEC: u64 = 60;
+
+fn get_web3(network: &NetworkType) -> Arc<Web3<Transport>> {
+    let config = CONFIG.get_chain_config(&CHAIN_TYPE, network).unwrap();
+    let websocket_url = config.ws.clone();
+    let http_url = config.url.clone();
+
+    let (transport_event_loop, transport) = match USE_WEBSOCKET {
+        false => Transport::new_rpc(&http_url, Default::default()),
+        true => Transport::new_ws(&websocket_url),
+    };
+    std::mem::forget(transport_event_loop);
+    Arc::new(Web3::new(transport))
+}
+
+lazy_static! {
+    pub static ref WEB3_ETH: Arc<Web3<Transport>> = get_web3(&"ethereum".to_string());
+    pub static ref WEB3_BSC: Arc<Web3<Transport>> = get_web3(&"bsc".to_string());
+    pub static ref WEB3_MATIC: Arc<Web3<Transport>> = get_web3(&"matic".to_string());
+}
 
 #[derive(Error, Debug)]
 pub enum IngestorError {
@@ -196,11 +217,9 @@ pub async fn get_receipts(
 async fn get_block(
     block_number: u64,
     permit: OwnedSemaphorePermit,
-    clone_web3: Web3<Transport>,
+    clone_web3: Arc<Web3<Transport>>,
     clone_version: String,
-    chan_clone: broadcast::Sender<GenericDataProto>,
-    network: &NetworkType,
-) {
+) -> Result<GenericDataProto, Box<dyn std::error::Error + Send + Sync + 'static>> {
     debug!("Before permit block {}", block_number);
     let _permit = permit;
     debug!("After permit block {}", block_number);
@@ -212,10 +231,7 @@ async fn get_block(
     debug!("After block_with_txs block {}", block_number);
     for i in 0..RETRY_GET_BLOCK_LIMIT {
         if block.is_err() {
-            info!(
-                "Getting ETHEREUM-{} block {} retry {} times",
-                network, block_number, i
-            );
+            info!("Getting ETHEREUM block {} retry {} times", block_number, i);
             block = clone_web3
                 .eth()
                 .block_with_txs(BlockId::Number(Web3BlockNumber::from(block_number)))
@@ -226,15 +242,15 @@ async fn get_block(
     }
 
     if let Ok(Some(block)) = block {
+        //println!("Got ETHEREUM Block {:?}",block);
         // Convert to generic
         let block_hash = block.hash.clone().unwrap_or_default().to_string();
 
         // Get receipts
-        info!("Getting ETHEREUM-{} of block: {}", network, block_number);
+        info!("Getting ETHEREUM of block: {}", block_number);
         let receipts = get_receipts(&block, &clone_web3).await;
         info!(
-            "Got ETHEREUM-{} {} receipts of block: {}",
-            network,
+            "Got ETHEREUM {} receipts of block: {}",
             receipts.len(),
             block_number
         );
@@ -256,65 +272,59 @@ async fn get_block(
 
         let generic_data_proto =
             _create_generic_block(block_hash, block_number, &eth_block, clone_version);
-        info!(
-            "Sending ETHEREUM-{} as generic data: {:?}",
-            network, &generic_data_proto.block_number
-        );
-        let receiver_number = chan_clone.send(generic_data_proto).unwrap();
-        debug!(
-            "Finished Sending ETHEREUM-{} as generic data: {}",
-            network, receiver_number
-        );
+        return Ok(generic_data_proto);
     } else {
-        info!("Got ETHEREUM-{} block error {:?}", network, &block);
+        info!("Got ETHEREUM block error {:?}", &block);
+        return Err("Got ETHEREUM block error".into());
     }
-    info!("Finish tokio::spawn for getting block: {:?}", &block_number);
 }
 
 pub async fn loop_get_block(
-    chan: broadcast::Sender<GenericDataProto>,
-    got_block_number: &mut Option<u64>,
-    network: NetworkType,
+    chan: mpsc::Sender<Result<GenericDataProto, Status>>,
+    start_block: &Option<u64>,
+    network: &NetworkType,
 ) -> Result<(), Box<dyn StdError>> {
     info!("Start get block {:?}", CHAIN_TYPE);
     info!("Init Ethereum adapter");
     let exit = Arc::new(AtomicBool::new(false));
-    let config = CONFIG.get_chain_config(&CHAIN_TYPE, &network).unwrap();
-    let websocket_url = config.ws.clone();
-    let http_url = config.url.clone();
-
-    let (transport_event_loop, transport) = match USE_WEBSOCKET {
-        false => Transport::new_rpc(&http_url, Default::default()),
-        true => Transport::new_ws(&websocket_url),
-    };
-    std::mem::forget(transport_event_loop);
-
-    let web3 = Web3::new(transport);
-
     // Get version
-    let version = web3
+    let WEB3 = match network.as_str() {
+        "bsc" => WEB3_BSC.clone(),
+        "matic" => WEB3_MATIC.clone(),
+        _ => WEB3_ETH.clone(),
+    };
+
+    let version = WEB3
         .net()
         .version()
         .wait()
         .unwrap_or("Cannot get version".to_string());
 
     let sem = Arc::new(Semaphore::new(BLOCK_BATCH_SIZE as usize));
+    let mut got_block_number = match start_block {
+        Some(start_block) => Some(start_block - 1),
+        None => None,
+    };
     loop {
         if exit.load(Ordering::Relaxed) {
             eprintln!("{}", "exit".to_string());
             break;
         }
+        let latest_block_number = wait_for_new_block_http(&WEB3, &got_block_number).await;
 
-        let latest_block_number = wait_for_new_block_http(&web3, got_block_number).await;
-
-        if *got_block_number == None {
-            *got_block_number = Some(latest_block_number - 1);
+        if got_block_number == None {
+            got_block_number = Some(latest_block_number - 1);
         }
 
         let pending_block = latest_block_number - got_block_number.unwrap();
 
         if pending_block >= 1 {
-            info!("ETHEREUM-{} pending block: {}", &network, pending_block);
+            info!(
+                "ETHEREUM pending block: {}, Channel capacity: {}, stream is_close {}",
+                pending_block,
+                chan.capacity(),
+                chan.is_closed(),
+            );
         }
 
         // Number of getting block
@@ -325,48 +335,74 @@ pub async fn loop_get_block(
             getting_block = pending_block;
         }
 
+        let mut tasks = vec![];
         for block_number in
             (got_block_number.unwrap() + 1)..(got_block_number.unwrap() + 1 + getting_block)
         {
             // Get block
             info!(
-                "Getting ETHEREUM-{} block {}, pending block {}",
-                &network, block_number, pending_block
+                "Getting ETHEREUM block {}, pending block {}",
+                block_number, pending_block
             );
 
             let clone_version = version.clone();
-            let chan_clone = chan.clone();
-            let clone_web3 = web3.clone();
+            let clone_web3 = WEB3.clone();
             // For limit number of spawn task
             debug!(
                 "Wait for permit, permits available: {}",
                 sem.available_permits()
             );
-            let permit = Arc::clone(&sem).acquire_owned().await?;
+            let permit = Arc::clone(&sem).acquire_owned().await.unwrap();
             debug!(
                 "After gave permit, permits available: {}",
                 sem.available_permits()
             );
-            let clone_network = network.clone();
-            tokio::spawn(async move {
+            //let blocks_clone = blocks.clone();
+            tasks.push(tokio::spawn(async move {
                 let res = timeout(
                     Duration::from_secs(GET_BLOCK_TIMEOUT_SEC),
-                    get_block(
-                        block_number,
-                        permit,
-                        clone_web3,
-                        clone_version,
-                        chan_clone,
-                        &clone_network,
-                    ),
+                    get_block(block_number, permit, clone_web3, clone_version),
                 )
                 .await;
                 if res.is_err() {
                     warn!("get_block timed out at block {}", &block_number);
-                }
-            });
+                };
+                info!("Finish tokio::spawn for getting block: {:?}", &block_number);
+                res.unwrap()
+            }));
         }
-        *got_block_number = Some(got_block_number.unwrap() + getting_block);
+
+        let blocks: Vec<Result<_, _>> = futures03::future::join_all(tasks).await;
+
+        let mut blocks: Vec<GenericDataProto> = blocks
+            .into_iter()
+            .filter_map(|res_block| {
+                if let Ok(Ok(block)) = res_block {
+                    Some(block)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        blocks.sort_by(|a, b| a.block_number.cmp(&b.block_number));
+        info!("Finished get blocks");
+
+        for block in blocks.into_iter() {
+            let block_number = block.block_number;
+            debug!("gRPC sending block {}", &block_number);
+            if !chan.is_closed() {
+                let send_res = chan.send(Ok(block as GenericDataProto)).await;
+                if send_res.is_ok() {
+                    info!("gRPC successfully sending block {}", &block_number);
+                } else {
+                    warn!("gRPC unsuccessfully sending block {}", &block_number);
+                }
+            } else {
+                return Err("Stream is closed!".into());
+            }
+        }
+
+        got_block_number = Some(got_block_number.unwrap() + getting_block);
     }
     Ok(())
 }

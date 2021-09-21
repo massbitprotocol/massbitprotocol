@@ -31,7 +31,7 @@ structmap       =   "0.1.5"
 
 tonic           =   "0.4" # Chain Reader Client
 prost           =   "0.7" # Chain Reader Client
-
+tower           = { version = "0.4" }
 [dependencies.graph]
 package = "graph"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
