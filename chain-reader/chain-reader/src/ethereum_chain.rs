@@ -10,6 +10,7 @@ use futures03::compat::Future01CompatExt;
 use lazy_static::lazy_static;
 use log::{debug, info, warn};
 use massbit_chain_ethereum::data_type::EthereumBlock as Block;
+use massbit_common::NetworkType;
 use std::collections::HashMap;
 use std::error::Error as StdError;
 use std::sync::{
@@ -40,19 +41,23 @@ const BLOCK_BATCH_SIZE: u64 = 10;
 const RETRY_GET_BLOCK_LIMIT: u32 = 10;
 const GET_BLOCK_TIMEOUT_SEC: u64 = 60;
 
-lazy_static! {
-    pub static ref WEB3: Arc<Web3<Transport>> = {
-        let config = CONFIG.chains.get(&CHAIN_TYPE).unwrap();
-        let websocket_url = config.ws.clone();
-        let http_url = config.url.clone();
+fn get_web3(network: &NetworkType) -> Arc<Web3<Transport>> {
+    let config = CONFIG.get_chain_config(&CHAIN_TYPE, network).unwrap();
+    let websocket_url = config.ws.clone();
+    let http_url = config.url.clone();
 
-        let (transport_event_loop, transport) = match USE_WEBSOCKET {
-            false => Transport::new_rpc(&http_url, Default::default()),
-            true => Transport::new_ws(&websocket_url),
-        };
-        std::mem::forget(transport_event_loop);
-        Arc::new(Web3::new(transport))
+    let (transport_event_loop, transport) = match USE_WEBSOCKET {
+        false => Transport::new_rpc(&http_url, Default::default()),
+        true => Transport::new_ws(&websocket_url),
     };
+    std::mem::forget(transport_event_loop);
+    Arc::new(Web3::new(transport))
+}
+
+lazy_static! {
+    pub static ref WEB3_ETH: Arc<Web3<Transport>> = get_web3(&"ethereum".to_string());
+    pub static ref WEB3_BSC: Arc<Web3<Transport>> = get_web3(&"bsc".to_string());
+    pub static ref WEB3_MATIC: Arc<Web3<Transport>> = get_web3(&"matic".to_string());
 }
 
 #[derive(Error, Debug)]
@@ -277,11 +282,18 @@ async fn get_block(
 pub async fn loop_get_block(
     chan: mpsc::Sender<Result<GenericDataProto, Status>>,
     start_block: &Option<u64>,
+    network: &NetworkType,
 ) -> Result<(), Box<dyn StdError>> {
     info!("Start get block {:?}", CHAIN_TYPE);
     info!("Init Ethereum adapter");
     let exit = Arc::new(AtomicBool::new(false));
     // Get version
+    let WEB3 = match network.as_str() {
+        "bsc" => WEB3_BSC.clone(),
+        "matic" => WEB3_MATIC.clone(),
+        _ => WEB3_ETH.clone(),
+    };
+
     let version = WEB3
         .net()
         .version()

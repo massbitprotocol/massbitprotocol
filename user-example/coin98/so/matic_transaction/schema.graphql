@@ -1,0 +1,12 @@
+type MaticTransaction @entity {
+    id: ID!
+    block_hash: String
+    block_number: BigInt
+    nonce: BigInt
+    sender: String!
+    receiver: String
+    value: BigInt!
+    gas: BigInt!
+    gas_price: BigInt!
+    timestamp: BigInt!
+}

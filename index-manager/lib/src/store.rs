@@ -6,7 +6,7 @@
 // Generic dependencies
 use diesel::{Connection, PgConnection, RunQueryDsl};
 use lazy_static::lazy_static;
-use postgres::{Connection as PostgreConnection, TlsMode};
+use postgres::{Client, NoTls};
 use std::env;
 use std::fs::File;
 use std::io::Read;
@@ -81,7 +81,7 @@ impl IndexStore {
     pub fn run_raw_query(connection: &PgConnection, raw_query: &String) {
         let query = diesel::sql_query(raw_query.clone());
         log::info!("[Index Manager Store] Running raw_query: {}", raw_query);
-        query.execute(connection);
+        query.execute(connection).unwrap();
     }
 
     pub fn migrate_with_ddl_gen_plugin(index_name: &String, schema: &PathBuf, config: &PathBuf) {
@@ -128,8 +128,8 @@ impl IndexStore {
         IndexStore::create_indexers_table_if_not_exists();
 
         // User Postgre create for easy query. Should later switch to use Diesel
-        let client =
-            PostgreConnection::connect(DATABASE_CONNECTION_STRING.clone(), TlsMode::None).unwrap();
+        let mut client =
+            Client::connect(DATABASE_CONNECTION_STRING.clone().as_str(), NoTls).unwrap();
         let mut indexers: Vec<Indexer> = Vec::new();
 
         for row in &client

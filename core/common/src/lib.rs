@@ -23,6 +23,9 @@ pub mod prelude {
     pub use tokio_compat_02;
     pub use tokio_postgres;
 }
+
+pub type NetworkType = String;
+
 #[cfg(test)]
 mod tests {
     #[test]

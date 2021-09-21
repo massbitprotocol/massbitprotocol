@@ -51,6 +51,7 @@ pub async fn print_blocks(
         start_block_number: 1,
         end_block_number: 1,
         chain_type: chain_type as i32,
+        network,
     };
     println!("Creating Stream ...");
     let mut stream = Some(

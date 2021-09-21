@@ -13,21 +13,17 @@ log = "0.4.14"
 env_logger = "0.9.0"
 bs58 = "0.4.0"
 
-############# Solana
 [dependencies.solana-client]
 package = "solana-client"
 git = "https://github.com/massbitprotocol/solana.git"
-#path = "../../../../../solana/solana_offical/solana/client"
-#/home/huy/work/block_chain/solana/solana_offical/solana/client
-#branch = "master"
+branch = "main"
 
 [dependencies.solana-program]
 package = "solana-program"
 git = "https://github.com/massbitprotocol/solana.git"
+branch = "main"
 
 [dependencies.solana-transaction-status]
 package = "solana-transaction-status"
 git = "https://github.com/massbitprotocol/solana.git"
-#path = "../../../../../solana/solana_offical/solana/transaction-status"
-
-############# End solana
+branch = "main"

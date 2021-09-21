@@ -14,30 +14,54 @@ remove-all-git-hook:
 	@echo "Removing all symlinks..."
 	rm .git/hooks/*
 
+
+#This test for run all test when the component already up
 test-run-all:
 	@echo "Running health check tests ..."
 	cd e2e-test/health-check && robot health-check.robot || true
+
 	@echo "Running substrate tests ..."
 	cd e2e-test/substrate && robot substrate.robot
+
+	make restart-chain-reader-index-manager
+
 	@echo "Running solana tests ..."
 	cd e2e-test/solana && robot solana.robot
+
+	make restart-chain-reader-index-manager
+
 	@echo "Running ethereum tests ..."
 	cd e2e-test/ethereum && robot ethereum.robot
 
+#This test start/restart all service and run all test
 test-run-all-and-up:
-	@echo "Run all services"
-	bash run.sh
-	sleep 10;
+	@echo "Close all services before running test"
+	make services-down
+	make kill-all-tmux || true
+
+	@echo "Restart services before running test"
+	make services-up
+	#tmux new -d -s services "make services-up"
+	sleep 5;
+	make run-all-tmux
+	tmux ls
+	sleep 5;
+
 	@echo "Running health check tests ..."
 	cd e2e-test/health-check && robot health-check.robot || true
+
 	@echo "Running substrate tests ..."
-	cd e2e-test/substrate && robot substrate.robot
+	cd e2e-test/substrate && robot substrate.robot || true
+
+	make restart-chain-reader-index-manager
+
 	@echo "Running solana tests ..."
-	cd e2e-test/solana && robot solana.robot
+	cd e2e-test/solana && robot solana.robot || true
+
+	make restart-chain-reader-index-manager
+
 	@echo "Running ethereum tests ..."
-	cd e2e-test/ethereum && robot ethereum.robot
-	@echo "Running dashboard tests ..."
-	cd e2e-test/dashboard && robot dashboard.robot || true
+	cd e2e-test/ethereum && robot ethereum.robot || true
 
 
 test-init:
@@ -51,6 +75,15 @@ create-list-user-example-json-file:
 	@echo "Create list user examples json file ..."
 	cd user-example && python create_example_json.py
 
+restart-chain-reader-index-manager:
+	@echo "Stop index-manager and chain-reader in tmux"
+	tmux kill-session -t chain-reader
+	tmux kill-session -t index-manager
+	@echo "Run index-manager in tmux"
+	tmux new -d -s index-manager scripts/tmux-index-manager.sh
+	@echo "Run chain-reader in tmux"
+	tmux new -d -s chain-reader scripts/tmux-chain-reader.sh
+
 #################### Dev commands ##########################
 
 deploy:
@@ -59,7 +92,7 @@ deploy:
     --header 'Content-Type: application/json' \
     --data-raw '{"configs": {"model": "Factory" }, "compilation_id": "$(id)" }'
 
-run-indexer-manager:
+run-index-manager:
 	@echo "Run index-manager"
 	cargo run --bin index-manager-main
 
@@ -70,7 +103,6 @@ run-chain-reader:
 run-code-compiler:
 	@echo "Run code-compiler"
 	cd code-compiler/ && python app.py
-
 
 services-up:
 	@echo "Run all service"

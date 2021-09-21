@@ -67,7 +67,7 @@ impl IntoTrap for HostExportError {
 }
 
 pub struct HostExports<C: Blockchain> {
-    pub indexer_hash: String,
+    pub deployment_hash: DeploymentHash,
     pub api_version: Version,
     data_source_name: String,
     data_source_address: Vec<u8>,
@@ -78,14 +78,15 @@ pub struct HostExports<C: Blockchain> {
 
 impl<C: Blockchain> HostExports<C> {
     pub fn new(
-        indexer_hash: &str,
+        _indexer_hash: &str,
         data_source: &impl DataSourceTrait<C>,
         data_source_network: String,
         templates: Arc<Vec<C::DataSourceTemplate>>,
         api_version: Version,
     ) -> Self {
         Self {
-            indexer_hash: String::from(indexer_hash),
+            //Todo: Remove this Hardcode value
+            deployment_hash: DeploymentHash::new("_indexer").unwrap(),
             api_version: api_version.clone(),
             data_source_name: data_source.name().to_owned(),
             data_source_address: data_source.address().unwrap_or_default().to_owned(),
@@ -130,7 +131,7 @@ impl<C: Blockchain> HostExports<C> {
         entity_id: String,
     ) -> Result<Option<Entity>, anyhow::Error> {
         let store_key = EntityKey {
-            subgraph_id: DeploymentHash::new("_indexer").unwrap(),
+            subgraph_id: self.deployment_hash.cheap_clone(),
             entity_type: EntityType::new(entity_type.clone()),
             entity_id: entity_id.clone(),
         };
@@ -183,7 +184,7 @@ impl<C: Blockchain> HostExports<C> {
         id_insert_section.end();
         let validation_section = stopwatch.start_section("host_export_store_set__validation");
         let key = EntityKey {
-            subgraph_id: DeploymentHash::new("_indexer").unwrap(),
+            subgraph_id: self.deployment_hash.cheap_clone(),
             entity_type: EntityType::new(entity_type),
             entity_id,
         };
@@ -232,7 +233,7 @@ impl<C: Blockchain> HostExports<C> {
         }
          */
         let key = EntityKey {
-            subgraph_id: DeploymentHash::new(self.indexer_hash.to_string()).unwrap(),
+            subgraph_id: self.deployment_hash.cheap_clone(),
             entity_type: EntityType::new(entity_type),
             entity_id,
         };

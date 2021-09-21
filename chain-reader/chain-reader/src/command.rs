@@ -5,7 +5,9 @@ use crate::{
     grpc_stream::stream_mod::{streamout_server::StreamoutServer, ChainType, GenericDataProto},
     CONFIG,
 };
+use graph::semver::Op;
 use log::error;
+use massbit_common::NetworkType;
 use std::collections::HashMap;
 use std::thread::sleep;
 use std::time::Duration;
@@ -14,8 +16,23 @@ use tonic::transport::Server;
 
 #[derive(Clone, Debug)]
 pub struct Config {
-    pub chains: HashMap<ChainType, ChainConfig>,
+    pub chains: Vec<ChainConfig>,
     pub url: String,
+}
+
+impl Config {
+    pub(crate) fn get_chain_config(
+        &self,
+        chain: &ChainType,
+        network: &NetworkType,
+    ) -> Option<ChainConfig> {
+        for config in self.chains.iter() {
+            if (&config.chain_type == chain) && (&config.network == network) {
+                return Some(config.clone());
+            }
+        }
+        return None;
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -23,9 +40,11 @@ pub struct ChainConfig {
     pub url: String,
     pub ws: String,
     pub start_block: Option<u64>,
+    pub chain_type: ChainType,
+    pub network: NetworkType,
 }
 
-fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>) {
+pub fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>) {
     // Todo: More clean solution for broadcast channel
     let mut rx = chan.subscribe();
     tokio::spawn(async move {
@@ -37,14 +56,18 @@ fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>) {
 
 pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     // Broadcast Channel
-    let mut chans = HashMap::new();
+    let mut chans: HashMap<(ChainType, NetworkType), broadcast::Sender<GenericDataProto>> =
+        HashMap::new();
 
     // Spawm thread get_data
-    for chain_type in CONFIG.chains.keys() {
+    for config in CONFIG.chains.clone().into_iter() {
+        let chain_type = config.chain_type;
+        let network = config.network;
         let (chan, _) = broadcast::channel(1024);
         // Clone broadcast channel
         let chan_sender = chan.clone();
         fix_one_thread_not_receive(&chan_sender);
+        let network_clone = network.clone();
         match chain_type {
             // Spawn Substrate get_data
             ChainType::Substrate => {
@@ -81,7 +104,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
                     }
                 });
                 // add chan to chans
-                chans.insert(ChainType::Substrate, chan);
+                //chans.insert((ChainType::Substrate,), chan);
             }
             ChainType::Solana => {
                 // Spawn task
@@ -90,7 +113,8 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
                     // Todo: add start at save block after restart
                     let mut count = 1;
                     loop {
-                        let resp = solana_chain::loop_get_block(chan_sender.clone()).await;
+                        let resp =
+                            solana_chain::loop_get_block(chan_sender.clone(), &network_clone).await;
                         error!(
                             "Restart {:?} response {:?}, {} time",
                             &chain_type, resp, count
@@ -100,10 +124,12 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
                     }
                 });
                 // add chan to chans
-                chans.insert(ChainType::Solana, chan);
+                //chans.insert(ChainType::Solana, chan);
             }
             ChainType::Ethereum => {}
         }
+        // add chan to chans
+        chans.insert((chain_type, network), chan);
     }
 
     // Run StreamoutServer

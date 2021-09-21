@@ -6,6 +6,7 @@ use log::{debug, info};
 use massbit_chain_solana::data_type::{
     get_list_log_messages_from_encoded_block, SolanaEncodedBlock as Block,
 };
+use massbit_common::NetworkType;
 use solana_client::{pubsub_client::PubsubClient, rpc_client::RpcClient};
 use solana_transaction_status::UiTransactionEncoding;
 use std::error::Error;
@@ -26,12 +27,14 @@ const RPC_BLOCK_ENCODING: UiTransactionEncoding = UiTransactionEncoding::Base64;
 
 pub async fn loop_get_block(
     chan: broadcast::Sender<GenericDataProto>,
+    network: &NetworkType,
 ) -> Result<(), Box<dyn Error>> {
     info!("Start get block Solana");
-    let config = CONFIG.chains.get(&CHAIN_TYPE).unwrap();
+    let config = CONFIG.get_chain_config(&CHAIN_TYPE, &network).unwrap();
     let json_rpc_url = config.url.clone();
     let websocket_url = config.ws.clone();
-    info!("Init Solana client");
+    info!("Init Solana client, url: {}", json_rpc_url);
+    //let (mut subscription_client, receiver) = PubsubClient::slot_subscribe(&websocket_url).unwrap();
     let (mut subscription_client, receiver) = PubsubClient::slot_subscribe(&websocket_url).unwrap();
     info!("Finished init Solana client");
     let exit = Arc::new(AtomicBool::new(false));
