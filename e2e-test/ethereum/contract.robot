@@ -12,15 +12,15 @@ ${CODE_COMPILER}  http://localhost:5000
 ${INDEX_MANAGER}  http://localhost:3000
 
 *** Test Cases ***
-#############################
-# Pancakeswap Exchange WASM #
-#############################
-Compile and Deploy Pancakeswap Exchange WASM
+############################
+# Uniswap-v2 Exchange WASM #
+############################
+Compile and Deploy Uniswap-v2 Exchange WASM
     # Configuration
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
     # Compile request
-    ${object} =  Read Wasm Example  ../../user-example/bsc/wasm/pancakeswap-exchange
+    ${object} =  Read Wasm Example  ../../user-example/ethereum/wasm/uniswap-v2-exchange
     ${compile_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/compile/wasm
     ...  ${object}
