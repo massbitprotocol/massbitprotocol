@@ -15,26 +15,46 @@ remove-all-git-hook:
 	rm .git/hooks/*
 
 
-#This test for run all test when the component already up
-test-run-all:
+test-run-contract:
 	@echo "Running health check tests ..."
 	cd e2e-test/health-check && robot health-check.robot || true
 
-	@echo "Running substrate tests ..."
-	cd e2e-test/substrate && robot substrate.robot
-
+	@echo "Running polygon contract tests ..."
+	cd e2e-test/polygon && robot contract.robot
 	make restart-chain-reader-index-manager
 
-	@echo "Running solana tests ..."
-	cd e2e-test/solana && robot solana.robot
+	@echo "Running bsc contract tests ..."
+	cd e2e-test/bsc && robot contract.robot
 
+
+test-run-chain:
+	@echo "Running health check tests ..."
+	cd e2e-test/health-check && robot health-check.robot || true
+
+	@echo "Running polygon contract tests ..."
+	cd e2e-test/polygon && robot chain.robot
+
+
+#This test for run all test when the component already up
+test-run-basic:
+	@echo "Running health check tests ..."
+	cd e2e-test/health-check && robot health-check.robot || true
+
+	@echo "Running basic substrate tests ..."
+	cd e2e-test/substrate && robot basic.robot
 	make restart-chain-reader-index-manager
 
-	@echo "Running ethereum tests ..."
-	cd e2e-test/ethereum && robot ethereum.robot
+	@echo "Running basic solana tests ..."
+	cd e2e-test/solana && robot basic.robot
+	make restart-chain-reader-index-manager
+
+	@echo "Running basic ethereum tests ..."
+	cd e2e-test/ethereum && robot basic.robot
+	make restart-chain-reader-index-manager
+
 
 #This test start/restart all service and run all test
-test-run-all-and-up:
+test-run-basic-and-up:
 	@echo "Close all services before running test"
 	make services-down
 	make kill-all-tmux || true
@@ -50,19 +70,17 @@ test-run-all-and-up:
 	@echo "Running health check tests ..."
 	cd e2e-test/health-check && robot health-check.robot || true
 
-	@echo "Running substrate tests ..."
-	cd e2e-test/substrate && robot substrate.robot || true
-
+	@echo "Running basic substrate tests ..."
+	cd e2e-test/substrate && robot basic.robot || true
 	make restart-chain-reader-index-manager
 
-	@echo "Running solana tests ..."
-	cd e2e-test/solana && robot solana.robot || true
-
+	@echo "Running basic solana tests ..."
+	cd e2e-test/solana && robot basic.robot || true
 	make restart-chain-reader-index-manager
 
-	@echo "Running ethereum tests ..."
-	cd e2e-test/ethereum && robot ethereum.robot || true
-
+	@echo "Running basic ethereum tests ..."
+	cd e2e-test/ethereum && robot basic.robot || true
+	make restart-chain-reader-index-manager
 
 test-init:
 	@echo "Installing all the dependencies for E2E tests ..."
