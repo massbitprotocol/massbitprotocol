@@ -154,7 +154,7 @@ Compile and Deploy WASM Test Ethereum Block
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
     # Compile request
-    ${object} =  Read Wasm Example  ../../user-example/ethereum/wasm/test-block  default
+    ${object} =  Read Wasm Example  ../../user-example/ethereum/wasm/test-block
     ${compile_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/compile/wasm
     ...  ${object}
@@ -182,7 +182,7 @@ Compile and Deploy WASM Test Ethereum Event
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
     # Compile request
-    ${object} =  Read Wasm Example  ../../user-example/ethereum/wasm/test-event  default
+    ${object} =  Read Wasm Example  ../../user-example/ethereum/wasm/test-event
     ${compile_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/compile/wasm
     ...  ${object}

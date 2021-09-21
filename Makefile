@@ -8,6 +8,17 @@ remove-all-git-hook:
 	@echo "Removing all symlinks..."
 	rm .git/hooks/*
 
+test-run-contract:
+	@echo "Running health check tests ..."
+	cd e2e-test/health-check && robot health-check.robot || true
+
+	@echo "Running polygon contract tests ..."
+	cd e2e-test/polygon && robot contract.robot
+	make restart-chain-reader-index-manager
+
+	@echo "Running bsc contract tests ..."
+	cd e2e-test/bsc && robot contract.robot
+
 
 #This test for run all test when the component already up
 test-run-all:
@@ -26,12 +37,6 @@ test-run-all:
 	cd e2e-test/ethereum && robot basic.robot
 	make restart-chain-reader-index-manager
 
-	@echo "Running basic polygon tests ..."
-	cd e2e-test/polygon && robot basic.robot
-	make restart-chain-reader-index-manager
-
-	@echo "Running basic bsc tests ..."
-	cd e2e-test/bsc && robot basic.robot
 
 #This test start/restart all service and run all test
 test-run-all-and-up:
@@ -61,14 +66,6 @@ test-run-all-and-up:
 	@echo "Running basic ethereum tests ..."
 	cd e2e-test/ethereum && robot basic.robot || true
 	make restart-chain-reader-index-manager
-
-	@echo "Running basic polygon tests ..."
-	cd e2e-test/polygon && robot basic.robot
-	make restart-chain-reader-index-manager
-
-	@echo "Running basic bsc tests ..."
-	cd e2e-test/bsc && robot basic.robot
-
 
 test-init:
 	@echo "Installing all the dependencies for E2E tests ..."
