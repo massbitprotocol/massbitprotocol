@@ -16,28 +16,60 @@ make init-test
 ```
 
 ## Hardware requirements
-Running with public BSC/Ethereum/Solana node
+Massbit Indexer:
 - CPU: 16 cores
 - Ram: 32 GB
-- SSD or HDD: 200 GB
+- SSD or HDD: 
+  - If your goal is to index DEXs: 200 GB is recommended
+  - If your goal is to index the chain: 2 TB is recommended for each chain
 
-Running with local BSC/Ethereum/Solana node
+Custom Solana node (optional)
 - The node needs to be Full Archival Node
 - Use the hardware recommendation from https://docs.solana.com/running-validator/validator-reqs
 
-## How to start
-Running with public BSC/Ethereum/Solana Node
-```shell
-make services-prod-up
-make index-quickswap
-make index-pancakeswap
-```
+Custom Polygon node (optional)
+- to be added
 
-Running with local BSC/Ethereum/Solana Node
-- Start your BSC/Ethereum/Solana node
-- Modify chain-reader/chain-reader/src/lib.rs pointing to your local ws and http url
-- ```shell
+Custom Ethereum node (optional)
+- to be added
+
+Custom BSC node (optional)
+- to be added
+
+## How to start
+Index with public BSC/Ethereum/Polygon/Solana Node
+- Start the docker services in production mode
+  ```shell
   make services-prod-up
+  ```
+- Start indexing
+  ```
+  make index-quickswap
+  make index-pancakeswap
+  ```
+
+Index with custom BSC/Ethereum/Polygon/Solana Node
+- Start your BSC/Ethereum/Polygon/Solana node
+- Override chain-reader environment config with BSC/Ethereum/Polygon/Solana endpoint in the docker-compose.prod.yml
+  ```yaml
+  chain-reader:
+    ...
+    environment:
+      SOLANA_WS: add_your_ws
+      SOLANA_URL: add_your_url
+      POLYGON_WS: add_your_ws
+      POLYGON_URL: add_your_url
+      BSC_WS: add_your_ws
+      BSC_URL: add_your_url
+      ETHEREUM_WS: add_your_ws
+      ETHEREUM_URL: add_your_url
+  ```
+- Start the docker services in production mode 
+  ```shell
+  make services-prod-up
+  ```
+- Start indexing
+  ```
   make index-quickswap
   make index-pancakeswap
   ```
