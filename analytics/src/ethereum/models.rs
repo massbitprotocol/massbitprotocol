@@ -1,17 +1,12 @@
 use crate::schema::*;
 use bigdecimal::{BigDecimal, FromPrimitive};
-use diesel::prelude::*;
-use diesel::types::{Int8, Bytea};
-use diesel::Expression;
 use massbit_chain_ethereum::data_type::{LightEthereumBlock};
-use graph::prelude::web3::types::{Transaction, U64, U256};
-use graph::data::store::ValueType::BigInt;
-
+use graph::prelude::web3::types::Transaction;
 
 //https://kotiri.com/2018/01/31/postgresql-diesel-rust-types.html
 #[derive(Debug, Clone, Insertable, Queryable)]
-#[table_name = "matic_block"]
-pub struct MaticBlock {
+#[table_name = "ethereum_block"]
+pub struct EthereumBlock {
     pub block_hash: String,
     pub block_number: Option<i64>,
     pub transaction_number: i64,
@@ -27,8 +22,8 @@ pub struct MaticBlock {
 }
 
 #[derive(Debug, Clone, Insertable, Queryable)]
-#[table_name = "matic_transaction"]
-pub struct MaticTransaction {
+#[table_name = "ethereum_transaction"]
+pub struct EthereumTransaction {
     pub transaction_hash: String,
     pub block_hash: Option<String>,
     pub block_number: Option<i64>,
@@ -41,7 +36,7 @@ pub struct MaticTransaction {
     pub timestamp: i64
 }
 
-impl From<&LightEthereumBlock> for MaticBlock {
+impl From<&LightEthereumBlock> for  EthereumBlock {
     fn from(block: &LightEthereumBlock) -> Self {
         let block_hash = match block.hash {
             Some(hash) => format!(
@@ -49,13 +44,13 @@ impl From<&LightEthereumBlock> for MaticBlock {
                 hex::encode(hash.as_bytes()).trim_start_matches('0')
             ),
             None => String::from("")
-        }; ;
+        };
         let block_number = match block.number {
             None => None,
             Some(val) => Some(val.as_u64() as i64)
         };
         let timestamp= block.timestamp.as_u64() as i64;
-        let validator = format!(
+        let _validator = format!(
             "0x{}",
             hex::encode(block.author.as_bytes()).trim_start_matches('0')
         );
@@ -80,8 +75,7 @@ impl From<&LightEthereumBlock> for MaticBlock {
         };
         let gas_limit = BigDecimal::from_u128(block.gas_limit.as_u128());
         let gas_used = BigDecimal::from_u128(block.gas_used.as_u128());
-
-        MaticBlock {
+        EthereumBlock {
             block_hash,
             block_number,
             transaction_number: block.transactions.len() as i64,
@@ -97,7 +91,7 @@ impl From<&LightEthereumBlock> for MaticBlock {
         }
     }
 }
-impl  From<&Transaction> for MaticTransaction {
+impl  From<&Transaction> for EthereumTransaction {
     fn from(trans: &Transaction) -> Self {
         let transaction_hash = format!(
             "0x{}",
@@ -137,7 +131,7 @@ impl  From<&Transaction> for MaticTransaction {
             None => BigDecimal::from(0),
             Some(val) => val
         };
-        MaticTransaction {
+        EthereumTransaction {
             transaction_hash,
             block_hash,
             block_number,
