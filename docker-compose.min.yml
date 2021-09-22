@@ -15,6 +15,23 @@ services:
       POSTGRES_PASSWORD: let-me-in
       POSTGRES_DB: graph-node
 
+  metabase-app:
+    build: ./metabase
+    restart: always
+#    command: /bin/sh -c "/app/run_metabase.sh && sleep 10 && ./init.sh"
+    entrypoint: ["./init.sh"]
+    ports:
+      - 3002:3000
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: graph-node
+      MB_DB_PORT: 5432
+      MB_DB_USER: graph-node
+      MB_DB_PASS: let-me-in
+      MB_DB_HOST: postgres
+    depends_on:
+      - postgres
+
   substrate-node:
     image: sprise/substrate-node:0.1
     ports:
