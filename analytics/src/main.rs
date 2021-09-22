@@ -59,7 +59,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
             .takes_value(true),
     )
             .get_matches();
-        {
+    {
         let conn = establish_connection();
         match embedded_migrations::run(&conn) {
             Ok(res) => println!("Finished embedded_migration {:?}", &res),
