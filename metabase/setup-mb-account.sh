@@ -29,10 +29,10 @@ curl --location --request POST 'localhost:3000/api/setup/' \
       "schedules": {}
     },
     "user": {
-      "first_name": "codelight",
+      "first_name": "massbit",
       "last_name": "admin",
-      "email": "admin@codelight.co",
-      "password": "Codelight123",
-      "site_name": "codelight"
+      "email": "admin@massbit.co",
+      "password": "Massbit123",
+      "site_name": "Massbit"
     }
   }' >> setup-mb-account.log
