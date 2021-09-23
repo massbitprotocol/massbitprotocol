@@ -21,7 +21,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub(crate) fn get_chain_config(
+    pub fn get_chain_config(
         &self,
         chain: &ChainType,
         network: &NetworkType,

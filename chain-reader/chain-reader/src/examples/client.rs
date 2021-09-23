@@ -3,7 +3,7 @@ use clap::{App, Arg};
 use crate::stream_mod::{
     streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
 };
-use graph::data::subgraph::UnresolvedSubgraphManifest;
+use graph::data::subgraph::{UnresolvedSubgraphManifest, SPEC_VERSION_0_0_4};
 use graph::ipfs_client::IpfsClient;
 use graph_core::LinkResolver;
 use log::{debug, info, warn};
@@ -26,6 +26,7 @@ use tokio_compat_02::FutureExt;
 
 use serde_yaml::Value;
 
+use massbit_common::NetworkType;
 #[allow(unused_imports)]
 use tonic::{
     transport::{Channel, Server},
@@ -42,13 +43,14 @@ const MAX_COUNT: i32 = 3;
 pub async fn print_blocks(
     mut client: StreamoutClient<Channel>,
     chain_type: ChainType,
+    network: NetworkType,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     // Debug
     let mut count = 0;
 
     // Not use start_block_number start_block_number yet
     let get_blocks_request = GetBlocksRequest {
-        start_block_number: 1,
+        start_block_number: 19408325,
         end_block_number: 1,
         chain_type: chain_type as i32,
         network,
@@ -270,7 +272,7 @@ async fn get_data_source(
 
     //debug!("Features {:?}", unresolved.features);
     let manifest = unresolved
-        .resolve(&*resolver, &logger)
+        .resolve(&*resolver, &logger, SPEC_VERSION_0_0_4.clone())
         .compat()
         .await
         .map_err(SubgraphAssignmentProviderError::ResolveError)?;
@@ -304,15 +306,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     match chain_type {
         "substrate" => {
             info!("Run client: {}", chain_type);
-            print_blocks(client, ChainType::Substrate).await?;
+            print_blocks(client, ChainType::Substrate, Default::default()).await?;
         }
         "solana" => {
             info!("Run client: {}", chain_type);
-            print_blocks(client, ChainType::Solana).await?;
+            print_blocks(client, ChainType::Solana, Default::default()).await?;
         }
         _ => {
             info!("Run client: {}", chain_type);
-            print_blocks(client, ChainType::Ethereum).await?;
+            print_blocks(client, ChainType::Ethereum, "matic".to_string()).await?;
         }
     };
 
