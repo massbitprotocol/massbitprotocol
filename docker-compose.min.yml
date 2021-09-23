@@ -15,10 +15,10 @@ services:
       POSTGRES_PASSWORD: let-me-in
       POSTGRES_DB: graph-node
 
-  metabase-app:
+  metabase:
     build: ./metabase
     restart: always
-#    command: /bin/sh -c "/app/run_metabase.sh && sleep 10 && ./init.sh"
+    # Account for login can be found in the folder /metabase/setup-mb-account.sh
     entrypoint: ["./init.sh"]
     ports:
       - 3002:3000

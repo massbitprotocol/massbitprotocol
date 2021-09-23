@@ -15,6 +15,22 @@ services:
       POSTGRES_PASSWORD: let-me-in
       POSTGRES_DB: graph-node
 
+  metabase:
+    build: ./metabase
+    restart: always
+    entrypoint: [ "./init.sh" ]
+    ports:
+      - 3002:3000
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: graph-node
+      MB_DB_PORT: 5432
+      MB_DB_USER: graph-node
+      MB_DB_PASS: let-me-in
+      MB_DB_HOST: postgres
+    depends_on:
+      - postgres
+
   hasura:
     image: hasura/graphql-engine:v2.0.1
     ports:
