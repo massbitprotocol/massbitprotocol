@@ -70,7 +70,7 @@ pub fn get_block_number(conn: &PgConnection, chain_value: String, network_value:
         .filter(network.eq(network_value))
         .limit(1)
         .load::<NetworkState>(conn)
-        .expect("Error loading posts");
+        .expect("Error loading network state");
     if results.len() == 0 {
         None
     } else {
