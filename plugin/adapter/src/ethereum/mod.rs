@@ -11,8 +11,7 @@ use graph::data::subgraph::DeploymentHash;
 use graph::log::logger;
 use graph_chain_ethereum::trigger::EthereumBlockTriggerType;
 use graph_chain_ethereum::{
-    chain::BlockFinality, trigger::EthereumTrigger, Chain, DataSource, DataSourceTemplate,
-    MappingTrigger,
+    chain::BlockFinality, trigger::EthereumTrigger, Chain, DataSource, DataSourceTemplate
 };
 use graph_mock::MockMetricsRegistry;
 use graph_runtime_wasm::ValidModule;

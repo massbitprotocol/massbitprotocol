@@ -7,5 +7,7 @@ create table indexer_state
     schema_name varchar not null,
     got_block bigint default 0 not null
 );
+create unique index indexer_state_hash_uindex
+    on indexer_state (indexer_hash);
 
 
