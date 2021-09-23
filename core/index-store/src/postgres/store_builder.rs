@@ -15,6 +15,7 @@ use super::PostgresIndexStore;
 use diesel::prelude::*;
 use diesel::sql_types::BigInt;
 use diesel::QueryableByName;
+use diesel_migrations::embed_migrations;
 use graph::cheap_clone::CheapClone;
 use graph::data::schema::Schema;
 use graph::log::logger;
@@ -48,6 +49,7 @@ lazy_static! {
 }
 
 const CONN_POOL_SIZE: u32 = 20;
+embed_migrations!("./migrations");
 
 pub struct StoreBuilder {}
 impl StoreBuilder {
@@ -97,6 +99,12 @@ impl StoreBuilder {
         );
         //Skip run migration in connection_pool
         connection.skip_setup();
+        let logger = Logger::root(slog::Discard, slog::o!());
+        let conn = connection.get_with_timeout_warning(&logger).unwrap();
+        match embedded_migrations::run(&conn) {
+            Ok(res) => println!("Finished embedded_migration {:?}", &res),
+            Err(err) => println!("{:?}", &err)
+        };
         match Self::create_relational_schema(schema_path, &connection) {
             Ok(layout) => {
                 //let entity_dependencies = layout.create_dependencies();

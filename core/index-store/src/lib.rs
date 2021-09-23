@@ -1,9 +1,15 @@
+#[macro_use]
 extern crate diesel;
+#[macro_use]
+extern crate diesel_migrations;
+use diesel::prelude::*;
 use graph::data::subgraph::DeploymentHash;
 use lazy_static::lazy_static;
 pub mod core;
 pub mod mapping;
+pub mod models;
 pub mod postgres;
+pub mod schema;
 pub mod struct_entity;
 lazy_static! {
     pub static ref COMPONENT_NAME: String = String::from("[Index-Store]");
