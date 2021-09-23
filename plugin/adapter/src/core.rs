@@ -4,7 +4,6 @@ pub use crate::stream_mod::{
 };
 pub use crate::{HandlerProxyType, PluginRegistrar, WasmHandlerProxyType};
 use graph::data::subgraph::SubgraphManifest;
-use graph::semver::Op;
 use graph_chain_ethereum::Chain;
 use graph_chain_ethereum::{DataSource, DataSourceTemplate};
 use graph_runtime_wasm::ValidModule;
@@ -182,7 +181,7 @@ impl AdapterManager {
         let mut handler_proxy = WasmHandlerProxyType::create_proxy(
             &adapter_name,
             indexer_hash,
-            store,
+            store.clone(),
             data_source.clone(), //Arc::clone(&valid_module),
             templates,
         );
@@ -232,9 +231,9 @@ impl AdapterManager {
                                                     "{} Error while handle received message",
                                                     err
                                                 );
-                                                start_block = data.block_number;
                                             }
                                             Ok(_) => {
+                                                store.save_got_block(indexer_hash, data.block_number as i64);
                                                 start_block = data.block_number + 1;
                                             }
                                         }
