@@ -32,6 +32,8 @@ init-npm:
 	sudo apt-get install -y nodejs
 
 init-test:
+	@echo "Installing some important libraries for scripting ..."
+	sudo apt install -y tmux
 	@echo "Installing all the dependencies for E2E tests ..."
 	pip3 install robotframework robotframework-requests robotframework-databaselibrary rpaframework
 	pip3 install psycopg2 rpaframework robotframework-seleniumlibrary robotframework-sshlibrary
