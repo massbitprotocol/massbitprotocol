@@ -1,5 +1,4 @@
 use futures03::{stream::Stream, Future, FutureExt};
-use std::cmp;
 use std::collections::VecDeque;
 use std::task::{Context, Poll};
 
@@ -21,7 +20,6 @@ lazy_static! {
 
 #[cfg(debug_assertions)]
 use fail::fail_point;
-
 enum BlockStreamState<C>
 where
     C: Blockchain,
@@ -129,7 +127,7 @@ where
     async fn get_next_step(&self) -> Result<ReconciliationStep<C>, Error> {
         // Start with first block after stream ptr; if the ptr is None,
         // then we start with the genesis block
-        let from = self.stream_block_number + 1;
+        let from = self.stream_block_number;
 
         let blocks = self
             .adapter
@@ -169,7 +167,7 @@ impl<C: Blockchain> Stream for PollingBlockStream<C> {
                             }
 
                             self.ctx.stream_block_number =
-                                self.ctx.stream_block_number + block_range_size;
+                                self.ctx.stream_block_number + block_range_size + 1;
 
                             // Switch to yielding state until next_blocks is depleted
                             self.state = BlockStreamState::YieldingBlocks(Box::new(next_blocks));

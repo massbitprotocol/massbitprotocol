@@ -1,8 +1,7 @@
 use massbit::components::store::BlockNumber;
 use massbit::prelude::*;
-use std::collections::HashMap;
 use std::convert::TryFrom;
-use web3::types::{Address, Block, Bytes, Log, Transaction, TransactionReceipt, H256, U256};
+use web3::types::{Address, Block, Bytes, Log, Transaction, H256, U256};
 
 pub type LightEthereumBlock = Block<Transaction>;
 

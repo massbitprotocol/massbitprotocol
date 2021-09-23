@@ -1,9 +1,8 @@
-use ethabi::{Function, ParamType, Token};
 use std::cmp;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use tiny_keccak::keccak256;
-use web3::types::{Address, Log, H256};
+use web3::types::{Address, H256};
 
 use massbit::prelude::*;
 use massbit::{
@@ -357,6 +356,8 @@ impl EthereumBlockFilter {
 /// or a remote node over RPC.
 #[async_trait]
 pub trait EthereumAdapter: Send + Sync + 'static {
+    fn provider(&self) -> &str;
+
     fn block_hash_by_block_number(
         &self,
         block_number: BlockNumber,

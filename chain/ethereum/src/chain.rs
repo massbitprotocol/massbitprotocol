@@ -2,15 +2,20 @@ use massbit::prelude::*;
 use std::sync::Arc;
 
 use massbit::blockchain::{
-    Block, Blockchain, BlockchainKind, TriggersAdapter as TriggersAdapterTrait,
+    block_stream::BlockWithTriggers, Block, BlockStream, Blockchain, BlockchainKind,
+    PollingBlockStream, TriggersAdapter as TriggersAdapterTrait,
 };
 
-use crate::data_source::DataSource;
+use crate::data_source::{DataSource, UnresolvedDataSource};
+use crate::ethereum_adapter::blocks_with_triggers;
+use crate::network::EthereumNetworkAdapters;
 use crate::types::{LightEthereumBlock, LightEthereumBlockExt};
+use crate::EthereumAdapter;
 use crate::TriggerFilter;
-use massbit::blockchain::block_stream::BlockWithTriggers;
 
-pub struct Chain {}
+pub struct Chain {
+    pub eth_adapters: Arc<EthereumNetworkAdapters>,
+}
 
 impl std::fmt::Debug for Chain {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -26,11 +31,32 @@ impl Blockchain for Chain {
 
     type DataSource = DataSource;
 
+    type UnresolvedDataSource = UnresolvedDataSource;
+
     type TriggersAdapter = TriggersAdapter;
 
     type TriggerData = crate::trigger::EthereumTrigger;
 
     type TriggerFilter = crate::adapter::TriggerFilter;
+
+    fn triggers_adapter(&self) -> Result<Arc<Self::TriggersAdapter>, Error> {
+        let eth_adapter = self.eth_adapters.adapters[0].adapter.clone();
+        let adapter = TriggersAdapter { eth_adapter };
+        Ok(Arc::new(adapter))
+    }
+
+    async fn new_block_stream(
+        &self,
+        start_blocks: Vec<BlockNumber>,
+        filter: Arc<Self::TriggerFilter>,
+    ) -> Result<Box<dyn BlockStream<Self>>, Error> {
+        let triggers_adapter = self.triggers_adapter()?;
+        Ok(Box::new(PollingBlockStream::new(
+            triggers_adapter,
+            filter,
+            18403764,
+        )))
+    }
 }
 
 /// This is used in `EthereumAdapter::triggers_in_block`, called when re-processing a block for
@@ -72,7 +98,9 @@ impl Block for BlockFinality {
     }
 }
 
-pub struct TriggersAdapter {}
+pub struct TriggersAdapter {
+    eth_adapter: Arc<EthereumAdapter>,
+}
 
 #[async_trait]
 impl TriggersAdapterTrait<Chain> for TriggersAdapter {
@@ -82,6 +110,6 @@ impl TriggersAdapterTrait<Chain> for TriggersAdapter {
         to: BlockNumber,
         filter: &TriggerFilter,
     ) -> Result<Vec<BlockWithTriggers<Chain>>, Error> {
-        todo!()
+        blocks_with_triggers(self.eth_adapter.clone(), from, to, filter).await
     }
 }

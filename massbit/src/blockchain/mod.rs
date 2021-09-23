@@ -9,13 +9,14 @@ mod types;
 
 use anyhow::{anyhow, Context, Error};
 use async_trait::async_trait;
+use serde::de::DeserializeOwned;
+use std::sync::Arc;
 use std::{
     fmt::{self, Debug},
     str::FromStr,
-    sync::Arc,
 };
-use web3::types::H256;
 
+use crate::components::link_resolver::LinkResolver;
 use crate::components::store::BlockNumber;
 
 pub use block_stream::{BlockStream, TriggersAdapter};
@@ -45,6 +46,7 @@ pub trait Blockchain: Debug + Sized + Send + Sync + Unpin + 'static {
 
     type Block: Block;
     type DataSource: DataSource<Self>;
+    type UnresolvedDataSource: UnresolvedDataSource<Self>;
 
     type TriggersAdapter: TriggersAdapter<Self>;
 
@@ -53,6 +55,14 @@ pub trait Blockchain: Debug + Sized + Send + Sync + Unpin + 'static {
 
     /// Trigger filter used as input to the triggers adapter.
     type TriggerFilter: TriggerFilter<Self>;
+
+    fn triggers_adapter(&self) -> Result<Arc<Self::TriggersAdapter>, Error>;
+
+    async fn new_block_stream(
+        &self,
+        start_blocks: Vec<BlockNumber>,
+        filter: Arc<Self::TriggerFilter>,
+    ) -> Result<Box<dyn BlockStream<Self>>, Error>;
 }
 
 pub trait TriggerFilter<C: Blockchain>: Default + Clone + Send + Sync {
@@ -67,7 +77,16 @@ pub trait TriggerFilter<C: Blockchain>: Default + Clone + Send + Sync {
     fn extend<'a>(&mut self, data_sources: impl Iterator<Item = &'a C::DataSource> + Clone);
 }
 
-pub trait DataSource<C: Blockchain>: 'static + Sized + Send + Sync + Clone {}
+pub trait DataSource<C: Blockchain>: 'static + Sized + Send + Sync + Clone {
+    fn start_block(&self) -> BlockNumber;
+}
+
+#[async_trait]
+pub trait UnresolvedDataSource<C: Blockchain>:
+    'static + Sized + Send + Sync + DeserializeOwned
+{
+    async fn resolve(self, resolver: &impl LinkResolver) -> Result<C::DataSource, anyhow::Error>;
+}
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum BlockchainKind {

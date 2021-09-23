@@ -1,4 +1,3 @@
-use futures::future;
 use futures::prelude::*;
 use massbit::blockchain::block_stream::BlockWithTriggers;
 use massbit::prelude::web3::types::H256;
@@ -58,11 +57,13 @@ lazy_static! {
 pub struct EthereumAdapter {
     url_hostname: Arc<String>,
     web3: Arc<Web3<Transport>>,
+    provider: String,
 }
 
 impl CheapClone for EthereumAdapter {
     fn cheap_clone(&self) -> Self {
         Self {
+            provider: self.provider.clone(),
             url_hostname: self.url_hostname.cheap_clone(),
             web3: self.web3.cheap_clone(),
         }
@@ -70,7 +71,7 @@ impl CheapClone for EthereumAdapter {
 }
 
 impl EthereumAdapter {
-    pub async fn new(url: &str, transport: Transport) -> Self {
+    pub async fn new(provider: String, url: &str, transport: Transport) -> Self {
         let hostname = url::Url::parse(url)
             .unwrap()
             .host_str()
@@ -80,6 +81,7 @@ impl EthereumAdapter {
         let web3 = Arc::new(Web3::new(transport));
 
         EthereumAdapter {
+            provider,
             url_hostname: Arc::new(hostname),
             web3,
         }
@@ -249,6 +251,10 @@ impl EthereumAdapter {
 
 #[async_trait]
 impl EthereumAdapterTrait for EthereumAdapter {
+    fn provider(&self) -> &str {
+        &self.provider
+    }
+
     fn block_hash_by_block_number(
         &self,
         block_number: BlockNumber,

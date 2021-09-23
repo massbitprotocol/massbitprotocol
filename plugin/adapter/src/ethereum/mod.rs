@@ -220,7 +220,7 @@ impl EthereumWasmHandlerProxy {
             // Transact entity modifications into the store
             if mods.len() > 0 {
                 match self.store.transact_block_operations(
-                    block_ptr.cheap_clone(),
+                    block_ptr.cheap_clone(matching_block),
                     mods,
                     stopwatch.cheap_clone(),
                     data_sources,
