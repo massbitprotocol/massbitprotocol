@@ -14,6 +14,8 @@ services:
       POSTGRES_USER: graph-node
       POSTGRES_PASSWORD: let-me-in
       POSTGRES_DB: graph-node
+    volumes:
+      - ./data/postgres-massbit:/var/lib/postgresql/data
 
   hasura:
     image: hasura/graphql-engine:v2.0.1
