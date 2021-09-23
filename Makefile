@@ -213,11 +213,11 @@ test-long-running-quickswap:
 
 index-quickswap:
 	@echo "Running only the quickswap Ethereum test ..."
-	cd e2e-test/polygon && robot -t "Compile and Deploy WASM Test Quickswap" basic.robot
+	cd e2e-test/polygon && robot -t "Compile and Deploy WASM Test Quickswap" contract.robot
 	@echo "Running report email services"
 	tmux new -d -s report_email "cd e2e-test && python check_log.py"
 	tmux ls
 
 test-long-running-quickswap-run-test-only:
 	@echo "Running only the quickswap Polygon test ..."
-	cd e2e-test/polygon && robot -t "Compile and Deploy WASM Test Quickswap" basic.robot
+	cd e2e-test/polygon && robot -t "Compile and Deploy WASM Test Quickswap" contract.robot
