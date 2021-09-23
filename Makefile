@@ -47,9 +47,6 @@ remove-all-git-hook:
 	@echo "Removing all symlinks..."
 	rm .git/hooks/*
 
-test-run-contract:
-	@echo "Running health check tests ..."
-	cd e2e-test/health-check && robot health-check.robot || true
 
 test-run-contract:
 	@echo "Running health check tests ..."

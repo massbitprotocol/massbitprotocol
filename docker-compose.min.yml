@@ -70,6 +70,7 @@ services:
       ENABLE_TELEMETRY: "true"
       URL_PREFIX: /
       DATA_API_URL: http://localhost:8080
+#      DATA_API_URL: http://161.97.86.197:8080
       SERVER_VERSION: v1.0.0
       CONSOLE_MODE: server
       ADMIN_SECRET: massbit
