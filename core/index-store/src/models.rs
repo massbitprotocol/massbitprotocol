@@ -1,10 +1,16 @@
 use crate::schema::*;
 
 #[derive(Debug, Clone, Insertable, Queryable)]
-#[table_name = "indexer_state"]
-pub struct IndexerState {
-    pub id: i64,
-    pub indexer_hash: String,
+#[table_name = "indexers"]
+pub struct Indexer {
+    pub id: String,
+    pub network: String,
+    pub name: String,
     pub schema_name: String,
-    pub got_block: i64
+    pub description: String,
+    pub repo: String,
+    pub index_status: String,
+    pub got_block: i64,
+    pub hash: String,
+    pub v_id: i32
 }

@@ -21,7 +21,6 @@ uuid = { version = "0.8", features = ["serde", "v4"] }
 rand = "0.8.4"
 env_logger          = "0.9.0"
 massbit-common      = { path = "../../core/common"}
-
 [dependencies.graph]
 package = "graph"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
@@ -34,6 +33,11 @@ branch = "main"
 
 [dependencies.graph-store-postgres]
 package = "graph-store-postgres"
+git = "https://github.com/massbitprotocol/massbit-graph-node"
+branch = "main"
+
+[dependencies.graph-chain-ethereum]
+package = "graph-chain-ethereum"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
 branch = "main"
 

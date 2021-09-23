@@ -59,12 +59,16 @@ impl IndexStore {
         let name = config_value["dataSources"][0]["name"].as_str().unwrap();
 
         let add_new_indexer = format!(
-            "INSERT INTO indexers(id, name, network, index_status, hash) VALUES ('{}','{}','{}', '{}', '{}');",
+            "INSERT INTO indexers(id, name, schema_name, description, repo, network, index_status, hash, got_block) VALUES ('{}', '{}', '{}','{}','{}','{}','{}', '{}', '{}');",
             id,
             name,
+            "",
+            "",
+            "",
             network,
             IndexStatus::Synced.as_static().to_lowercase(),
             index_config.identifier.hash,
+            0_64
         );
         let result = diesel::sql_query(add_new_indexer).execute(&connection);
         match result {

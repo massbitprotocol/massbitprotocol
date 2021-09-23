@@ -7,6 +7,7 @@ use std::error::Error;
  **/
 // Generic dependencies
 use diesel::{Connection, PgConnection};
+use diesel_migrations::embed_migrations;
 use lazy_static::lazy_static;
 use log::{debug, info, warn};
 use serde_yaml::Value;
@@ -42,7 +43,7 @@ lazy_static! {
     static ref IPFS_ADDRESS: String =
         env::var("IPFS_ADDRESS").unwrap_or(String::from("0.0.0.0:5001"));
 }
-
+embed_migrations!("./migrations");
 pub async fn start_new_index(params: DeployParams) -> Result<(), Box<dyn Error>> {
     let index_config = IndexConfigIpfsBuilder::default()
         .config(&params.config)
@@ -80,6 +81,13 @@ pub async fn start_new_index(params: DeployParams) -> Result<(), Box<dyn Error>>
 }
 
 pub async fn restart_all_existing_index_helper() -> Result<(), Box<dyn Error>> {
+    let database_url = crate::DATABASE_CONNECTION_STRING.as_str();
+    let conn = PgConnection::establish(database_url)
+        .expect(&format!("Error connecting to {}", database_url));
+    match embedded_migrations::run(&conn) {
+        Ok(res) => println!("Finished embedded_migration {:?}", &res),
+        Err(err) => println!("{:?}", &err)
+    };
     let indexers = IndexStore::get_indexer_list();
 
     if indexers.len() == 0 {

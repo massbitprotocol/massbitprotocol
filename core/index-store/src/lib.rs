@@ -2,7 +2,6 @@
 extern crate diesel;
 #[macro_use]
 extern crate diesel_migrations;
-use diesel::prelude::*;
 use graph::data::subgraph::DeploymentHash;
 use lazy_static::lazy_static;
 pub mod core;
