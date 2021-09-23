@@ -3,6 +3,7 @@ pub mod prelude {
     pub use anyhow;
     //pub use anyhow::{anyhow, Context as _, Error};
     pub use async_trait;
+    pub use bigdecimal;
     pub use bs58;
     pub use diesel;
     pub use diesel_derives;
