@@ -60,12 +60,27 @@ services:
 
 Start the-graph service
 ```shell
-docker-compose up
+docker-compose up -d
 ```
 
 Start new index with the graph
 ```shell
 cd massbitprotocol/user-example/polygon/wasm/quickswap
-
+npm install
+npm run codegen
+npm run build
+npm run create-local
+[Fix package.json to `deploy-local` to point to IPFS 5002]
+npm run deploy-local
 ```
 
+Or with https://github.com/QuickSwap/QuickSwap-subgraph
+```shell
+git clone https://github.com/QuickSwap/QuickSwap-subgraph
+cd QuickSwap-subgraph
+npm install
+npm run codegen
+npm run create-local
+[Fix package.json to `deploy-local` to point to IPFS 5002]
+npm run deploy-local
+```

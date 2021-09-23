@@ -21,7 +21,7 @@ init-python:
 	sudo apt install -y python3.8
 	sudo rm /usr/bin/python3
 	sudo ln -s python3.8 /usr/bin/python3
-	sudo apt install -y python3-pip python-pip wget unzip libpq-dev python3-dev
+	sudo apt install -y python3-pip wget unzip libpq-dev python3-dev
 	sudo pip3 install setuptools-rust
 	sudo pip3 install --upgrade pip
 	sudo pip3 install PyQtWebEngine
