@@ -26,6 +26,11 @@ init-python:
 	sudo pip3 install --upgrade pip
 	sudo pip3 install PyQtWebEngine
 
+init-npm:
+	sudo apt install -y npm
+	curl -fsSL https://deb.nodesource.com/setup_14.x | bash -
+	sudo apt-get install -y nodejs
+
 init-test:
 	@echo "Installing all the dependencies for E2E tests ..."
 	pip3 install robotframework robotframework-requests robotframework-databaselibrary rpaframework

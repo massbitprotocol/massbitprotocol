@@ -1,11 +1,12 @@
 # The Graph
-## Setting up the graph to test data integrity
-
+## Prerequisites
 ```shell
 make init-docker
+make init-npm
 ```
 
-Change our directory outside massbitprotocol
+## Setting up the graph to test data integrity
+Setup docker for the-graph
 ```shell
 git clone https://github.com/graphprotocol/graph-node/
 cd graph-node/docker
@@ -35,7 +36,7 @@ services:
       postgres_user: graph-node
       postgres_pass: let-me-in
       postgres_db: graph-node
-      ipfs: 'ipfs:5002'
+      ipfs: 'ipfs:5001'
       ethereum: 'matic:https://polygon-rpc.com/'
       GRAPH_LOG: info
   ipfs:
@@ -56,3 +57,15 @@ services:
     volumes:
       - ./data/postgres-the-graph:/var/lib/postgresql/data
 ```
+
+Start the-graph service
+```shell
+docker-compose up
+```
+
+Start new index with the graph
+```shell
+cd massbitprotocol/user-example/polygon/wasm/quickswap
+
+```
+
