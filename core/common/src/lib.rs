@@ -10,6 +10,8 @@ pub mod prelude {
     pub use ethabi;
     pub use lazy_static;
     pub use log;
+    pub use r2d2;
+    pub use r2d2_diesel;
     pub use regex;
     pub use reqwest;
     pub use serde;

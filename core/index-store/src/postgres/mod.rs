@@ -1,36 +1,40 @@
-pub mod relational;
-pub mod store_builder;
+use std::collections::{BTreeMap, HashMap};
+use std::path::PathBuf;
+use std::sync::Arc;
+
 use graph::components::metrics::stopwatch::StopwatchMetrics;
 use graph::components::store::{
     EntityCollection, EntityFilter, EntityKey, EntityModification, EntityOrder, EntityRange,
-    EntityType, StoreError, StoreEvent, StoredDynamicDataSource, WritableStore,
+    EntityType, StoredDynamicDataSource, StoreError, StoreEvent, WritableStore,
 };
 use graph::components::subgraph::Entity;
 use graph::data::query::QueryExecutionError;
 use graph::data::subgraph::schema::SubgraphError;
-use graph::prelude::BlockPtr;
 use graph::prelude::{BlockNumber, DynTryFuture};
+use graph::prelude::BlockPtr;
 use graph_store_postgres::command_support::Layout;
 use graph_store_postgres::connection_pool::ConnectionPool;
-use massbit_common::prelude::anyhow;
-use massbit_common::prelude::diesel::{
-    r2d2::{ConnectionManager, PooledConnection},
-    Connection, PgConnection,
-};
-use massbit_common::prelude::slog::Logger;
-use std::sync::Arc;
 
-use crate::core::{IndexStore, QueryableStore};
-use crate::postgres::relational::LayoutExt;
-use crate::Value;
 use massbit_common::prelude::{
     anyhow::{anyhow, Error},
     async_trait::async_trait,
     log,
 };
-use std::collections::{BTreeMap, HashMap};
-use std::path::PathBuf;
+use massbit_common::prelude::anyhow;
+use massbit_common::prelude::diesel::{
+    Connection,
+    PgConnection, r2d2::{ConnectionManager, PooledConnection},
+};
+use massbit_common::prelude::slog::Logger;
 use store_builder::StoreBuilder;
+
+use crate::core::{IndexStore, QueryableStore};
+use crate::postgres::relational::LayoutExt;
+use crate::Value;
+
+pub mod block;
+pub mod relational;
+pub mod store_builder;
 
 pub const BLOCK_NUMBER_MAX: BlockNumber = <i32>::MAX;
 

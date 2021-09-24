@@ -17,6 +17,7 @@ use log::{debug, info, warn};
 use logger::core::init_logger;
 use massbit_chain_ethereum::data_type::EthereumBlock as Block;
 use massbit_common::NetworkType;
+use index_store::postgres::block::EthereumBlockStore;
 use std::collections::HashMap;
 use std::error::Error as StdError;
 use std::sync::{
@@ -39,6 +40,7 @@ use web3::{
     },
     Web3,
 };
+use index_store::store::BlockStore;
 
 // Check https://github.com/tokio-rs/prost for enum converting in rust protobuf
 const CHAIN_TYPE: ChainType = ChainType::Ethereum;
@@ -395,7 +397,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
         "matic" => WEB3_MATIC.clone(),
         _ => WEB3_ETH.clone(),
     };
-
+    let block_store = EthereumBlockStore::new(chain_url);
+    //block_store.store_full_ethereum_blocks(vec![]);
     // let full_block = FullEthereumBlock {
     //     block: Arc::new(block),
     //     transaction_receipts: receipts,
