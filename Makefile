@@ -21,12 +21,19 @@ init-python:
 	sudo apt install -y python3.8
 	sudo rm /usr/bin/python3
 	sudo ln -s python3.8 /usr/bin/python3
-	sudo apt install -y python3-pip python-pip wget unzip libpq-dev python3-dev
+	sudo apt install -y python3-pip wget unzip libpq-dev python3-dev
 	sudo pip3 install setuptools-rust
 	sudo pip3 install --upgrade pip
 	sudo pip3 install PyQtWebEngine
 
+init-npm:
+	sudo apt install -y npm
+	curl -fsSL https://deb.nodesource.com/setup_14.x | bash -
+	sudo apt-get install -y nodejs
+
 init-test:
+	@echo "Installing some important libraries for scripting ..."
+	sudo apt install -y tmux
 	@echo "Installing all the dependencies for E2E tests ..."
 	pip3 install robotframework robotframework-requests robotframework-databaselibrary rpaframework
 	pip3 install psycopg2 rpaframework robotframework-seleniumlibrary robotframework-sshlibrary
@@ -42,9 +49,6 @@ remove-all-git-hook:
 	@echo "Removing all symlinks..."
 	rm .git/hooks/*
 
-test-run-contract:
-	@echo "Running health check tests ..."
-	cd e2e-test/health-check && robot health-check.robot || true
 
 test-run-contract:
 	@echo "Running health check tests ..."
@@ -206,13 +210,23 @@ test-long-running-quickswap:
 	tmux new -d -s report_email "cd e2e-test && python check_log.py"
 	tmux ls
 
+
 index-quickswap:
-	@echo "Running only the quickswap Ethereum test ..."
-	cd e2e-test/polygon && robot -t "Compile and Deploy WASM Test Quickswap" basic.robot
+	@echo "Running only the quickswap Polygon test ..."
+	cd e2e-test/polygon && robot -t "Compile and Deploy WASM Test Quickswap" contract.robot
 	@echo "Running report email services"
-	tmux new -d -s report_email "cd e2e-test && python check_log.py"
+	tmux new -d -s report_email_quickswap "cd e2e-test && python check_log.py"
 	tmux ls
+
+
+index-pancakeswap:
+	@echo "Running only the pancakeswap BSC test ..."
+	cd e2e-test/bsc && robot -t "Compile and Deploy Pancakeswap Exchange WASM" contract.robot
+	@echo "Running report email services"
+	tmux new -d -s report_email_pancakeswap "cd e2e-test && python check_log.py"
+	tmux ls
+
 
 test-long-running-quickswap-run-test-only:
 	@echo "Running only the quickswap Polygon test ..."
-	cd e2e-test/polygon && robot -t "Compile and Deploy WASM Test Quickswap" basic.robot
+	cd e2e-test/polygon && robot -t "Compile and Deploy WASM Test Quickswap" contract.robot
