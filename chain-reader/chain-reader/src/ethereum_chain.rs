@@ -252,7 +252,7 @@ async fn get_block(
         info!(
             "Got ETHEREUM {} receipts of block: {}",
             receipts.len(),
-            block_number
+            &block_number
         );
         // Get logs
         let logs = get_logs(
@@ -261,7 +261,11 @@ async fn get_block(
             Web3BlockNumber::from(block_number),
         )
         .unwrap_or(Vec::new());
-
+        info!(
+            "Got ETHEREUM {} logs of block: {}",
+            logs.len(),
+            &block_number
+        );
         let eth_block = Block {
             version: clone_version.clone(),
             timestamp: block.timestamp.as_u64(),

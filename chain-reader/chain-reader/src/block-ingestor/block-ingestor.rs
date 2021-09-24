@@ -5,6 +5,7 @@ use chain_reader::{
     grpc_stream::stream_mod::{ChainType, DataType, GenericDataProto},
     CONFIG,
 };
+use clap::{App, Arg};
 use futures::stream;
 use futures::{Future, Stream};
 use futures03::compat::Future01CompatExt;
@@ -124,16 +125,14 @@ pub fn get_logs(
 }
 
 pub async fn get_receipts(
-    //blocks: &Vec<EthBlock<Transaction>>,
     block: &EthBlock<Transaction>,
     web3: &Web3<Transport>,
-    //) -> HashMap<H256, TransactionReceipt> {
 ) -> Result<Vec<TransactionReceipt>, IngestorError> {
-    let block = block.clone();
-    let block_hash = block.hash.unwrap();
     let batching_web3 = Web3::new(Batch::new(web3.transport().clone()));
 
-    let receipt_futures = block
+    // let block = block.clone();
+    let block_hash = block.hash.unwrap();
+    let mut receipt_futures = block
         .transactions
         .iter()
         .map(|tx| {
@@ -184,7 +183,7 @@ pub async fn get_receipts(
         })
         .collect::<Vec<_>>();
 
-    let my_receipts = batching_web3
+    let receipts = batching_web3
         .transport()
         .submit_batch()
         .from_err()
@@ -193,7 +192,7 @@ pub async fn get_receipts(
         .compat()
         .await;
 
-    my_receipts
+    receipts
 }
 
 pub async fn get_blocks(
@@ -245,38 +244,164 @@ fn write_full_blocks(
     unimplemented!("Write to db");
 }
 
+async fn get_full_block(
+    start_block: u64,
+    end_block: u64,
+    web3: &Arc<Web3<Transport>>,
+) -> Vec<FullEthereumBlock> {
+    let now = Instant::now();
+
+    let mut full_blocks = vec![];
+    let blocks = get_blocks(start_block, end_block, &web3).await;
+    //println!("Got Blocks: {:?}", &blocks.unwrap().len());
+    let mut tasks = vec![];
+    if let Ok(blocks) = blocks {
+        println!("Got Blocks: {:?}", &blocks.len());
+        for block in blocks {
+            let web3_clone = web3.clone();
+            tasks.push(tokio::spawn(async move {
+                let res = timeout(
+                    Duration::from_secs(GET_BLOCK_TIMEOUT_SEC),
+                    get_receipts(&block, &web3_clone),
+                )
+                .await;
+
+                match res {
+                    Ok(Ok(receipts)) => {
+                        info!(
+                            "Got {} receipts for block {:?}",
+                            receipts.len(),
+                            &block.number
+                        );
+                        info!("Finish tokio::spawn for getting block: {:?}", &block.number);
+                        FullEthereumBlock {
+                            block: Arc::new(block),
+                            transaction_receipts: receipts,
+                        }
+                    }
+                    _ => {
+                        warn!(
+                            "get_receipts timed out or error: {:?} at block {:?}",
+                            res, &block.number
+                        );
+                        FullEthereumBlock {
+                            block: Arc::new(block),
+                            transaction_receipts: vec![],
+                        }
+                    }
+                }
+            }));
+        }
+        full_blocks = futures03::future::join_all(tasks).await;
+    } else {
+        println!("Cannot get blocks");
+    }
+    let elapsed = now.elapsed();
+    println!("Run time: {:?}", elapsed);
+    full_blocks
+        .into_iter()
+        .filter_map(|full_block| full_block.ok())
+        .collect()
+}
+
+async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     let res = init_logger(&String::from("chain-reader"));
     println!("Log output: {}", res); // Print log output type
 
-    let network = "matic".to_string();
+    let matches = App::new("Client")
+        .version("1.0")
+        .about("Ingestor for get data from chain to db")
+        .arg(
+            Arg::with_name("chain-type")
+                .short("c")
+                .long("chain-type")
+                .value_name("chain-type")
+                .help("Sets chain type")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("network-type")
+                .short("n")
+                .long("network-type")
+                .value_name("network-type")
+                .help("Sets network-type")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("start-block")
+                .short("s")
+                .long("start-block")
+                .value_name("start-block")
+                .help("Sets start block")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("end-block")
+                .short("e")
+                .long("end-block")
+                .value_name("end-block")
+                .help("Sets end block")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("is-increase")
+                .long("is-increase")
+                .value_name("direction")
+                .help("Sets ingestor direction increase/decrease block number")
+                .takes_value(false),
+        )
+        .arg(
+            Arg::with_name("chain-url")
+                .long("chain-url")
+                .value_name("chain-url")
+                .help("Sets chain-url")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("db-url")
+                .long("db-url")
+                .value_name("db-url")
+                .help("Sets db-url")
+                .takes_value(true),
+        )
+        .get_matches();
+
+    let chain_type = matches.value_of("chain-type").unwrap_or("ethereum");
+    let network = matches.value_of("network-type").unwrap_or("matic");
+    let start_block: Option<u64> = match matches.value_of("start-block") {
+        Some(start_block) => Some(start_block.parse().unwrap()),
+        None => None,
+    };
+    let end_block: Option<u64> = match matches.value_of("end-block") {
+        Some(end_block) => Some(end_block.parse().unwrap()),
+        None => None,
+    };
+    let is_increase = matches.is_present("is-increase");
+    println!("is_increase: {:?}", is_increase);
+    let chain_url: &str = matches
+        .value_of("chain-url")
+        .unwrap_or("https://polygon-rpc.com/");
+    // Todo: replace default db-url
+    let chain_url: &str = matches.value_of("db-url").unwrap_or("db-url");
+
     // Get version
-    let WEB3 = match network.as_str() {
+    let WEB3 = match network {
         "bsc" => WEB3_BSC.clone(),
         "matic" => WEB3_MATIC.clone(),
         _ => WEB3_ETH.clone(),
     };
-    let now = Instant::now();
-    let mut full_blocks = Vec::new();
-    let blocks = get_blocks(0, 100, &WEB3).await;
-    if let Ok(blocks) = blocks {
-        for block in blocks {
-            let receipts = get_receipts(&block, &WEB3).await.unwrap_or(Vec::new());
-            println!("Got {} receipt of : {:?}", receipts.len(), &block.number);
-            let full_block = FullEthereumBlock {
-                block: Arc::new(block),
-                transaction_receipts: receipts,
-            };
-            full_blocks.push(full_block);
-        }
-    } else {
-        println!("Cannot get blocks");
-    }
-    println!("Got Blocks: {:?}", full_blocks.len());
-    let elapsed = now.elapsed();
-    println!("Run time: {:?}", elapsed);
 
-    write_full_blocks(full_blocks);
+    // let full_block = FullEthereumBlock {
+    //     block: Arc::new(block),
+    //     transaction_receipts: receipts,
+    // };
+    // full_blocks.push(full_block);
+
+    //write_full_blocks(full_blocks);
     Ok(())
 }

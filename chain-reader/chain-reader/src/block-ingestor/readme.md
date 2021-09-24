@@ -1,0 +1,15 @@
+# Ingestor 
+- Purpose: Get block data from chain to DB for caching
+- Saved data include:
+  - Block (include transactions)
+  - Receipt
+  - Log
+- Data is saved into 3 tables: Block, Receipt and Log 
+- CLI arguments
+  - Start block
+  - End block
+  - Direction
+  - Endpoint for getting data
+  - DB endpoint
+  - Chain_type
+  - Network
