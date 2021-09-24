@@ -18,13 +18,14 @@ use std::time::Instant;
 pub async fn adapter_init(
     index_config: &IndexConfig,
     manifest: &Option<SubgraphManifest<Chain>>,
+    got_block: Option<i64>
 ) -> Result<(), Box<dyn Error>> {
     log::info!("Load library from {:?}", &index_config.mapping);
     let config_value = read_config_file(&index_config.config);
     let mut adapter = AdapterManager::new();
     //assert_eq!(manifest.data_sources.len(), 1);
 
-    println!("Index config {:?}", index_config);
+    println!("{:?}", index_config);
     adapter
         .init(
             &index_config.identifier.name_with_hash,
@@ -32,24 +33,8 @@ pub async fn adapter_init(
             &index_config.mapping,
             &index_config.schema,
             manifest,
+            got_block
         )
         .await?;
-    /*
-    if get_mapping_language(&config_value).to_string().contains("wasm") {
-        log::info!("Handling .wasm file");
-        // TODO: we have the datasource, now the handler can get the ethereum event
-
-    } else {
-        log::info!("Handling .so file");
-        let mut adapter = AdapterManager::new();
-        adapter
-            .init(
-                &index_config.identifier.name_with_hash,
-                &config_value,
-                &index_config.mapping,
-            )
-            .await;
-    }
-    */
     Ok(())
 }

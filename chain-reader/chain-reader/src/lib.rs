@@ -12,9 +12,18 @@ pub use self::transport::Transport;
 use command::{ChainConfig, Config};
 use grpc_stream::stream_mod::ChainType;
 use lazy_static::lazy_static;
+use std::env;
 
 lazy_static! {
     // Load default config
+    static ref SOLANA_WS: String = env::var("SOLANA_WS").unwrap_or(String::from("ws://api.mainnet-beta.solana.com"));
+    static ref SOLANA_URL: String = env::var("SOLANA_URL").unwrap_or(String::from("https://solana-api.projectserum.com"));
+    static ref POLYGON_WS: String = env::var("POLYGON_WS").unwrap_or(String::from("wss://rpc-mainnet.matic.network"));
+    static ref POLYGON_URL: String = env::var("POLYGON_URL").unwrap_or(String::from("https://polygon-rpc.com"));
+    static ref BSC_WS: String = env::var("BSC_WS").unwrap_or(String::from("wss://bsc-ws-node.nariox.org:443"));
+    static ref BSC_URL: String = env::var("BSC_URL").unwrap_or(String::from("https://bsc-dataseed.binance.org"));
+    static ref ETHEREUM_WS: String = env::var("ETHEREUM_WS").unwrap_or(String::from("wss://main-light.eth.linkpool.io/ws"));
+    static ref ETHEREUM_URL: String = env::var("ETHEREUM_URL").unwrap_or(String::from("https://main-light.eth.linkpool.io"));
     pub static ref CONFIG: Config = Config{
         chains: [
             ChainConfig{
@@ -35,23 +44,36 @@ lazy_static! {
                 network: "mainnet".to_string()
             },
             ChainConfig{
-                ws: "wss://rpc-mainnet.matic.network".to_string(),
-                //url: "https://rpc-mainnet.matic.network".to_string(),
-                url: "https://polygon-rpc.com/".to_string(),
+                url: "".to_string(),
+                ws: "".to_string(),
+                start_block: None,
+                chain_type: ChainType::Substrate,
+                network: "mainnet".to_string()
+            },
+            ChainConfig{
+                ws: SOLANA_WS.to_string(),
+                url: SOLANA_URL.to_string(),
+                start_block: None,
+                chain_type: ChainType::Solana,
+                network: "mainnet".to_string()
+            },
+            ChainConfig{
+                ws: POLYGON_WS.to_string(),
+                url: POLYGON_URL.to_string(),
                 start_block: Some(18403764),
                 chain_type: ChainType::Ethereum,
                 network: "matic".to_string()
             },
             ChainConfig{
-                ws: "wss://bsc-ws-node.nariox.org:443".to_string(),
-                url: "https://bsc-dataseed.binance.org".to_string(),
+                ws: BSC_WS.to_string(),
+                url: BSC_URL.to_string(),
                 start_block: None,
                 chain_type: ChainType::Ethereum,
                 network: "bsc".to_string()
             },
             ChainConfig{
-                ws: "wss://main-light.eth.linkpool.io/ws".to_string(),
-                url: "https://main-light.eth.linkpool.io".to_string(),
+                ws: ETHEREUM_WS.to_string(),
+                url: ETHEREUM_URL.to_string(),
                 start_block: None,
                 chain_type: ChainType::Ethereum,
                 network: "ethereum".to_string()

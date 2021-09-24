@@ -4,7 +4,6 @@ pub use crate::stream_mod::{
 };
 pub use crate::{HandlerProxyType, PluginRegistrar, WasmHandlerProxyType};
 use graph::data::subgraph::SubgraphManifest;
-use graph::semver::Op;
 use graph_chain_ethereum::Chain;
 use graph_chain_ethereum::{DataSource, DataSourceTemplate};
 use graph_runtime_wasm::ValidModule;
@@ -94,6 +93,7 @@ impl AdapterManager {
         mapping: &PathBuf,
         schema: &PathBuf,
         manifest: &Option<SubgraphManifest<Chain>>,
+        got_block: Option<i64>
     ) -> Result<(), Box<dyn Error>> {
         let mut data_sources: Vec<DataSource> = vec![];
         let mut templates: Vec<DataSourceTemplate> = vec![];
@@ -119,11 +119,16 @@ impl AdapterManager {
             data_sources.len()
         );
         match data_sources.get(0) {
-            Some(data_source) => {
+            Some(mut data_source) => {
+                let start_block = match got_block {
+                    None => data_source.source.start_block as u64,
+                    Some(val) => val as u64 + 1
+                };
                 log::info!(
-                    "{} Init Streamout client for chain {} using language {}",
+                    "{} Init Streamout client for chain {} from block {} using language {}",
                     &*COMPONENT_NAME,
                     &data_source.kind,
+                    start_block,
                     &data_source.mapping.language
                 );
                 //let chain_type = get_chain_type(data_source);
@@ -138,6 +143,7 @@ impl AdapterManager {
                         self.handle_wasm_mapping(
                             hash,
                             data_source,
+                            start_block,
                             arc_templates.clone(),
                             schema,
                             &mut client,
@@ -146,7 +152,7 @@ impl AdapterManager {
                     }
                     //Default use rust
                     _ => {
-                        self.handle_rust_mapping(hash, data_source, mapping, schema, &mut client)
+                        self.handle_rust_mapping(hash, data_source, start_block, mapping, schema, &mut client)
                             .await
                     }
                 }
@@ -159,6 +165,7 @@ impl AdapterManager {
         &mut self,
         indexer_hash: &String,
         data_source: &DataSource,
+        init_block: u64,
         templates: Arc<Vec<DataSourceTemplate>>,
         schema_path: P,
         client: &mut StreamoutClient<Timeout<Channel>>,
@@ -176,13 +183,13 @@ impl AdapterManager {
             .unwrap()
             .to_string();
         //Todo: store indexer state including start_block in db
-        let mut start_block = data_source.source.start_block as u64;
+        let mut start_block = init_block;
         let chain_type = get_chain_type(data_source);
         let mut opt_stream: Option<Streaming<GenericDataProto>> = None;
         let mut handler_proxy = WasmHandlerProxyType::create_proxy(
             &adapter_name,
             indexer_hash,
-            store,
+            store.clone(),
             data_source.clone(), //Arc::clone(&valid_module),
             templates,
         );
@@ -232,9 +239,9 @@ impl AdapterManager {
                                                     "{} Error while handle received message",
                                                     err
                                                 );
-                                                start_block = data.block_number;
                                             }
                                             Ok(_) => {
+                                                store.save_got_block(indexer_hash, data.block_number as i64);
                                                 start_block = data.block_number + 1;
                                             }
                                         }
@@ -261,6 +268,7 @@ impl AdapterManager {
         &mut self,
         indexer_hash: &String,
         data_source: &DataSource,
+        init_block: u64,
         mapping_path: P,
         schema_path: P,
         client: &mut StreamoutClient<Timeout<Channel>>,
@@ -292,7 +300,7 @@ impl AdapterManager {
             .to_string();
         if let Some(adapter_handler) = self.map_handlers.get_mut(indexer_hash.as_str()) {
             if let Some(handler_proxy) = adapter_handler.handler_proxies.get(&adapter_name) {
-                let mut start_block = data_source.source.start_block as u64;
+                let mut start_block = init_block;
                 let chain_type = get_chain_type(data_source);
                 let mut opt_stream: Option<Streaming<GenericDataProto>> = None;
                 log::info!(

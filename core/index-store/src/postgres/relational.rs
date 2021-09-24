@@ -1,6 +1,6 @@
 use diesel::debug_query;
 use graph::components::store::{
-    AttributeNames, BlockNumber, EntityCollection, EntityFilter, EntityOrder, EntityRange,
+    AttributeNames, EntityCollection, EntityFilter, EntityOrder, EntityRange,
     EntityType,
 };
 use graph::data::query::QueryExecutionError;
@@ -9,15 +9,14 @@ use graph::prelude::Logger;
 use graph_store_postgres::relational::{Layout, Table};
 use graph_store_postgres::relational_queries;
 use graph_store_postgres::relational_queries::{
-    EntityData, FilterCollection, FilterQuery, FilterWindow, FromEntityData,
+    EntityData, FilterCollection, FilterQuery
 };
 use inflector::Inflector;
-use massbit_common::prelude::diesel::connection::SimpleConnection;
 use massbit_common::prelude::diesel::{Connection, PgConnection, RunQueryDsl};
 use massbit_common::prelude::serde_json;
-use massbit_common::prelude::{anyhow, slog};
+use massbit_common::prelude::anyhow;
 use std::collections::HashSet;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 /// The name for the primary key column of a table; hardcoded for now
 pub(crate) const PRIMARY_KEY_COLUMN: &str = "id";
@@ -389,8 +388,6 @@ impl LayoutExt for Layout {
             None,
         )?;
         let query_clone = query.clone();
-
-        let start = Instant::now();
         let values = conn
             .transaction(|| {
                 // if let Some(ref timeout_sql) = *STATEMENT_TIMEOUT {

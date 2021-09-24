@@ -1,6 +1,6 @@
 use graph::data::store::{scalar, Entity, Value};
 use std::any::Any;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 
 pub trait FromEntity: Default {
     /// Converts a `GenericMap` back into a structure.

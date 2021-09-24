@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use graph::components::metrics::stopwatch::StopwatchMetrics;
 use graph::components::store::{
-    EntityCollection, EntityFilter, EntityKey, EntityModification, EntityOrder, EntityRange,
-    EntityType, StoredDynamicDataSource, StoreError, StoreEvent, WritableStore,
+    EntityFilter, EntityKey, EntityModification, EntityOrder, EntityRange,
+    EntityType, StoreError, StoreEvent, StoredDynamicDataSource, WritableStore,
 };
 use graph::components::subgraph::Entity;
 use graph::data::query::QueryExecutionError;
@@ -14,13 +14,7 @@ use graph::prelude::{BlockNumber, DynTryFuture};
 use graph::prelude::BlockPtr;
 use graph_store_postgres::command_support::Layout;
 use graph_store_postgres::connection_pool::ConnectionPool;
-
-use massbit_common::prelude::{
-    anyhow::{anyhow, Error},
-    async_trait::async_trait,
-    log,
-};
-use massbit_common::prelude::anyhow;
+use massbit_common::prelude::{anyhow, slog};
 use massbit_common::prelude::diesel::{
     Connection,
     PgConnection, r2d2::{ConnectionManager, PooledConnection},
@@ -30,12 +24,16 @@ use store_builder::StoreBuilder;
 
 use crate::core::{IndexStore, QueryableStore};
 use crate::postgres::relational::LayoutExt;
-use crate::Value;
-
-pub mod block;
-pub mod relational;
-pub mod store_builder;
-
+use massbit_common::prelude::{
+    anyhow::{anyhow, Error},
+    async_trait::async_trait,
+    log,
+};
+use std::collections::{BTreeMap, HashMap};
+use std::path::PathBuf;
+use store_builder::StoreBuilder;
+use crate::schema::indexers;
+use diesel::prelude::*;
 pub const BLOCK_NUMBER_MAX: BlockNumber = <i32>::MAX;
 
 #[derive(Clone)]
@@ -51,6 +49,14 @@ impl PostgresIndexStore {
     pub fn new(indexer: &str) -> Result<PostgresIndexStore, anyhow::Error> {
         let path = PathBuf::new();
         StoreBuilder::create_store(indexer, &path)
+    }
+    pub fn save_got_block(&self, indexer: &String, block_number: i64) {
+        let logger = Logger::root(slog::Discard, slog::o!());
+        let conn = self.connection.get_with_timeout_warning(&logger).unwrap();
+        diesel::update(indexers::table.filter(indexers::id.eq(indexer)))
+            .set(indexers::got_block.eq(block_number))
+            .execute(&conn)
+            .expect(&format!("Unable to find indexer with hash {:?}", indexer));
     }
 }
 
@@ -85,6 +91,7 @@ impl QueryableStore for PostgresIndexStore {
             }
         }
     }
+
 }
 impl IndexStore for PostgresIndexStore {}
 #[async_trait]
