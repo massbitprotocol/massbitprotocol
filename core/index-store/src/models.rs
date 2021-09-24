@@ -9,6 +9,7 @@ pub struct Indexer {
     pub schema_name: String,
     pub description: String,
     pub repo: String,
+    pub manifest: String,
     pub index_status: String,
     pub got_block: i64,
     pub hash: String,

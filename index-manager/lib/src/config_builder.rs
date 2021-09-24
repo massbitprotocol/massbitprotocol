@@ -177,24 +177,26 @@ pub struct IndexConfigLocalBuilder {
 
 impl IndexConfigLocalBuilder {
     pub async fn mapping(mut self, name: &String) -> IndexConfigLocalBuilder {
-        let mapping = [GENERATED_FOLDER.as_str(), name, ".so"].join("");
+        let mapping = [GENERATED_FOLDER.as_str(), name, "mapping.so"].join("/");
         self.mapping = PathBuf::from(mapping.to_string());
         self
     }
 
     pub async fn config(mut self, name: &String) -> IndexConfigLocalBuilder {
-        let config = [GENERATED_FOLDER.as_str(), name, ".yaml"].join("");
+        let config = [GENERATED_FOLDER.as_str(), name, "subgraph.yaml"].join("/");
         self.config = PathBuf::from(config);
         self
     }
 
     pub async fn schema(mut self, name: &String) -> IndexConfigLocalBuilder {
-        let schema = [GENERATED_FOLDER.as_str(), name, ".graphql"].join("");
+        let schema = [GENERATED_FOLDER.as_str(), name, "schema.graphql"].join("/");
         self.schema = PathBuf::from(schema);
         self
     }
 
     pub fn build(self) -> IndexConfig {
+        let config = read_config_file(&self.config);
+        let name = get_index_name(&config);
         IndexConfig {
             schema: self.schema,
             config: self.config,
@@ -204,9 +206,9 @@ impl IndexConfigLocalBuilder {
             subgraph: Default::default(),
             identifier: IndexIdentifier {
                 // TODO: populate with the value from the indexer query result
-                name: Default::default(),
-                hash: Default::default(),
-                name_with_hash: Default::default(),
+                name: name.clone(),
+                hash: self.hash.clone(),
+                name_with_hash: format!("{}-{}", name, self.hash),
             },
         }
     }
