@@ -19,7 +19,8 @@ futures = { version = "0.3.13", features = ["compat"] }
 tokio-compat-02 = "0.2"
 serde_yaml = "0.8"
 anyhow = "1.0"
-diesel = { version = "1.4.0", features = ["postgres"] }
+diesel                  = { version = "1.4.0", features = ["postgres", "serde_json", "numeric", "r2d2", "chrono"] }
+diesel_migrations       = "1.4.0"
 reqwest = "0.10.8"
 lazy_static = "1.2.0"
 rand = "0.8.4"

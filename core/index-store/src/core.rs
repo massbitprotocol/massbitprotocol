@@ -1,7 +1,6 @@
-use diesel::{Connection, PgConnection, RunQueryDsl};
+use diesel::{PgConnection, RunQueryDsl};
 use graph::components::store::{EntityFilter, EntityOrder, EntityRange, WritableStore};
-use graph::data::query::QueryExecutionError;
-use graph::data::store::{Entity, Value};
+use graph::data::store::Entity;
 use lazy_static::lazy_static;
 use massbit_common::prelude::structmap::GenericMap;
 use std::collections::HashMap;
