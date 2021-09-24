@@ -47,14 +47,14 @@ impl Blockchain for Chain {
 
     async fn new_block_stream(
         &self,
-        start_blocks: Vec<BlockNumber>,
+        start_block: BlockNumber,
         filter: Arc<Self::TriggerFilter>,
     ) -> Result<Box<dyn BlockStream<Self>>, Error> {
         let triggers_adapter = self.triggers_adapter()?;
         Ok(Box::new(PollingBlockStream::new(
             triggers_adapter,
             filter,
-            18403764,
+            start_block,
         )))
     }
 }

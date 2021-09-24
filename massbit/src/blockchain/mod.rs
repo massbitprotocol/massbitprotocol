@@ -60,7 +60,7 @@ pub trait Blockchain: Debug + Sized + Send + Sync + Unpin + 'static {
 
     async fn new_block_stream(
         &self,
-        start_blocks: Vec<BlockNumber>,
+        start_block: BlockNumber,
         filter: Arc<Self::TriggerFilter>,
     ) -> Result<Box<dyn BlockStream<Self>>, Error>;
 }

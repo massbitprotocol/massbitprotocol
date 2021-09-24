@@ -1,4 +1,6 @@
 use anyhow::Error;
+use serde_json::json;
+use std::sync::Arc;
 use tokio;
 use web3;
 
@@ -9,7 +11,6 @@ use massbit::blockchain::block_stream::BlockStreamEvent;
 use massbit::blockchain::{Block, Blockchain, TriggerFilter};
 use massbit::prelude::anyhow;
 use massbit::prelude::*;
-use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -24,9 +25,11 @@ async fn main() -> Result<(), Error> {
     let filter = <ethereum::Chain as Blockchain>::TriggerFilter::from_data_sources(
         manifest.data_sources.iter(),
     );
+    let filter_json = serde_json::to_string(&filter)?;
+    let filter = serde_json::from_str(filter_json.as_str())?;
     let start_blocks = manifest.start_blocks();
     let mut block_stream = chain
-        .new_block_stream(start_blocks, Arc::new(filter))
+        .new_block_stream(start_blocks[0], Arc::new(filter))
         .await?;
     loop {
         let block = match block_stream.next().await {
@@ -70,7 +73,7 @@ dataSources:
     source:
       address: '0x5757371414417b8C6CAad45bAeF941aBc7d3Ab32'
       abi: Factory
-      startBlock: 5484576
+      startBlock: 18403764
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.4

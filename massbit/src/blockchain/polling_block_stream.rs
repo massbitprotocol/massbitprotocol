@@ -91,14 +91,14 @@ where
     pub fn new(
         adapter: Arc<C::TriggersAdapter>,
         filter: Arc<C::TriggerFilter>,
-        stream_block_number: BlockNumber,
+        start_block: BlockNumber,
     ) -> Self {
         PollingBlockStream {
             state: BlockStreamState::BeginReconciliation,
             ctx: BlockStreamContext {
                 adapter,
                 filter,
-                stream_block_number,
+                stream_block_number: start_block,
             },
         }
     }
@@ -125,8 +125,6 @@ where
 
     /// Determine the next reconciliation step. Does not modify Store or ChainStore.
     async fn get_next_step(&self) -> Result<ReconciliationStep<C>, Error> {
-        // Start with first block after stream ptr; if the ptr is None,
-        // then we start with the genesis block
         let from = self.stream_block_number;
 
         let blocks = self

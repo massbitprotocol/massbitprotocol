@@ -4,6 +4,7 @@ use futures03::Stream;
 
 use super::{Block, BlockPtr, Blockchain};
 use crate::components::store::BlockNumber;
+use crate::prelude::*;
 
 pub trait BlockStream<C: Blockchain>:
     Stream<Item = Result<BlockStreamEvent<C>, Error>> + Unpin

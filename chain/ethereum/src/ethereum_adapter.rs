@@ -7,7 +7,10 @@ use massbit::prelude::{
 };
 use std::collections::{HashMap, HashSet};
 use web3::{
-    types::{BlockId, Filter, FilterBuilder, Log},
+    types::{
+        BlockId, BlockNumber as Web3BlockNumber, Filter, FilterBuilder, Log, Trace, TraceFilter,
+        TraceFilterBuilder, H160,
+    },
     Web3,
 };
 
@@ -17,11 +20,16 @@ use crate::adapter::{
 };
 use crate::chain::BlockFinality;
 use crate::transport::Transport;
-use crate::trigger::EthereumTrigger;
+use crate::trigger::{EthereumBlockTriggerType, EthereumTrigger};
 use crate::types::{LightEthereumBlock, LightEthereumBlockExt};
-use crate::TriggerFilter;
+use crate::{EthereumCall, TriggerFilter};
 
 lazy_static! {
+    static ref TRACE_STREAM_STEP_SIZE: BlockNumber = std::env::var("ETHEREUM_TRACE_STREAM_STEP_SIZE")
+        .unwrap_or("50".into())
+        .parse::<BlockNumber>()
+        .expect("invalid trace stream step size");
+
     /// Maximum range size for `eth.getLogs` requests that dont filter on
     /// contract address, only event signature, and are therefore expensive.
     ///
@@ -87,6 +95,73 @@ impl EthereumAdapter {
         }
     }
 
+    async fn traces(
+        self,
+        from: BlockNumber,
+        to: BlockNumber,
+        addresses: Vec<H160>,
+    ) -> Result<Vec<Trace>, Error> {
+        let eth = self.clone();
+
+        retry("trace_filter RPC call")
+            .limit(*REQUEST_RETRIES)
+            .timeout_secs(*JSON_RPC_TIMEOUT)
+            .run(move || {
+                let trace_filter: TraceFilter = match addresses.len() {
+                    0 => TraceFilterBuilder::default()
+                        .from_block(from.into())
+                        .to_block(to.into())
+                        .build(),
+                    _ => TraceFilterBuilder::default()
+                        .from_block(from.into())
+                        .to_block(to.into())
+                        .to_address(addresses.clone())
+                        .build(),
+                };
+
+                eth.web3
+                    .trace()
+                    .filter(trace_filter)
+                    .map(move |traces| {
+                        if traces.len() > 0 {
+                            if to == from {
+                                debug!("Received {} traces for block {}", traces.len(), to);
+                            } else {
+                                debug!(
+                                    "Received {} traces for blocks [{}, {}]",
+                                    traces.len(),
+                                    from,
+                                    to
+                                );
+                            }
+                        }
+                        traces
+                    })
+                    .from_err()
+                    .then(move |result| {
+                        if result.is_err() {
+                            debug!(
+                                "Error querying traces error = {:?} from = {:?} to = {:?}",
+                                result, from, to
+                            );
+                        }
+                        result
+                    })
+                    .compat()
+            })
+            .map_err(move |e| {
+                e.into_inner().unwrap_or_else(move || {
+                    anyhow::anyhow!(
+                        "Ethereum node took too long to respond to trace_filter \
+                         (from block {}, to block {})",
+                        from,
+                        to
+                    )
+                })
+            })
+            .await
+    }
+
     async fn logs_with_sigs(
         &self,
         from: BlockNumber,
@@ -123,6 +198,46 @@ impl EthereumAdapter {
                     .compat()
             })
             .await
+    }
+
+    fn trace_stream(
+        self,
+        from: BlockNumber,
+        to: BlockNumber,
+        addresses: Vec<H160>,
+    ) -> impl Stream<Item = Trace, Error = Error> + Send {
+        if from > to {
+            panic!(
+                "Can not produce a call stream on a backwards block range: from = {}, to = {}",
+                from, to,
+            );
+        }
+
+        let step_size = *TRACE_STREAM_STEP_SIZE;
+
+        let eth = self.clone();
+        stream::unfold(from, move |start| {
+            if start > to {
+                return None;
+            }
+            let end = (start + step_size - 1).min(to);
+            let new_start = end + 1;
+            if start == end {
+                debug!("Requesting traces for block {}", start);
+            } else {
+                debug!("Requesting traces for blocks [{}, {}]", start, end);
+            }
+            Some(futures::future::ok((
+                eth.clone()
+                    .traces(start, end, addresses.clone())
+                    .boxed()
+                    .compat(),
+                new_start,
+            )))
+        })
+        .buffered(*BLOCK_BATCH_SIZE)
+        .map(stream::iter_ok)
+        .flatten()
     }
 
     fn log_stream(
@@ -200,7 +315,7 @@ impl EthereumAdapter {
         .boxed()
     }
 
-    fn logs_in_block_range(
+    pub(crate) fn logs_in_block_range(
         &self,
         from: BlockNumber,
         to: BlockNumber,
@@ -209,13 +324,50 @@ impl EthereumAdapter {
         let eth: Self = self.cheap_clone();
         futures03::stream::iter(
             log_filter
-                .eth_get_logs_filters()
+                .eth_logs_filters
+                .into_iter()
                 .map(move |filter| eth.cheap_clone().log_stream(from, to, filter)),
         )
         // Real limits on the number of parallel requests are imposed within the adapter.
         .buffered(1000)
         .try_concat()
         .boxed()
+    }
+
+    pub(crate) fn calls_in_block_range<'a>(
+        &self,
+        from: BlockNumber,
+        to: BlockNumber,
+        call_filter: &'a EthereumCallFilter,
+    ) -> Box<dyn Stream<Item = EthereumCall, Error = Error> + Send + 'a> {
+        let eth = self.clone();
+
+        let addresses: Vec<H160> = call_filter
+            .contract_addresses_function_signatures
+            .iter()
+            .filter(|(_addr, (start_block, _fsigs))| start_block <= &to)
+            .map(|(addr, (_start_block, _fsigs))| *addr)
+            .collect::<HashSet<H160>>()
+            .into_iter()
+            .collect::<Vec<H160>>();
+
+        if addresses.is_empty() {
+            // The filter has no started data sources in the requested range, nothing to do.
+            // This prevents an expensive call to `trace_filter` with empty `addresses`.
+            return Box::new(stream::empty());
+        }
+
+        Box::new(
+            eth.trace_stream(from, to, addresses)
+                .filter_map(|trace| EthereumCall::try_from_trace(&trace))
+                .filter(move |call| {
+                    // `trace_filter` can only filter by calls `to` an address and
+                    // a block range. Since subgraphs are subscribing to calls
+                    // for a specific contract function an additional filter needs
+                    // to be applied
+                    call_filter.matches(&call)
+                }),
+        )
     }
 
     /// Request blocks by hash through JSON-RPC.
@@ -246,6 +398,51 @@ impl EthereumAdapter {
                 .from_err()
         }))
         .buffered(*BLOCK_BATCH_SIZE)
+    }
+
+    /// Request blocks ptrs for numbers through JSON-RPC.
+    ///
+    /// Reorg safety: If ids are numbers, they must be a final blocks.
+    fn load_block_ptrs_rpc(
+        &self,
+        block_nums: Vec<BlockNumber>,
+    ) -> impl Stream<Item = BlockPtr, Error = Error> + Send {
+        let web3 = self.web3.clone();
+
+        stream::iter_ok::<_, Error>(block_nums.into_iter().map(move |block_num| {
+            let web3 = web3.clone();
+            retry(format!("load block ptr {}", block_num))
+                .no_limit()
+                .timeout_secs(*JSON_RPC_TIMEOUT)
+                .run(move || {
+                    web3.eth()
+                        .block(BlockId::Number(Web3BlockNumber::Number(block_num.into())))
+                        .from_err::<Error>()
+                        .and_then(move |block| {
+                            block.ok_or_else(|| {
+                                anyhow!("Ethereum node did not find block {:?}", block_num)
+                            })
+                        })
+                        .compat()
+                })
+                .boxed()
+                .compat()
+                .from_err()
+        }))
+        .buffered(*BLOCK_BATCH_SIZE)
+        .map(|b| b.into())
+    }
+
+    /// Reorg safety: `to` must be a final block.
+    pub(crate) fn block_range_to_ptrs(
+        &self,
+        from: BlockNumber,
+        to: BlockNumber,
+    ) -> Box<dyn Future<Item = Vec<BlockPtr>, Error = Error> + Send> {
+        // Currently we can't go to the DB for this because there might be duplicate entries for
+        // the same block number.
+        debug!("Requesting hashes for blocks [{}, {}]", from, to);
+        Box::new(self.load_block_ptrs_rpc((from..=to).collect()).collect())
     }
 }
 
@@ -346,6 +543,39 @@ pub(crate) async fn blocks_with_triggers(
                 })
                 .compat(),
         ))
+    }
+
+    if !filter.call.is_empty() {
+        trigger_futs.push(Box::new(
+            eth.calls_in_block_range(from, to, &filter.call)
+                .map(Arc::new)
+                .map(EthereumTrigger::Call)
+                .collect(),
+        ));
+    }
+
+    if filter.block.trigger_every_block {
+        trigger_futs.push(Box::new(adapter.block_range_to_ptrs(from, to).map(
+            move |ptrs| {
+                ptrs.into_iter()
+                    .map(|ptr| EthereumTrigger::Block(ptr, EthereumBlockTriggerType::Every))
+                    .collect()
+            },
+        )))
+    } else if !filter.block.contract_addresses.is_empty() {
+        // To determine which blocks include a call to addresses
+        // in the block filter, transform the `block_filter` into
+        // a `call_filter` and run `blocks_with_calls`
+        trigger_futs.push(Box::new(
+            eth.calls_in_block_range(from, to, &call_filter)
+                .map(|call| {
+                    EthereumTrigger::Block(
+                        BlockPtr::from(&call),
+                        EthereumBlockTriggerType::WithCallTo(call.to),
+                    )
+                })
+                .collect(),
+        ));
     }
 
     let (triggers, to_hash) =

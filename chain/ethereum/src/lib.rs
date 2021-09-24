@@ -1,8 +1,8 @@
-mod adapter;
-mod data_source;
-mod ethereum_adapter;
+pub mod adapter;
+pub mod data_source;
+pub mod ethereum_adapter;
 pub mod transport;
-mod trigger;
+pub mod trigger;
 
 pub mod chain;
 pub mod manifest;

@@ -13,6 +13,7 @@ use massbit::{
 use crate::chain::Chain;
 use crate::data_source::{BlockHandlerFilter, DataSource};
 use crate::types::LightEthereumBlock;
+use crate::EthereumCall;
 
 pub type EventSignature = H256;
 pub type FunctionSelector = [u8; 4];
@@ -24,7 +25,7 @@ enum LogFilterNode {
 }
 
 /// Corresponds to an `eth_getLogs` call.
-#[derive(Clone)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EthGetLogsFilter {
     pub contracts: Vec<Address>,
     pub event_signatures: Vec<EventSignature>,
@@ -52,11 +53,11 @@ impl fmt::Display for EthGetLogsFilter {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct TriggerFilter {
-    pub(crate) log: EthereumLogFilter,
-    pub(crate) call: EthereumCallFilter,
-    pub(crate) block: EthereumBlockFilter,
+    pub log: EthereumLogFilter,
+    pub call: EthereumCallFilter,
+    pub block: EthereumBlockFilter,
 }
 
 impl bc::TriggerFilter<Chain> for TriggerFilter {
@@ -76,15 +77,9 @@ impl bc::TriggerFilter<Chain> for TriggerFilter {
     }
 }
 
-#[derive(Clone, Debug, Default)]
-pub(crate) struct EthereumLogFilter {
-    /// Log filters can be represented as a bipartite graph between contracts and events. An edge
-    /// exists between a contract and an event if a data source for the contract has a trigger for
-    /// the event.
-    contracts_and_events_graph: GraphMap<LogFilterNode, (), petgraph::Undirected>,
-
-    // Event sigs with no associated address, matching on all addresses.
-    wildcard_events: HashSet<EventSignature>,
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct EthereumLogFilter {
+    pub eth_logs_filters: Vec<EthGetLogsFilter>,
 }
 
 impl EthereumLogFilter {
@@ -94,14 +89,16 @@ impl EthereumLogFilter {
             for event_sig in ds.mapping.event_handlers.iter().map(|e| e.topic0()) {
                 match ds.source.address {
                     Some(contract) => {
-                        this.contracts_and_events_graph.add_edge(
-                            LogFilterNode::Contract(contract),
-                            LogFilterNode::Event(event_sig),
-                            (),
-                        );
+                        this.eth_logs_filters.push(EthGetLogsFilter {
+                            contracts: vec![contract],
+                            event_signatures: vec![event_sig],
+                        });
                     }
                     None => {
-                        this.wildcard_events.insert(event_sig);
+                        this.eth_logs_filters.push(EthGetLogsFilter {
+                            contracts: vec![],
+                            event_signatures: vec![event_sig],
+                        });
                     }
                 }
             }
@@ -111,89 +108,19 @@ impl EthereumLogFilter {
 
     /// Extends this log filter with another one.
     pub fn extend(&mut self, other: EthereumLogFilter) {
-        // Destructure to make sure we're checking all fields.
-        let EthereumLogFilter {
-            contracts_and_events_graph,
-            wildcard_events,
-        } = other;
-        for (s, t, ()) in contracts_and_events_graph.all_edges() {
-            self.contracts_and_events_graph.add_edge(s, t, ());
+        for filter in other.eth_logs_filters {
+            self.eth_logs_filters.push(filter)
         }
-        self.wildcard_events.extend(wildcard_events);
     }
 
     /// An empty filter is one that never matches.
     pub fn is_empty(&self) -> bool {
-        // Destructure to make sure we're checking all fields.
-        let EthereumLogFilter {
-            contracts_and_events_graph,
-            wildcard_events,
-        } = self;
-        contracts_and_events_graph.edge_count() == 0 && wildcard_events.is_empty()
-    }
-
-    /// Filters for `eth_getLogs` calls. The filters will not return false positives. This attempts
-    /// to balance between having granular filters but too many calls and having few calls but too
-    /// broad filters causing the Ethereum endpoint to timeout.
-    pub fn eth_get_logs_filters(self) -> impl Iterator<Item = EthGetLogsFilter> {
-        let mut filters = Vec::new();
-
-        // First add the wildcard event filters.
-        for wildcard_event in self.wildcard_events {
-            filters.push(EthGetLogsFilter {
-                contracts: vec![],
-                event_signatures: vec![wildcard_event],
-            })
-        }
-
-        // The current algorithm is to repeatedly find the maximum cardinality vertex and turn all
-        // of its edges into a filter. This is nice because it is neutral between filtering by
-        // contract or by events, if there are many events that appear on only one data source
-        // we'll filter by many events on a single contract, but if there is an event that appears
-        // on a lot of data sources we'll filter by many contracts with a single event.
-        //
-        // From a theoretical standpoint we're finding a vertex cover, and this is not the optimal
-        // algorithm to find a minimum vertex cover, but should be fine as an approximation.
-        //
-        // One optimization we're not doing is to merge nodes that have the same neighbors into a
-        // single node. For example if a subgraph has two data sources, each with the same two
-        // events, we could cover that with a single filter and no false positives. However that
-        // might cause the filter to become too broad, so at the moment it seems excessive.
-        let mut g = self.contracts_and_events_graph;
-        while g.edge_count() > 0 {
-            // If there are edges, there are vertexes.
-            let max_vertex = g.nodes().max_by_key(|&n| g.neighbors(n).count()).unwrap();
-            let mut filter = match max_vertex {
-                LogFilterNode::Contract(address) => EthGetLogsFilter {
-                    contracts: vec![address],
-                    event_signatures: vec![],
-                },
-                LogFilterNode::Event(event_sig) => EthGetLogsFilter {
-                    contracts: vec![],
-                    event_signatures: vec![event_sig],
-                },
-            };
-            for neighbor in g.neighbors(max_vertex) {
-                match neighbor {
-                    LogFilterNode::Contract(address) => filter.contracts.push(address),
-                    LogFilterNode::Event(event_sig) => filter.event_signatures.push(event_sig),
-                }
-            }
-
-            // Sanity checks:
-            // - The filter is not a wildcard because all nodes have neighbors.
-            // - The graph is bipartite.
-            assert!(filter.contracts.len() > 0 && filter.event_signatures.len() > 0);
-            assert!(filter.contracts.len() == 1 || filter.event_signatures.len() == 1);
-            filters.push(filter);
-            g.remove_node(max_vertex);
-        }
-        filters.into_iter()
+        self.eth_logs_filters.is_empty()
     }
 }
 
-#[derive(Clone, Debug, Default)]
-pub(crate) struct EthereumCallFilter {
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct EthereumCallFilter {
     // Each call filter has a map of filters keyed by address, each containing a tuple with
     // start_block and the set of function signatures
     pub contract_addresses_function_signatures:
@@ -201,6 +128,35 @@ pub(crate) struct EthereumCallFilter {
 }
 
 impl EthereumCallFilter {
+    pub fn matches(&self, call: &EthereumCall) -> bool {
+        // Ensure the call is to a contract the filter expressed an interest in
+        if !self
+            .contract_addresses_function_signatures
+            .contains_key(&call.to)
+        {
+            return false;
+        }
+        // If the call is to a contract with no specified functions, keep the call
+        if self
+            .contract_addresses_function_signatures
+            .get(&call.to)
+            .unwrap()
+            .1
+            .is_empty()
+        {
+            // Allow the ability to match on calls to a contract generally
+            // If you want to match on a generic call to contract this limits you
+            // from matching with a specific call to a contract
+            return true;
+        }
+        // Ensure the call is to run a function the filter expressed an interest in
+        self.contract_addresses_function_signatures
+            .get(&call.to)
+            .unwrap()
+            .1
+            .contains(&call.input.0[..4])
+    }
+
     pub fn from_data_sources<'a>(iter: impl IntoIterator<Item = &'a DataSource>) -> Self {
         iter.into_iter()
             .filter_map(|data_source| data_source.source.address.map(|addr| (addr, data_source)))
@@ -242,6 +198,15 @@ impl EthereumCallFilter {
             }
         }
     }
+
+    /// An empty filter is one that never matches.
+    pub fn is_empty(&self) -> bool {
+        // Destructure to make sure we're checking all fields.
+        let EthereumCallFilter {
+            contract_addresses_function_signatures,
+        } = self;
+        contract_addresses_function_signatures.is_empty()
+    }
 }
 
 impl FromIterator<(BlockNumber, Address, FunctionSelector)> for EthereumCallFilter {
@@ -281,8 +246,8 @@ impl From<EthereumBlockFilter> for EthereumCallFilter {
     }
 }
 
-#[derive(Clone, Debug, Default)]
-pub(crate) struct EthereumBlockFilter {
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct EthereumBlockFilter {
     pub contract_addresses: HashSet<(BlockNumber, Address)>,
     pub trigger_every_block: bool,
 }
