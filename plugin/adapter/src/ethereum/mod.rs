@@ -30,11 +30,56 @@ use std::convert::TryFrom;
 use std::time::Instant;
 use std::{error::Error, sync::Arc};
 
-crate::prepare_adapter!(Ethereum, {
-    handle_block: EthereumBlock,
-    handle_transaction: EthereumTransaction,
-    handle_event: EthereumEvent
-});
+// crate::prepare_adapter!(Ethereum, {
+//     handle_block: EthereumBlock,
+//     handle_transaction: EthereumTransaction,
+//     handle_event: EthereumEvent
+// });
+
+lazy_static::lazy_static! {
+    static ref COMPONENT_NAME: String = String::from(format!("[{}-Adapter]", quote::quote!(Ethereum)));
+}
+pub trait EthereumHandler {
+    fn handle_block(&self, _message: &EthereumBlock) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
+    fn handle_transaction(&self, _message: &EthereumTransaction) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
+
+    fn handle_event(&self, _message: &EthereumEvent) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
+}
+/// A proxy object which wraps a [`Handler`] and makes sure it can't outlive
+/// the library it came from.
+pub struct EthereumHandlerProxy {
+    pub handler: Box<dyn EthereumHandler + Send + Sync>,
+    _lib: Arc<Library>,
+}
+
+impl EthereumHandlerProxy {
+    pub fn new(
+        handler: Box<dyn EthereumHandler + Send + Sync>,
+        _lib: Arc<Library>,
+    ) -> EthereumHandlerProxy {
+        EthereumHandlerProxy { handler, _lib }
+    }
+}
+impl EthereumHandler for EthereumHandlerProxy {
+    fn handle_block(&self, message: &EthereumBlock) -> Result<(), Box<dyn Error>> {
+        self.handler.handle_block(message)
+    }
+
+    fn handle_transaction(&self, message: &EthereumTransaction) -> Result<(), Box<dyn Error>> {
+        self.handler.handle_transaction(message)
+    }
+
+    fn handle_event(&self, message: &EthereumEvent) -> Result<(), Box<dyn Error>> {
+        self.handler.handle_event(message)
+    }
+}
+
 impl MessageHandler for EthereumWasmHandlerProxy {
     fn handle_wasm_mapping(&mut self, data: &mut GenericDataProto) -> Result<(), Box<dyn Error>> {
         log::info!("{} call handle_wasm_mapping", &*COMPONENT_NAME);

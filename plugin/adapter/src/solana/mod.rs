@@ -10,11 +10,55 @@ use paste::paste;
 use std::result::Result::Err;
 use std::{error::Error, sync::Arc};
 
-crate::prepare_adapter!(Solana, {
-     handle_block:SolanaBlock,
-     handle_transaction:SolanaTransaction,
-     handle_log_messages:SolanaLogMessages
-});
+// crate::prepare_adapter!(Solana, {
+//      handle_block:SolanaBlock,
+//      handle_transaction:SolanaTransaction,
+//      handle_log_messages:SolanaLogMessages
+// });
+
+lazy_static::lazy_static! {
+    static ref COMPONENT_NAME: String = String::from(format!("[{}-Adapter]", quote::quote!(Solana)));
+}
+pub trait SolanaHandler {
+    fn handle_block(&self, _message: &SolanaBlock) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
+    fn handle_transaction(&self, _message: &SolanaTransaction) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
+
+    fn handle_log_messages(&self, _message: &SolanaLogMessages) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
+}
+/// A proxy object which wraps a [`Handler`] and makes sure it can't outlive
+/// the library it came from.
+pub struct SolanaHandlerProxy {
+    pub handler: Box<dyn SolanaHandler + Send + Sync>,
+    _lib: Arc<Library>,
+}
+impl SolanaHandlerProxy {
+    pub fn new(
+        handler: Box<dyn SolanaHandler + Send + Sync>,
+        _lib: Arc<Library>,
+    ) -> SolanaHandlerProxy {
+        SolanaHandlerProxy { handler, _lib }
+    }
+}
+impl SolanaHandler for SolanaHandlerProxy {
+    fn handle_block(&self, message: &SolanaBlock) -> Result<(), Box<dyn Error>> {
+        self.handler.handle_block(message)
+    }
+
+    fn handle_transaction(&self, message: &SolanaTransaction) -> Result<(), Box<dyn Error>> {
+        self.handler.handle_transaction(message)
+    }
+
+    fn handle_log_messages(&self, message: &SolanaLogMessages) -> Result<(), Box<dyn Error>> {
+        self.handler.handle_log_messages(message)
+    }
+}
+
 impl MessageHandler for SolanaHandlerProxy {
     fn handle_rust_mapping(
         &self,

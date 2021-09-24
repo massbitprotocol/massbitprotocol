@@ -7,11 +7,60 @@ use massbit_chain_substrate::data_type::{
     SubstrateUncheckedExtrinsic,
 };
 use std::{error::Error, sync::Arc};
-crate::prepare_adapter!(Substrate, {
-     handle_block:SubstrateBlock,
-     handle_extrinsic:SubstrateUncheckedExtrinsic,
-     handle_event:SubstrateEventRecord
-});
+// crate::prepare_adapter!(Substrate, {
+//      handle_block:SubstrateBlock,
+//      handle_extrinsic:SubstrateUncheckedExtrinsic,
+//      handle_event:SubstrateEventRecord
+// });
+lazy_static::lazy_static! {
+    static ref COMPONENT_NAME: String = String::from(format!("[{}-Adapter]", quote::quote!(Substrate)));
+}
+pub trait SubstrateHandler {
+    fn handle_block(&self, _message: &SubstrateBlock) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
+    fn handle_extrinsic(
+        &self,
+        _message: &SubstrateUncheckedExtrinsic,
+    ) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
+
+    fn handle_event(&self, _message: &SubstrateEventRecord) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
+}
+/// A proxy object which wraps a [`Handler`] and makes sure it can't outlive
+/// the library it came from.
+pub struct SubstrateHandlerProxy {
+    pub handler: Box<dyn SubstrateHandler + Send + Sync>,
+    _lib: Arc<Library>,
+}
+impl SubstrateHandlerProxy {
+    pub fn new(
+        handler: Box<dyn SubstrateHandler + Send + Sync>,
+        _lib: Arc<Library>,
+    ) -> SubstrateHandlerProxy {
+        SubstrateHandlerProxy { handler, _lib }
+    }
+}
+impl SubstrateHandler for SubstrateHandlerProxy {
+    fn handle_block(&self, message: &SubstrateBlock) -> Result<(), Box<dyn Error>> {
+        self.handler.handle_block(message)
+    }
+
+    fn handle_extrinsic(
+        &self,
+        message: &SubstrateUncheckedExtrinsic,
+    ) -> Result<(), Box<dyn Error>> {
+        self.handler.handle_extrinsic(message)
+    }
+
+    fn handle_event(&self, message: &SubstrateEventRecord) -> Result<(), Box<dyn Error>> {
+        self.handler.handle_event(message)
+    }
+}
+
 impl MessageHandler for SubstrateHandlerProxy {
     fn handle_rust_mapping(
         &self,
