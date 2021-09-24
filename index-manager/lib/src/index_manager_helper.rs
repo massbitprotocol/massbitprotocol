@@ -34,6 +34,7 @@ use graph::ipfs_client::IpfsClient;
 use graph::log::logger;
 use graph_chain_ethereum::{Chain, DataSource};
 use graph_core::LinkResolver;
+use index_store::indexer::IndexerStore;
 
 lazy_static! {
     static ref CHAIN_READER_URL: String =
@@ -43,7 +44,7 @@ lazy_static! {
     static ref IPFS_ADDRESS: String =
         env::var("IPFS_ADDRESS").unwrap_or(String::from("0.0.0.0:5001"));
 }
-embed_migrations!("./migrations");
+
 pub async fn start_new_index(params: DeployParams) -> Result<(), Box<dyn Error>> {
     let index_config = IndexConfigIpfsBuilder::default()
         .config(&params.config)
@@ -72,8 +73,11 @@ pub async fn start_new_index(params: DeployParams) -> Result<(), Box<dyn Error>>
     //run_ddl_gen(&index_config).await;
 
     // Create a new indexer so we can keep track of it's status
-    IndexStore::insert_new_indexer(&index_config);
-
+    //IndexStore::insert_new_indexer(&index_config);
+    let config_value = read_config_file(&index_config.config);
+    let network = config_value["dataSources"][0]["kind"].as_str().unwrap();
+    let name = config_value["dataSources"][0]["name"].as_str().unwrap();
+    IndexerStore::create_indexer(index_config.identifier.hash.clone(), String::from(name), String::from(network), &params.subgraph);
     // Start the adapter for the index
     adapter_init(&index_config, &manifest).await?;
 
@@ -84,12 +88,8 @@ pub async fn restart_all_existing_index_helper() -> Result<(), Box<dyn Error>> {
     let database_url = crate::DATABASE_CONNECTION_STRING.as_str();
     let conn = PgConnection::establish(database_url)
         .expect(&format!("Error connecting to {}", database_url));
-    match embedded_migrations::run(&conn) {
-        Ok(res) => println!("Finished embedded_migration {:?}", &res),
-        Err(err) => println!("{:?}", &err)
-    };
-    let indexers = IndexStore::get_indexer_list();
-
+    //let indexers = IndexStore::get_indexer_list();
+    let indexers = IndexerStore::get_active_indexers();
     if indexers.len() == 0 {
         log::info!("No index found");
         return Ok(());
@@ -105,7 +105,11 @@ pub async fn restart_all_existing_index_helper() -> Result<(), Box<dyn Error>> {
                 .schema(&indexer.hash)
                 .await
                 .build();
-            // adapter_init(&index_config).await;
+            if indexer.manifest.as_str() != "" {
+                let manifest: Option<SubgraphManifest<Chain>> = Some(get_manifest(&indexer.manifest).await.unwrap());
+                println!("{:?}", &index_config);
+                adapter_init(&index_config, &manifest).await;
+            }
             // TODO: Enable new index Config so we can have the start index on restart
         });
     }

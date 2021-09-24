@@ -43,8 +43,6 @@ use crate::models::Indexer;
 lazy_static! {
     pub static ref GRAPH_NODE: NodeId = NodeId::new("graph_node").unwrap();
     //pub static ref NAMESPACE: Namespace = Namespace::new("sgd0".to_string()).unwrap();
-    pub static ref DATABASE_CONNECTION_STRING: String = env::var("DATABASE_CONNECTION_STRING")
-        .unwrap_or(String::from("postgres://graph-node:let-me-in@localhost"));
     pub static ref DEPLOYMENT_HASH: DeploymentHash = DeploymentHash::new("_indexer").unwrap();
     pub static ref NETWORK: String = String::from("");
 }
@@ -116,7 +114,7 @@ impl StoreBuilder {
     ) -> Result<PostgresIndexStore, anyhow::Error> {
         let logger = logger(false);
         let mut opt = Opt::default();
-        opt.postgres_url = Some(DATABASE_CONNECTION_STRING.clone());
+        opt.postgres_url = Some(crate::DATABASE_CONNECTION_STRING.clone());
         opt.store_connection_pool_size = CONN_POOL_SIZE;
 
         let config = Config::load(&logger, &opt).expect("config is not valid");
