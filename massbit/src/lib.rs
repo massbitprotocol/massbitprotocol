@@ -4,6 +4,15 @@ pub mod components;
 /// Common data types used throughout Massbit.
 pub mod data;
 
+/// Extension traits for external types.
+pub mod ext;
+
+/// Utilities.
+pub mod util;
+
+/// `CheapClone` trait.
+pub mod cheap_clone;
+
 pub mod blockchain;
 
 pub use petgraph;
@@ -30,6 +39,7 @@ pub mod prelude {
     pub use futures03::stream::{StreamExt as _, TryStreamExt};
     pub use hex;
     pub use lazy_static::lazy_static;
+    pub use log::{debug, error, info, warn};
     pub use serde;
     pub use serde_derive::{Deserialize, Serialize};
     pub use serde_json;
@@ -41,11 +51,17 @@ pub mod prelude {
     pub use std::sync::Arc;
     pub use std::time::Duration;
     pub use thiserror;
-    pub use tiny_keccak;
     pub use tokio;
     pub use web3;
+
+    pub type DynTryFuture<'a, Ok = (), Err = Error> =
+        Pin<Box<dyn futures03::Future<Output = Result<Ok, Err>> + Send + 'a>>;
 
     pub use crate::blockchain::BlockPtr;
 
     pub use crate::components::store::BlockNumber;
+
+    pub use crate::util::futures::{retry, TimeoutError};
+
+    pub use crate::cheap_clone::CheapClone;
 }
