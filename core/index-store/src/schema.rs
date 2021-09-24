@@ -3,7 +3,7 @@ table! {
         id -> Text,
         network -> Text,
         name -> Text,
-        schema_name -> Text,
+        namespace -> Text,
         description -> Text,
         repo -> Text,
         manifest -> Text,

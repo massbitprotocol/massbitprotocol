@@ -176,6 +176,10 @@ pub struct IndexConfigLocalBuilder {
 }
 
 impl IndexConfigLocalBuilder {
+    pub fn hash(mut self, hash: &String) -> IndexConfigLocalBuilder {
+        self.hash = hash.clone();
+        self
+    }
     pub async fn mapping(mut self, name: &String) -> IndexConfigLocalBuilder {
         let mapping = [GENERATED_FOLDER.as_str(), name, "mapping.so"].join("/");
         self.mapping = PathBuf::from(mapping.to_string());

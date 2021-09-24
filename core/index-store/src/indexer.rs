@@ -29,7 +29,7 @@ impl IndexerStore {
             indexers::id.eq(&id),
             indexers::network.eq(&network),
             indexers::name.eq(&name),
-            indexers::schema_name.eq(""),
+            indexers::namespace.eq(""),
             indexers::description.eq(""),
             indexers::repo.eq(""),
             indexers::index_status.eq(IndexerStatus::Synced.as_static().to_lowercase()),
@@ -40,9 +40,9 @@ impl IndexerStore {
         if let Ok(indexer) = diesel::insert_into(indexers::table)
             .values(&values)
             .get_result::<Indexer>(&conn) {
-            let schema_name = format!("sgd{}", indexer.v_id);
+            let namespace = format!("sgd{}", indexer.v_id);
             diesel::update(indexers::table.filter(indexers::v_id.eq(indexer.v_id)))
-                .set(indexers::schema_name.eq(&schema_name))
+                .set(indexers::namespace.eq(&namespace))
                 .execute(&conn);
         }
     }

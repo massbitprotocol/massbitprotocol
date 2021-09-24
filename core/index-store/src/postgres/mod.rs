@@ -51,7 +51,7 @@ impl PostgresIndexStore {
     pub fn save_got_block(&self, indexer: &String, block_number: i64) {
         let logger = Logger::root(slog::Discard, slog::o!());
         let conn = self.connection.get_with_timeout_warning(&logger).unwrap();
-        diesel::update(indexers::table.filter(indexers::hash.eq(indexer)))
+        diesel::update(indexers::table.filter(indexers::id.eq(indexer)))
             .set(indexers::got_block.eq(block_number))
             .execute(&conn)
             .expect(&format!("Unable to find indexer with hash {:?}", indexer));

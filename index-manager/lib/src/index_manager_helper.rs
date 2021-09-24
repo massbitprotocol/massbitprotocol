@@ -79,7 +79,7 @@ pub async fn start_new_index(params: DeployParams) -> Result<(), Box<dyn Error>>
     let name = config_value["dataSources"][0]["name"].as_str().unwrap();
     IndexerStore::create_indexer(index_config.identifier.hash.clone(), String::from(name), String::from(network), &params.subgraph);
     // Start the adapter for the index
-    adapter_init(&index_config, &manifest).await?;
+    adapter_init(&index_config, &manifest, None).await?;
 
     Ok(())
 }
@@ -98,6 +98,7 @@ pub async fn restart_all_existing_index_helper() -> Result<(), Box<dyn Error>> {
     for indexer in indexers {
         tokio::spawn(async move {
             let index_config = IndexConfigLocalBuilder::default()
+                .hash(&indexer.hash)
                 .config(&indexer.hash)
                 .await
                 .mapping(&indexer.hash)
@@ -107,8 +108,12 @@ pub async fn restart_all_existing_index_helper() -> Result<(), Box<dyn Error>> {
                 .build();
             if indexer.manifest.as_str() != "" {
                 let manifest: Option<SubgraphManifest<Chain>> = Some(get_manifest(&indexer.manifest).await.unwrap());
-                println!("{:?}", &index_config);
-                adapter_init(&index_config, &manifest).await;
+                let start_block = if indexer.got_block > 0 {
+                    Some(indexer.got_block)
+                } else {
+                    None
+                };
+                adapter_init(&index_config, &manifest, start_block).await;
             }
             // TODO: Enable new index Config so we can have the start index on restart
         });

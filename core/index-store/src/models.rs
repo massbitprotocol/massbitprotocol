@@ -6,7 +6,7 @@ pub struct Indexer {
     pub id: String,
     pub network: String,
     pub name: String,
-    pub schema_name: String,
+    pub namespace: String,
     pub description: String,
     pub repo: String,
     pub manifest: String,

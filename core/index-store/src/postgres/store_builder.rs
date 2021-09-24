@@ -54,42 +54,16 @@ pub struct StoreBuilder {}
 impl StoreBuilder {
     pub fn prepare_schema(indexer_hash: &str, conn: &PgConnection) -> Result<String, anyhow::Error>  {
         log::info!("Prepare schema for indexer {}", indexer_hash);
-        let results = indexers::table.filter(indexers::id.eq(indexer_hash))
+        let entity = indexers::table.filter(indexers::id.eq(indexer_hash))
             .limit(1)
             .load::<Indexer>(conn)
-            .expect("Error loading indexer state");
-        let schema_name : String = match results.get(0) {
-            Some(val) => {
-                if val.schema_name == "" {
-                    println!("Update schema name");
-                    let schema_name = format!("sgd{}", val.v_id);
-                    diesel::update(indexers::table.filter(indexers::v_id.eq(val.v_id)))
-                        .set(indexers::schema_name.eq(&schema_name))
-                        .execute(conn);
-                    schema_name
-                } else {
-                    val.schema_name.clone()
-                }
-            },
-            None => {
-                let state = diesel::insert_into(indexers::table)
-                    .values(&(indexers::id.eq(indexer_hash),
-                             indexers::schema_name.eq(""),
-                             indexers::got_block.eq(0_i64))
-                    )
-                    //.execute(conn);
-                    .get_result::<Indexer>(conn)?;
-                let schema_name = format!("sgd{}", state.v_id);
-                diesel::update(indexers::table.filter(indexers::v_id.eq(state.v_id)))
-                    .set(indexers::schema_name.eq(&schema_name))
-                    .execute(conn);
-                schema_name
-            }
-        };
-
+            .expect("Error loading indexer state")
+            .pop()
+            .expect("Indexer not found");
+        println!("{:?}", entity);
         let counter = sql_query(format!(
             "SELECT count(schema_name) FROM information_schema.schemata WHERE schema_name = '{}'",
-            schema_name.as_str()
+            entity.namespace.as_str()
         ))
             .get_results::<Counter>(conn)
             .expect("Query failed")
@@ -97,7 +71,7 @@ impl StoreBuilder {
             .expect("No record found");
         if counter.count == 0 {
             //Create schema
-            match sql_query(format!("create schema {}", schema_name.as_str())).execute(conn) {
+            match sql_query(format!("create schema {}", entity.namespace.as_str())).execute(conn) {
                 Ok(_) => {}
                 Err(err) => {
                     error!("Error while create schema {:?}", err)
@@ -106,7 +80,7 @@ impl StoreBuilder {
             //Need execute command CREATE EXTENSION btree_gist; on db
         }
 
-        Ok(schema_name)
+        Ok(entity.namespace)
     }
     pub fn create_store<P: AsRef<Path>>(
         indexer: &str,
