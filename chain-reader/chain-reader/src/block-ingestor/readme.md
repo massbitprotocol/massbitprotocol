@@ -6,8 +6,6 @@
   - Log
 - Data is saved into 3 tables: Block, Receipt and Log 
 - CLI arguments
-  - Start block
-  - End block
   - Direction
   - Endpoint for getting data
   - DB endpoint

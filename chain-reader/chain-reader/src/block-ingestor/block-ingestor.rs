@@ -13,12 +13,13 @@ use futures03::compat::Future01CompatExt;
 use graph::components::ethereum::EthereumBlock as FullEthereumBlock;
 use graph::prelude::web3::types::BlockNumber;
 use graph::runtime::IndexForAscTypeId::EthereumBlock;
+use index_store::postgres::block::EthereumBlockStore;
+use index_store::store::BlockStore;
 use lazy_static::lazy_static;
 use log::{debug, info, warn};
 use logger::core::init_logger;
 use massbit_chain_ethereum::data_type::EthereumBlock as Block;
 use massbit_common::NetworkType;
-use index_store::postgres::block::EthereumBlockStore;
 use std::collections::HashMap;
 use std::error::Error as StdError;
 use std::sync::{
@@ -41,7 +42,6 @@ use web3::{
     },
     Web3,
 };
-use index_store::store::BlockStore;
 
 // Check https://github.com/tokio-rs/prost for enum converting in rust protobuf
 const CHAIN_TYPE: ChainType = ChainType::Ethereum;
@@ -69,7 +69,8 @@ lazy_static! {
     pub static ref WEB3_ETH: Arc<Web3<Transport>> = get_web3(&"ethereum".to_string());
     pub static ref WEB3_BSC: Arc<Web3<Transport>> = get_web3(&"bsc".to_string());
     pub static ref WEB3_MATIC: Arc<Web3<Transport>> = get_web3(&"matic".to_string());
-    pub static ref DB_URL: String = String::from("postgres://graph-node:let-me-in@localhost/graph-node");
+    pub static ref DB_URL: String =
+        String::from("postgres://graph-node:let-me-in@localhost/graph-node");
 }
 
 #[derive(Error, Debug)]
@@ -246,10 +247,11 @@ pub async fn get_blocks(
 fn write_full_blocks(
     block_store: &dyn BlockStore,
     full_blocks: &Vec<FullEthereumBlock>,
+    network: String,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!("full_blocks len: {:?}", full_blocks.len());
-    //unimplemented!("Write to db");
-    block_store.store_full_ethereum_blocks(full_blocks);
+    let res = block_store.store_full_ethereum_blocks(full_blocks, network);
+    println!("store_full_ethereum_blocks res: {:?}", &res);
     Ok(())
 }
 
@@ -313,6 +315,12 @@ async fn get_full_block(
         .collect()
 }
 
+fn get_latest_block(web3: &Arc<Web3<Transport>>) -> u64 {
+    let block_header = web3.eth().block(Web3BlockNumber::Latest.into()).wait();
+    //Todo: check panic
+    block_header.unwrap().unwrap().number.unwrap().as_u64()
+}
+
 async fn run(
     matches: ArgMatches<'static>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
@@ -321,46 +329,54 @@ async fn run(
     let db_url: &str = matches.value_of("db-url").unwrap_or(DB_URL.as_str());
     let block_store = EthereumBlockStore::new(db_url);
     let network = matches.value_of("network-type").unwrap_or("matic");
-    let mut start_block = block_store.get_latest_block_number();
-    if start_block.is_none() {
-        start_block = match matches.value_of("start-block") {
-            Some(start_block) => Some(start_block.parse().unwrap()),
-            None => None,
-        };
-    }
-    log::info!("Start block {:?}", &start_block);
-    let mut end_block: Option<u64> = match matches.value_of("end-block") {
-        Some(end_block) => Some(end_block.parse().unwrap()),
-        None => None,
-    };
     let is_increase = matches.is_present("is-increase");
-    println!("is_increase: {:?}", is_increase);
-    let chain_url: &str = matches
-        .value_of("chain-url")
-        .unwrap_or("https://polygon-rpc.com/");
-
-    // Get version
+    // Get web3 connection
     let WEB3 = match network {
         "bsc" => WEB3_BSC.clone(),
         "matic" => WEB3_MATIC.clone(),
         _ => WEB3_ETH.clone(),
     };
-    let block_header = WEB3.eth().block(Web3BlockNumber::Latest.into()).wait();
-    //Todo: check panic
-    let mut latest_block = block_header.unwrap().unwrap().number.unwrap().as_u64();
-    let mut start_block = match start_block {
-        Some(start_block) => start_block,
-        None => latest_block,
+
+    let mut end_block: Option<u64> = match matches.value_of("end-block") {
+        Some(end_block) => Some(end_block.parse().unwrap()),
+        None => None,
     };
+
+    let earliest_block_db = block_store.get_earliest_block_number();
+    let latest_block_db = block_store.get_latest_block_number();
+    let mut latest_block = get_latest_block(&WEB3);
+
+    let mut start_block: u64 = match matches.value_of("start-block") {
+        Some(start_block) => start_block.parse().unwrap(),
+        None => {
+            if latest_block_db.is_none() {
+                latest_block
+            } else {
+                if is_increase {
+                    latest_block_db.unwrap() + 1
+                } else {
+                    earliest_block_db.unwrap() - 1
+                }
+            }
+        }
+    };
+
+    log::info!("Start block {:?}", &start_block);
+
+    println!("is_increase: {:?}", is_increase);
+    let chain_url: &str = matches
+        .value_of("chain-url")
+        .unwrap_or("https://polygon-rpc.com/");
+
     let is_non_stop = is_increase && (end_block == None);
     let end_block = end_block.unwrap_or(0);
-    while is_non_stop || (start_block != end_block) {
+    while is_non_stop
+        || ((is_increase && start_block < end_block) || (!is_increase && start_block > end_block))
+    {
         let remand = (start_block as i64 - end_block as i64).abs() as u64;
         let mut get_range = remand.min(MAX_GET_BLOCK_RANGE);
         if is_non_stop && (latest_block - start_block) < MAX_GET_BLOCK_RANGE {
-            let block_header = WEB3.eth().block(Web3BlockNumber::Latest.into()).wait();
-            //Todo: check panic
-            latest_block = block_header.unwrap().unwrap().number.unwrap().as_u64();
+            latest_block = get_latest_block(&WEB3);
             get_range = latest_block - start_block;
         }
 
@@ -376,7 +392,7 @@ async fn run(
         println!("to_block:{}", &to_block);
         full_blocks = get_full_block(start_block, to_block, &WEB3).await;
 
-        write_full_blocks(&block_store, &full_blocks);
+        write_full_blocks(&block_store, &full_blocks, network.to_string());
         start_block = to_block;
     }
 
