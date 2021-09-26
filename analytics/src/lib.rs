@@ -10,6 +10,9 @@ pub mod models;
 pub mod ethereum;
 //pub mod solana;
 //pub mod substrate;
+pub mod storage_adapter;
+pub mod postgres_adapter;
+
 pub mod stream_mod {
     tonic::include_proto!("chaindata");
 }
