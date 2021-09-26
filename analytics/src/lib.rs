@@ -5,6 +5,7 @@ extern crate diesel_migrations;
 use std::env;
 use diesel::{prelude::*, Connection, PgConnection};
 use dotenv::dotenv;
+pub mod manager;
 pub mod schema;
 pub mod models;
 pub mod ethereum;

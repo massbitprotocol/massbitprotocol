@@ -2,14 +2,17 @@ use crate::ethereum::handler::EthereumHandler;
 use massbit_chain_ethereum::data_type::ExtBlock;
 use massbit_common::prelude::tokio_postgres::Transaction;
 use graph::prelude::web3::types::TransactionReceipt;
+use crate::storage_adapter::StorageAdapter;
 
 pub struct EthereumDailyAddressTransaction {
-
+    pub storage_adapter: Box<dyn StorageAdapter>,
 }
 
 impl EthereumDailyAddressTransaction {
-    pub fn new(Box<dyn StorageAdapter>) -> Self {
-
+    pub fn new(storage_adapter: Box<dyn StorageAdapter>) -> Self {
+        EthereumDailyAddressTransaction {
+            storage_adapter
+        }
     }
 }
 
