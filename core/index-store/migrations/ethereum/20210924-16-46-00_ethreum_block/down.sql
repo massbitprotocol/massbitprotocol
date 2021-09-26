@@ -1,0 +1,1 @@
+drop table if exists ethereum_block;
