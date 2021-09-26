@@ -69,6 +69,7 @@ lazy_static! {
     pub static ref WEB3_ETH: Arc<Web3<Transport>> = get_web3(&"ethereum".to_string());
     pub static ref WEB3_BSC: Arc<Web3<Transport>> = get_web3(&"bsc".to_string());
     pub static ref WEB3_MATIC: Arc<Web3<Transport>> = get_web3(&"matic".to_string());
+    pub static ref DB_URL: String = String::from("postgres://graph-node:let-me-in@localhost/graph-node");
 }
 
 #[derive(Error, Debug)]
@@ -243,10 +244,12 @@ pub async fn get_blocks(
 }
 
 fn write_full_blocks(
+    block_store: &dyn BlockStore,
     full_blocks: &Vec<FullEthereumBlock>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!("full_blocks len: {:?}", full_blocks.len());
     //unimplemented!("Write to db");
+    block_store.store_full_ethereum_blocks(full_blocks);
     Ok(())
 }
 
@@ -315,11 +318,17 @@ async fn run(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     // Get argument
     let chain_type = matches.value_of("chain-type").unwrap_or("ethereum");
+    let db_url: &str = matches.value_of("db-url").unwrap_or(DB_URL.as_str());
+    let block_store = EthereumBlockStore::new(db_url);
     let network = matches.value_of("network-type").unwrap_or("matic");
-    let start_block: Option<u64> = match matches.value_of("start-block") {
-        Some(start_block) => Some(start_block.parse().unwrap()),
-        None => None,
-    };
+    let mut start_block = block_store.get_latest_block_number();
+    if start_block.is_none() {
+        start_block = match matches.value_of("start-block") {
+            Some(start_block) => Some(start_block.parse().unwrap()),
+            None => None,
+        };
+    }
+    log::info!("Start block {:?}", &start_block);
     let mut end_block: Option<u64> = match matches.value_of("end-block") {
         Some(end_block) => Some(end_block.parse().unwrap()),
         None => None,
@@ -329,8 +338,6 @@ async fn run(
     let chain_url: &str = matches
         .value_of("chain-url")
         .unwrap_or("https://polygon-rpc.com/");
-    // Todo: replace default db-url
-    let chain_url: &str = matches.value_of("db-url").unwrap_or("db-url");
 
     // Get version
     let WEB3 = match network {
@@ -369,7 +376,7 @@ async fn run(
         println!("to_block:{}", &to_block);
         full_blocks = get_full_block(start_block, to_block, &WEB3).await;
 
-        write_full_blocks(&full_blocks);
+        write_full_blocks(&block_store, &full_blocks);
         start_block = to_block;
     }
 

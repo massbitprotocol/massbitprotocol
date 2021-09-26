@@ -9,7 +9,7 @@ use massbit_common::prelude::r2d2_diesel::ConnectionManager;
 use massbit_common::prelude::{
     r2d2, serde_json
 };
-use massbit_common::prelude::diesel::{PgConnection, r2d2::{Pool, PooledConnection}, RunQueryDsl};
+use massbit_common::prelude::diesel::{PgConnection, r2d2::{Pool, PooledConnection}, RunQueryDsl, QueryDsl, ExpressionMethods};
 use serde::{Serialize, Deserialize};
 use core::ops::Deref;
 use schema::ethereum_block;
@@ -23,10 +23,12 @@ embed_migrations!("./migrations/ethereum");
 
 impl EthereumBlockStore {
     pub fn new(db_url : &str) -> EthereumBlockStore {
+        log::info!("Create EthereumBlockStore with url {}", db_url);
         let pool = create_r2d2_connection_pool::<PgConnection>(db_url);
         match pool.get() {
             Ok(conn) => {
-                embedded_migrations::run(conn.deref());
+                let result = embedded_migrations::run_with_output(conn.deref(), &mut std::io::stdout());
+                log::info!("{:?}", &result);
             }
             Err(_) => {}
         };
@@ -40,14 +42,36 @@ impl EthereumBlockStore {
 }
 
 impl BlockStoreTrait for EthereumBlockStore {
+    fn get_latest_block_number(&self) -> Option<u64> {
+        match self.get_connection() {
+            Ok(conn) => {
+                if let Ok(block_numbers) = ethereum_block::table.select(ethereum_block::number)
+                    .order(ethereum_block::number.desc())
+                    .limit(1)
+                    .load::<i64>(conn.deref()) {
+                    match block_numbers.get(0) {
+                        Some(val) => Some(*val as u64),
+                        None => None
+                    }
+                } else {
+                    None
+                }
+            }
+            Err(_) => None
+        }
+    }
     fn store_full_ethereum_blocks(&self, full_blocks: &Vec<FullEthereumBlock>) -> Result<(), Error> {
         if let Ok(conn) = self.get_connection() {
             let values = full_blocks.iter().map(|block|{
                 EthereumBlock::from(block)
             }).collect::<Vec<EthereumBlock>>();
-            diesel::insert_into(schema::ethereum_block::table)
+            let result = diesel::insert_into(schema::ethereum_block::table)
                  .values(&values)
                  .execute(conn.deref());
+            match result {
+                Ok(_) => {}
+                Err(err) => {log::error!("{:?}", &err)}
+            }
         }
         Ok(())
     }
