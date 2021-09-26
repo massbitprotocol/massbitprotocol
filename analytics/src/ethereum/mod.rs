@@ -1,3 +1,4 @@
+pub mod metrics;
 pub mod models;
 
 use std::time::{Instant};

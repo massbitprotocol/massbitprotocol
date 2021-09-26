@@ -1,4 +1,5 @@
 //[WIP] not included in module tree
+pub mod metrics;
 use crate::stream_mod::{
     streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
 };
