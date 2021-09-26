@@ -1,5 +1,6 @@
 pub mod metrics;
 pub mod models;
+pub mod handler;
 
 use std::time::{Instant};
 use diesel::{self, RunQueryDsl};
