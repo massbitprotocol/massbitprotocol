@@ -12,7 +12,9 @@ pub mod mapping;
 pub mod models;
 pub mod postgres;
 pub mod schema;
+pub mod store;
 pub mod struct_entity;
+pub mod util;
 
 lazy_static! {
     pub static ref COMPONENT_NAME: String = String::from("[Index-Store]");
@@ -28,7 +30,6 @@ pub use graph::components::store::{
 };
 pub use graph::data::graphql::ext::ValueExt;
 pub use graph::data::store::{Entity, Value};
-pub use graph::prelude::q;
 pub use struct_entity::{EntityValue, FromEntity, FromValueTrait, ToMap, ValueFrom};
 use massbit_common::prelude::diesel::{PgConnection, Connection};
 

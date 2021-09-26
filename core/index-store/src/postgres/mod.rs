@@ -1,3 +1,6 @@
+pub mod block;
+pub mod relational;
+pub mod store_builder;
 use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -29,9 +32,6 @@ use massbit_common::prelude::{
     async_trait::async_trait,
     log,
 };
-use std::collections::{BTreeMap, HashMap};
-use std::path::PathBuf;
-use store_builder::StoreBuilder;
 use crate::schema::indexers;
 use diesel::prelude::*;
 pub const BLOCK_NUMBER_MAX: BlockNumber = <i32>::MAX;
