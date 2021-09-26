@@ -1,11 +1,12 @@
 use anyhow::Error;
 use chain_reader::command;
+use chain_reader::ethereum_chain::loop_get_block;
 use chain_reader::Transport;
 use chain_reader::{
     grpc_stream::stream_mod::{ChainType, DataType, GenericDataProto},
     CONFIG,
 };
-use clap::{App, Arg};
+use clap::{App, Arg, ArgMatches};
 use futures::stream;
 use futures::{Future, Stream};
 use futures03::compat::Future01CompatExt;
@@ -49,6 +50,7 @@ const USE_WEBSOCKET: bool = false;
 const BLOCK_BATCH_SIZE: u64 = 10;
 const RETRY_GET_BLOCK_LIMIT: u32 = 10;
 const GET_BLOCK_TIMEOUT_SEC: u64 = 60;
+const MAX_GET_BLOCK_RANGE: u64 = 10;
 
 fn get_web3(network: &NetworkType) -> Arc<Web3<Transport>> {
     let config = CONFIG.get_chain_config(&CHAIN_TYPE, network).unwrap();
@@ -202,7 +204,13 @@ pub async fn get_blocks(
     end_block: u64,
     web3: &Web3<Transport>,
 ) -> Result<Vec<web3::types::Block<Transaction>>, IngestorError> {
-    let blocks = (start_block..end_block);
+    let mut blocks;
+    if start_block < end_block {
+        blocks = (start_block..end_block);
+    } else {
+        blocks = (end_block..start_block);
+    }
+
     let batching_web3 = Web3::new(Batch::new(web3.transport().clone()));
 
     let block_futures = blocks
@@ -223,7 +231,7 @@ pub async fn get_blocks(
         })
         .collect::<Vec<_>>();
 
-    let my_blocks = batching_web3
+    let blocks = batching_web3
         .transport()
         .submit_batch()
         .from_err()
@@ -231,19 +239,15 @@ pub async fn get_blocks(
         .and_then(move |_| stream::futures_ordered(block_futures).collect())
         .compat()
         .await;
-    // let blocks = my_blocks
-    //     .unwrap_or(Vec::new())
-    //     .into_iter()
-    //     .collect::<HashMap<u64, web3::types::Block<Transaction>>>();
-
-    my_blocks
+    blocks
 }
 
 fn write_full_blocks(
-    full_blocks: Vec<FullEthereumBlock>,
+    full_blocks: &Vec<FullEthereumBlock>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    println!("full_blocks: {:?}", full_blocks);
-    unimplemented!("Write to db");
+    println!("full_blocks len: {:?}", full_blocks.len());
+    //unimplemented!("Write to db");
+    Ok(())
 }
 
 async fn get_full_block(
@@ -255,7 +259,7 @@ async fn get_full_block(
 
     let mut full_blocks = vec![];
     let blocks = get_blocks(start_block, end_block, &web3).await;
-    //println!("Got Blocks: {:?}", &blocks.unwrap().len());
+    //println!("Got Blocks: {:?}", &blocks);
     let mut tasks = vec![];
     if let Ok(blocks) = blocks {
         println!("Got Blocks: {:?}", &blocks.len());
@@ -306,7 +310,69 @@ async fn get_full_block(
         .collect()
 }
 
-async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+async fn run(
+    matches: ArgMatches<'static>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+    // Get argument
+    let chain_type = matches.value_of("chain-type").unwrap_or("ethereum");
+    let network = matches.value_of("network-type").unwrap_or("matic");
+    let start_block: Option<u64> = match matches.value_of("start-block") {
+        Some(start_block) => Some(start_block.parse().unwrap()),
+        None => None,
+    };
+    let mut end_block: Option<u64> = match matches.value_of("end-block") {
+        Some(end_block) => Some(end_block.parse().unwrap()),
+        None => None,
+    };
+    let is_increase = matches.is_present("is-increase");
+    println!("is_increase: {:?}", is_increase);
+    let chain_url: &str = matches
+        .value_of("chain-url")
+        .unwrap_or("https://polygon-rpc.com/");
+    // Todo: replace default db-url
+    let chain_url: &str = matches.value_of("db-url").unwrap_or("db-url");
+
+    // Get version
+    let WEB3 = match network {
+        "bsc" => WEB3_BSC.clone(),
+        "matic" => WEB3_MATIC.clone(),
+        _ => WEB3_ETH.clone(),
+    };
+    let block_header = WEB3.eth().block(Web3BlockNumber::Latest.into()).wait();
+    //Todo: check panic
+    let mut latest_block = block_header.unwrap().unwrap().number.unwrap().as_u64();
+    let mut start_block = match start_block {
+        Some(start_block) => start_block,
+        None => latest_block,
+    };
+    let is_non_stop = is_increase && (end_block == None);
+    let end_block = end_block.unwrap_or(0);
+    while is_non_stop || (start_block != end_block) {
+        let remand = (start_block as i64 - end_block as i64).abs() as u64;
+        let mut get_range = remand.min(MAX_GET_BLOCK_RANGE);
+        if is_non_stop && (latest_block - start_block) < MAX_GET_BLOCK_RANGE {
+            let block_header = WEB3.eth().block(Web3BlockNumber::Latest.into()).wait();
+            //Todo: check panic
+            latest_block = block_header.unwrap().unwrap().number.unwrap().as_u64();
+            get_range = latest_block - start_block;
+        }
+
+        let mut full_blocks;
+        let to_block = match is_increase {
+            true => start_block + get_range,
+            false => start_block - get_range,
+        };
+        println!("start_block:{}", &start_block);
+        println!("end_block:{}", &end_block);
+        println!("remand:{}", &remand);
+        println!("get_range:{}", &get_range);
+        println!("to_block:{}", &to_block);
+        full_blocks = get_full_block(start_block, to_block, &WEB3).await;
+
+        write_full_blocks(&full_blocks);
+        start_block = to_block;
+    }
+
     Ok(())
 }
 
@@ -373,38 +439,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
         )
         .get_matches();
 
-    let chain_type = matches.value_of("chain-type").unwrap_or("ethereum");
-    let network = matches.value_of("network-type").unwrap_or("matic");
-    let start_block: Option<u64> = match matches.value_of("start-block") {
-        Some(start_block) => Some(start_block.parse().unwrap()),
-        None => None,
-    };
-    let end_block: Option<u64> = match matches.value_of("end-block") {
-        Some(end_block) => Some(end_block.parse().unwrap()),
-        None => None,
-    };
-    let is_increase = matches.is_present("is-increase");
-    println!("is_increase: {:?}", is_increase);
-    let chain_url: &str = matches
-        .value_of("chain-url")
-        .unwrap_or("https://polygon-rpc.com/");
-    // Todo: replace default db-url
-    let chain_url: &str = matches.value_of("db-url").unwrap_or("db-url");
+    run(matches).await;
 
-    // Get version
-    let WEB3 = match network {
-        "bsc" => WEB3_BSC.clone(),
-        "matic" => WEB3_MATIC.clone(),
-        _ => WEB3_ETH.clone(),
-    };
-    let block_store = EthereumBlockStore::new(chain_url);
-    //block_store.store_full_ethereum_blocks(vec![]);
-    // let full_block = FullEthereumBlock {
-    //     block: Arc::new(block),
-    //     transaction_receipts: receipts,
-    // };
-    // full_blocks.push(full_block);
-
-    //write_full_blocks(full_blocks);
     Ok(())
 }
