@@ -181,13 +181,14 @@ def is_template_exist(subgraph_path):
 # Deprecated
 def replace_abi_with_hash(subgraph_type, subgraph, abi_res):
     if subgraph_type in subgraph:
-        for i in range(0, len(subgraph[subgraph_type][0]['mapping']['abis'])):
-            file_name = os.path.basename(subgraph[subgraph_type][0]['mapping']['abis'][i]['file'])
-            name = subgraph[subgraph_type][0]['mapping']['abis'][i]['name']
-            for abi_object in abi_res:
-                if file_name.lower() == abi_object["name"].lower():
-                    subgraph[subgraph_type][0]['mapping']['abis'][i] = {'name': name,
-                                                                        'file': {'/': '/ipfs/' + abi_object["hash"]}}
+        for iterator in range(len(subgraph[subgraph_type])):
+            for i in range(0, len(subgraph[subgraph_type][0]['mapping']['abis'])):
+                file_name = os.path.basename(subgraph[subgraph_type][0]['mapping']['abis'][i]['file'])
+                name = subgraph[subgraph_type][0]['mapping']['abis'][i]['name']
+                for abi_object in abi_res:
+                    if file_name.lower() == abi_object["name"].lower():
+                        subgraph[subgraph_type][0]['mapping']['abis'][i] = {'name': name,
+                                                                            'file': {'/': '/ipfs/' + abi_object["hash"]}}
     return subgraph
 
 
@@ -204,7 +205,7 @@ def replace_mapping_file(subgraph_type, subgraph, mapping_res, iterator):
     Replace mapping > file with IPFS hash
     """
     for j in range(len(mapping_res)):  # Add a new iterator to loop through mapping_res
-        if subgraph[subgraph_type][iterator]['name'] in mapping_res[j]['name']:
+        if subgraph[subgraph_type][iterator]['name'] == mapping_res[j]['name']:
             subgraph[subgraph_type][iterator]['mapping']['file'] = {'/': '/ipfs/' + mapping_res[j]['file_hash']}
 
 
@@ -213,8 +214,6 @@ def replace_mapping_abis_file(subgraph_type, subgraph, mapping_res, iterator):
     Replace mapping > abis > file with IPFS hash
     """
     for j in range(len(mapping_res)):   # Add a new iterator to loop through mapping_res
-        for abi_iterator in range(len(mapping_res[j]['abis'])):   # Add a new iterator to loop through mapping_res.abis
-            if subgraph[subgraph_type][iterator]['mapping']['abis'][j]['file'] in mapping_res[j]['abis'][abi_iterator]['file'] and subgraph[subgraph_type][iterator]['mapping']['abis'][j]['name'] in mapping_res[j]['abis'][abi_iterator]['name']:
-                 subgraph[subgraph_type][iterator]['mapping']['abis'][j] = {
-                        'name': subgraph[subgraph_type][iterator]['mapping']['abis'][j]['name'],
-                        'file': {'/': '/ipfs/' + mapping_res[j]['abis'][abi_iterator]['hash']}}
+        for k in range(len(mapping_res[j]['abis'])):   # Add a new iterator to loop through mapping_res.abis
+            if subgraph[subgraph_type][iterator]['mapping']['abis'][k]['file'] == mapping_res[j]['abis'][k]['file']:
+                subgraph[subgraph_type][iterator]['mapping']['abis'][k] = {'name': subgraph[subgraph_type][iterator]['mapping']['abis'][k]['name'], 'file': {'/': '/ipfs/' + mapping_res[j]['abis'][k]['hash']}}
