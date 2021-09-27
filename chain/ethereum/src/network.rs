@@ -1,12 +1,11 @@
+use crate::adapter::EthereumAdapter as _;
+use crate::EthereumAdapter;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::adapter::EthereumAdapter as _;
-use crate::EthereumAdapter;
-
 #[derive(Clone)]
 pub struct EthereumNetworkAdapter {
-    pub adapter: Arc<EthereumAdapter>,
+    adapter: Arc<EthereumAdapter>,
 }
 
 #[derive(Clone)]
@@ -15,6 +14,15 @@ pub struct EthereumNetworkAdapters {
 }
 
 impl EthereumNetworkAdapters {
+    pub fn cheapest(&self) -> Option<Arc<EthereumAdapter>> {
+        // EthereumAdapters are sorted by their NodeCapabilities when the EthereumNetworks
+        // struct is instantiated so they do not need to be sorted here
+        self.adapters
+            .iter()
+            .next()
+            .map(|ethereum_network_adapter| ethereum_network_adapter.adapter.clone())
+    }
+
     pub fn remove(&mut self, provider: &str) {
         self.adapters
             .retain(|adapter| adapter.adapter.provider() != provider);

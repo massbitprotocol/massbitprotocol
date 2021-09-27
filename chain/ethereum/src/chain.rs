@@ -6,12 +6,16 @@ use massbit::blockchain::{
     PollingBlockStream, TriggersAdapter as TriggersAdapterTrait,
 };
 
-use crate::data_source::{DataSource, UnresolvedDataSource};
+use crate::data_source::{
+    DataSource, DataSourceTemplate, UnresolvedDataSource, UnresolvedDataSourceTemplate,
+};
 use crate::ethereum_adapter::blocks_with_triggers;
-use crate::network::EthereumNetworkAdapters;
+use crate::network::{EthereumNetworkAdapter, EthereumNetworkAdapters};
 use crate::types::{LightEthereumBlock, LightEthereumBlockExt};
-use crate::EthereumAdapter;
 use crate::TriggerFilter;
+use crate::{EthereumAdapter, RuntimeAdapter};
+use anyhow::Context;
+use massbit::components::store::DeploymentLocator;
 
 pub struct Chain {
     pub eth_adapters: Arc<EthereumNetworkAdapters>,
@@ -33,20 +37,39 @@ impl Blockchain for Chain {
 
     type UnresolvedDataSource = UnresolvedDataSource;
 
+    type DataSourceTemplate = DataSourceTemplate;
+
+    type UnresolvedDataSourceTemplate = UnresolvedDataSourceTemplate;
+
     type TriggersAdapter = TriggersAdapter;
 
     type TriggerData = crate::trigger::EthereumTrigger;
 
+    type MappingTrigger = crate::trigger::MappingTrigger;
+
     type TriggerFilter = crate::adapter::TriggerFilter;
 
+    type RuntimeAdapter = RuntimeAdapter;
+
     fn triggers_adapter(&self) -> Result<Arc<Self::TriggersAdapter>, Error> {
-        let eth_adapter = self.eth_adapters.adapters[0].adapter.clone();
+        let eth_adapter = self
+            .eth_adapters
+            .cheapest()
+            .with_context(|| "no adapter for chain")?
+            .clone();
         let adapter = TriggersAdapter { eth_adapter };
         Ok(Arc::new(adapter))
     }
 
+    fn runtime_adapter(&self) -> Arc<Self::RuntimeAdapter> {
+        Arc::new(RuntimeAdapter {
+            eth_adapters: self.eth_adapters.cheap_clone(),
+        })
+    }
+
     async fn new_block_stream(
         &self,
+        deployment: DeploymentLocator,
         start_block: BlockNumber,
         filter: Arc<Self::TriggerFilter>,
     ) -> Result<Box<dyn BlockStream<Self>>, Error> {
@@ -111,5 +134,26 @@ impl TriggersAdapterTrait<Chain> for TriggersAdapter {
         filter: &TriggerFilter,
     ) -> Result<Vec<BlockWithTriggers<Chain>>, Error> {
         blocks_with_triggers(self.eth_adapter.clone(), from, to, filter).await
+    }
+
+    async fn triggers_in_block(
+        &self,
+        block: BlockFinality,
+        filter: &TriggerFilter,
+    ) -> Result<BlockWithTriggers<Chain>, Error> {
+        match &block {
+            BlockFinality::Final(_) => {
+                let block_number = block.number() as BlockNumber;
+                let blocks = blocks_with_triggers(
+                    self.eth_adapter.clone(),
+                    block_number,
+                    block_number,
+                    filter,
+                )
+                .await?;
+                assert!(blocks.len() == 1);
+                Ok(blocks.into_iter().next().unwrap())
+            }
+        }
     }
 }

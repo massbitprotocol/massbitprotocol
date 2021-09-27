@@ -46,6 +46,8 @@ pub struct BlockPtr {
     pub number: BlockNumber,
 }
 
+impl CheapClone for BlockPtr {}
+
 impl StableHash for BlockPtr {
     fn stable_hash<H: StableHasher>(&self, mut sequence_number: H::Seq, state: &mut H) {
         AsBytes(self.hash.0.as_ref()).stable_hash(sequence_number.next_child(), state);
