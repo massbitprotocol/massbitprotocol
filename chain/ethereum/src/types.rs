@@ -1,8 +1,8 @@
+use std::convert::TryFrom;
+use web3::types::{Action, Address, Block, Bytes, Log, Res, Trace, Transaction, H256, U256};
+
 use massbit::components::store::BlockNumber;
 use massbit::prelude::*;
-use std::collections::HashMap;
-use std::convert::TryFrom;
-use web3::types::{Address, Block, Bytes, Log, Transaction, TransactionReceipt, H256, U256};
 
 pub type LightEthereumBlock = Block<Transaction>;
 
@@ -66,4 +66,48 @@ pub struct EthereumCall {
     pub block_hash: H256,
     pub transaction_hash: Option<H256>,
     pub transaction_index: u64,
+}
+
+impl EthereumCall {
+    pub fn try_from_trace(trace: &Trace) -> Option<Self> {
+        // The parity-ethereum tracing api returns traces for operations which had execution errors.
+        // Filter errorful traces out, since call handlers should only run on successful CALLs.
+        if trace.error.is_some() {
+            return None;
+        }
+        // We are only interested in traces from CALLs
+        let call = match &trace.action {
+            // Contract to contract value transfers compile to the CALL opcode
+            // and have no input. Call handlers are for triggering on explicit method calls right now.
+            Action::Call(call) if call.input.0.len() >= 4 => call,
+            _ => return None,
+        };
+        let (output, gas_used) = match &trace.result {
+            Some(Res::Call(result)) => (result.output.clone(), result.gas_used),
+            _ => return None,
+        };
+
+        // The only traces without transactions are those from Parity block reward contracts, we
+        // don't support triggering on that.
+        let transaction_index = trace.transaction_position? as u64;
+
+        Some(EthereumCall {
+            from: call.from,
+            to: call.to,
+            value: call.value,
+            gas_used,
+            input: call.input.clone(),
+            output,
+            block_number: trace.block_number as BlockNumber,
+            block_hash: trace.block_hash,
+            transaction_hash: trace.transaction_hash,
+            transaction_index,
+        })
+    }
+}
+
+impl<'a> From<&'a EthereumCall> for BlockPtr {
+    fn from(call: &'a EthereumCall) -> BlockPtr {
+        BlockPtr::from((call.block_hash, call.block_number))
+    }
 }
