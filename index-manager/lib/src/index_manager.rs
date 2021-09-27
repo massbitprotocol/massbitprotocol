@@ -23,6 +23,7 @@ use crate::type_index::IndexStore;
 use crate::type_request::DeployParams;
 use tokio02_spawn::core::abort_on_panic;
 use tokio02_spawn::core::tokio02_spawn;
+use index_store::indexer::IndexerStore;
 
 #[allow(dead_code)]
 pub struct IndexManager {
@@ -72,6 +73,9 @@ impl IndexManager {
     pub async fn restart_all_existing_index() {
         log::info!("Restarting all existing index");
         restart_all_existing_index_helper().await;
+    }
+    pub fn run_migration() {
+        IndexerStore::run_migration();
     }
 }
 
