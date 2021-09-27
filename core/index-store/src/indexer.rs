@@ -13,11 +13,18 @@ pub enum IndexerStatus {
     Syncing, // This mean our index is not caught up to the latest block yet. We don't support this field yet
     False,   // Meaning that the index is not running
 }
-
+embed_migrations!("./migrations");
 pub struct IndexerStore {
 
 }
 impl IndexerStore {
+    pub fn run_migration() {
+        let conn = establish_connection();
+        match embedded_migrations::run_with_output(&conn, &mut std::io::stdout()) {
+            Ok(res) => log::info!("Finished embedded_migrations {:?}", &res),
+            Err(err) => log::error!("{:?}", &err)
+        };
+    }
     pub fn create_indexer(hash: String, name: String, network: String, manifest: &Option<String>) {
         let id = format!("{}-{}", &name, &hash);
         let manifest_file = match manifest {
