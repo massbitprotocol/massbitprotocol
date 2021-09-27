@@ -1,7 +1,6 @@
-use ethabi::{Function, ParamType, Token};
-use mockall::{automock, predicate::*};
 use std::cmp;
 use std::collections::{HashMap, HashSet};
+use std::fmt;
 use tiny_keccak::keccak256;
 use web3::types::{Address, H256};
 
@@ -14,6 +13,7 @@ use massbit::{
 use crate::chain::Chain;
 use crate::data_source::{BlockHandlerFilter, DataSource};
 use crate::types::LightEthereumBlock;
+use crate::EthereumCall;
 
 pub type EventSignature = H256;
 pub type FunctionSelector = [u8; 4];
@@ -24,11 +24,40 @@ enum LogFilterNode {
     Event(EventSignature),
 }
 
-#[derive(Clone, Debug, Default)]
+/// Corresponds to an `eth_getLogs` call.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct EthGetLogsFilter {
+    pub contracts: Vec<Address>,
+    pub event_signatures: Vec<EventSignature>,
+}
+
+impl fmt::Display for EthGetLogsFilter {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.contracts.len() == 1 {
+            write!(
+                f,
+                "contract {:?}, {} events",
+                self.contracts[0],
+                self.event_signatures.len()
+            )
+        } else if self.event_signatures.len() == 1 {
+            write!(
+                f,
+                "event {:?}, {} contracts",
+                self.event_signatures[0],
+                self.contracts.len()
+            )
+        } else {
+            write!(f, "unreachable")
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct TriggerFilter {
-    pub(crate) log: EthereumLogFilter,
-    pub(crate) call: EthereumCallFilter,
-    pub(crate) block: EthereumBlockFilter,
+    pub log: EthereumLogFilter,
+    pub call: EthereumCallFilter,
+    pub block: EthereumBlockFilter,
 }
 
 impl bc::TriggerFilter<Chain> for TriggerFilter {
@@ -48,15 +77,9 @@ impl bc::TriggerFilter<Chain> for TriggerFilter {
     }
 }
 
-#[derive(Clone, Debug, Default)]
-pub(crate) struct EthereumLogFilter {
-    /// Log filters can be represented as a bipartite graph between contracts and events. An edge
-    /// exists between a contract and an event if a data source for the contract has a trigger for
-    /// the event.
-    contracts_and_events_graph: GraphMap<LogFilterNode, (), petgraph::Undirected>,
-
-    // Event sigs with no associated address, matching on all addresses.
-    wildcard_events: HashSet<EventSignature>,
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct EthereumLogFilter {
+    pub eth_logs_filters: Vec<EthGetLogsFilter>,
 }
 
 impl EthereumLogFilter {
@@ -66,14 +89,16 @@ impl EthereumLogFilter {
             for event_sig in ds.mapping.event_handlers.iter().map(|e| e.topic0()) {
                 match ds.source.address {
                     Some(contract) => {
-                        this.contracts_and_events_graph.add_edge(
-                            LogFilterNode::Contract(contract),
-                            LogFilterNode::Event(event_sig),
-                            (),
-                        );
+                        this.eth_logs_filters.push(EthGetLogsFilter {
+                            contracts: vec![contract],
+                            event_signatures: vec![event_sig],
+                        });
                     }
                     None => {
-                        this.wildcard_events.insert(event_sig);
+                        this.eth_logs_filters.push(EthGetLogsFilter {
+                            contracts: vec![],
+                            event_signatures: vec![event_sig],
+                        });
                     }
                 }
             }
@@ -83,20 +108,19 @@ impl EthereumLogFilter {
 
     /// Extends this log filter with another one.
     pub fn extend(&mut self, other: EthereumLogFilter) {
-        // Destructure to make sure we're checking all fields.
-        let EthereumLogFilter {
-            contracts_and_events_graph,
-            wildcard_events,
-        } = other;
-        for (s, t, ()) in contracts_and_events_graph.all_edges() {
-            self.contracts_and_events_graph.add_edge(s, t, ());
+        for filter in other.eth_logs_filters {
+            self.eth_logs_filters.push(filter)
         }
-        self.wildcard_events.extend(wildcard_events);
+    }
+
+    /// An empty filter is one that never matches.
+    pub fn is_empty(&self) -> bool {
+        self.eth_logs_filters.is_empty()
     }
 }
 
-#[derive(Clone, Debug, Default)]
-pub(crate) struct EthereumCallFilter {
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct EthereumCallFilter {
     // Each call filter has a map of filters keyed by address, each containing a tuple with
     // start_block and the set of function signatures
     pub contract_addresses_function_signatures:
@@ -104,6 +128,35 @@ pub(crate) struct EthereumCallFilter {
 }
 
 impl EthereumCallFilter {
+    pub fn matches(&self, call: &EthereumCall) -> bool {
+        // Ensure the call is to a contract the filter expressed an interest in
+        if !self
+            .contract_addresses_function_signatures
+            .contains_key(&call.to)
+        {
+            return false;
+        }
+        // If the call is to a contract with no specified functions, keep the call
+        if self
+            .contract_addresses_function_signatures
+            .get(&call.to)
+            .unwrap()
+            .1
+            .is_empty()
+        {
+            // Allow the ability to match on calls to a contract generally
+            // If you want to match on a generic call to contract this limits you
+            // from matching with a specific call to a contract
+            return true;
+        }
+        // Ensure the call is to run a function the filter expressed an interest in
+        self.contract_addresses_function_signatures
+            .get(&call.to)
+            .unwrap()
+            .1
+            .contains(&call.input.0[..4])
+    }
+
     pub fn from_data_sources<'a>(iter: impl IntoIterator<Item = &'a DataSource>) -> Self {
         iter.into_iter()
             .filter_map(|data_source| data_source.source.address.map(|addr| (addr, data_source)))
@@ -145,6 +198,15 @@ impl EthereumCallFilter {
             }
         }
     }
+
+    /// An empty filter is one that never matches.
+    pub fn is_empty(&self) -> bool {
+        // Destructure to make sure we're checking all fields.
+        let EthereumCallFilter {
+            contract_addresses_function_signatures,
+        } = self;
+        contract_addresses_function_signatures.is_empty()
+    }
 }
 
 impl FromIterator<(BlockNumber, Address, FunctionSelector)> for EthereumCallFilter {
@@ -184,8 +246,8 @@ impl From<EthereumBlockFilter> for EthereumCallFilter {
     }
 }
 
-#[derive(Clone, Debug, Default)]
-pub(crate) struct EthereumBlockFilter {
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct EthereumBlockFilter {
     pub contract_addresses: HashSet<(BlockNumber, Address)>,
     pub trigger_every_block: bool,
 }
@@ -257,6 +319,17 @@ impl EthereumBlockFilter {
 ///
 /// Implementations may be implemented against an in-process Ethereum node
 /// or a remote node over RPC.
-#[automock]
 #[async_trait]
-pub trait EthereumAdapter: Send + Sync + 'static {}
+pub trait EthereumAdapter: Send + Sync + 'static {
+    fn provider(&self) -> &str;
+
+    fn block_hash_by_block_number(
+        &self,
+        block_number: BlockNumber,
+    ) -> Box<dyn Future<Item = Option<H256>, Error = Error> + Send>;
+
+    fn load_blocks(
+        &self,
+        block_hashes: HashSet<H256>,
+    ) -> Box<dyn Stream<Item = LightEthereumBlock, Error = Error> + Send>;
+}

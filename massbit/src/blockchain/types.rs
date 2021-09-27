@@ -1,12 +1,13 @@
 use anyhow::anyhow;
 use stable_hash::prelude::*;
+use stable_hash::utils::AsBytes;
 use std::convert::TryFrom;
 use std::fmt::Write;
 use std::{fmt, str::FromStr};
 use web3::types::{Block, H256};
 
 use crate::components::store::BlockNumber;
-use stable_hash::utils::AsBytes;
+use crate::prelude::*;
 
 /// A simple marker for byte arrays that are really block hashes
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
@@ -36,7 +37,7 @@ impl From<Vec<u8>> for BlockHash {
     }
 }
 
-/// A block hash and block number from a specific Ethereum block.
+/// A block hash and block number from a specific block.
 ///
 /// Block numbers are signed 32 bit integers
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
