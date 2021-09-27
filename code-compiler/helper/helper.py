@@ -125,6 +125,15 @@ def upload_abi_to_ipfs(client, abi):
     return abi
 
 
+def replace_abi_and_upload_to_ipfs(client, root_path, subgraph_type, subgraph):
+    for i in range(len(subgraph[subgraph_type])):
+        for j in range(len(subgraph[subgraph_type][i]['mapping']['abis'])):
+            print(subgraph[subgraph_type][i]['mapping']['abis'][j])
+            res = client.add(os.path.join(root_path, "build", subgraph[subgraph_type][i]['mapping']['abis'][j]['file']))["Hash"]
+            subgraph[subgraph_type][i]['mapping']['abis'][j] = {'name': subgraph[subgraph_type][i]['mapping']['abis'][j]['name'], 'file': {'/': '/ipfs/' + res}}
+    return subgraph
+
+
 def upload_mapping_to_ipfs(client, type, root_path, subgraph_path):
     """
     Upload mapping.abi and mapping.files to IPFS and build a new mapping object for ease of access
@@ -138,18 +147,9 @@ def upload_mapping_to_ipfs(client, type, root_path, subgraph_path):
     mapping_new = []
     for i in range(len(subgraph[type])):
         mapping_res = dict()
-        abi = []
-        for j in range(len(subgraph[type][i]['mapping']['abis'])):  # Build array abis {hash, name, file}
-            abi_object = dict()
-            abi_object["hash"] = \
-            client.add(os.path.join(root_path, "build", subgraph[type][i]['mapping']['abis'][j]['file']))["Hash"]
-            abi_object["name"] = subgraph[type][i]['mapping']['abis'][j]['name']
-            abi_object["file"] = subgraph[type][i]['mapping']['abis'][j]['file']
-            abi.append(abi_object)
         mapping_res["name"] = subgraph[type][i]["name"]
         mapping_res["file_hash"] = client.add(os.path.join(root_path, "build", subgraph[type][i]['mapping']['file']))[
             "Hash"]
-        mapping_res["abis"] = abi
         mapping_new.append(mapping_res)
 
     return mapping_new
@@ -196,7 +196,6 @@ def replace_mapping_with_hash(subgraph_type, subgraph, mapping_res):
     if subgraph_type in subgraph:
         for i in range(len(subgraph[subgraph_type])):
             replace_mapping_file(subgraph_type, subgraph, mapping_res, i)
-            replace_mapping_abis_file(subgraph_type, subgraph, mapping_res, i)
     return subgraph
 
 
@@ -209,11 +208,11 @@ def replace_mapping_file(subgraph_type, subgraph, mapping_res, iterator):
             subgraph[subgraph_type][iterator]['mapping']['file'] = {'/': '/ipfs/' + mapping_res[j]['file_hash']}
 
 
-def replace_mapping_abis_file(subgraph_type, subgraph, mapping_res, iterator):
-    """
-    Replace mapping > abis > file with IPFS hash
-    """
-    for j in range(len(mapping_res)):   # Add a new iterator to loop through mapping_res
-        for k in range(len(mapping_res[j]['abis'])):   # Add a new iterator to loop through mapping_res.abis
-            if subgraph[subgraph_type][iterator]['mapping']['abis'][k]['file'] == mapping_res[j]['abis'][k]['file']:
-                subgraph[subgraph_type][iterator]['mapping']['abis'][k] = {'name': subgraph[subgraph_type][iterator]['mapping']['abis'][k]['name'], 'file': {'/': '/ipfs/' + mapping_res[j]['abis'][k]['hash']}}
+# def replace_mapping_abis_file(subgraph_type, subgraph, mapping_res, iterator):
+#     """
+#     Replace mapping > abis > file with IPFS hash
+#     """
+#     for j in range(len(mapping_res)):   # Add a new iterator to loop through mapping_res
+#         for k in range(len(mapping_res[j]['abis'])):   # Add a new iterator to loop through mapping_res.abis
+#             if subgraph[subgraph_type][iterator]['mapping']['abis'][k]['file'] == mapping_res[j]['abis'][k]['file']:
+#                 subgraph[subgraph_type][iterator]['mapping']['abis'][k] = {'name': subgraph[subgraph_type][iterator]['mapping']['abis'][k]['name'], 'file': {'/': '/ipfs/' + mapping_res[j]['abis'][k]['hash']}}

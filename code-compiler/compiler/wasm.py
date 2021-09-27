@@ -8,7 +8,7 @@ import threading
 import requests
 import yaml
 from helper.helper import write_to_disk, get_abi_files, upload_abi_to_ipfs, ipfs_client_init, get_index_manager_url, \
-    is_template_exist, replace_abi_with_hash, upload_mapping_to_ipfs, replace_mapping_with_hash
+    is_template_exist, replace_abi_with_hash, upload_mapping_to_ipfs, replace_mapping_with_hash, replace_abi_and_upload_to_ipfs
 
 success_file = "success.txt"
 error_file = "error.txt"
@@ -37,10 +37,10 @@ class WasmCodegenAndBuild(threading.Thread):
 
         except subprocess.CalledProcessError as exc:
             print("Compilation has failed. The result can be found in: " + self.generated_folder)
-            write_to_disk(self.generated_folder + "/"+error_file, exc.output)
+            write_to_disk(self.generated_folder + "/" + error_file, exc.output)
         else:
             print("Compilation was success. The result can be found in: " + self.generated_folder)
-            write_to_disk(self.generated_folder + "/"+success_file, output)
+            write_to_disk(self.generated_folder + "/" + success_file, output)
 
 
 def compile_wasm(data, use_precompile=True):
@@ -98,49 +98,46 @@ def deploy_wasm(data):
     # Upload files to IPFS
     print("Uploading files to IPFS...")
     client = ipfs_client_init()
-    subgraph_res = client.add(subgraph_path)
     schema_res = client.add(schema_path)
     abi_res = upload_abi_to_ipfs(client, abi)
-    ds_mapping_res = upload_mapping_to_ipfs(client, 'dataSources', root_path, subgraph_path)  # Loop through build/subgraph.yaml and upload abi + .wasm file
+    ds_mapping_res = upload_mapping_to_ipfs(client, 'dataSources', root_path, subgraph_path)
     if is_template_exist(subgraph_path):
-        tp_mapping_res = upload_mapping_to_ipfs(client, 'templates', root_path, subgraph_path)  # Loop through build/subgraph.yaml and upload abi + .wasm file
+        tp_mapping_res = upload_mapping_to_ipfs(client, 'templates', root_path, subgraph_path)
 
-    # IPFS upload result
-    print(f"{subgraph_path}: {subgraph_res['Hash']}")
-    print(f"{schema_path}: {schema_res['Hash']}")
-    print(f" dataSources: {ds_mapping_res}")
-    if is_template_exist(subgraph_path):
-        print(f" templates: {tp_mapping_res}")
+    # Load subgraph content
+    subgraph_content = get_subgraph_content(subgraph_path)
 
-    # Parse subgraph file and upload to IPFS
+    # Replace mapping file and schema
     if is_template_exist(subgraph_path):
-        parse_subgraph(subgraph_path, parsed_subgraph_path, schema_res, ds_mapping_res, tp_mapping_res)
+        subgraph_content = replace_mapping_and_schema(subgraph_path, subgraph_content, schema_res,
+                                                      ds_mapping_res, tp_mapping_res)
     else:
-        parse_subgraph(subgraph_path, parsed_subgraph_path, schema_res, ds_mapping_res)
+        subgraph_content = replace_mapping_and_schema(subgraph_path, subgraph_content, schema_res,
+                                                      ds_mapping_res)
+
+    # Replace abi
+    subgraph_content = replace_abi_and_upload_to_ipfs(client, root_path, 'dataSources', subgraph_content)
+    if is_template_exist(subgraph_path):
+        subgraph_content = replace_abi_and_upload_to_ipfs(client, root_path, 'templates', subgraph_content)
+
+    # Write new parsed subgraph to local and upload to IPFS
+    create_new_parsed_subgraph(parsed_subgraph_path, subgraph_content)
     parsed_subgraph_res = client.add(parsed_subgraph_path)
 
     # Deploy a new index to Index Manager
     deploy_to_index_manager(parsed_subgraph_res, ds_mapping_res, schema_res, abi_res)
 
 
-def parse_subgraph(subgraph_path, parsed_subgraph_path, schema_res, ds_mapping_res, tp_mapping_res=None):
+def replace_mapping_and_schema(subgraph_path, subgraph, schema_res, ds_mapping_res, tp_mapping_res=None):
     """
     Parse subgraph.yaml and create a new parsed_subgraph.yaml with IPFS hash populated
     """
-    # Load subgraph content
-    stream = open(subgraph_path, 'r')
-    subgraph = yaml.safe_load(stream)
-
     # After files are deployed to IFPS, we replace the files IPFS hash in the build/subgraph.yaml file
     subgraph['schema']['file'] = {'/': '/ipfs/' + schema_res['Hash']}
     subgraph = replace_mapping_with_hash('dataSources', subgraph, ds_mapping_res)
     if is_template_exist(subgraph_path):
         subgraph = replace_mapping_with_hash('templates', subgraph, tp_mapping_res)
-
-    # Write the new file to local disk
-    file = open(parsed_subgraph_path, "w")
-    yaml.safe_dump(subgraph, file)
-    file.close()
+    return subgraph
 
 
 def deploy_to_index_manager(parsed_subgraph_res, ds_mapping_res, schema_res, abi_res):
@@ -173,3 +170,16 @@ def get_tp_mapping_path(subgraph_path, compilation_id):
     subgraph = yaml.safe_load(stream)
     stream.close()
     return os.path.join("./generated", compilation_id, "build", subgraph['templates'][0]['mapping']['file'])
+
+
+def get_subgraph_content(subgraph_path):
+    stream = open(subgraph_path, 'r')
+    subgraph_content = yaml.safe_load(stream)
+    stream.close()
+    return subgraph_content
+
+
+def create_new_parsed_subgraph(parsed_subgraph_path, subgraph_content):
+    file = open(parsed_subgraph_path, "w")
+    yaml.safe_dump(subgraph_content, file)
+    file.close()
