@@ -13,7 +13,7 @@ pub enum IndexerStatus {
     Syncing, // This mean our index is not caught up to the latest block yet. We don't support this field yet
     False,   // Meaning that the index is not running
 }
-
+embed_migrations!("./migrations");
 pub struct IndexerStore {
 
 }
@@ -48,6 +48,10 @@ impl IndexerStore {
     }
     pub fn get_active_indexers() -> Vec<Indexer> {
         let conn = establish_connection();
+        match embedded_migrations::run(&conn) {
+            Ok(res) => println!("Finished embedded_migration {:?}", &res),
+            Err(err) => println!("{:?}", &err)
+        };
         match indexers::table.load::<Indexer>(&conn) {
             Ok(results) => results,
             Err(err) => {
