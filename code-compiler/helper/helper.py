@@ -125,6 +125,28 @@ def upload_abi_to_ipfs(client, abi):
     return abi
 
 
+def upload_mapping_to_ipfs(client, type, root_path, subgraph_path):
+    """
+    Upload mapping.abi and mapping.files to IPFS and build a new mapping object for ease of access
+
+    """
+    # Load subgraph content
+    stream = open(subgraph_path, 'r')
+    subgraph = yaml.safe_load(stream)
+
+    # Upload and build new mapping object
+    mapping_new = []
+    for i in range(len(subgraph[type])):
+        mapping_res = dict()
+        file_path = os.path.join(root_path, "build", subgraph[type][i]['mapping']['file'])
+        abis_path = os.path.join(root_path, "build", subgraph[type][i]['mapping']['abis'][0]['file'])
+        mapping_res["name"] = subgraph[type][i]["name"]
+        mapping_res["file_hash"] = client.add(file_path)["Hash"]
+        mapping_res["abis_hash"] = client.add(abis_path)["Hash"]
+        mapping_new.append(mapping_res)
+    return mapping_new
+
+
 def ipfs_client_init():
     if os.environ.get('IPFS_URL'):
         return ipfshttpclient.connect(os.environ.get('IPFS_URL'))  # Connect with IPFS container name
@@ -147,7 +169,7 @@ def is_template_exist(subgraph_path):
         return True
     return False
 
-
+# Deprecated
 def replace_abi_with_hash(subgraph_type, subgraph, abi_res):
     if subgraph_type in subgraph:
         for i in range(0, len(subgraph[subgraph_type][0]['mapping']['abis'])):
@@ -157,4 +179,13 @@ def replace_abi_with_hash(subgraph_type, subgraph, abi_res):
                 if file_name.lower() == abi_object["name"].lower():
                     subgraph[subgraph_type][0]['mapping']['abis'][i] = {'name': name,
                                                                         'file': {'/': '/ipfs/' + abi_object["hash"]}}
+    return subgraph
+
+
+def replace_mapping_with_hash(subgraph_type, subgraph, mapping_res):
+    for i in range(len(subgraph[subgraph_type])):
+        for j in range(len(mapping_res)):
+            if subgraph[subgraph_type][i]['name'] in mapping_res[j]['name']:
+                subgraph[subgraph_type][i]['mapping']['file'] = {'/': '/ipfs/' + mapping_res[j]['file_hash']}
+                subgraph[subgraph_type][i]['mapping']['abis'] = {'/': '/ipfs/' + mapping_res[j]['abis_hash']}
     return subgraph
