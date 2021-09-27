@@ -21,7 +21,7 @@ lazy_static! {
 async fn main() {
     let res = init_logger(&String::from("index-manager"));
     println!("{}", res); // Print log output type
-
+    IndexManager::run_migration();
     if INDEX_MANAGER_RESTART_INDEX.to_lowercase().as_str() == "true" {
         tokio::spawn(async move {
             IndexManager::restart_all_existing_index().await;
