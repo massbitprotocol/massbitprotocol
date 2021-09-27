@@ -30,10 +30,18 @@ use crate::stream_mod::{
     ChainType, GenericDataProto, GetBlocksRequest, streamout_client::StreamoutClient,
 };
 use massbit_common::NetworkType;
+use crate::postgres_adapter::{PostgresAdapterBuilder, PostgresAdapter};
+use crate::storage_adapter::StorageAdapter;
 
 pub const GET_STREAM_TIMEOUT_SEC: u64 = 60;
 pub const GET_BLOCK_TIMEOUT_SEC: u64 = 600;
 pub const DEFAULT_DATABASE_URL : &str = "postgres://graph-node:let-me-in@localhost/analytic";
+
+pub fn create_postgres_storage() -> PostgresAdapter {
+    let database_url = env::var("DATABASE_URL").unwrap_or(String::from(DEFAULT_DATABASE_URL));
+    let adapter_builder = PostgresAdapterBuilder::new().url(&database_url);
+    adapter_builder.build()
+}
 pub fn establish_connection() -> PgConnection {
     dotenv().ok();
     let database_url = env::var("DATABASE_URL").unwrap_or(String::from(DEFAULT_DATABASE_URL));

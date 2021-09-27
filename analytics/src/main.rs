@@ -2,7 +2,7 @@
 extern crate diesel_migrations;
 use clap::{App, Arg};
 use diesel_migrations::embed_migrations;
-use analytics::ethereum::process_ethereum_block;
+use analytics::ethereum::process_ethereum_stream;
 //use analytics::solana::process_solana_block;
 //use analytics::substrate::process_substrate_block;
 use lazy_static::lazy_static;
@@ -17,8 +17,9 @@ use tonic::{
 };
 use tower::timeout::Timeout;
 use analytics::stream_mod::streamout_client::StreamoutClient;
-use analytics::{establish_connection, GET_BLOCK_TIMEOUT_SEC, GET_STREAM_TIMEOUT_SEC};
+use analytics::{establish_connection, GET_BLOCK_TIMEOUT_SEC, GET_STREAM_TIMEOUT_SEC, create_postgres_storage};
 use std::thread::sleep;
+use analytics::postgres_adapter::PostgresAdapterBuilder;
 
 lazy_static! {
     static ref CHAIN_READER_URL: String =
@@ -72,6 +73,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     let start_block: u64 = block.parse().unwrap_or_default();
     println!("{}", start_block);
     info!("Start client for chain {} and network {}", chain_type, network);
+    let storage_adapter = create_postgres_storage();
     loop {
         match Channel::from_static(CHAIN_READER_URL.as_str())
             .connect()
@@ -92,7 +94,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
                             None => None,
                             Some(val) => Some(String::from(val))
                         };
-                        match process_ethereum_block(&mut client, &network, start_block).await {
+                        match process_ethereum_stream(&mut client, &storage_adapter, &network, start_block).await {
                             Err(err) => log::error!("{:?}", &err),
                             Ok(_) => {}
                         }

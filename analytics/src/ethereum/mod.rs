@@ -1,7 +1,7 @@
 pub mod metrics;
 pub mod models;
 pub mod handler;
-
+pub use handler::EthereumHandlerManager;
 use std::time::{Instant};
 use diesel::{self, RunQueryDsl};
 use log::{info, warn};
@@ -27,16 +27,87 @@ use tower::timeout::Timeout;
 use massbit_common::prelude::diesel::pg::upsert::excluded;
 use massbit_common::prelude::diesel::ExpressionMethods;
 use massbit_common::prelude::diesel::result::Error;
+use crate::storage_adapter::StorageAdapter;
+use crate::ethereum::handler::{create_ethereum_handler_manager, EthereumHandler};
 
 lazy_static! {
     pub static ref CHAIN: String = String::from("ethereum");
 }
 const START_ETHEREUM_BLOCK : u64 = 15_000_000_u64;
 const DEFAULT_NETWORK: &str = "matic";
-pub async fn process_ethereum_block(client: &mut StreamoutClient<Timeout<Channel>>,
+
+pub async fn process_ethereum_stream(client: &mut StreamoutClient<Timeout<Channel>>,
+                                      storage_adapter: &dyn StorageAdapter,
+                                      network: &Option<NetworkType>,
+                                      block: u64)
+                                      ->  Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+    let handler_manager = create_ethereum_handler_manager();
+    //Todo: remove this simpe connection
+    let conn = establish_connection();
+    let current_state = get_block_number(&conn, CHAIN.clone(), network.clone().unwrap_or(String::from(DEFAULT_NETWORK)));
+    let start_block = match current_state {
+        None =>
+            if block > 0 {
+                block
+            } else {
+                START_ETHEREUM_BLOCK
+            },
+        Some(state) => state.got_block as u64 + 1
+    };
+    let mut opt_stream: Option<Streaming<GenericDataProto>> = None;
+    loop {
+        match opt_stream {
+            None => {
+                opt_stream = try_create_stream(
+                    client,
+                    ChainType::Ethereum,
+                    start_block,
+                    &network,
+                )
+                    .await;
+                if opt_stream.is_none() {
+                    //Sleep for a while and reconnect
+                    sleep(Duration::from_secs(GET_STREAM_TIMEOUT_SEC)).await;
+                }
+            }
+            Some(ref mut stream) => {
+                let response = timeout(
+                    Duration::from_secs(GET_BLOCK_TIMEOUT_SEC),
+                    stream.message(),
+                )
+                    .await;
+                match response {
+                    Ok(Ok(res)) => {
+                        if let Some(mut data) = res {
+                            match DataType::from_i32(data.data_type) {
+                                Some(DataType::Block) => {
+                                    let start = Instant::now();
+                                    let block: EthereumChainBlock = ethereum_decode(&mut data.payload).unwrap();
+                                    handler_manager.handle_ext_block(&block);
+                                }
+                                _ => {
+                                    warn!("Not support this type in Ethereum");
+                                }
+                            };
+                        }
+                    }
+                    _ => {
+                        log::info!("Error while get message from reader stream {:?}. Recreate stream", &response);
+                        opt_stream = None;
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+pub async fn _process_ethereum_stream(client: &mut StreamoutClient<Timeout<Channel>>,
+                                    storage_adapter: &dyn StorageAdapter,
                                     network: &Option<NetworkType>,
                                     block: u64)
     ->  Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+    //Todo: remove this simpe connection
     let conn = establish_connection();
     let current_state = get_block_number(&conn, CHAIN.clone(), network.clone().unwrap_or(String::from(DEFAULT_NETWORK)));
     let start_block = match current_state {

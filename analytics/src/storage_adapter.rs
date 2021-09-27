@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 
-pub trait StorageAdapter {
-    fn insert() -> Result<(), anyhow::Error> {
-        Ok(())
+pub trait StorageAdapter : Sync + Send {
+    fn insert(&self) -> Result<(), anyhow::Error> {
+        unimplemented!()
     }
-    fn upsert() -> Result<(), anyhow::Error> {
-        Ok(())
+    fn upsert(&self, table_name: String)
+        -> Result<(), anyhow::Error> {
+        unimplemented!()
     }
 }
 
