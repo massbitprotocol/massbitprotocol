@@ -1,0 +1,51 @@
+{
+  "tokens": [
+    {
+      "address": "0x7EAD95508a07f11F0eA72503D84E589A756082CD",
+      "name": "Viper",
+      "startBlock": 10082346,
+      "mintable": true,
+      "burnable": true
+    },
+    {
+      "address": "0xE176EBE47d621b984a73036B9DA5d834411ef734",
+      "name": "BUSD",
+      "startBlock": 5336370,
+      "mintable": true,
+      "burnable": true
+    },
+    {
+      "address": "0xAcCB7b802CF485eDa7bCa49960FEA57059Dee83D",
+      "name": "Swoop",
+      "startBlock": 10140633,
+      "mintable": true,
+      "burnable": true
+    },
+    {
+      "address": "0x0dD740Db89B9fDA3Baadf7396DdAD702b6E8D6f5",
+      "name": "MochiSwap Token",
+      "startBlock": 10326189,
+      "mintable": true,
+      "burnable": true
+    },
+    {
+      "address": "0xda73f5C25C0D644Afd20dA5535558956B192b262",
+      "name": "MochiSwap Token BSC",
+      "startBlock": 10804090,
+      "mintable": true,
+      "burnable": true
+    }
+  ],
+  "nfts": [
+    {
+      "address": "0xd45F2890AFc159f96702DE015B414C7d1cdA3DbA",
+      "name": "BQUH",
+      "startBlock": 7946209
+    },
+    {
+      "address": "0x95bC9226f3d656c7Ae3BF820D19Af38e8c18B4B1",
+      "name": "Blits",
+      "startBlock": 7497360
+    }
+  ]
+}
