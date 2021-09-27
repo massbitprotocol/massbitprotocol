@@ -1,11 +1,11 @@
 use jsonrpc_core::types::Call;
+use massbit::prelude::*;
 use serde_json::Value;
 use std::env;
-pub use web3::transports::EventLoopHandle;
 use web3::transports::{http, ipc, ws};
 use web3::RequestId;
 
-use massbit::prelude::*;
+pub use web3::transports::EventLoopHandle;
 
 /// Abstraction over the different web3 transports.
 #[derive(Clone, Debug)]

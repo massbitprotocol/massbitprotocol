@@ -48,6 +48,13 @@ pub trait TriggersAdapter<C: Blockchain>: Send + Sync {
         to: BlockNumber,
         filter: &C::TriggerFilter,
     ) -> Result<Vec<BlockWithTriggers<C>>, Error>;
+
+    // Used for reprocessing blocks when creating a data source.
+    async fn triggers_in_block(
+        &self,
+        block: C::Block,
+        filter: &C::TriggerFilter,
+    ) -> Result<BlockWithTriggers<C>, Error>;
 }
 
 pub enum BlockStreamEvent<C: Blockchain> {
