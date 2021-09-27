@@ -1,8 +1,7 @@
-use std::convert::TryFrom;
-use web3::types::{Action, Address, Block, Bytes, Log, Res, Trace, Transaction, H256, U256};
-
 use massbit::components::store::BlockNumber;
 use massbit::prelude::*;
+use std::convert::TryFrom;
+use web3::types::{Action, Address, Block, Bytes, Log, Res, Trace, Transaction, H256, U256};
 
 pub type LightEthereumBlock = Block<Transaction>;
 
