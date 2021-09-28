@@ -16,6 +16,90 @@ use strum_macros::AsStaticStr;
 /// Custom scalars in GraphQL.
 pub mod scalar;
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct NodeId(String);
+
+impl NodeId {
+    pub fn new(s: impl Into<String>) -> Result<Self, ()> {
+        let s = s.into();
+
+        // Enforce length limit
+        if s.len() > 63 {
+            return Err(());
+        }
+
+        // Check that the ID contains only allowed characters.
+        // Note: these restrictions are relied upon to prevent SQL injection
+        if !s.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+            return Err(());
+        }
+
+        Ok(NodeId(s))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl fmt::Display for NodeId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl<'de> de::Deserialize<'de> for NodeId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: de::Deserializer<'de>,
+    {
+        let s: String = de::Deserialize::deserialize(deserializer)?;
+        NodeId::new(s.clone())
+            .map_err(|()| de::Error::invalid_value(de::Unexpected::Str(&s), &"valid node ID"))
+    }
+}
+
+/// An entity attribute name is represented as a string.
+pub type Attribute = String;
+
+pub const ID: &str = "ID";
+pub const BYTES_SCALAR: &str = "Bytes";
+pub const BIG_INT_SCALAR: &str = "BigInt";
+pub const BIG_DECIMAL_SCALAR: &str = "BigDecimal";
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum ValueType {
+    Boolean,
+    BigInt,
+    Bytes,
+    BigDecimal,
+    Int,
+    String,
+}
+
+impl FromStr for ValueType {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "Boolean" => Ok(ValueType::Boolean),
+            "BigInt" => Ok(ValueType::BigInt),
+            "Bytes" => Ok(ValueType::Bytes),
+            "BigDecimal" => Ok(ValueType::BigDecimal),
+            "Int" => Ok(ValueType::Int),
+            "String" | "ID" => Ok(ValueType::String),
+            s => Err(anyhow!("Type not available in this context: {}", s)),
+        }
+    }
+}
+
+impl ValueType {
+    /// Return `true` if `s` is the name of a builtin scalar type
+    pub fn is_scalar(s: &str) -> bool {
+        Self::from_str(s).is_ok()
+    }
+}
+
 // Note: Do not modify fields without also making a backward compatible change to the StableHash impl (below)
 /// An attribute value is represented as an enum with variants for all supported value types.
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -77,9 +161,6 @@ impl fmt::Display for Value {
         )
     }
 }
-
-/// An entity attribute name is represented as a string.
-pub type Attribute = String;
 
 // Note: Do not modify fields without making a backward compatible change to the
 //  StableHash impl (below) An entity is represented as a map of attribute names

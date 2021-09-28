@@ -76,17 +76,22 @@ pub mod prelude {
     pub use crate::blockchain::BlockPtr;
 
     pub use crate::components::indexer::{
-        BlockState, IndexerInstanceManager, RuntimeHost, RuntimeHostBuilder,
+        BlockState, IndexerAssignmentProvider, IndexerInstanceManager, IndexerRegistrar,
+        RuntimeHost, RuntimeHostBuilder,
     };
     pub use crate::components::link_resolver::{JsonStreamValue, JsonValueStream, LinkResolver};
+    pub use crate::components::server::admin::JsonRpcServer;
     pub use crate::components::store::{
-        BlockNumber, EntityCache, EntityKey, EntityModification, StoreError,
+        BlockNumber, EntityCache, EntityKey, EntityModification, IndexerStore, StoreError,
     };
 
-    pub use crate::data::indexer::{DeploymentHash, IndexerManifest};
+    pub use crate::data::indexer::{
+        DeploymentHash, IndexerAssignmentProviderError, IndexerManifest, IndexerName,
+    };
+    pub use crate::data::schema::{ApiSchema, Schema};
     pub use crate::data::store::scalar::{BigDecimal, BigInt, BigIntSign};
     pub use crate::data::store::{
-        Attribute, Entity, ToEntityId, ToEntityKey, TryIntoEntity, Value,
+        Attribute, Entity, NodeId, ToEntityId, ToEntityKey, TryIntoEntity, Value, ValueType,
     };
 
     pub use crate::cheap_clone::CheapClone;

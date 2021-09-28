@@ -44,3 +44,7 @@ itertools = "0.10.1"
 wasmparser = "0.78.2"
 reqwest = { version = "0.11.2", features = ["json", "stream", "multipart", "trust-dns-resolver"] }
 tiny-keccak = "1.5.0"
+parking_lot = "0.11.2"
+url = "2.2.1"
+rand = "0.6.1"
+Inflector = "0.11.3"
