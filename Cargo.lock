@@ -2987,7 +2987,7 @@ dependencies = [
  "lru_time_cache",
  "maybe-owned",
  "pin-utils",
- "postgres 0.19.1",
+ "postgres",
  "rand 0.6.5",
  "serde",
  "stable-hash",
@@ -3587,7 +3587,7 @@ dependencies = [
  "massbit-chain-solana",
  "massbit-chain-substrate",
  "node-template-runtime",
- "postgres 0.19.1",
+ "postgres",
  "prost",
  "rand 0.8.4",
  "reqwest 0.10.10",
@@ -4235,6 +4235,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "manager"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "crossbeam-channel",
+ "diesel",
+ "env_logger 0.9.0",
+ "fail",
+ "futures 0.3.17",
+ "git-testament",
+ "graphql-parser",
+ "http 0.1.21",
+ "indexer",
+ "jsonrpc-http-server",
+ "lazy_static",
+ "massbit",
+ "massbit-store-postgres",
+ "regex",
+ "serde",
+ "serde_regex",
+ "shellexpand",
+ "structopt",
+ "toml",
+ "url 2.2.2",
+]
+
+[[package]]
 name = "maplit"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4244,6 +4271,7 @@ checksum = "3e2e65a1a2e43cfcb47a895c4c8b10d1f4a61097f9f254f183aee60cad9c651d"
 name = "massbit"
 version = "0.1.0"
 dependencies = [
+ "Inflector",
  "anyhow",
  "async-trait",
  "bigdecimal",
@@ -4263,8 +4291,10 @@ dependencies = [
  "num-bigint",
  "num-traits",
  "num_cpus",
+ "parking_lot 0.11.2",
  "petgraph 0.6.0",
  "priority-queue",
+ "rand 0.6.5",
  "reqwest 0.11.4",
  "semver 1.0.4",
  "serde",
@@ -4280,6 +4310,7 @@ dependencies = [
  "tokio 1.11.0",
  "tokio-retry 0.3.0",
  "tokio-stream",
+ "url 2.2.2",
  "wasmparser 0.78.2",
  "web3",
 ]
@@ -4434,6 +4465,41 @@ dependencies = [
  "wasmparser 0.80.1",
  "wasmtime",
  "web3",
+]
+
+[[package]]
+name = "massbit-store-postgres"
+version = "0.1.0"
+dependencies = [
+ "Inflector",
+ "anyhow",
+ "async-trait",
+ "backtrace",
+ "blake3 0.3.8",
+ "chain-ethereum",
+ "derive_more",
+ "diesel",
+ "diesel-derive-enum",
+ "diesel-dynamic-schema",
+ "diesel_derives",
+ "diesel_migrations",
+ "fallible-iterator",
+ "futures 0.1.31",
+ "git-testament",
+ "graph-graphql",
+ "graphql-parser",
+ "indexer",
+ "itertools 0.10.1",
+ "lazy_static",
+ "lru_time_cache",
+ "massbit",
+ "maybe-owned",
+ "pin-utils",
+ "postgres",
+ "rand 0.6.5",
+ "serde",
+ "stable-hash",
+ "uuid 0.8.2",
 ]
 
 [[package]]
@@ -5815,39 +5881,6 @@ dependencies = [
  "log 0.4.14",
  "wepoll-sys",
  "winapi 0.3.9",
-]
-
-[[package]]
-name = "postgres"
-version = "0.1.0"
-dependencies = [
- "Inflector",
- "anyhow",
- "async-trait",
- "backtrace",
- "blake3 0.3.8",
- "chain-ethereum",
- "derive_more",
- "diesel",
- "diesel-derive-enum",
- "diesel-dynamic-schema",
- "diesel_derives",
- "diesel_migrations",
- "fallible-iterator",
- "futures 0.1.31",
- "git-testament",
- "graphql-parser",
- "itertools 0.10.1",
- "lazy_static",
- "lru_time_cache",
- "massbit",
- "maybe-owned",
- "pin-utils",
- "postgres 0.19.1",
- "rand 0.6.5",
- "serde",
- "stable-hash",
- "uuid 0.8.2",
 ]
 
 [[package]]

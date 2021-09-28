@@ -35,7 +35,7 @@ chain-reader/data/
 index-manager/generated/*
 !index-manager/generated/.gitkeep
 
-migrations/
+store/postgres/migrations/
 log.html
 output.xml
 report.html

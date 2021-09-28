@@ -28,6 +28,8 @@ use crate::util::lfu_cache::LfuCache;
 /// be enough for everybody
 pub type BlockNumber = i32;
 
+pub const BLOCK_NUMBER_MAX: BlockNumber = std::i32::MAX;
+
 /// An internal identifer for the specific instance of a deployment. The
 /// identifier only has meaning in the context of a specific instance of
 /// massbit. Only store code should ever construct or consume it; all
@@ -549,6 +551,17 @@ pub enum StoreError {
     DatabaseUnavailable,
 }
 
+// Convenience to report a constraint violation
+#[macro_export]
+macro_rules! constraint_violation {
+    ($msg:expr) => {{
+        StoreError::ConstraintViolation(format!("{}", $msg))
+    }};
+    ($fmt:expr, $($arg:tt)*) => {{
+        StoreError::ConstraintViolation(format!($fmt, $($arg)*))
+    }}
+}
+
 impl From<::diesel::result::Error> for StoreError {
     fn from(e: ::diesel::result::Error) -> Self {
         StoreError::Unknown(e.into())
@@ -628,4 +641,12 @@ pub trait IndexerStore: Send + Sync + 'static {
         &self,
         deployment: &DeploymentLocator,
     ) -> Result<Arc<dyn WritableStore>, StoreError>;
+
+    /// Create a new indexer with the given name. If one already exists, use
+    /// the existing one. Return the `id` of the newly created or existing
+    /// indexer
+    fn create_indexer(&self, name: IndexerName) -> Result<String, StoreError>;
+
+    /// Return the GraphQL schema supplied by the user
+    fn input_schema(&self, indexer_id: &DeploymentHash) -> Result<Arc<Schema>, StoreError>;
 }

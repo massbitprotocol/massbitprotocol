@@ -1,0 +1,29 @@
+[package]
+name = "manager"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+massbit = { path = "../massbit" }
+massbit-store-postgres = { path = "../store/postgres" }
+indexer = { path = "../indexer" }
+regex = "1.5.4"
+serde = { version = "1.0.126", features = ["derive", "rc"] }
+serde_regex = "1.1.0"
+structopt = { version = "0.3.23", features = ["wrap_help"] }
+toml = "0.5.7"
+shellexpand = "2.1.0"
+diesel = "1.4.8"
+fail = "0.4"
+http = "0.1.21" # must be compatible with the version rust-web3 uses
+clap = "2.33.3"
+env_logger = "0.9.0"
+git-testament = "0.2"
+graphql-parser = "0.3"
+futures = { version = "0.3.1", features = ["compat"] }
+lazy_static = "1.2.0"
+url = "2.2.1"
+crossbeam-channel = "0.5.1"
+jsonrpc-http-server = "14.0.6"
