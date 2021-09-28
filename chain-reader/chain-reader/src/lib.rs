@@ -22,55 +22,57 @@ lazy_static! {
     static ref POLYGON_URL: String = env::var("POLYGON_URL").unwrap_or(String::from("https://polygon-rpc.com"));
     static ref BSC_WS: String = env::var("BSC_WS").unwrap_or(String::from("wss://bsc-ws-node.nariox.org:443"));
     static ref BSC_URL: String = env::var("BSC_URL").unwrap_or(String::from("https://bsc-dataseed.binance.org"));
-    static ref ETHEREUM_WS: String = env::var("ETHEREUM_WS").unwrap_or(String::from("wss://main-light.eth.linkpool.io/ws"));
-    static ref ETHEREUM_URL: String = env::var("ETHEREUM_URL").unwrap_or(String::from("https://main-light.eth.linkpool.io"));
+    // static ref ETHEREUM_WS: String = env::var("ETHEREUM_WS").unwrap_or(String::from("wss://main-light.eth.linkpool.io/ws"));      // Ethereum endpoint
+    // static ref ETHEREUM_URL: String = env::var("ETHEREUM_URL").unwrap_or(String::from("https://main-light.eth.linkpool.io"));     // Ethereum endpoint
+    static ref ETHEREUM_WS: String = env::var("ETHEREUM_WS").unwrap_or(String::from("wss://a.ws.s0.t.hmny.io"));     // Harmony endpoint
+    static ref ETHEREUM_URL: String = env::var("ETHEREUM_URL").unwrap_or(String::from("https://a.api.s0.t.hmny.io"));     // Harmony endpoint
     pub static ref CONFIG: Config = Config{
         chains: [
-            ChainConfig{
-                url: "".to_string(),
-                ws: "".to_string(),
-                start_block: None,
-                chain_type: ChainType::Substrate,
-                network: "mainnet".to_string()
-            },
-            ChainConfig{
-                ws: "ws://api.mainnet-beta.solana.com".to_string(),
-                // url: "https://mainnet-beta-solana.massbit.io".to_string(),
-                //url: "https://api.mainnet-beta.solana.com".to_string(),
-                url: "https://solana-api.projectserum.com".to_string(),
-
-                start_block: None,
-                chain_type: ChainType::Solana,
-                network: "mainnet".to_string()
-            },
-            ChainConfig{
-                url: "".to_string(),
-                ws: "".to_string(),
-                start_block: None,
-                chain_type: ChainType::Substrate,
-                network: "mainnet".to_string()
-            },
-            ChainConfig{
-                ws: SOLANA_WS.to_string(),
-                url: SOLANA_URL.to_string(),
-                start_block: None,
-                chain_type: ChainType::Solana,
-                network: "mainnet".to_string()
-            },
-            ChainConfig{
-                ws: POLYGON_WS.to_string(),
-                url: POLYGON_URL.to_string(),
-                start_block: Some(18403764),
-                chain_type: ChainType::Ethereum,
-                network: "matic".to_string()
-            },
-            ChainConfig{
-                ws: BSC_WS.to_string(),
-                url: BSC_URL.to_string(),
-                start_block: None,
-                chain_type: ChainType::Ethereum,
-                network: "bsc".to_string()
-            },
+            // ChainConfig{
+            //     url: "".to_string(),
+            //     ws: "".to_string(),
+            //     start_block: None,
+            //     chain_type: ChainType::Substrate,
+            //     network: "mainnet".to_string()
+            // },
+            // ChainConfig{
+            //     ws: "ws://api.mainnet-beta.solana.com".to_string(),
+            //     // url: "https://mainnet-beta-solana.massbit.io".to_string(),
+            //     //url: "https://api.mainnet-beta.solana.com".to_string(),
+            //     url: "https://solana-api.projectserum.com".to_string(),
+            //
+            //     start_block: None,
+            //     chain_type: ChainType::Solana,
+            //     network: "mainnet".to_string()
+            // },
+            // ChainConfig{
+            //     url: "".to_string(),
+            //     ws: "".to_string(),
+            //     start_block: None,
+            //     chain_type: ChainType::Substrate,
+            //     network: "mainnet".to_string()
+            // },
+            // ChainConfig{
+            //     ws: SOLANA_WS.to_string(),
+            //     url: SOLANA_URL.to_string(),
+            //     start_block: None,
+            //     chain_type: ChainType::Solana,
+            //     network: "mainnet".to_string()
+            // },
+            // ChainConfig{
+            //     ws: POLYGON_WS.to_string(),
+            //     url: POLYGON_URL.to_string(),
+            //     start_block: Some(18403764),
+            //     chain_type: ChainType::Ethereum,
+            //     network: "matic".to_string()
+            // },
+            // ChainConfig{
+            //     ws: BSC_WS.to_string(),
+            //     url: BSC_URL.to_string(),
+            //     start_block: None,
+            //     chain_type: ChainType::Ethereum,
+            //     network: "bsc".to_string()
+            // },
             ChainConfig{
                 ws: ETHEREUM_WS.to_string(),
                 url: ETHEREUM_URL.to_string(),

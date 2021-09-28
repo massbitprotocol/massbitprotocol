@@ -55,28 +55,28 @@ impl MessageHandler for EthereumWasmHandlerProxy {
                 let eth_block: EthereumBlock = decode(&mut data.payload).unwrap();
                 log::info!("Decoded payload at {:?}", start.elapsed());
                 let arc_block = Arc::new(eth_block.block.clone());
-                let block_finality: Arc<<Chain as Blockchain>::Block> =
-                    Arc::new(BlockFinality::Final(arc_block.clone()));
-                let block_ptr = BlockPtr {
-                    hash: BlockHash(data.block_hash.as_bytes().into()),
-                    number: data.block_number as i32,
-                };
-                let data_sources = self.data_sources.clone();
-                log::info!("Cloned data_sources at {:?}", start.elapsed());
-                data_sources.into_iter().for_each(|data_source| {
-                    //wasm_instance for each datasource
-                    let mut wasm_instance: Option<WasmInstance<Chain>> = None;
-                    self.matching_block(
-                        &logger,
-                        &mut wasm_instance,
-                        &data_source,
-                        &eth_block,
-                        block_finality.clone(),
-                        &block_ptr,
-                        registry.cheap_clone(),
-                        stopwatch.cheap_clone(),
-                    );
-                });
+                // let block_finality: Arc<<Chain as Blockchain>::Block> =
+                //     Arc::new(BlockFinality::Final(arc_block.clone()));
+                // let block_ptr = BlockPtr {
+                //     hash: BlockHash(data.block_hash.as_bytes().into()),
+                //     number: data.block_number as i32,
+                // };
+                // let data_sources = self.data_sources.clone();
+                // log::info!("Cloned data_sources at {:?}", start.elapsed());
+                // data_sources.into_iter().for_each(|data_source| {
+                //     //wasm_instance for each datasource
+                //     let mut wasm_instance: Option<WasmInstance<Chain>> = None;
+                //     self.matching_block(
+                //         &logger,
+                //         &mut wasm_instance,
+                //         &data_source,
+                //         &eth_block,
+                //         block_finality.clone(),
+                //         &block_ptr,
+                //         registry.cheap_clone(),
+                //         stopwatch.cheap_clone(),
+                //     );
+                // });
             }
             _ => {}
         }
@@ -332,15 +332,15 @@ impl MessageHandler for EthereumHandlerProxy {
                     &block.block.hash.unwrap()
                 );
                 self.handler.handle_block(&block);
-                for origin_transaction in block.block.transactions.clone() {
-                    let transaction = EthereumTransaction {
-                        version: block.version.clone(),
-                        timestamp: block.timestamp,
-                        receipt: block.receipts.get(&origin_transaction.hash).cloned(),
-                        transaction: origin_transaction,
-                    };
-                    self.handler.handle_transaction(&transaction);
-                }
+                // for origin_transaction in block.block.transactions.clone() {
+                //     let transaction = EthereumTransaction {
+                //         version: block.version.clone(),
+                //         timestamp: block.timestamp,
+                //         receipt: block.receipts.get(&origin_transaction.hash).cloned(),
+                //         transaction: origin_transaction,
+                //     };
+                //     self.handler.handle_transaction(&transaction);
+                // }
 
                 // Todo: add event for rust plugin, now do not support (use wasm plugin instead).
                 // Create event
