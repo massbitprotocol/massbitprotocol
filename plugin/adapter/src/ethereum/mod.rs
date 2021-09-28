@@ -332,15 +332,16 @@ impl MessageHandler for EthereumHandlerProxy {
                     &block.block.hash.unwrap()
                 );
                 self.handler.handle_block(&block);
-                // for origin_transaction in block.block.transactions.clone() {
-                //     let transaction = EthereumTransaction {
-                //         version: block.version.clone(),
-                //         timestamp: block.timestamp,
-                //         receipt: block.receipts.get(&origin_transaction.hash).cloned(),
-                //         transaction: origin_transaction,
-                //     };
-                //     self.handler.handle_transaction(&transaction);
-                // }
+                for origin_transaction in block.block.transactions.clone() {
+                    let transaction = EthereumTransaction {
+                        version: block.version.clone(),
+                        timestamp: block.timestamp,
+                        // receipt: block.receipts.get(&origin_transaction.hash).cloned(),
+                        receipt: Default::default(),
+                        transaction: origin_transaction,
+                    };
+                    self.handler.handle_transaction(&transaction);
+                }
 
                 // Todo: add event for rust plugin, now do not support (use wasm plugin instead).
                 // Create event
