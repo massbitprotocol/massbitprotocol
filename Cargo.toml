@@ -17,7 +17,8 @@ members = [
     "indexer",
     "runtime/wasm",
     "runtime/derive",
-    "store/postgres"
+    "store/postgres",
+    "chain-filter"
 ]
 exclude = ["code-compiler/generated"]
 

@@ -28,3 +28,8 @@ web3 = { git = "https://github.com/graphprotocol/rust-web3", branch = "master" }
 
 runtime-wasm = { path = "../../runtime/wasm" }
 runtime-derive = { path = "../../runtime/derive" }
+
+[dependencies.graph]
+package = "graph"
+git = "https://github.com/massbitprotocol/massbit-graph-node"
+branch = "main"

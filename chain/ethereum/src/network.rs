@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct EthereumNetworkAdapter {
-    adapter: Arc<EthereumAdapter>,
+    pub adapter: Arc<EthereumAdapter>,
 }
 
 #[derive(Clone)]

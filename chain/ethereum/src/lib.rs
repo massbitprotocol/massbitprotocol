@@ -5,6 +5,7 @@ pub mod transport;
 pub mod trigger;
 
 pub mod chain;
+pub mod manifest;
 pub mod network;
 pub mod runtime;
 pub mod stream_types;
