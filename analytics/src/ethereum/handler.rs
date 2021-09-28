@@ -3,7 +3,10 @@ use massbit_common::prelude::anyhow;
 use massbit_chain_ethereum::data_type::{ExtBlock, LightEthereumBlock};
 use graph::prelude::web3::types::{Transaction, TransactionReceipt, H256};
 use std::collections::HashMap;
-
+use super::metrics::*;
+use std::sync::Arc;
+use crate::storage_adapter::StorageAdapter;
+use massbit_common::NetworkType;
 
 pub trait EthereumHandler : Sync + Send {
     fn handle_block(&self, vec_blocks: &LightEthereumBlock) -> Result<(), anyhow::Error> {
@@ -34,8 +37,9 @@ impl EthereumHandlerManager {
     pub fn new() -> EthereumHandlerManager {
         EthereumHandlerManager::default()
     }
-    pub fn add_handler(mut self, handler: Box<dyn EthereumHandler>) {
+    pub fn add_handler(mut self, handler: Box<dyn EthereumHandler>) -> Self {
         self.handlers.push(handler);
+        self
     }
     pub fn handle_ext_block(&self, block: &ExtBlock) -> Result<(), anyhow::Error> {
         self.handle_block(&block.block);
@@ -84,7 +88,8 @@ impl EthereumHandler for EthereumHandlerManager {
     }
 }
 
-pub fn create_ethereum_handler_manager() -> EthereumHandlerManager {
+pub fn create_ethereum_handler_manager(network: &Option<NetworkType>, storate_adapter: Arc<dyn StorageAdapter>) -> EthereumHandlerManager {
     let mut handler_manager = EthereumHandlerManager::new();
-    handler_manager
+    handler_manager.add_handler(Box::new(EthereumDailyTransaction::new(network, storate_adapter.clone())))
+        .add_handler(Box::new(EthereumDailyAddressTransaction::new(network, storate_adapter.clone())))
 }

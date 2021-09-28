@@ -15,7 +15,8 @@ use massbit_chain_solana::data_type::{
     SolanaLogMessages, SolanaTransaction,
 };
 
-pub async fn process_solana_block(mut client: StreamoutClient<Channel>)
+pub async fn process_solana_stream(mut client: StreamoutClient<Channel>,
+                                   storage_adapter: Arc<PostgresAdapter>)
     ->  Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     let get_blocks_request = GetBlocksRequest {
         start_block_number: 0,

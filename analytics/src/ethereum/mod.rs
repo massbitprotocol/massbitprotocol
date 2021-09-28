@@ -29,6 +29,8 @@ use massbit_common::prelude::diesel::ExpressionMethods;
 use massbit_common::prelude::diesel::result::Error;
 use crate::storage_adapter::StorageAdapter;
 use crate::ethereum::handler::{create_ethereum_handler_manager, EthereumHandler};
+use std::sync::Arc;
+use crate::postgres_adapter::PostgresAdapter;
 
 lazy_static! {
     pub static ref CHAIN: String = String::from("ethereum");
@@ -37,12 +39,11 @@ const START_ETHEREUM_BLOCK : u64 = 15_000_000_u64;
 const DEFAULT_NETWORK: &str = "matic";
 
 pub async fn process_ethereum_stream(client: &mut StreamoutClient<Timeout<Channel>>,
-                                      storage_adapter: &dyn StorageAdapter,
+                                      storage_adapter: Arc<PostgresAdapter>,
                                       network: &Option<NetworkType>,
-                                      block: u64)
-                                      ->  Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
-    let handler_manager = create_ethereum_handler_manager();
-    //Todo: remove this simpe connection
+                                      block: u64) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>>{
+    let handler_manager = create_ethereum_handler_manager(network, storage_adapter);
+    //Todo: remove this simple connection
     let conn = establish_connection();
     let current_state = get_block_number(&conn, CHAIN.clone(), network.clone().unwrap_or(String::from(DEFAULT_NETWORK)));
     let start_block = match current_state {
@@ -97,8 +98,9 @@ pub async fn process_ethereum_stream(client: &mut StreamoutClient<Timeout<Channe
                     }
                 }
             }
-        }
-    }
+        };
+    };
+    Ok(())
 }
 
 
