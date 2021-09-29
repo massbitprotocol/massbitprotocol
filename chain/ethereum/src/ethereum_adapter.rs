@@ -1,3 +1,4 @@
+use ethabi::{ParamType, Token};
 use futures::prelude::*;
 use massbit::blockchain::block_stream::BlockWithTriggers;
 use massbit::prelude::web3::types::H256;
@@ -8,8 +9,8 @@ use massbit::prelude::{
 use std::collections::{HashMap, HashSet};
 use web3::{
     types::{
-        BlockId, BlockNumber as Web3BlockNumber, Filter, FilterBuilder, Log, Trace, TraceFilter,
-        TraceFilterBuilder, H160,
+        Address, BlockId, BlockNumber as Web3BlockNumber, Bytes, CallRequest, Filter,
+        FilterBuilder, Log, Trace, TraceFilter, TraceFilterBuilder, H160,
     },
     Web3,
 };
@@ -22,7 +23,7 @@ use crate::chain::BlockFinality;
 use crate::transport::Transport;
 use crate::trigger::{EthereumBlockTriggerType, EthereumTrigger};
 use crate::types::{LightEthereumBlock, LightEthereumBlockExt};
-use crate::{EthereumCall, TriggerFilter};
+use crate::{EthereumCall, EthereumContractCall, EthereumContractCallError, TriggerFilter};
 
 lazy_static! {
     static ref TRACE_STREAM_STEP_SIZE: BlockNumber = std::env::var("ETHEREUM_TRACE_STREAM_STEP_SIZE")
@@ -59,13 +60,52 @@ lazy_static! {
             .unwrap_or("10".into())
             .parse::<usize>()
             .expect("invalid ETHEREUM_REQUEST_RETRIES env var");
+
+    /// Gas limit for `eth_call`. The value of 50_000_000 is a protocol-wide parameter so this
+    /// should be changed only for debugging purposes and never on an indexer in the network. This
+    /// value was chosen because it is the Geth default
+    /// https://github.com/ethereum/go-ethereum/blob/e4b687cf462870538743b3218906940ae590e7fd/eth/ethconfig/config.go#L91.
+    /// It is not safe to set something higher because Geth will silently override the gas limit
+    /// with the default. This means that we do not support indexing against a Geth node with
+    /// `RPCGasCap` set below 50 million.
+    // See also f0af4ab0-6b7c-4b68-9141-5b79346a5f61.
+    static ref ETH_CALL_GAS: u32 = std::env::var("GRAPH_ETH_CALL_GAS")
+                                    .map(|s| s.parse::<u32>().expect("invalid GRAPH_ETH_CALL_GAS env var"))
+                                    .unwrap_or(50_000_000);
+
+    /// Additional deterministic errors that have not yet been hardcoded. Separated by `;`.
+    static ref GETH_ETH_CALL_ERRORS_ENV: Vec<String> = {
+        std::env::var("GRAPH_GETH_ETH_CALL_ERRORS")
+        .map(|s| s.split(';').filter(|s| s.len() > 0).map(ToOwned::to_owned).collect())
+        .unwrap_or(Vec::new())
+    };
 }
+
+// Deterministic Geth eth_call execution errors. We might need to expand this as
+// subgraphs come across other errors. See
+// https://github.com/ethereum/go-ethereum/blob/dfeb2f7e8001aef1005a8d5e1605bae1de0b4f12/core/vm/errors.go#L25-L38
+const GETH_ETH_CALL_ERRORS: &[&str] = &[
+    "execution reverted",
+    "invalid jump destination",
+    "invalid opcode",
+    // Ethereum says 1024 is the stack sizes limit, so this is deterministic.
+    "stack limit reached 1024",
+    // "out of gas" is commented out because Erigon has not yet bumped the default gas limit to 50
+    // million. It can be added through `GETH_ETH_CALL_ERRORS_ENV` if not using Erigon. Once
+    // https://github.com/ledgerwatch/erigon/pull/2572 has been released and indexers have updated,
+    // this can be uncommented.
+    //
+    // See f0af4ab0-6b7c-4b68-9141-5b79346a5f61 for why the gas limit is considered deterministic.
+
+    // "out of gas",
+];
 
 #[derive(Clone)]
 pub struct EthereumAdapter {
     url_hostname: Arc<String>,
     web3: Arc<Web3<Transport>>,
     provider: String,
+    supports_eip_1898: bool,
 }
 
 impl CheapClone for EthereumAdapter {
@@ -74,12 +114,18 @@ impl CheapClone for EthereumAdapter {
             provider: self.provider.clone(),
             url_hostname: self.url_hostname.cheap_clone(),
             web3: self.web3.cheap_clone(),
+            supports_eip_1898: self.supports_eip_1898,
         }
     }
 }
 
 impl EthereumAdapter {
-    pub async fn new(provider: String, url: &str, transport: Transport) -> Self {
+    pub async fn new(
+        provider: String,
+        url: &str,
+        transport: Transport,
+        supports_eip_1898: bool,
+    ) -> Self {
         let hostname = url::Url::parse(url)
             .unwrap()
             .host_str()
@@ -92,6 +138,7 @@ impl EthereumAdapter {
             provider,
             url_hostname: Arc::new(hostname),
             web3,
+            supports_eip_1898,
         }
     }
 
@@ -315,6 +362,147 @@ impl EthereumAdapter {
         .boxed()
     }
 
+    fn call(
+        &self,
+        contract_address: Address,
+        call_data: Bytes,
+        block_ptr: BlockPtr,
+    ) -> impl Future<Item = Bytes, Error = EthereumContractCallError> + Send {
+        let web3 = self.web3.clone();
+
+        // Ganache does not support calls by block hash.
+        // See https://github.com/trufflesuite/ganache-cli/issues/745
+        let block_id = if !self.supports_eip_1898 {
+            BlockId::Number(block_ptr.number.into())
+        } else {
+            BlockId::Hash(block_ptr.hash_as_h256())
+        };
+
+        retry("eth_call RPC call")
+            .when(|result| match result {
+                Ok(_) | Err(EthereumContractCallError::Revert(_)) => false,
+                Err(_) => true,
+            })
+            .limit(10)
+            .timeout_secs(*JSON_RPC_TIMEOUT)
+            .run(move || {
+                let req = CallRequest {
+                    from: None,
+                    to: contract_address,
+                    gas: Some(web3::types::U256::from(*ETH_CALL_GAS)),
+                    gas_price: None,
+                    value: None,
+                    data: Some(call_data.clone()),
+                };
+                web3.eth()
+                    .call(req, Some(block_id))
+                    .then(|result| {
+                        // Try to check if the call was reverted. The JSON-RPC response for reverts is
+                        // not standardized, so we have ad-hoc checks for each of Geth, Parity and
+                        // Ganache.
+
+                        // 0xfe is the "designated bad instruction" of the EVM, and Solidity uses it for
+                        // asserts.
+                        const PARITY_BAD_INSTRUCTION_FE: &str = "Bad instruction fe";
+
+                        // 0xfd is REVERT, but on some contracts, and only on older blocks,
+                        // this happens. Makes sense to consider it a revert as well.
+                        const PARITY_BAD_INSTRUCTION_FD: &str = "Bad instruction fd";
+
+                        const PARITY_BAD_JUMP_PREFIX: &str = "Bad jump";
+                        const PARITY_STACK_LIMIT_PREFIX: &str = "Out of stack";
+
+                        const GANACHE_VM_EXECUTION_ERROR: i64 = -32000;
+                        const GANACHE_REVERT_MESSAGE: &str =
+                            "VM Exception while processing transaction: revert";
+                        const PARITY_VM_EXECUTION_ERROR: i64 = -32015;
+                        const PARITY_REVERT_PREFIX: &str = "Reverted 0x";
+
+                        let mut geth_execution_errors = GETH_ETH_CALL_ERRORS
+                            .iter()
+                            .map(|s| *s)
+                            .chain(GETH_ETH_CALL_ERRORS_ENV.iter().map(|s| s.as_str()));
+
+                        let as_solidity_revert_with_reason = |bytes: &[u8]| {
+                            let solidity_revert_function_selector =
+                                &tiny_keccak::keccak256(b"Error(string)")[..4];
+
+                            match bytes.len() >= 4
+                                && &bytes[..4] == solidity_revert_function_selector
+                            {
+                                false => None,
+                                true => ethabi::decode(&[ParamType::String], &bytes[4..])
+                                    .ok()
+                                    .and_then(|tokens| tokens[0].clone().to_string()),
+                            }
+                        };
+
+                        match result {
+                            // A successful response.
+                            Ok(bytes) => Ok(bytes),
+
+                            // Check for Geth revert, converting to lowercase because some clients
+                            // return the same error message as Geth but with capitalization.
+                            Err(web3::Error::Rpc(rpc_error))
+                                if geth_execution_errors
+                                    .any(|e| rpc_error.message.to_lowercase().contains(e)) =>
+                            {
+                                Err(EthereumContractCallError::Revert(rpc_error.message))
+                            }
+
+                            // Check for Parity revert.
+                            Err(web3::Error::Rpc(ref rpc_error))
+                                if rpc_error.code.code() == PARITY_VM_EXECUTION_ERROR =>
+                            {
+                                match rpc_error.data.as_ref().and_then(|d| d.as_str()) {
+                                    Some(data)
+                                        if data.starts_with(PARITY_REVERT_PREFIX)
+                                            || data.starts_with(PARITY_BAD_JUMP_PREFIX)
+                                            || data.starts_with(PARITY_STACK_LIMIT_PREFIX)
+                                            || data == PARITY_BAD_INSTRUCTION_FE
+                                            || data == PARITY_BAD_INSTRUCTION_FD =>
+                                    {
+                                        let reason = if data == PARITY_BAD_INSTRUCTION_FE {
+                                            PARITY_BAD_INSTRUCTION_FE.to_owned()
+                                        } else {
+                                            let payload =
+                                                data.trim_start_matches(PARITY_REVERT_PREFIX);
+                                            hex::decode(payload)
+                                                .ok()
+                                                .and_then(|payload| {
+                                                    as_solidity_revert_with_reason(&payload)
+                                                })
+                                                .unwrap_or("no reason".to_owned())
+                                        };
+                                        Err(EthereumContractCallError::Revert(reason))
+                                    }
+
+                                    // The VM execution error was not identified as a revert.
+                                    _ => Err(EthereumContractCallError::Web3Error(
+                                        web3::Error::Rpc(rpc_error.clone()),
+                                    )),
+                                }
+                            }
+
+                            // Check for Ganache revert.
+                            Err(web3::Error::Rpc(ref rpc_error))
+                                if rpc_error.code.code() == GANACHE_VM_EXECUTION_ERROR
+                                    && rpc_error.message.starts_with(GANACHE_REVERT_MESSAGE) =>
+                            {
+                                Err(EthereumContractCallError::Revert(rpc_error.message.clone()))
+                            }
+
+                            // The error was not identified as a revert.
+                            Err(err) => Err(EthereumContractCallError::Web3Error(err)),
+                        }
+                    })
+                    .compat()
+            })
+            .map_err(|e| e.into_inner().unwrap_or(EthereumContractCallError::Timeout))
+            .boxed()
+            .compat()
+    }
+
     pub(crate) fn logs_in_block_range(
         &self,
         from: BlockNumber,
@@ -443,6 +631,54 @@ impl EthereumAdapter {
         // the same block number.
         debug!("Requesting hashes for blocks [{}, {}]", from, to);
         Box::new(self.load_block_ptrs_rpc((from..=to).collect()).collect())
+    }
+
+    pub fn contract_call(
+        &self,
+        call: EthereumContractCall,
+    ) -> Box<dyn Future<Item = Vec<Token>, Error = EthereumContractCallError> + Send> {
+        // Emit custom error for type mismatches.
+        for (token, kind) in call
+            .args
+            .iter()
+            .zip(call.function.inputs.iter().map(|p| &p.kind))
+        {
+            if !token.type_check(kind) {
+                return Box::new(future::err(EthereumContractCallError::TypeError(
+                    token.clone(),
+                    kind.clone(),
+                )));
+            }
+        }
+
+        // Encode the call parameters according to the ABI
+        let call_data = match call.function.encode_input(&call.args) {
+            Ok(data) => data,
+            Err(e) => return Box::new(future::err(EthereumContractCallError::EncodingError(e))),
+        };
+
+        Box::new(
+            self.call(
+                call.address,
+                Bytes(call_data.clone()),
+                call.block_ptr.clone(),
+            )
+            .map(move |result| result.0)
+            .and_then(move |output| {
+                if output.is_empty() {
+                    // We got a `0x` response. For old Geth, this can mean a revert. It can also be
+                    // that the contract actually returned an empty response. A view call is meant
+                    // to return something, so we treat empty responses the same as reverts.
+                    Err(EthereumContractCallError::Revert("empty response".into()))
+                } else {
+                    // Decode failures are reverts. The reasoning is that if Solidity fails to
+                    // decode an argument, that's a revert, so the same goes for the output.
+                    call.function.decode_output(&output).map_err(|e| {
+                        EthereumContractCallError::Revert(format!("failed to decode output: {}", e))
+                    })
+                }
+            }),
+        )
     }
 }
 
