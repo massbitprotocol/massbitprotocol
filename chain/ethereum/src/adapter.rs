@@ -1,14 +1,16 @@
-use std::cmp;
-use std::collections::{HashMap, HashSet};
-use std::fmt;
-use tiny_keccak::keccak256;
-use web3::types::{Address, H256};
-
+use ethabi::{Error as ABIError, Function, ParamType, Token};
 use massbit::prelude::*;
 use massbit::{
     blockchain as bc,
     petgraph::{self, graphmap::GraphMap},
+    prelude::*,
 };
+use std::cmp;
+use std::collections::{HashMap, HashSet};
+use std::fmt;
+use thiserror::Error;
+use tiny_keccak::keccak256;
+use web3::types::{Address, H256};
 
 use crate::chain::Chain;
 use crate::data_source::{BlockHandlerFilter, DataSource};
@@ -17,6 +19,37 @@ use crate::EthereumCall;
 
 pub type EventSignature = H256;
 pub type FunctionSelector = [u8; 4];
+
+#[derive(Clone, Debug)]
+pub struct EthereumContractCall {
+    pub address: Address,
+    pub block_ptr: BlockPtr,
+    pub function: Function,
+    pub args: Vec<Token>,
+}
+
+#[derive(Error, Debug)]
+pub enum EthereumContractCallError {
+    #[error("ABI error: {0}")]
+    ABIError(ABIError),
+    /// `Token` is not of expected `ParamType`
+    #[error("type mismatch, token {0:?} is not of kind {0:?}")]
+    TypeError(Token, ParamType),
+    #[error("error encoding input call data: {0}")]
+    EncodingError(ethabi::Error),
+    #[error("call error: {0}")]
+    Web3Error(web3::Error),
+    #[error("call reverted: {0}")]
+    Revert(String),
+    #[error("ethereum node took too long to perform call")]
+    Timeout,
+}
+
+impl From<ABIError> for EthereumContractCallError {
+    fn from(e: ABIError) -> Self {
+        EthereumContractCallError::ABIError(e)
+    }
+}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
 enum LogFilterNode {
