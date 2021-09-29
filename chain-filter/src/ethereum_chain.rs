@@ -4,14 +4,14 @@ use crate::{
     CONFIG,
 };
 use anyhow::Error;
-use chain_ethereum::{manifest, Chain, EthereumAdapter};
+use chain_ethereum::{manifest, Chain, EthereumAdapter, TriggerFilter};
 use futures::stream;
 use futures::{Future, Stream};
 use futures03::compat::Future01CompatExt;
 use lazy_static::lazy_static;
 use log::{debug, info, warn};
-use massbit::blockchain::block_stream::BlockStreamEvent;
-use massbit::blockchain::{Block, Blockchain, TriggerFilter};
+use massbit::blockchain::block_stream::{BlockStreamEvent, BlockWithTriggers};
+use massbit::blockchain::{Block, Blockchain, TriggerFilter as _};
 use massbit::components::store::{DeploymentId, DeploymentLocator};
 use massbit::prelude::DeploymentHash;
 use massbit::prelude::*;
@@ -83,29 +83,23 @@ pub async fn loop_get_block(
     start_block: &Option<u64>,
     network: &NetworkType,
     chain: Arc<Chain>,
+    filter: TriggerFilter,
 ) -> Result<(), Box<dyn StdError>> {
     info!("Start get block {:?}", CHAIN_TYPE);
     info!("Init Ethereum adapter");
 
-    let WEB3 = match network.as_str() {
-        "bsc" => WEB3_BSC.clone(),
-        "matic" => WEB3_MATIC.clone(),
-        _ => WEB3_ETH.clone(),
-    };
+    let web3 = chain.eth_adapters.adapters[0].adapter.web3.clone();
 
-    let version = WEB3
+    let version = web3
         .net()
         .version()
         .wait()
         .unwrap_or("Cannot get version".to_string());
 
-    let filter =
-        <chain_ethereum::Chain as Blockchain>::TriggerFilter::from_data_sources(Vec::new().iter());
-
-    let filter_json = serde_json::to_string(&filter)?;
-    let filter = serde_json::from_str(filter_json.as_str())?;
-    //let start_blocks = manifest.start_blocks();
-    let start_blocks = vec![1];
+    // let filter = TriggerFilter::from_data_sources(Vec::new().iter());
+    // let filter_json = serde_json::to_string(&filter)?;
+    // let filter = serde_json::from_str(filter_json.as_str())?;
+    let start_blocks = vec![start_block.unwrap() as i32];
     let deployment = DeploymentLocator {
         id: DeploymentId(1),
         hash: DeploymentHash::new("HASH".to_string()).unwrap(),
@@ -122,5 +116,43 @@ pub async fn loop_get_block(
             None => unreachable!("The block stream stopped producing blocks"),
         };
         println!("{}", block.block.number());
+        let block_hash = block.block.hash().to_string();
+        let block_number = block.block.number() as u64;
+        // Create generic block
+        let generic_block =
+            _create_generic_block_with_trigger(block_hash, block_number, &block, version.clone());
+        // Send data to GRPC stream
+        if !chan.is_closed() {
+            let send_res = chan.send(Ok(generic_block as GenericDataProto)).await;
+            if send_res.is_ok() {
+                info!("gRPC successfully sending block {}", &block_number);
+            } else {
+                warn!("gRPC unsuccessfully sending block {}", &block_number);
+            }
+        } else {
+            return Err("Stream is closed!".into());
+        }
     }
+}
+
+fn _create_generic_block_with_trigger(
+    block_hash: String,
+    block_number: u64,
+    block: &BlockWithTriggers<Chain>,
+    version: String,
+) -> GenericDataProto {
+    let generic_data = GenericDataProto {
+        chain_type: CHAIN_TYPE as i32,
+        version,
+        data_type: DataType::BlockWithTriggers as i32,
+        block_hash,
+        block_number,
+        payload: serde_json::to_vec(block).unwrap(),
+    };
+    // Deserialize
+    // let decode_block: BlockWithTriggers<Chain> =
+    //     serde_json::from_slice(&generic_data.payload).unwrap();
+    // println!("{:?}", decode_block);
+
+    generic_data
 }

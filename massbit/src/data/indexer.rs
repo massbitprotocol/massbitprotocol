@@ -222,8 +222,11 @@ impl<C: Blockchain> IndexerManifest<C> {
         );
 
         // Parse the YAML data into an UnresolvedSubgraphManifest
-        let unresolved: UnresolvedIndexerManifest<C> = serde_yaml::from_value(raw.into())?;
+        let unresolved: UnresolvedIndexerManifest<C> = serde_yaml::from_value(raw.clone().into())?;
+        let unresolved2: serde_yaml::Value = serde_yaml::from_value(raw.into())?;
+        println!("unresolved {:?}", unresolved2);
 
+        //unimplemented!()
         unresolved
             .resolve(&*resolver)
             .await
@@ -268,7 +271,24 @@ impl<C: Blockchain> UnresolvedIndexerManifest<C> {
             chain,
         } = self;
 
-        let (data_sources, templates) = try_join(
+        // let data_sources = data_sources.into_iter().for_each(|data_source| {
+        //     println!("{:?}", data_source);
+        // });
+        // let data_sources = data_sources
+        //     .into_iter()
+        //     .map(|ds| ds.resolve(resolver))
+        //     .collect::<FuturesOrdered<_>>()
+        //     .try_collect::<Vec<_>>()
+        //     .await
+        //     .unwrap();
+        // let templates = templates
+        //     .into_iter()
+        //     .map(|template| template.resolve(resolver))
+        //     .collect::<FuturesOrdered<_>>()
+        //     .try_collect::<Vec<_>>()
+        //     .await
+        //     .unwrap();
+        let res = try_join(
             data_sources
                 .into_iter()
                 .map(|ds| ds.resolve(resolver))
@@ -280,7 +300,9 @@ impl<C: Blockchain> UnresolvedIndexerManifest<C> {
                 .collect::<FuturesOrdered<_>>()
                 .try_collect::<Vec<_>>(),
         )
-        .await?;
+        .await;
+
+        let (data_sources, templates) = res?;
 
         Ok(IndexerManifest {
             id,
@@ -289,5 +311,6 @@ impl<C: Blockchain> UnresolvedIndexerManifest<C> {
             templates,
             chain,
         })
+        //unimplemented!()
     }
 }

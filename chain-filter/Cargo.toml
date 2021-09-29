@@ -117,3 +117,7 @@ path = "src/chain-filter.rs"
 [[bin]] # Bin to run gRPC server
 name = "client"
 path = "src/examples/client.rs"
+
+[[bin]] # Bin to run gRPC server
+name = "client-filter"
+path = "src/examples/client-filter.rs"

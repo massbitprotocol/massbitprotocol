@@ -53,7 +53,7 @@ impl LightEthereumBlockExt for LightEthereumBlock {
     }
 }
 
-#[derive(Debug, Default, Clone, PartialEq)]
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EthereumCall {
     pub from: Address,
     pub to: Address,

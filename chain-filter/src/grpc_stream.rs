@@ -4,7 +4,7 @@ use tokio_stream::wrappers::ReceiverStream;
 
 use crate::ethereum_chain;
 use chain_ethereum::network::{EthereumNetworkAdapter, EthereumNetworkAdapters};
-use chain_ethereum::{manifest, Chain, EthereumAdapter, Transport};
+use chain_ethereum::{manifest, Chain, EthereumAdapter, Transport, TriggerFilter};
 use log::{error, info};
 use massbit_common::NetworkType;
 use std::collections::HashMap;
@@ -70,6 +70,7 @@ impl Streamout for StreamService {
         let network: NetworkType = request.get_ref().network.clone();
         let start_block = request.get_ref().start_block_number;
         let (tx, rx) = mpsc::channel(QUEUE_BUFFER);
+        let encoded_filter: Vec<u8> = request.get_ref().filter.clone();
         match chain_type {
             ChainType::Substrate | ChainType::Solana => {
                 // tx, rx for out stream gRPC
@@ -110,11 +111,14 @@ impl Streamout for StreamService {
                             _ => Some(start_block),
                         };
 
+                        let filter: TriggerFilter =
+                            serde_json::from_slice(&encoded_filter).unwrap();
                         let resp = ethereum_chain::loop_get_block(
                             tx.clone(),
                             &start_block,
                             &network,
                             chain,
+                            filter,
                         )
                         .await;
 

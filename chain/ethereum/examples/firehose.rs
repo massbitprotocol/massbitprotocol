@@ -19,7 +19,7 @@ use tokio::task;
 async fn main() -> Result<(), Error> {
     graph::spawn_thread("deployment".to_string(), move || {
         graph::block_on(task::unconstrained(async {
-            //let mut manifest = manifest::resolve_manifest_from_text(YAML).await;
+            let mut manifest = manifest::resolve_manifest_from_text(YAML).await;
             let chain = Chain {
                 eth_adapters: Arc::new(EthereumNetworkAdapters {
                     adapters: vec![EthereumNetworkAdapter {
@@ -27,12 +27,12 @@ async fn main() -> Result<(), Error> {
                     }],
                 }),
             };
-            // let filter = <chain_ethereum::Chain as Blockchain>::TriggerFilter::from_data_sources(
-            //     manifest.data_sources.iter(),
-            // );
             let filter = <chain_ethereum::Chain as Blockchain>::TriggerFilter::from_data_sources(
-                Vec::new().iter(),
+                manifest.data_sources.iter(),
             );
+            // let filter = <chain_ethereum::Chain as Blockchain>::TriggerFilter::from_data_sources(
+            //     Vec::new().iter(),
+            // );
 
             let filter_json = serde_json::to_string(&filter).unwrap();
             let filter = serde_json::from_str(filter_json.as_str()).unwrap();
@@ -54,7 +54,7 @@ async fn main() -> Result<(), Error> {
                     }
                     None => unreachable!("The block stream stopped producing blocks"),
                 };
-                println!("{}", block.block.number());
+                println!("block.number with trigger: {}", block.block.number());
             }
         }))
     });
@@ -81,22 +81,91 @@ async fn create_ethereum_adapter() -> EthereumAdapter {
     .await
 }
 
+// const YAML: &str = "
+// specVersion: 0.0.2
+// description: Quickswap is a decentralized protocol for automated token exchange on Matic.
+// repository: https://github.com/QuickSwap/QuickSwap-subgraph.git
+// schema:
+//   file: ./schema.graphql
+// graft:
+//   base: QmfZAUKkHkLzKtVFQtGqSs4kKch9dfFg5Exs2zG9yNJrTW      # Subgraph ID of base subgraph
+//   block: 17116542   # Block number
+// dataSources:
+//   - kind: ethereum/contract
+//     name: Factory
+//     network: matic
+//     source:
+//       address: '0x5757371414417b8C6CAad45bAeF941aBc7d3Ab32'
+//       abi: Factory
+//       startBlock: 5484576
+//     mapping:
+//       kind: ethereum/events
+//       apiVersion: 0.0.4
+//       language: wasm/assemblyscript
+//       file: ./src/mappings/factory.ts
+//       entities:
+//         - Pair
+//         - Token
+//       abis:
+//         - name: Factory
+//           file: ./abis/factory.json
+//         - name: ERC20
+//           file: ./abis/ERC20.json
+//         - name: ERC20SymbolBytes
+//           file: ./abis/ERC20SymbolBytes.json
+//         - name: ERC20NameBytes
+//           file: ./abis/ERC20NameBytes.json
+//       eventHandlers:
+//         - event: PairCreated(indexed address,indexed address,address,uint256)
+//           handler: handleNewPair
+// templates:
+//   - kind: ethereum/contract
+//     name: Pair
+//     network: matic
+//     source:
+//       abi: Pair
+//     mapping:
+//       kind: ethereum/events
+//       apiVersion: 0.0.4
+//       language: wasm/assemblyscript
+//       file: ./src/mappings/core.ts
+//       entities:
+//         - Pair
+//         - Token
+//       abis:
+//         - name: Pair
+//           file: ./abis/pair.json
+//         - name: Factory
+//           file: ./abis/factory.json
+//       eventHandlers:
+//         - event: Mint(indexed address,uint256,uint256)
+//           handler: handleMint
+//         - event: Burn(indexed address,uint256,uint256,indexed address)
+//           handler: handleBurn
+//         - event: Swap(indexed address,uint256,uint256,uint256,uint256,indexed address)
+//           handler: handleSwap
+//         - event: Transfer(indexed address,indexed address,uint256)
+//           handler: handleTransfer
+//         - event: Sync(uint112,uint112)
+//           handler: handleSync
+// ";
+
 const YAML: &str = "
 dataSources:
 - kind: ethereum/contract
   mapping:
     abis:
     - file:
-        /: /ipfs/QmZFmmy6QP9JGmVZzRw72gYpRwMoDY3pkDLf5wZaqxmwkC
+        /: /ipfs/Qmabi
       name: Factory
     - file:
-        /: /ipfs/QmYoHL3BvEW6nH1zYZqnziUHjajadu5ErJHavHS2zXkZhv
+        /: /ipfs/Qmabi
       name: ERC20
     - file:
-        /: /ipfs/QmX3PFwF9LuKf1FkMveBYdX6eeV1KbvvgdvQ59xBfFCLXX
+        /: /ipfs/Qmabi
       name: ERC20SymbolBytes
     - file:
-        /: /ipfs/QmRetgfsufVwd3drmU1UjviaL4RneRN4WZ3mpos7kyx7EP
+        /: /ipfs/Qmabi
       name: ERC20NameBytes
     apiVersion: 0.0.4
     entities:
@@ -106,7 +175,7 @@ dataSources:
     - event: PairCreated(indexed address,indexed address,address,uint256)
       handler: handleNewPair
     file:
-      /: /ipfs/Qmf5w4ScdaenpnGh2wBwfyZajUTCnhpQnqJLQG8u5YdX7Q
+      /: /ipfs/Qmmapping
     kind: ethereum/events
     language: wasm/assemblyscript
   name: Factory
@@ -123,22 +192,22 @@ graft:
 repository: https://github.com/QuickSwap/QuickSwap-subgraph.git
 schema:
   file:
-    /: /ipfs/Qmb6c64URqyYxozd9RB8LFsajzq1oP7Yhvqzvaa85ztanp
+    /: /ipfs/Qmschema
 specVersion: 0.0.2
 templates:
 - kind: ethereum/contract
   mapping:
     abis:
     - file:
-        /: /ipfs/QmWyGu32R1nVsBXQCk6BnVBsJQP2i2QSreNsTWRT2Pfvo5
+        /: /ipfs/Qmabi
       name: Pair
     - file:
-        /: /ipfs/QmZFmmy6QP9JGmVZzRw72gYpRwMoDY3pkDLf5wZaqxmwkC
+        /: /ipfs/Qmabi
       name: Factory
     apiVersion: 0.0.4
     entities:
     - Pair
-    - Token
+    - Token 
     eventHandlers:
     - event: Mint(indexed address,uint256,uint256)
       handler: handleMint
@@ -151,7 +220,7 @@ templates:
     - event: Sync(uint112,uint112)
       handler: handleSync
     file:
-      /: /ipfs/QmV65maWgx6QpC8v7P664aJXeNL3s1HrKFFHEGd3Yd5E2N
+      /: /ipfs/Qmmapping
     kind: ethereum/events
     language: wasm/assemblyscript
   name: Pair

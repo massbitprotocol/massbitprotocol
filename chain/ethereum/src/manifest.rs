@@ -7,7 +7,13 @@ use massbit::prelude::{anyhow, async_trait, serde_yaml, DeploymentHash, Error};
 
 use crate::Chain;
 
-#[derive(Default)]
+const GQL_SCHEMA: &str = "type Thing @entity { id: ID! }";
+const GQL_SCHEMA_FULLTEXT: &str = include_str!("../examples/full-text.graphql");
+const MAPPING_WITH_IPFS_FUNC_WASM: &[u8] =
+    include_bytes!("../examples/ipfs-on-ethereum-contracts.wasm");
+const ABI: &str = "[{\"type\":\"function\", \"inputs\": [{\"name\": \"i\",\"type\": \"uint256\"}],\"name\":\"get\",\"outputs\": [{\"type\": \"address\",\"name\": \"o\"}]}]";
+
+#[derive(Default, Debug)]
 pub struct TextResolver {
     texts: HashMap<String, Vec<u8>>,
 }
@@ -45,11 +51,16 @@ impl LinkResolverTrait for TextResolver {
 
 pub async fn resolve_manifest_from_text(text: &str) -> IndexerManifest<Chain> {
     let mut resolver = TextResolver::default();
-    resolver.add("Qmmanifest", &text);
     let raw = serde_yaml::from_str(text).unwrap();
-    let deployment_hash = DeploymentHash::new("Qmmanifest".to_string()).unwrap();
+    let id = DeploymentHash::new("Qmmanifest").unwrap();
+    resolver.add(id.as_str(), &text);
+    resolver.add("/ipfs/Qmschema", &GQL_SCHEMA);
+    resolver.add("/ipfs/Qmabi", &ABI);
+    resolver.add("/ipfs/Qmmapping", &MAPPING_WITH_IPFS_FUNC_WASM);
+    println!("text: {:#?}", &text);
+    println!("resolver: {:#?}", &resolver);
 
-    IndexerManifest::resolve_from_raw(deployment_hash, raw, &resolver)
+    IndexerManifest::resolve_from_raw(id, raw, &resolver)
         .await
         .expect("Parsing simple manifest works")
 }

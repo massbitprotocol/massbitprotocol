@@ -28,6 +28,7 @@ use crate::runtime::abi::AscEthereumEvent;
 use crate::runtime::abi::AscEthereumTransaction_0_0_1;
 use crate::runtime::abi::AscEthereumTransaction_0_0_2;
 use crate::{EthereumCall, LightEthereumBlock};
+use serde::{Deserialize, Serialize};
 
 pub enum MappingTrigger {
     Log {
@@ -188,7 +189,7 @@ impl blockchain::MappingTrigger for MappingTrigger {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum EthereumTrigger {
     Block(BlockPtr, EthereumBlockTriggerType),
     Call(Arc<EthereumCall>),
@@ -215,7 +216,7 @@ impl PartialEq for EthereumTrigger {
 
 impl Eq for EthereumTrigger {}
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EthereumBlockTriggerType {
     Every,
     WithCallTo(Address),

@@ -32,8 +32,7 @@ message GetBlocksRequest {
   uint64 end_block_number = 2;
   ChainType chain_type = 3;
   string network = 4;
-  bytes filters = 5;
-  bytes data_sources = 6;
+  bytes filter = 5;
 }
 
 message HelloReply {
@@ -50,4 +49,5 @@ enum DataType {
   Block = 0;
   Event = 1;
   Transaction = 2; // Alias name of Extrinsic in Substrate
+  BlockWithTriggers = 3;
 }

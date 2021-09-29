@@ -16,6 +16,7 @@ use crate::TriggerFilter;
 use crate::{EthereumAdapter, RuntimeAdapter};
 use anyhow::Context;
 use massbit::components::store::DeploymentLocator;
+use massbit::prelude::serde::Serialize;
 
 pub struct Chain {
     pub eth_adapters: Arc<EthereumNetworkAdapters>,
@@ -85,7 +86,7 @@ impl Blockchain for Chain {
 /// This is used in `EthereumAdapter::triggers_in_block`, called when re-processing a block for
 /// newly created data sources. This allows the re-processing to be reorg safe without having to
 /// always fetch the full block data.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum BlockFinality {
     /// If a block is final, we only need the header and the triggers.
     Final(Arc<LightEthereumBlock>),
