@@ -3,12 +3,14 @@ use graph::prelude::web3::types::Transaction;
 use massbit_common::NetworkType;
 use crate::storage_adapter::StorageAdapter;
 use std::sync::Arc;
+use std::collections::HashMap;
 use crate::ethereum::handler::EthereumHandler;
 use crate::relational::{Table, Column, ColumnType};
-use graph::prelude::Entity;
-use index_store::{EntityValue, FromEntity, FromValueTrait, ToMap, ValueFrom};
-use massbit_drive::{FromEntity, ToMap};
-
+use graph::prelude::{Attribute, Entity, Value};
+// use index_store::{EntityValue, FromEntity, FromValueTrait, ToMap, ValueFrom};
+// use massbit_drive::{FromEntity, ToMap};
+use massbit_chain_ethereum::types::LightEthereumBlock;
+use crate::{create_columns, create_entity};
 pub struct EthereumRawTransactionHandler {
     pub network: Option<NetworkType>,
     pub storage_adapter: Arc<dyn StorageAdapter>,
@@ -16,7 +18,7 @@ pub struct EthereumRawTransactionHandler {
 
 impl EthereumRawTransactionHandler {
     pub fn new(network: &Option<NetworkType>, storage_adapter: Arc<dyn StorageAdapter>) -> Self {
-        EthereumRawTransaction {
+        EthereumRawTransactionHandler {
             network: network.clone(),
             storage_adapter
         }
@@ -24,23 +26,12 @@ impl EthereumRawTransactionHandler {
 }
 
 impl EthereumHandler for EthereumRawTransactionHandler {
-    fn handle_transactions(&self, transactions: &Vec<Transaction>) -> Result<(), anyhow::Error> {
-        let values = transactions.iter().map(|tran| {
-            DailyAddressTransactionModel::from(tran).into()
+    fn handle_block(&self, block: &LightEthereumBlock) -> Result<(), anyhow::Error> {
+        let values = block.transactions.iter().map(|tran| {
+            create_entity(block, tran)
         }).collect::<Vec<Entity>>();
         let table = Table::new("ethereum_transaction", Some("t"));
-        let columns = vec![
-            Column::new("transaction_hash", ColumnType::String),
-            Column::new("block_hash", ColumnType::Varchar),
-            Column::new("block_number", ColumnType::BigInt),
-            Column::new("nonce", ColumnType::BigDecimal),
-            Column::new("sender", ColumnType::String),
-            Column::new("receiver", ColumnType::String),
-            Column::new("value", ColumnType::BigDecimal),
-            Column::new("gas_limit", ColumnType::BigDecimal),
-            Column::new("gas_price", ColumnType::BigDecimal),
-            Column::new("timestamp", ColumnType::BigInt),
-        ];
+        let columns = create_columns();
         self.storage_adapter.upsert(&table,
                                     &columns,
                                     &values,
@@ -51,36 +42,30 @@ impl EthereumHandler for EthereumRawTransactionHandler {
 
 fn create_columns() -> Vec<Column> {
     create_columns!(
-        "block_hash" => ColumnType::String,
-        "parent_hash" => ColumnType::String,
+        "transaction_hash" => ColumnType::String,
+        "block_hash" => ColumnType::Varchar,
         "block_number" => ColumnType::BigInt,
-        "transaction_number" => ColumnType::BigInt,
-        "timestamp" => ColumnType::BigInt,
-        "validated_by" => ColumnType::String,
-        "reward" => ColumnType::BigInt,
-        "difficulty" => ColumnType::BigInt,
-        "total_difficulty" => ColumnType::BigInt,
-        "size" => ColumnType::BigInt,
-        "gas_used" => ColumnType::BigDecimal,
-        "gas_limit" => ColumnType::BigDecimal,
-        "extra_data" => ColumnType::Bytes
+        "nonce" => ColumnType::BigDecimal,
+        "sender" => ColumnType::String,
+        "receiver" => ColumnType::String,
+        "value" => ColumnType::BigDecimal,
+        "gas" => ColumnType::BigDecimal,
+        "gas_price" => ColumnType::BigDecimal,
+        "timestamp" => ColumnType::BigInt
     )
 }
-fn create_entity(block: &LightEthereumBlock) -> Entity {
+fn create_entity(block: &LightEthereumBlock, trans: &Transaction) -> Entity {
     create_entity!(
-        "block_hash" => block.hash,
-        "parent_hash" => block.parent_hash,
-        "block_number" => block.number,
-        "transaction_number" => block.transactions.len() as u64,
-        "timestamp" => block.timestamp,
-        "validated_by" => block.author,
-        "reward" => 0_64,
-        "difficulty" => block.difficulty,
-        "total_difficulty" => block.total_difficulty,
-        "size" => block.size,
-        "gas_used" => block.gas_used,
-        "gas_limit" => block.gas_limit,
-        "extra_data" => block.extra_data.clone()
+        "transaction_hash" => trans.hash,
+        "block_hash" => trans.block_hash,
+        "block_number" => trans.block_number,
+        "nonce" => trans.nonce,
+        "sender" => trans.from,
+        "receiver" => trans.to,
+        "value" => trans.value,
+        "gas" => trans.gas,
+        "gas_price" => trans.gas_price,
+        "timestamp" => block.timestamp
     )
 }
 // #[derive(Default, Debug, Clone, FromEntity, ToMap)]

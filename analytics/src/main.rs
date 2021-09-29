@@ -19,7 +19,6 @@ use tower::timeout::Timeout;
 use analytics::stream_mod::streamout_client::StreamoutClient;
 use analytics::{establish_connection, GET_BLOCK_TIMEOUT_SEC, GET_STREAM_TIMEOUT_SEC, create_postgres_storage};
 use std::thread::sleep;
-use analytics::postgres_adapter::PostgresAdapterBuilder;
 use std::sync::Arc;
 
 lazy_static! {

@@ -9,7 +9,7 @@ use crate::storage_adapter::StorageAdapter;
 use massbit_common::NetworkType;
 
 pub trait EthereumHandler : Sync + Send {
-    fn handle_block(&self, vec_blocks: &LightEthereumBlock) -> Result<(), anyhow::Error> {
+    fn handle_block(&self, block: &LightEthereumBlock) -> Result<(), anyhow::Error> {
         Ok(())
     }
     fn handle_blocks(&self, vec_blocks: &Vec<LightEthereumBlock>) -> Result<(), anyhow::Error> {
@@ -90,8 +90,10 @@ impl EthereumHandler for EthereumHandlerManager {
 
 pub fn create_ethereum_handler_manager(network: &Option<NetworkType>, storate_adapter: Arc<dyn StorageAdapter>) -> EthereumHandlerManager {
     let mut handler_manager = EthereumHandlerManager::new();
-    handler_manager.add_handler(Box::new(EthereumDailyTransactionHandler::new(network, storate_adapter.clone())))
-        //.add_handler(Box::new(EthereumDailyAddressTransactionHandler::new(network, storate_adapter.clone())))
+    handler_manager
         .add_handler(Box::new(EthereumRawBlockHandler::new(network, storate_adapter.clone())))
         .add_handler(Box::new(EthereumRawTransactionHandler::new(network, storate_adapter.clone())))
+        .add_handler(Box::new(EthereumDailyTransactionHandler::new(network, storate_adapter.clone())))
+        //.add_handler(Box::new(EthereumDailyAddressTransactionHandler::new(network, storate_adapter.clone())))
+
 }
