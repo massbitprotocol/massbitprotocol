@@ -31,7 +31,7 @@ impl StorageAdapter for PostgresAdapter {
                 let upsert_query = UpsertQuery::new(table, columns, entities, conflict_fragment)?;
                 match upsert_query.execute(conn.deref()) {
                     Ok(val) => {
-                        log::info!("Upsert {} entities into table {} in {:?}", entities.len(), table.name, start.elapsed());
+                        log::debug!("Upsert {} entities into table {} in {:?}", entities.len(), table.name, start.elapsed());
                         Ok(())
                     },
                     Err(err) => {

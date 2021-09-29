@@ -94,6 +94,6 @@ pub fn create_ethereum_handler_manager(network: &Option<NetworkType>, storate_ad
         .add_handler(Box::new(EthereumRawBlockHandler::new(network, storate_adapter.clone())))
         .add_handler(Box::new(EthereumRawTransactionHandler::new(network, storate_adapter.clone())))
         .add_handler(Box::new(EthereumDailyTransactionHandler::new(network, storate_adapter.clone())))
-        //.add_handler(Box::new(EthereumDailyAddressTransactionHandler::new(network, storate_adapter.clone())))
+        .add_handler(Box::new(EthereumDailyAddressTransactionHandler::new(network, storate_adapter.clone())))
 
 }

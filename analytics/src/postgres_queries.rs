@@ -38,7 +38,7 @@ impl<'a> QueryFragment<Pg> for UpsertQuery<'a> {
     fn walk_ast(&self, mut out: AstPass<Pg>) -> QueryResult<()> {
         out.unsafe_to_cache_prepared();
         // Construct a query
-        //   insert into schema.table(column, ...)
+        //   insert into schema.table as t (column, ...)
         //   values
         //   (a, b, c),
         //   (d, e, f)
@@ -46,7 +46,7 @@ impl<'a> QueryFragment<Pg> for UpsertQuery<'a> {
         //   (x, y, z)
         //   on conflict (name)
         //   do
-        //   update set email = EXCLUDED.email || ';' || customers.email;
+        //   update set value = t.value + EXCLUDED.value;
         //
         // and convert and bind the entity's values into it
         out.push_sql("insert into ");
@@ -111,7 +111,7 @@ impl<'a> QueryId for UpsertQuery<'a> {
 }
 impl<'a, Conn> RunQueryDsl<Conn> for UpsertQuery<'a> {}
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UpdateExpression<'a> {
     field: &'a str,
     expression: &'a str
@@ -124,7 +124,7 @@ impl<'a> UpdateExpression<'a> {
         }
     }
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UpsertConflictFragment<'a>{
     constraint: &'a str,
     expressions: Vec<UpdateExpression<'a>>,
