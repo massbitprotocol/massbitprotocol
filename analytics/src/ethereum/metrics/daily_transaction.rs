@@ -10,11 +10,14 @@ use graph::prelude::chrono;
 use std::time::UNIX_EPOCH;
 use std::time::Duration;
 use graph::prelude::chrono::Utc;
-use schema::ethereum_daily_transaction;
+//use schema::ethereum_daily_transaction;
 use massbit_common::prelude::diesel::result::Error;
 use massbit_common::prelude::diesel::RunQueryDsl;
 use std::collections::HashMap;
 use graph::data::store::Entity;
+use crate::relational::{Column, ColumnType, Table};
+use crate::util::timestamp_round_to_date;
+use crate::postgres_queries::UpsertConflictFragment;
 
 pub struct EthereumDailyTransaction {
     pub network: Option<NetworkType>,
@@ -32,10 +35,12 @@ impl EthereumDailyTransaction {
 impl EthereumHandler for EthereumDailyTransaction {
     fn handle_block(&self, block: &LightEthereumBlock) -> Result<(), anyhow::Error> {
         //let timestamp: u64 = block.timestamp.as_u64();
+        let timestamp = timestamp_round_to_date(block.timestamp.as_u64());
         let time = UNIX_EPOCH + Duration::from_secs(block.timestamp.as_u64());
         // Create DateTime from SystemTime
         let datetime = chrono::DateTime::<Utc>::from(time);
         let date = datetime.format("%Y-%m-%d").to_string();
+
         let gas_used = BigDecimal::from_u128(block.gas_used.as_u128());
         let gas_limit = BigDecimal::from_u128(block.gas_limit.as_u128());
         let size = match block.size {
@@ -71,52 +76,50 @@ impl EthereumHandler for EthereumDailyTransaction {
         row_value.insert(Attribute::from("gas"), Value::BigDecimal(BigDecimalValue::from(gas)));
         let average_gas_price : BigDecimal = if transaction_count > 0 {gas_price/ BigDecimal::from_usize(transaction_count).unwrap()} else { BigDecimal::default() };
         row_value.insert(Attribute::from("average_gas_price"), Value::BigDecimal(BigDecimalValue::from(average_gas_price)));
-        self.storage_adapter.upserts("ethereum_daily_transaction", vec![Entity::from(row_value)]);
-        // match diesel::insert_into(ethereum_daily_transaction::table)
-        //         .values(&transactions)
-        //         .on_conflict()
-        //         .do_update()
-        //         .execute(&conn) {
-        //     Ok(_) => {}
-        //     Err(err) => {log::error!("{:?}", &err)}
-        // };
+        let table = Table::new("ethereum_daily_transaction", Some("t"));
+        let columns = vec![
+            Column::new("network", ColumnType::String),
+            Column::new("transaction_date", ColumnType::Varchar),
+            Column::new("transaction_count", ColumnType::BigInt),
+            Column::new("transaction_volume", ColumnType::BigDecimal),
+            Column::new("gas", ColumnType::BigInt),
+            Column::new("average_gas_price", ColumnType::BigDecimal)
+        ];
+
+        let mut conflict_frag = UpsertConflictFragment::new("ethereum_daily_transaction_transaction_date_network_uindex");
+        conflict_frag.add_expression("transaction_count", "t.transaction_count + EXCLUDED.transaction_count")
+            .add_expression("transaction_volume","t.transaction_volume + EXCLUDED.transaction_volume")
+            .add_expression("gas","t.gas + EXCLUDED.gas")
+            .add_expression("average_gas_price","(t.average_gas_price * t.transaction_count + EXCLUDED.average_gas_price * EXCLUDED.transaction_count)\
+                    /(t.transaction_count + EXCLUDED.transaction_count)");
+        self.storage_adapter.upsert(&table,
+                                    &columns,
+                                    &vec![Entity::from(row_value)],
+                                    Some(conflict_frag));
         Ok(())
     }
-    // fn handle_transactions(&self, transactions: &Vec<Transaction>) -> Result<(), anyhow::Error> {
-    //     let transactions = transactions.iter().map(|tran|{
-    //         let mut transaction = EthereumDailyTransactionModel::from(tran);
-    //         transaction
-    //     }).collect::<Vec<EthereumDailyTransactionModel>>();
-    //     match diesel::insert_into(ethereum_daily_transaction::table)
-    //         .values(&transactions)
-    //         .execute(&conn) {
-    //         Ok(_) => {
-    //         Err(err) => log::error!("{:?}",&err)
-    //     };
-    //     Ok(())
-    // }
 }
 
-#[derive(Debug, Clone, Insertable, Queryable)]
-#[table_name = "ethereum_daily_transaction"]
-pub struct EthereumDailyTransactionModel {
-    pub network: Option<NetworkType>,
-    pub transaction_date: chrono::NaiveDate,
-    pub transaction_count: BigDecimal,
-    pub transaction_volume: BigDecimal,
-    pub gas: BigDecimal,
-    pub average_gas_price: BigDecimal,
-}
-pub mod schema {
-    table! {
-        ethereum_daily_transaction (id) {
-            id -> Int4,
-            network -> Varchar,
-            transaction_date -> Date,
-            transaction_count -> Numeric,
-            transaction_volume -> Numeric,
-            gas -> Numeric,
-            average_gas_price -> Numeric,
-        }
-    }
-}
+// #[derive(Debug, Clone, Insertable, Queryable)]
+// #[table_name = "ethereum_daily_transaction"]
+// pub struct DailyTransactionModel {
+//     pub network: Option<NetworkType>,
+//     pub transaction_date: chrono::NaiveDate,
+//     pub transaction_count: BigDecimal,
+//     pub transaction_volume: BigDecimal,
+//     pub gas: BigDecimal,
+//     pub average_gas_price: BigDecimal,
+// }
+// pub mod schema {
+//     table! {
+//         ethereum_daily_transaction (id) {
+//             id -> Int4,
+//             network -> Varchar,
+//             transaction_date -> Date,
+//             transaction_count -> Numeric,
+//             transaction_volume -> Numeric,
+//             gas -> Numeric,
+//             average_gas_price -> Numeric,
+//         }
+//     }
+// }
