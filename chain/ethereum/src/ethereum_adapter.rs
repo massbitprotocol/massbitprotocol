@@ -1,11 +1,5 @@
 use ethabi::{ParamType, Token};
 use futures::prelude::*;
-use massbit::blockchain::block_stream::BlockWithTriggers;
-use massbit::prelude::web3::types::H256;
-use massbit::prelude::{
-    futures03::{self, compat::Future01CompatExt, FutureExt, StreamExt, TryStreamExt},
-    *,
-};
 use std::collections::{HashMap, HashSet};
 use web3::{
     types::{
@@ -15,6 +9,13 @@ use web3::{
     Web3,
 };
 
+use massbit::blockchain::block_stream::BlockWithTriggers;
+use massbit::prelude::web3::types::H256;
+use massbit::prelude::{
+    futures03::{self, compat::Future01CompatExt, FutureExt, StreamExt, TryStreamExt},
+    *,
+};
+
 use crate::adapter::{
     EthGetLogsFilter, EthereumAdapter as EthereumAdapterTrait, EthereumCallFilter,
     EthereumLogFilter,
@@ -22,8 +23,7 @@ use crate::adapter::{
 use crate::chain::BlockFinality;
 use crate::transport::Transport;
 use crate::trigger::{EthereumBlockTriggerType, EthereumTrigger};
-use crate::types::{LightEthereumBlock, LightEthereumBlockExt};
-use crate::{EthereumCall, EthereumContractCall, EthereumContractCallError, TriggerFilter};
+use crate::{EthereumContractCall, EthereumContractCallError, TriggerFilter};
 
 lazy_static! {
     static ref TRACE_STREAM_STEP_SIZE: BlockNumber = std::env::var("ETHEREUM_TRACE_STREAM_STEP_SIZE")
@@ -633,6 +633,55 @@ impl EthereumAdapter {
         Box::new(self.load_block_ptrs_rpc((from..=to).collect()).collect())
     }
 
+    pub fn block_pointer_from_number(
+        &self,
+        block_number: BlockNumber,
+    ) -> Box<dyn Future<Item = BlockPtr, Error = Error> + Send> {
+        Box::new(
+            self.block_hash_by_block_number(block_number)
+                .and_then(move |block_hash_opt| {
+                    block_hash_opt.ok_or_else(|| {
+                        anyhow!(
+                            "Ethereum node could not find start block hash by block number {}",
+                            &block_number
+                        )
+                    })
+                })
+                .from_err()
+                .map(move |block_hash| BlockPtr::from((block_hash, block_number))),
+        )
+    }
+
+    fn block_hash_by_block_number(
+        &self,
+        block_number: BlockNumber,
+    ) -> Box<dyn Future<Item = Option<H256>, Error = Error> + Send> {
+        let web3 = self.web3.clone();
+
+        Box::new(
+            retry("eth_getBlockByNumber RPC call")
+                .no_limit()
+                .timeout_secs(*JSON_RPC_TIMEOUT)
+                .run(move || {
+                    web3.eth()
+                        .block(BlockId::Number(block_number.into()))
+                        .from_err()
+                        .map(|block_opt| block_opt.map(|block| block.hash).flatten())
+                        .compat()
+                })
+                .boxed()
+                .compat()
+                .map_err(move |e| {
+                    e.into_inner().unwrap_or_else(move || {
+                        anyhow!(
+                            "Ethereum node took too long to return data for block #{}",
+                            block_number
+                        )
+                    })
+                }),
+        )
+    }
+
     pub fn contract_call(
         &self,
         call: EthereumContractCall,
@@ -686,6 +735,54 @@ impl EthereumAdapter {
 impl EthereumAdapterTrait for EthereumAdapter {
     fn provider(&self) -> &str {
         &self.provider
+    }
+
+    async fn net_identifiers(&self) -> Result<EthereumNetworkIdentifier, Error> {
+        let web3 = self.web3.clone();
+        let net_version_future = retry("net_version RPC call")
+            .no_limit()
+            .timeout_secs(20)
+            .run(move || web3.net().version().from_err().compat())
+            .boxed()
+            .compat();
+
+        let web3 = self.web3.clone();
+        let gen_block_hash_future = retry("eth_getBlockByNumber(0, false) RPC call")
+            .no_limit()
+            .timeout_secs(30)
+            .run(move || {
+                web3.eth()
+                    .block(BlockId::Number(Web3BlockNumber::Number(0.into())))
+                    .from_err()
+                    .and_then(|gen_block_opt| {
+                        future::result(
+                            gen_block_opt
+                                .and_then(|gen_block| gen_block.hash)
+                                .ok_or_else(|| {
+                                    anyhow!("Ethereum node could not find genesis block")
+                                }),
+                        )
+                    })
+                    .compat()
+            })
+            .boxed()
+            .compat();
+
+        net_version_future
+            .join(gen_block_hash_future)
+            .compat()
+            .await
+            .map(
+                |(net_version, genesis_block_hash)| EthereumNetworkIdentifier {
+                    net_version,
+                    genesis_block_hash,
+                },
+            )
+            .map_err(|e| {
+                e.into_inner().unwrap_or_else(|| {
+                    anyhow!("Ethereum node took too long to read network identifiers")
+                })
+            })
     }
 
     fn block_hash_by_block_number(

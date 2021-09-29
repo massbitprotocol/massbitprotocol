@@ -49,17 +49,17 @@ lazy_static::lazy_static! {
     // likely that they should be configured differently for each pool
 
     static ref CONNECTION_TIMEOUT: Duration = {
-        std::env::var("STORE_CONNECTION_TIMEOUT").ok().map(|s| Duration::from_millis(u64::from_str(&s).unwrap_or_else(|_| {
+        std::env::var("GRAPH_STORE_CONNECTION_TIMEOUT").ok().map(|s| Duration::from_millis(u64::from_str(&s).unwrap_or_else(|_| {
             panic!("GRAPH_STORE_CONNECTION_TIMEOUT must be a positive number, but is `{}`", s)
         }))).unwrap_or(Duration::from_secs(5))
     };
     static ref MIN_IDLE: Option<u32> = {
-        std::env::var("STORE_CONNECTION_MIN_IDLE").ok().map(|s| u32::from_str(&s).unwrap_or_else(|_| {
+        std::env::var("GRAPH_STORE_CONNECTION_MIN_IDLE").ok().map(|s| u32::from_str(&s).unwrap_or_else(|_| {
            panic!("GRAPH_STORE_CONNECTION_MIN_IDLE must be a positive number but is `{}`", s)
         }))
     };
     static ref IDLE_TIMEOUT: Duration = {
-        std::env::var("STORE_CONNECTION_IDLE_TIMEOUT").ok().map(|s| Duration::from_secs(u64::from_str(&s).unwrap_or_else(|_| {
+        std::env::var("GRAPH_STORE_CONNECTION_IDLE_TIMEOUT").ok().map(|s| Duration::from_secs(u64::from_str(&s).unwrap_or_else(|_| {
             panic!("GRAPH_STORE_CONNECTION_IDLE_TIMEOUT must be a positive number, but is `{}`", s)
         }))).unwrap_or(Duration::from_secs(600))
     };
@@ -84,10 +84,10 @@ impl ForeignServer {
         format!("shard_{}", shard.as_str())
     }
 
-    /// The name of the schema under which the `subgraphs` schema for `shard`
+    /// The name of the schema under which the `indexers` schema for `shard`
     /// is accessible in shards that are not `shard`
     pub fn metadata_schema(shard: &Shard) -> String {
-        format!("{}_subgraphs", Self::name(shard))
+        format!("{}_indexers", Self::name(shard))
     }
 
     pub fn new_from_raw(shard: String, postgres_url: &str) -> Result<Self, anyhow::Error> {
@@ -217,19 +217,15 @@ impl ForeignServer {
         Ok(())
     }
 
-    /// Map the `subgraphs` schema from the foreign server `self` into the
+    /// Map the `indexers` schema from the foreign server `self` into the
     /// database accessible through `conn`
     fn map_metadata(&self, conn: &PgConnection) -> Result<(), StoreError> {
         let nsp = Self::metadata_schema(&self.shard);
         catalog::recreate_schema(conn, &nsp)?;
         let mut query = String::new();
-        for table_name in [
-            "subgraph_error",
-            "dynamic_ethereum_contract_data_source",
-            "table_stats",
-        ] {
+        for table_name in ["dynamic_ethereum_contract_data_source", "table_stats"] {
             let create_stmt =
-                catalog::create_foreign_table(conn, "subgraphs", table_name, &nsp, &self.name)?;
+                catalog::create_foreign_table(conn, "public", table_name, &nsp, &self.name)?;
             write!(query, "{}", create_stmt)?;
         }
         Ok(conn.batch_execute(&query)?)
@@ -309,6 +305,16 @@ impl ConnectionPool {
         };
         ConnectionPool {
             inner: Arc::new(TimedMutex::new(pool_state, format!("pool-{}", shard_name))),
+        }
+    }
+
+    /// This is only used for `graphman` to ensure it doesn't run migrations
+    /// or other setup steps
+    pub fn skip_setup(&self) {
+        let mut guard = self.inner.lock();
+        match &*guard {
+            PoolState::Created(pool, _) => *guard = PoolState::Ready(pool.clone()),
+            PoolState::Unavailable(_) | PoolState::Ready(_) => { /* nothing to do */ }
         }
     }
 
@@ -442,21 +448,6 @@ impl ConnectionPool {
 }
 
 #[derive(Clone)]
-struct ErrorHandler();
-
-impl std::fmt::Debug for ErrorHandler {
-    fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Result::Ok(())
-    }
-}
-
-impl r2d2::HandleError<r2d2::Error> for ErrorHandler {
-    fn handle_error(&self, error: r2d2::Error) {
-        error!("Postgres connection error {}", error.to_string());
-    }
-}
-
-#[derive(Clone)]
 pub struct PoolInner {
     shard: Shard,
     pool: Pool<ConnectionManager<PgConnection>>,
@@ -483,20 +474,17 @@ impl PoolInner {
         pool_size: u32,
         fdw_pool_size: Option<u32>,
     ) -> PoolInner {
-        let error_handler = Box::new(ErrorHandler());
+        // Connect to Postgres
         let conn_manager = ConnectionManager::new(postgres_url.clone());
         let builder: Builder<ConnectionManager<PgConnection>> = Pool::builder()
-            .error_handler(error_handler.clone())
             .connection_timeout(*CONNECTION_TIMEOUT)
             .max_size(pool_size)
             .min_idle(*MIN_IDLE)
             .idle_timeout(Some(*IDLE_TIMEOUT));
-
         let pool = builder.build_unchecked(conn_manager);
         let fdw_pool = fdw_pool_size.map(|pool_size| {
             let conn_manager = ConnectionManager::new(postgres_url.clone());
             let builder: Builder<ConnectionManager<PgConnection>> = Pool::builder()
-                .error_handler(error_handler)
                 .connection_timeout(*CONNECTION_TIMEOUT)
                 .max_size(pool_size)
                 .min_idle(Some(1))
@@ -507,6 +495,8 @@ impl PoolInner {
         let limiter = Arc::new(Semaphore::new(pool_size as usize));
         info!("Pool successfully connected to Postgres");
 
+        let max_concurrent_queries = pool_size as usize + *EXTRA_QUERY_PERMITS;
+        let query_semaphore = Arc::new(tokio::sync::Semaphore::new(max_concurrent_queries));
         PoolInner {
             shard: Shard::new(shard_name.to_string())
                 .expect("shard_name is a valid name for a shard"),
@@ -615,7 +605,7 @@ impl PoolInner {
         loop {
             match self.pool.get_timeout(*CONNECTION_TIMEOUT) {
                 Ok(conn) => return Ok(conn),
-                Err(e) => error!("Error checking out connection, retrying {}", e.to_string()),
+                Err(e) => error!("Error checking out connection, retrying"),
             }
         }
     }
@@ -728,7 +718,7 @@ impl PoolInner {
         conn.transaction(|| ForeignServer::map_primary(&conn, &self.shard))
     }
 
-    // Map some tables from the `subgraphs` metadata schema from foreign
+    // Map some tables from the `indexers` metadata schema from foreign
     // servers to ourselves. The mapping is recreated on every server start
     // so that we pick up possible schema changes in the mappings
     fn map_metadata(&self, servers: &Vec<ForeignServer>) -> Result<(), StoreError> {
@@ -764,9 +754,10 @@ fn migrate_schema(conn: &PgConnection) -> Result<(), StoreError> {
     if has_output {
         let msg = msg.replace('\n', " ");
         if let Err(e) = result {
-            error!("Postgres migration error {}", msg);
+            error!("Postgres migration error");
             return Err(StoreError::Unknown(e.into()));
         } else {
+            debug!("Postgres migration output");
         }
     }
 

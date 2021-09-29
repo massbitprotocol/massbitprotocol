@@ -162,6 +162,110 @@ impl fmt::Display for Value {
     }
 }
 
+impl From<Value> for q::Value {
+    fn from(value: Value) -> Self {
+        match value {
+            Value::String(s) => q::Value::String(s),
+            Value::Int(i) => q::Value::Int(q::Number::from(i)),
+            Value::BigDecimal(d) => q::Value::String(d.to_string()),
+            Value::Bool(b) => q::Value::Boolean(b),
+            Value::Null => q::Value::Null,
+            Value::List(values) => {
+                q::Value::List(values.into_iter().map(|value| value.into()).collect())
+            }
+            Value::Bytes(bytes) => q::Value::String(bytes.to_string()),
+            Value::BigInt(number) => q::Value::String(number.to_string()),
+        }
+    }
+}
+
+impl<'a> From<&'a str> for Value {
+    fn from(value: &'a str) -> Value {
+        Value::String(value.to_owned())
+    }
+}
+
+impl From<String> for Value {
+    fn from(value: String) -> Value {
+        Value::String(value)
+    }
+}
+
+impl<'a> From<&'a String> for Value {
+    fn from(value: &'a String) -> Value {
+        Value::String(value.clone())
+    }
+}
+
+impl From<scalar::Bytes> for Value {
+    fn from(value: scalar::Bytes) -> Value {
+        Value::Bytes(value)
+    }
+}
+
+impl From<bool> for Value {
+    fn from(value: bool) -> Value {
+        Value::Bool(value)
+    }
+}
+
+impl From<i32> for Value {
+    fn from(value: i32) -> Value {
+        Value::Int(value)
+    }
+}
+
+impl From<scalar::BigDecimal> for Value {
+    fn from(value: scalar::BigDecimal) -> Value {
+        Value::BigDecimal(value)
+    }
+}
+
+impl From<scalar::BigInt> for Value {
+    fn from(value: scalar::BigInt) -> Value {
+        Value::BigInt(value)
+    }
+}
+
+impl From<u64> for Value {
+    fn from(value: u64) -> Value {
+        Value::BigInt(value.into())
+    }
+}
+
+impl TryFrom<Value> for Option<scalar::BigInt> {
+    type Error = Error;
+
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        match value {
+            Value::BigInt(n) => Ok(Some(n)),
+            Value::Null => Ok(None),
+            _ => Err(anyhow!("Value is not an BigInt")),
+        }
+    }
+}
+
+impl<T> From<Vec<T>> for Value
+where
+    T: Into<Value>,
+{
+    fn from(values: Vec<T>) -> Value {
+        Value::List(values.into_iter().map(Into::into).collect())
+    }
+}
+
+impl<T> From<Option<T>> for Value
+where
+    Value: From<T>,
+{
+    fn from(x: Option<T>) -> Value {
+        match x {
+            Some(x) => x.into(),
+            None => Value::Null,
+        }
+    }
+}
+
 // Note: Do not modify fields without making a backward compatible change to the
 //  StableHash impl (below) An entity is represented as a map of attribute names
 //  to values.
@@ -258,6 +362,18 @@ impl Entity {
                 _ => self.insert(key, value),
             };
         }
+    }
+}
+
+impl From<Entity> for BTreeMap<String, q::Value> {
+    fn from(entity: Entity) -> BTreeMap<String, q::Value> {
+        entity.0.into_iter().map(|(k, v)| (k, v.into())).collect()
+    }
+}
+
+impl From<Entity> for q::Value {
+    fn from(entity: Entity) -> q::Value {
+        q::Value::Object(entity.into())
     }
 }
 

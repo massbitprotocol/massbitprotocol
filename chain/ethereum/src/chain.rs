@@ -1,29 +1,40 @@
-use massbit::prelude::*;
+use anyhow::Context;
 use std::sync::Arc;
 
 use massbit::blockchain::{
     block_stream::BlockWithTriggers, Block, BlockStream, Blockchain, BlockchainKind,
     PollingBlockStream, TriggersAdapter as TriggersAdapterTrait,
 };
+use massbit::components::store::DeploymentLocator;
+use massbit::prelude::*;
 
 use crate::data_source::{
     DataSource, DataSourceTemplate, UnresolvedDataSource, UnresolvedDataSourceTemplate,
 };
 use crate::ethereum_adapter::blocks_with_triggers;
 use crate::network::{EthereumNetworkAdapter, EthereumNetworkAdapters};
-use crate::types::{LightEthereumBlock, LightEthereumBlockExt};
 use crate::TriggerFilter;
 use crate::{EthereumAdapter, RuntimeAdapter};
-use anyhow::Context;
-use massbit::components::store::DeploymentLocator;
 
 pub struct Chain {
-    pub eth_adapters: Arc<EthereumNetworkAdapters>,
+    name: String,
+    node_id: NodeId,
+    eth_adapters: Arc<EthereumNetworkAdapters>,
 }
 
 impl std::fmt::Debug for Chain {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "chain: ethereum")
+    }
+}
+
+impl Chain {
+    pub fn new(name: String, node_id: NodeId, eth_adapters: EthereumNetworkAdapters) -> Self {
+        Chain {
+            name,
+            node_id,
+            eth_adapters: Arc::new(eth_adapters),
+        }
     }
 }
 
@@ -79,6 +90,15 @@ impl Blockchain for Chain {
             filter,
             start_block,
         )))
+    }
+
+    async fn block_pointer_from_number(&self, number: BlockNumber) -> Result<BlockPtr, Error> {
+        let eth_adapter = self
+            .eth_adapters
+            .cheapest()
+            .with_context(|| format!("no adapter for chain {}", self.name))?
+            .clone();
+        eth_adapter.block_pointer_from_number(number).compat().await
     }
 }
 

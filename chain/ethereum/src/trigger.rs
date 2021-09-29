@@ -1,14 +1,4 @@
 use ethabi::LogParam;
-use massbit::blockchain;
-use massbit::blockchain::TriggerData;
-use massbit::prelude::BlockNumber;
-use massbit::prelude::BlockPtr;
-use massbit::prelude::CheapClone;
-use massbit::runtime::asc_new;
-use massbit::runtime::AscHeap;
-use massbit::runtime::AscPtr;
-use massbit::runtime::DeterministicHostError;
-use massbit::semver::Version;
 use std::convert::TryFrom;
 use std::ops::Deref;
 use std::{cmp::Ordering, sync::Arc};
@@ -19,15 +9,16 @@ use web3::types::U256;
 use web3::types::U64;
 use web3::types::{Address, Block, Log, Transaction, H256};
 
-use crate::data_source::MappingBlockHandler;
-use crate::data_source::MappingCallHandler;
-use crate::data_source::MappingEventHandler;
-use crate::runtime::abi::AscEthereumCall;
-use crate::runtime::abi::AscEthereumCall_0_0_3;
-use crate::runtime::abi::AscEthereumEvent;
-use crate::runtime::abi::AscEthereumTransaction_0_0_1;
-use crate::runtime::abi::AscEthereumTransaction_0_0_2;
-use crate::{EthereumCall, LightEthereumBlock};
+use massbit::blockchain::{self, TriggerData};
+use massbit::prelude::*;
+use massbit::runtime::{asc_new, AscHeap, AscPtr, DeterministicHostError};
+use massbit::semver::Version;
+
+use crate::data_source::{MappingBlockHandler, MappingCallHandler, MappingEventHandler};
+use crate::runtime::abi::{
+    AscEthereumCall, AscEthereumCall_0_0_3, AscEthereumEvent, AscEthereumTransaction_0_0_1,
+    AscEthereumTransaction_0_0_2,
+};
 
 pub enum MappingTrigger {
     Log {

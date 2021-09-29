@@ -2,10 +2,12 @@ use anyhow::{Context, Error};
 use graphql_parser::{self, Pos};
 use inflector::Inflector;
 use rand::rngs::OsRng;
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::convert::TryFrom;
 use std::fmt;
+use std::fmt::Display;
 use std::hash::Hash;
 use std::iter::FromIterator;
 use std::str::FromStr;
@@ -19,8 +21,11 @@ use crate::data::store::ValueType;
 use crate::prelude::{
     q::Value,
     s::{self, Definition, InterfaceType, ObjectType, TypeDefinition, *},
+    BlockPtr,
 };
-use rand::Rng;
+
+use crate::blockchain::Blockchain;
+use crate::stable_hash::{SequenceNumber, StableHash, StableHasher};
 
 pub const SCHEMA_TYPE_NAME: &str = "_Schema_";
 
@@ -58,15 +63,15 @@ pub enum SchemaValidationError {
     UsageOfReservedTypes(Strings),
     #[error("_Schema_ type is only for @imports and must not have any fields")]
     SchemaTypeWithFields,
-    #[error("Imported subgraph name `{0}` is invalid")]
-    ImportedSubgraphNameInvalid(String),
-    #[error("Imported subgraph id `{0}` is invalid")]
-    ImportedSubgraphIdInvalid(String),
+    #[error("Imported indexer name `{0}` is invalid")]
+    ImportedIndexerNameInvalid(String),
+    #[error("Imported indexer id `{0}` is invalid")]
+    ImportedIndexerIdInvalid(String),
     #[error("The _Schema_ type only allows @import directives")]
     InvalidSchemaTypeDirectives,
     #[error(
         r#"@import directives must have the form \
-@import(types: ["A", {{ name: "B", as: "C"}}], from: {{ name: "org/subgraph"}}) or \
+@import(types: ["A", {{ name: "B", as: "C"}}], from: {{ name: "org/indexer"}}) or \
 @import(types: ["A", {{ name: "B", as: "C"}}], from: {{ id: "Qm..."}})"#
     )]
     ImportDirectiveInvalid,
@@ -78,10 +83,10 @@ pub enum SchemaValidationError {
 
 #[derive(Debug, Error, PartialEq, Eq, Clone)]
 pub enum SchemaImportError {
-    #[error("Schema for imported subgraph `{0}` was not found")]
+    #[error("Schema for imported indexer `{0}` was not found")]
     ImportedSchemaNotFound(SchemaReference),
-    #[error("Subgraph for imported schema `{0}` is not deployed")]
-    ImportedSubgraphNotFound(SchemaReference),
+    #[error("Indexer for imported schema `{0}` is not deployed")]
+    ImportedIndexerNotFound(SchemaReference),
 }
 
 /// The representation of a single type from an import statement. This
@@ -133,18 +138,18 @@ impl ImportedType {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct SchemaReference {
-    subgraph: DeploymentHash,
+    indexer: DeploymentHash,
 }
 
 impl fmt::Display for SchemaReference {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "{}", self.subgraph)
+        write!(f, "{}", self.indexer)
     }
 }
 
 impl SchemaReference {
-    fn new(subgraph: DeploymentHash) -> Self {
-        SchemaReference { subgraph }
+    fn new(indexer: DeploymentHash) -> Self {
+        SchemaReference { indexer }
     }
 
     pub fn resolve<S: IndexerStore>(
@@ -152,7 +157,7 @@ impl SchemaReference {
         store: Arc<S>,
     ) -> Result<Arc<Schema>, SchemaImportError> {
         store
-            .input_schema(&self.subgraph)
+            .input_schema(&self.indexer)
             .map_err(|_| SchemaImportError::ImportedSchemaNotFound(self.clone()))
     }
 
@@ -222,7 +227,7 @@ impl ApiSchema {
     }
 }
 
-/// A validated and preprocessed GraphQL schema for a subgraph.
+/// A validated and preprocessed GraphQL schema for a indexer.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Schema {
     pub id: DeploymentHash,
@@ -356,7 +361,7 @@ impl Schema {
             interfaces_for_type,
             types_for_interface,
         };
-        schema.add_subgraph_id_directives(id);
+        schema.add_indexer_id_directives(id);
 
         Ok(schema)
     }
@@ -371,7 +376,7 @@ impl Schema {
                 })
         }
 
-        self.subgraph_schema_object_type()
+        self.indexer_schema_object_type()
             .map_or(HashMap::new(), |object| {
                 object
                     .directives
@@ -393,7 +398,7 @@ impl Schema {
     }
 
     pub fn imported_schemas(&self) -> Vec<SchemaReference> {
-        self.subgraph_schema_object_type().map_or(vec![], |object| {
+        self.indexer_schema_object_type().map_or(vec![], |object| {
             object
                 .directives
                 .iter()
@@ -421,15 +426,15 @@ impl Schema {
         self.interfaces_for_type.get(type_name)
     }
 
-    // Adds a @subgraphId(id: ...) directive to object/interface/enum types in the schema.
-    pub fn add_subgraph_id_directives(&mut self, id: DeploymentHash) {
+    // Adds a @indexerId(id: ...) directive to object/interface/enum types in the schema.
+    pub fn add_indexer_id_directives(&mut self, id: DeploymentHash) {
         for definition in self.document.definitions.iter_mut() {
-            let subgraph_id_argument = (String::from("id"), s::Value::String(id.to_string()));
+            let indexer_id_argument = (String::from("id"), s::Value::String(id.to_string()));
 
-            let subgraph_id_directive = s::Directive {
-                name: "subgraphId".to_string(),
+            let indexer_id_directive = s::Directive {
+                name: "indexerId".to_string(),
                 position: Pos::default(),
-                arguments: vec![subgraph_id_argument],
+                arguments: vec![indexer_id_argument],
             };
 
             if let Definition::TypeDefinition(ref mut type_definition) = definition {
@@ -455,10 +460,10 @@ impl Schema {
                 if !name.eq(SCHEMA_TYPE_NAME)
                     && directives
                         .iter()
-                        .find(|directive| directive.name.eq("subgraphId"))
+                        .find(|directive| directive.name.eq("indexerId"))
                         .is_none()
                 {
-                    directives.push(subgraph_id_directive);
+                    directives.push(indexer_id_directive);
                 }
             };
         }
@@ -495,9 +500,9 @@ impl Schema {
 
     fn validate_schema_type_has_no_fields(&self) -> Result<(), SchemaValidationError> {
         match self
-            .subgraph_schema_object_type()
-            .and_then(|subgraph_schema_type| {
-                if !subgraph_schema_type.fields.is_empty() {
+            .indexer_schema_object_type()
+            .and_then(|indexer_schema_type| {
+                if !indexer_schema_type.fields.is_empty() {
                     Some(SchemaValidationError::SchemaTypeWithFields)
                 } else {
                     None
@@ -510,9 +515,9 @@ impl Schema {
 
     fn validate_directives_on_schema_type(&self) -> Result<(), SchemaValidationError> {
         match self
-            .subgraph_schema_object_type()
-            .and_then(|subgraph_schema_type| {
-                if !subgraph_schema_type
+            .indexer_schema_object_type()
+            .and_then(|indexer_schema_type| {
+                if !indexer_schema_type
                     .directives
                     .iter()
                     .filter(|directive| {
@@ -583,16 +588,14 @@ impl Schema {
             Value::Object(from) => {
                 let id_parse_error = match from.get("id") {
                     Some(Value::String(id)) => match DeploymentHash::new(id) {
-                        Err(_) => {
-                            Some(SchemaValidationError::ImportedSubgraphIdInvalid(id.clone()))
-                        }
+                        Err(_) => Some(SchemaValidationError::ImportedIndexerIdInvalid(id.clone())),
                         _ => None,
                     },
                     _ => None,
                 };
                 let name_parse_error = match from.get("name") {
                     Some(Value::String(name)) => match IndexerName::new(name) {
-                        Err(_) => Some(SchemaValidationError::ImportedSubgraphNameInvalid(
+                        Err(_) => Some(SchemaValidationError::ImportedIndexerNameInvalid(
                             name.clone(),
                         )),
                         _ => None,
@@ -606,9 +609,9 @@ impl Schema {
     }
 
     fn validate_import_directives(&self) -> Vec<SchemaValidationError> {
-        self.subgraph_schema_object_type()
-            .map_or(vec![], |subgraph_schema_type| {
-                subgraph_schema_type
+        self.indexer_schema_object_type()
+            .map_or(vec![], |indexer_schema_type| {
+                indexer_schema_type
                     .directives
                     .iter()
                     .filter(|directives| directives.name.eq("import"))
@@ -641,7 +644,7 @@ impl Schema {
                         // the respective schema or is itself imported
                         // If the imported type is itself imported, do not
                         // recursively check the schema
-                        let schema_handle = schema_ref.subgraph.to_string();
+                        let schema_handle = schema_ref.indexer.to_string();
                         let name = imported_type.name.as_str();
 
                         let is_local = local_types.iter().any(|object| object.name == name);
@@ -950,23 +953,10 @@ impl Schema {
         }
     }
 
-    fn subgraph_schema_object_type(&self) -> Option<&ObjectType> {
+    fn indexer_schema_object_type(&self) -> Option<&ObjectType> {
         self.document
             .get_object_type_definitions()
             .into_iter()
             .find(|object_type| object_type.name.eq(SCHEMA_TYPE_NAME))
     }
-}
-
-pub fn generate_entity_id() -> String {
-    // Fast crypto RNG from operating system
-    let mut rng = OsRng::new().unwrap();
-
-    // 128 random bits
-    let id_bytes: [u8; 16] = rng.gen();
-
-    // 32 hex chars
-    // Comparable to uuidv4, but without the hyphens,
-    // and without spending bits on a version identifier.
-    hex::encode(id_bytes)
 }

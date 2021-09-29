@@ -1,13 +1,14 @@
 use futures01::sync::mpsc::Sender;
 use lazy_static::lazy_static;
+use std::collections::HashMap;
+use std::env;
+use std::str::FromStr;
+
 use massbit::{blockchain::DataSource, prelude::*};
 use massbit::{
     blockchain::{Block, Blockchain},
     components::indexer::MappingError,
 };
-use std::collections::HashMap;
-use std::env;
-use std::str::FromStr;
 
 pub struct IndexerInstance<C: Blockchain, T: RuntimeHostBuilder<C>> {
     indexer_id: DeploymentHash,

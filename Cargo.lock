@@ -3645,32 +3645,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "indexer"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "atomic_refcell",
- "bytes 0.5.6",
- "chain-ethereum",
- "fail",
- "futures 0.1.31",
- "futures 0.3.17",
- "graphql-parser",
- "hex",
- "lazy_static",
- "lru_time_cache",
- "massbit",
- "pretty_assertions",
- "runtime-wasm",
- "semver 1.0.4",
- "serde",
- "serde_json",
- "serde_yaml",
- "walkdir",
-]
-
-[[package]]
 name = "indexmap"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4238,27 +4212,40 @@ dependencies = [
 name = "manager"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "async-trait",
+ "atomic_refcell",
+ "bytes 0.5.6",
+ "chain-ethereum",
  "clap",
  "crossbeam-channel",
  "diesel",
  "env_logger 0.9.0",
  "fail",
+ "futures 0.1.31",
  "futures 0.3.17",
  "git-testament",
  "graphql-parser",
+ "hex",
  "http 0.1.21",
- "indexer",
  "jsonrpc-http-server",
  "lazy_static",
+ "lru_time_cache",
  "massbit",
  "massbit-store-postgres",
+ "pretty_assertions",
  "regex",
+ "runtime-wasm",
+ "semver 1.0.4",
  "serde",
+ "serde_json",
  "serde_regex",
+ "serde_yaml",
  "shellexpand",
  "structopt",
  "toml",
  "url 2.2.2",
+ "walkdir",
 ]
 
 [[package]]
@@ -4488,7 +4475,6 @@ dependencies = [
  "git-testament",
  "graph-graphql",
  "graphql-parser",
- "indexer",
  "itertools 0.10.1",
  "lazy_static",
  "lru_time_cache",
@@ -6784,6 +6770,10 @@ dependencies = [
  "never",
  "runtime-derive",
  "semver 1.0.4",
+ "slog",
+ "slog-async",
+ "slog-envlogger",
+ "slog-term",
  "strum 0.21.0",
  "strum_macros 0.21.1",
  "tiny-keccak 1.5.0",

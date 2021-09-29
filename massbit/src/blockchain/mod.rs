@@ -22,7 +22,7 @@ use std::{
 use crate::components::indexer::DataSourceTemplateInfo;
 use crate::components::link_resolver::LinkResolver;
 use crate::components::store::{BlockNumber, DeploymentLocator, StoredDynamicDataSource};
-use crate::data::indexer::DataSourceContext;
+use crate::data::indexer::{DataSourceContext, IndexerManifestValidationError};
 use crate::prelude::CheapClone;
 use crate::runtime::{AscHeap, AscPtr, DeterministicHostError, HostExportError};
 
@@ -83,6 +83,8 @@ pub trait Blockchain: Debug + Sized + Send + Sync + Unpin + 'static {
         start_block: BlockNumber,
         filter: Arc<Self::TriggerFilter>,
     ) -> Result<Box<dyn BlockStream<Self>>, Error>;
+
+    async fn block_pointer_from_number(&self, number: BlockNumber) -> Result<BlockPtr, Error>;
 }
 
 pub trait TriggerFilter<C: Blockchain>: Default + Clone + Send + Sync {
@@ -126,6 +128,9 @@ pub trait DataSource<C: Blockchain>:
         templates: &BTreeMap<&str, &C::DataSourceTemplate>,
         stored: StoredDynamicDataSource,
     ) -> Result<Self, Error>;
+
+    /// Used as part of manifest validation. If there are no errors, return an empty vector.
+    fn validate(&self) -> Vec<IndexerManifestValidationError>;
 }
 
 #[async_trait]

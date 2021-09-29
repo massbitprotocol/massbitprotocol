@@ -1,9 +1,17 @@
 use anyhow::ensure;
 use ethabi::{Address, Contract, Event, Function, LogParam, ParamType, RawLog};
+use std::collections::BTreeMap;
+use std::str::FromStr;
+use std::{convert::TryFrom, sync::Arc};
+use tiny_keccak::{keccak256, Keccak};
+use web3::types::{Log, Transaction, H256};
+
 use massbit::components::indexer::DataSourceTemplateInfo;
 use massbit::components::link_resolver::LinkResolver;
 use massbit::components::store::StoredDynamicDataSource;
-use massbit::data::indexer::{calls_host_fn, DataSourceContext, Link, Source};
+use massbit::data::indexer::{
+    calls_host_fn, DataSourceContext, IndexerManifestValidationError, Link, Source,
+};
 use massbit::prelude::futures03::future::try_join;
 use massbit::prelude::futures03::stream::FuturesOrdered;
 use massbit::prelude::Entity;
@@ -11,15 +19,9 @@ use massbit::{
     blockchain::{self, Blockchain},
     prelude::*,
 };
-use std::collections::BTreeMap;
-use std::str::FromStr;
-use std::{convert::TryFrom, sync::Arc};
-use tiny_keccak::{keccak256, Keccak};
-use web3::types::{Log, Transaction, H256};
 
 use crate::chain::Chain;
 use crate::trigger::{EthereumBlockTriggerType, EthereumTrigger, MappingTrigger};
-use crate::{EthereumCall, LightEthereumBlock, LightEthereumBlockExt};
 
 /// Runtime representation of a data source.
 // Note: Not great for memory usage that this needs to be `Clone`, considering how there may be tens
@@ -153,6 +155,40 @@ impl blockchain::DataSource<Chain> for DataSource {
             && mapping.call_handlers == other.mapping.call_handlers
             && mapping.block_handlers == other.mapping.block_handlers
             && context == &other.context
+    }
+
+    fn validate(&self) -> Vec<IndexerManifestValidationError> {
+        let mut errors = vec![];
+
+        // Validate that there is a `source` address if there are call or block handlers
+        let no_source_address = self.address().is_none();
+        let has_call_handlers = !self.mapping.call_handlers.is_empty();
+        let has_block_handlers = !self.mapping.block_handlers.is_empty();
+        if no_source_address && (has_call_handlers || has_block_handlers) {
+            errors.push(IndexerManifestValidationError::SourceAddressRequired);
+        };
+
+        // Validate that there are no more than one of each type of block_handler
+        let has_too_many_block_handlers = {
+            let mut non_filtered_block_handler_count = 0;
+            let mut call_filtered_block_handler_count = 0;
+            self.mapping
+                .block_handlers
+                .iter()
+                .for_each(|block_handler| {
+                    if block_handler.filter.is_none() {
+                        non_filtered_block_handler_count += 1
+                    } else {
+                        call_filtered_block_handler_count += 1
+                    }
+                });
+            non_filtered_block_handler_count > 1 || call_filtered_block_handler_count > 1
+        };
+        if has_too_many_block_handlers {
+            errors.push(IndexerManifestValidationError::DataSourceBlockHandlerLimitExceeded);
+        }
+
+        errors
     }
 }
 
@@ -310,12 +346,12 @@ impl DataSource {
             .events()
             .find(|event| event_signature(event) == signature)
             .or_else(|| {
-                // Fallback for subgraphs that don't use `indexed` in event signatures yet:
+                // Fallback for indexers that don't use `indexed` in event signatures yet:
                 //
                 // If there is only one event variant with this name and if its signature
                 // without `indexed` matches the event signature from the manifest, we
                 // can safely assume that the event is a match, we don't need to force
-                // the subgraph to add `indexed`.
+                // the indexer to add `indexed`.
 
                 // Extract the event name; if there is no '(' in the signature,
                 // `event_name` will be empty and not match any events, so that's ok

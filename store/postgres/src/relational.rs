@@ -1,4 +1,4 @@
-//! Support for storing the entities of a subgraph in a relational schema,
+//! Support for storing the entities of a indexer in a relational schema,
 //! i.e., one where each entity type gets its own table, and the table
 //! structure follows the structure of the GraphQL type, using the
 //! native SQL types that most appropriately map to the corresponding
@@ -29,6 +29,9 @@ use crate::block_range::BLOCK_RANGE_COLUMN;
 pub use crate::catalog::Catalog;
 use crate::connection_pool::ForeignServer;
 use crate::primary::{Namespace, Site};
+use crate::relational_queries::{
+    ClampRangeQuery, EntityData, FindManyQuery, FindQuery, InsertQuery,
+};
 use crate::{catalog, deployment};
 
 const POSTGRES_MAX_PARAMETERS: usize = u16::MAX as usize; // 65535
@@ -204,11 +207,11 @@ type EnumMap = BTreeMap<String, Arc<BTreeSet<String>>>;
 
 #[derive(Debug, Clone)]
 pub struct Layout {
-    /// Details of where the subgraph is stored
+    /// Details of where the indexer is stored
     pub site: Arc<Site>,
     /// Maps the GraphQL name of a type to the relational table
     pub tables: HashMap<EntityType, Arc<Table>>,
-    /// The database schema for this subgraph
+    /// The database schema for this indexer
     pub catalog: Catalog,
     /// Enums defined in the schema and their possible values. The names
     /// are the original GraphQL names
@@ -220,7 +223,7 @@ pub struct Layout {
 impl Layout {
     /// Generate a layout for a relational schema for entities in the
     /// GraphQL schema `schema`. The name of the database schema in which
-    /// the subgraph's tables live is in `schema`.
+    /// the indexer's tables live is in `schema`.
     pub fn new(site: Arc<Site>, schema: &Schema, catalog: Catalog) -> Result<Self, StoreError> {
         // Extract enum types
         let enums: EnumMap = schema
@@ -478,6 +481,116 @@ impl Layout {
             layout.tables.insert(table.object.clone(), Arc::new(table));
         }
         Ok(Arc::new(layout))
+    }
+
+    pub fn find(
+        &self,
+        conn: &PgConnection,
+        entity: &EntityType,
+        id: &str,
+        block: BlockNumber,
+    ) -> Result<Option<Entity>, StoreError> {
+        let table = self.table_for_entity(entity)?;
+        FindQuery::new(table.as_ref(), id, block)
+            .get_result::<EntityData>(conn)
+            .optional()?
+            .map(|entity_data| entity_data.deserialize_with_layout(self))
+            .transpose()
+    }
+
+    pub fn find_many<'a>(
+        &self,
+        conn: &PgConnection,
+        ids_for_type: BTreeMap<&EntityType, Vec<&str>>,
+        block: BlockNumber,
+    ) -> Result<BTreeMap<EntityType, Vec<Entity>>, StoreError> {
+        if ids_for_type.is_empty() {
+            return Ok(BTreeMap::new());
+        }
+
+        let mut tables = Vec::new();
+        for entity_type in ids_for_type.keys() {
+            tables.push(self.table_for_entity(entity_type)?.as_ref());
+        }
+        let query = FindManyQuery {
+            namespace: &self.catalog.site.namespace,
+            ids_for_type,
+            tables,
+            block,
+        };
+        let mut entities_for_type: BTreeMap<EntityType, Vec<Entity>> = BTreeMap::new();
+        for data in query.load::<EntityData>(conn)? {
+            entities_for_type
+                .entry(data.entity_type())
+                .or_default()
+                .push(data.deserialize_with_layout(self)?);
+        }
+        Ok(entities_for_type)
+    }
+
+    pub fn insert(
+        &self,
+        conn: &PgConnection,
+        entity_type: &EntityType,
+        entities: &mut [(EntityKey, Entity)],
+        block: BlockNumber,
+    ) -> Result<usize, StoreError> {
+        let table = self.table_for_entity(entity_type)?;
+        let mut count = 0;
+        // Each operation must respect the maximum number of bindings allowed in PostgreSQL queries,
+        // so we need to act in chunks whose size is defined by the number of entities times the
+        // number of attributes each entity type has.
+        // We add 1 to account for the `block_range` bind parameter
+        let chunk_size = POSTGRES_MAX_PARAMETERS / (table.columns.len() + 1);
+        for chunk in entities.chunks_mut(chunk_size) {
+            count += InsertQuery::new(table, chunk, block)?
+                .get_results(conn)
+                .map(|ids| ids.len())?
+        }
+        Ok(count)
+    }
+
+    pub fn update(
+        &self,
+        conn: &PgConnection,
+        entity_type: &EntityType,
+        entities: &mut [(EntityKey, Entity)],
+        block: BlockNumber,
+    ) -> Result<usize, StoreError> {
+        let table = self.table_for_entity(&entity_type)?;
+        let entity_keys: Vec<&str> = entities
+            .iter()
+            .map(|(key, _)| key.entity_id.as_str())
+            .collect();
+
+        ClampRangeQuery::new(table, &entity_type, &entity_keys, block).execute(conn)?;
+
+        let mut count = 0;
+
+        // Each operation must respect the maximum number of bindings allowed in PostgreSQL queries,
+        // so we need to act in chunks whose size is defined by the number of entities times the
+        // number of attributes each entity type has.
+        // We add 1 to account for the `block_range` bind parameter
+        let chunk_size = POSTGRES_MAX_PARAMETERS / (table.columns.len() + 1);
+        for chunk in entities.chunks_mut(chunk_size) {
+            count += InsertQuery::new(table, chunk, block)?.execute(conn)?;
+        }
+        Ok(count)
+    }
+
+    pub fn delete(
+        &self,
+        conn: &PgConnection,
+        entity_type: &EntityType,
+        entity_ids: &[String],
+        block: BlockNumber,
+    ) -> Result<usize, StoreError> {
+        let table = self.table_for_entity(&entity_type)?;
+        let mut count = 0;
+        for chunk in entity_ids.chunks(DELETE_OPERATION_CHUNK_SIZE) {
+            count += ClampRangeQuery::new(table, &entity_type, chunk, block).execute(conn)?
+        }
+        Ok(count)
     }
 }
 
@@ -994,9 +1107,9 @@ impl LayoutCache {
     }
 
     fn load(conn: &PgConnection, site: Arc<Site>) -> Result<Arc<Layout>, StoreError> {
-        let subgraph_schema = deployment::schema(conn, site.as_ref())?;
+        let indexer_schema = deployment::schema(conn, site.as_ref())?;
         let catalog = Catalog::new(conn, site.clone())?;
-        let layout = Arc::new(Layout::new(site.clone(), &subgraph_schema, catalog)?);
+        let layout = Arc::new(Layout::new(site.clone(), &indexer_schema, catalog)?);
         layout.refresh(conn)
     }
 

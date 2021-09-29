@@ -67,6 +67,32 @@ pub struct Opt {
     )]
     pub postgres_host_weights: Vec<usize>,
     #[structopt(
+    long,
+    min_values=0,
+    required_unless_one = &["ethereum-ws", "ethereum-ipc", "config"],
+    conflicts_with_all = &["ethereum-ws", "ethereum-ipc", "config"],
+    value_name="NETWORK_NAME:[CAPABILITIES]:URL",
+    env="ETHEREUM_RPC",
+    help= "Ethereum network name (e.g. 'mainnet'), optional comma-seperated capabilities (eg 'full,archive'), and an Ethereum RPC URL, separated by a ':'",
+    )]
+    pub ethereum_rpc: Vec<String>,
+    #[structopt(long, min_values=0,
+    required_unless_one = &["ethereum-rpc", "ethereum-ipc", "config"],
+    conflicts_with_all = &["ethereum-rpc", "ethereum-ipc", "config"],
+    value_name="NETWORK_NAME:[CAPABILITIES]:URL",
+    env="ETHEREUM_WS",
+    help= "Ethereum network name (e.g. 'mainnet'), optional comma-seperated capabilities (eg 'full,archive`, and an Ethereum WebSocket URL, separated by a ':'",
+    )]
+    pub ethereum_ws: Vec<String>,
+    #[structopt(long, min_values=0,
+    required_unless_one = &["ethereum-rpc", "ethereum-ws", "config"],
+    conflicts_with_all = &["ethereum-rpc", "ethereum-ws", "config"],
+    value_name="NETWORK_NAME:[CAPABILITIES]:FILE",
+    env="ETHEREUM_IPC",
+    help= "Ethereum network name (e.g. 'mainnet'), optional comma-seperated capabilities (eg 'full,archive'), and an Ethereum IPC pipe, separated by a ':'",
+    )]
+    pub ethereum_ipc: Vec<String>,
+    #[structopt(
         long,
         value_name = "HOST:PORT",
         env = "IPFS",
@@ -176,7 +202,30 @@ pub struct Opt {
 
 impl From<Opt> for config::Opt {
     fn from(opt: Opt) -> Self {
-        let Opt { postgres_url, .. } = opt;
-        config::Opt { postgres_url }
+        let Opt {
+            postgres_url,
+            config,
+            store_connection_pool_size,
+            postgres_host_weights,
+            postgres_secondary_hosts,
+            disable_block_ingestor,
+            node_id,
+            ethereum_rpc,
+            ethereum_ws,
+            ethereum_ipc,
+            ..
+        } = opt;
+        config::Opt {
+            postgres_url,
+            config,
+            store_connection_pool_size,
+            postgres_host_weights,
+            postgres_secondary_hosts,
+            disable_block_ingestor,
+            node_id,
+            ethereum_rpc,
+            ethereum_ws,
+            ethereum_ipc,
+        }
     }
 }
