@@ -260,7 +260,7 @@ async fn get_block(
             Web3BlockNumber::from(block_number),
             Web3BlockNumber::from(block_number),
         )
-        .unwrap_or(Vec::new());
+            .unwrap_or(Vec::new());
 
         let eth_block = Block {
             version: clone_version.clone(),
@@ -337,7 +337,7 @@ pub async fn loop_get_block(
 
         let mut tasks = vec![];
         for block_number in
-            (got_block_number.unwrap() + 1)..(got_block_number.unwrap() + 1 + getting_block)
+        (got_block_number.unwrap() + 1)..(got_block_number.unwrap() + 1 + getting_block)
         {
             // Get block
             info!(
@@ -363,7 +363,7 @@ pub async fn loop_get_block(
                     Duration::from_secs(GET_BLOCK_TIMEOUT_SEC),
                     get_block(block_number, permit, clone_web3, clone_version),
                 )
-                .await;
+                    .await;
                 if res.is_err() {
                     warn!("get_block timed out at block {}", &block_number);
                 };

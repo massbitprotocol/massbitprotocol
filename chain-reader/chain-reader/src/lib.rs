@@ -24,6 +24,8 @@ lazy_static! {
     static ref BSC_URL: String = env::var("BSC_URL").unwrap_or(String::from("https://bsc-dataseed.binance.org"));
     static ref ETHEREUM_WS: String = env::var("ETHEREUM_WS").unwrap_or(String::from("wss://main-light.eth.linkpool.io/ws"));
     static ref ETHEREUM_URL: String = env::var("ETHEREUM_URL").unwrap_or(String::from("https://main-light.eth.linkpool.io"));
+    // static ref ETHEREUM_WS: String = env::var("ETHEREUM_WS").unwrap_or(String::from("wss://a.ws.s0.t.hmny.io"));     // Harmony endpoint
+    // static ref ETHEREUM_URL: String = env::var("ETHEREUM_URL").unwrap_or(String::from("https://a.api.s0.t.hmny.io"));     // Harmony endpoint
     pub static ref CONFIG: Config = Config{
         chains: [
             ChainConfig{
