@@ -6,14 +6,19 @@ use diesel::{
     types::{FromSql, ToSql},
     PgConnection,
 };
-use massbit::{
-    components::store::{self, DeploymentLocator, EntityType, WritableStore as WritableStoreTrait},
-    prelude::{IndexerStore as IndexerStoreTrait, *},
-    util::timed_cache::TimedCache,
-};
 use std::{collections::BTreeMap, collections::HashMap, sync::Arc};
 use std::{fmt, io::Write};
 use std::{iter::FromIterator, time::Duration};
+
+use massbit::components::store::StoredDynamicDataSource;
+use massbit::data::indexer::schema::IndexerDeploymentEntity;
+use massbit::data::query::QueryExecutionError;
+use massbit::{
+    components::store::{self, DeploymentLocator, EntityType, WritableStore as WritableStoreTrait},
+    constraint_violation,
+    prelude::{IndexerStore as IndexerStoreTrait, *},
+    util::timed_cache::TimedCache,
+};
 
 use crate::deployment_store::DeploymentStore;
 use crate::{
@@ -110,7 +115,7 @@ pub struct IndexerStoreInner {
     stores: HashMap<Shard, Arc<DeploymentStore>>,
     /// Cache for the mapping from deployment id to shard/namespace/id. Only
     /// active sites are cached here to ensure we have a unique mapping from
-    /// `SubgraphDeploymentId` to `Site`. The cache keeps entry only for
+    /// `IndexerDeploymentId` to `Site`. The cache keeps entry only for
     /// `SITES_CACHE_TTL` so that changes, in particular, activation of a
     /// different deployment for the same hash propagate across different
     /// graph-node processes over time.
@@ -209,10 +214,63 @@ impl IndexerStoreInner {
         let (store, site) = self.store(id)?;
         store.find_layout(site)
     }
+
+    /// Create a new deployment. This requires creating an entry in
+    /// `deployment_schemas` in the primary, the indexer schema in another
+    /// shard, assigning the deployment to a node, and handling any changes
+    /// to current/pending versions of the indexer `name`
+    ///
+    /// This process needs to modify two databases: the primary and the
+    /// shard for the indexer and is therefore not transactional. The code
+    /// is careful to make sure this process is at least idempotent, so that
+    /// a failed deployment creation operation can be fixed by deploying
+    /// again.
+    fn create_deployment_internal(
+        &self,
+        name: IndexerName,
+        schema: &Schema,
+        deployment: IndexerDeploymentEntity,
+        node_id: NodeId,
+        network_name: String,
+        // replace == true is only used in tests; for non-test code, it must
+        // be 'false'
+        replace: bool,
+    ) -> Result<DeploymentLocator, StoreError> {
+        #[cfg(not(debug_assertions))]
+        assert!(!replace);
+
+        let (site, node_id) = {
+            let (shard, node_id) = (PRIMARY_SHARD.clone(), node_id);
+            let conn = self.primary_conn()?;
+            let site = conn.allocate_site(shard.clone(), &schema.id, network_name)?;
+            (site, node_id)
+        };
+        let site = Arc::new(site);
+
+        // Create the actual databases schema and metadata entries
+        let deployment_store = self
+            .stores
+            .get(&site.shard)
+            .ok_or_else(|| StoreError::UnknownShard(site.shard.to_string()))?;
+        deployment_store.create_deployment(schema, deployment, site.clone(), replace)?;
+
+        Ok(site.as_ref().into())
+    }
 }
 
 #[async_trait::async_trait]
 impl IndexerStoreTrait for IndexerStore {
+    fn create_indexer_deployment(
+        &self,
+        name: IndexerName,
+        schema: &Schema,
+        deployment: IndexerDeploymentEntity,
+        node_id: NodeId,
+        network: String,
+    ) -> Result<DeploymentLocator, StoreError> {
+        self.create_deployment_internal(name, schema, deployment, node_id, network, false)
+    }
+
     fn writable(
         &self,
         deployment: &DeploymentLocator,
@@ -226,12 +284,17 @@ impl IndexerStoreTrait for IndexerStore {
         pconn.transaction(|| pconn.create_indexer(&name))
     }
 
+    fn indexer_exists(&self, name: &IndexerName) -> Result<bool, StoreError> {
+        let primary = self.primary_conn()?;
+        primary.indexer_exists(name)
+    }
+
     fn input_schema(&self, indexer_id: &DeploymentHash) -> Result<Arc<Schema>, StoreError> {
         todo!()
     }
 }
 
-/// A wrapper around `SubgraphStore` that only exposes functions that are
+/// A wrapper around `IndexerStore` that only exposes functions that are
 /// safe to call from `WritableStore`, i.e., functions that either do not
 /// deal with anything that depends on a specific deployment
 /// location/instance, or where the result is independent of the deployment
@@ -263,5 +326,41 @@ impl WritableStore {
             writable,
             site,
         })
+    }
+}
+
+#[async_trait::async_trait]
+impl WritableStoreTrait for WritableStore {
+    fn get(&self, key: &EntityKey) -> Result<Option<Entity>, QueryExecutionError> {
+        self.writable.get(self.site.cheap_clone(), key)
+    }
+
+    fn get_many(
+        &self,
+        ids_for_type: BTreeMap<&EntityType, Vec<&str>>,
+    ) -> Result<BTreeMap<EntityType, Vec<Entity>>, StoreError> {
+        self.writable
+            .get_many(self.site.cheap_clone(), ids_for_type)
+    }
+
+    fn transact_block_operations(
+        &self,
+        block_ptr_to: BlockPtr,
+        mods: Vec<EntityModification>,
+        data_sources: Vec<StoredDynamicDataSource>,
+    ) -> Result<(), StoreError> {
+        self.writable.transact_block_operations(
+            self.site.clone(),
+            block_ptr_to,
+            mods,
+            data_sources,
+        )?;
+        Ok(())
+    }
+
+    async fn load_dynamic_data_sources(&self) -> Result<Vec<StoredDynamicDataSource>, StoreError> {
+        self.writable
+            .load_dynamic_data_sources(self.site.deployment.clone())
+            .await
     }
 }

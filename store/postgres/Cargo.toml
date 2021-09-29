@@ -18,7 +18,6 @@ diesel_migrations = "1.3.0"
 fallible-iterator = "0.2.0"
 futures = "0.1.21"
 massbit = { path = "../../massbit" }
-indexer = { path = "../../indexer" }
 chain-ethereum = { path = "../../chain/ethereum" }
 graphql-parser = "0.3"
 Inflector = "0.11.3"

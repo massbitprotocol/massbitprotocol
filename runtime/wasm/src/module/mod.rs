@@ -13,7 +13,7 @@ use wasmtime::{Memory, Trap};
 use crate::error::DeterminismLevel;
 pub use crate::host_exports;
 use crate::mapping::MappingContext;
-use anyhow::Error;
+use anyhow::{Context, Error};
 use massbit::data::store;
 use massbit::prelude::*;
 use massbit::runtime::{asc_get, asc_new, try_asc_get, DeterministicHostError};
@@ -468,13 +468,18 @@ impl<C: Blockchain> WasmInstance<C> {
 
         link!("ens.nameByHash", ens_name_by_hash, ptr);
 
+        link!("log.log", log_log, level, msg_ptr);
+
         // `arweave and `box` functionality was removed, but apiVersion <= 0.0.4 must link it.
         if api_version <= Version::new(0, 0, 4) {
             link!("arweave.transactionData", arweave_transaction_data, ptr);
             link!("box.profile", box_profile, ptr);
         }
 
-        let instance = linker.instantiate(&valid_module.module)?;
+        let instance = match linker.instantiate(&valid_module.module) {
+            Ok(instance) => instance,
+            Err(err) => panic!("{:?}", err),
+        };
 
         // Usually `shared_ctx` is still `None` because no host fns were called during start.
         if shared_ctx.borrow().is_none() {
@@ -870,13 +875,6 @@ impl<C: Blockchain> WasmInstanceContext<C> {
     {
         let bytes: Vec<u8> = asc_get(self, bytes_ptr)?;
         let result = host_exports::json_from_bytes(&bytes).map_err(|e| {
-            // warn!(
-            //     &self.ctx.logger,
-            //     "Failed to parse JSON from byte array";
-            //     "bytes" => format!("{:?}", bytes),
-            //     "error" => format!("{}", e)
-            // );
-
             // Map JSON errors to boolean to match the `Result<JSONValue, boolean>`
             // result type expected by mappings
             true
@@ -901,12 +899,7 @@ impl<C: Blockchain> WasmInstanceContext<C> {
             Ok(bytes) => asc_new(self, &*bytes).map_err(Into::into),
 
             // Return null in case of error.
-            Err(e) => {
-                // info!(&self.ctx.logger, "Failed ipfs.cat, returning `null`";
-                //                     "link" => asc_get::<String, _, _>(self, link_ptr)?,
-                //                     "error" => e.to_string());
-                Ok(AscPtr::null())
-            }
+            Err(e) => Ok(AscPtr::null()),
         }
     }
 
@@ -945,14 +938,6 @@ impl<C: Blockchain> WasmInstanceContext<C> {
             flags,
         )?;
 
-        // debug!(
-        //     &self.ctx.logger,
-        //     "Successfully processed file with ipfs.map";
-        //     "link" => &link,
-        //     "callback" => &*callback,
-        //     "n_calls" => output_states.len(),
-        //     "time" => format!("{}ms", start_time.elapsed().as_millis())
-        // );
         for output_state in output_states {
             self.ctx.state.extend(output_state);
         }
@@ -1318,6 +1303,16 @@ impl<C: Blockchain> WasmInstanceContext<C> {
         // map `None` to `null`, and `Some(s)` to a runtime string
         name.map(|name| asc_new(self, &*name).map_err(Into::into))
             .unwrap_or(Ok(AscPtr::null()))
+    }
+
+    pub fn log_log(
+        &mut self,
+        level: u32,
+        msg: AscPtr<AscString>,
+    ) -> Result<(), DeterministicHostError> {
+        let level = LogLevel::from(level).into();
+        let msg: String = asc_get(self, msg)?;
+        self.ctx.host_exports.log_log(level, msg)
     }
 
     /// function encode(token: ethereum.Value): Bytes | null

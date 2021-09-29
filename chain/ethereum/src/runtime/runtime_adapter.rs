@@ -1,6 +1,9 @@
 use anyhow::{Context, Error};
 use blockchain::HostFn;
 use ethabi::{Address, Token};
+use runtime_wasm::asc_abi::class::{AscEnumArray, EthereumValueKind};
+use std::{sync::Arc, time::Instant};
+
 use massbit::runtime::{AscIndexId, IndexForAscTypeId};
 use massbit::{
     blockchain::{self, BlockPtr, HostFnCtx},
@@ -9,8 +12,6 @@ use massbit::{
     runtime::{asc_get, asc_new, AscPtr, HostExportError},
     semver::Version,
 };
-use runtime_wasm::asc_abi::class::{AscEnumArray, EthereumValueKind};
-use std::{sync::Arc, time::Instant};
 
 use super::abi::{AscUnresolvedContractCall, AscUnresolvedContractCall_0_0_4};
 use crate::data_source::MappingABI;

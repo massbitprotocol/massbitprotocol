@@ -38,6 +38,7 @@ struct IndexerDeployParams {
 }
 
 pub struct JsonRpcServer<R> {
+    node_id: NodeId,
     registrar: Arc<R>,
 }
 
@@ -53,7 +54,11 @@ impl<R: IndexerRegistrar> JsonRpcServer<R> {
 
         match self
             .registrar
-            .create_indexer(params.name.clone(), params.ipfs_hash.clone())
+            .create_indexer(
+                params.name.clone(),
+                params.ipfs_hash.clone(),
+                self.node_id.clone(),
+            )
             .await
         {
             Ok(_) => Ok(Value::Null),
@@ -82,7 +87,7 @@ where
 
         let mut handler = IoHandler::with_compatibility(Compatibility::Both);
 
-        let arc_self = Arc::new(JsonRpcServer { registrar });
+        let arc_self = Arc::new(JsonRpcServer { node_id, registrar });
 
         let (task_sender, task_receiver) =
             mpsc::channel::<Box<dyn std::future::Future<Output = ()> + Send + Unpin>>(100);

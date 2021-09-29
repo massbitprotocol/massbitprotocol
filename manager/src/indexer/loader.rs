@@ -1,9 +1,10 @@
-use massbit::blockchain::{Blockchain, DataSource, DataSourceTemplate as _};
-use massbit::components::store::WritableStore;
-use massbit::prelude::*;
 use std::collections::BTreeMap;
 use std::iter::FromIterator;
 use std::time::Instant;
+
+use massbit::blockchain::{Blockchain, DataSource, DataSourceTemplate as _};
+use massbit::components::store::WritableStore;
+use massbit::prelude::*;
 
 pub async fn load_dynamic_data_sources<C: Blockchain>(
     store: Arc<dyn WritableStore>,

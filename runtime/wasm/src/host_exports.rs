@@ -107,11 +107,7 @@ impl<C: Blockchain> HostExports<C> {
             ),
             _ => unreachable!(),
         };
-        Err(DeterministicHostError(anyhow::anyhow!(
-            "Mapping aborted at {}, with {}",
-            location,
-            message
-        )))
+        Err(DeterministicHostError(anyhow::anyhow!("Mapping aborted")))
     }
 
     pub(crate) fn store_set(
@@ -538,6 +534,14 @@ impl<C: Blockchain> HostExports<C> {
             .as_ref()
             .clone()
             .unwrap_or_default()
+    }
+
+    pub(crate) fn log_log(
+        &self,
+        level: slog::Level,
+        msg: String,
+    ) -> Result<(), DeterministicHostError> {
+        Ok(())
     }
 }
 

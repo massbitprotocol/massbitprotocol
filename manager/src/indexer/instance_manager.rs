@@ -1,30 +1,28 @@
-use super::loader::load_dynamic_data_sources;
-use super::IndexerInstance;
 use atomic_refcell::AtomicRefCell;
 use fail::fail_point;
 use lazy_static::lazy_static;
-use massbit::blockchain::block_stream::BlockWithTriggers;
-use massbit::blockchain::{BlockchainKind, DataSource};
-use massbit::blockchain::{TriggerData, TriggersAdapter};
-use massbit::components::indexer::DataSourceTemplateInfo;
-use massbit::components::store::{IndexerStore, WritableStore};
-use massbit::data::store::scalar::Bytes;
-use massbit::ext::futures::{CancelHandle, FutureExtension};
-use massbit::prelude::TryStreamExt;
-use massbit::prelude::{IndexerInstanceManager as IndexerInstanceManagerTrait, *};
-use massbit::util::lfu_cache::LfuCache;
-use massbit::{
-    blockchain::{block_stream::BlockStreamEvent, Blockchain, TriggerFilter as _},
-    components::indexer::MappingError,
-};
-use massbit::{
-    blockchain::{Block, BlockchainMap},
-    components::store::{DeploymentId, DeploymentLocator, ModificationsAndCache},
-};
 use std::collections::{BTreeSet, HashMap};
 use std::sync::{Arc, RwLock};
 use std::time::Instant;
 use tokio::task;
+
+use massbit::blockchain::{
+    block_stream::{BlockStreamEvent, BlockWithTriggers},
+    Block, Blockchain, BlockchainKind, BlockchainMap, DataSource, TriggerData, TriggerFilter as _,
+    TriggersAdapter,
+};
+use massbit::components::indexer::{DataSourceTemplateInfo, MappingError};
+use massbit::components::store::{
+    DeploymentId, DeploymentLocator, IndexerStore, ModificationsAndCache, WritableStore,
+};
+use massbit::data::indexer::MAX_SPEC_VERSION;
+use massbit::data::store::scalar::Bytes;
+use massbit::ext::futures::{CancelHandle, FutureExtension};
+use massbit::prelude::{IndexerInstanceManager as IndexerInstanceManagerTrait, TryStreamExt, *};
+use massbit::util::lfu_cache::LfuCache;
+
+use super::loader::load_dynamic_data_sources;
+use super::IndexerInstance;
 
 lazy_static! {
     /// Size limit of the entity LFU cache, in bytes.
@@ -132,6 +130,7 @@ where
                 manifest,
                 // Allow for infinite retries for indexer definition files.
                 &self.link_resolver.as_ref().clone().with_retries(),
+                MAX_SPEC_VERSION.clone(),
             )
             .await
             .context("Failed to resolve indexer from IPFS")?;

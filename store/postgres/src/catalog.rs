@@ -188,65 +188,6 @@ pub fn recreate_schema(conn: &PgConnection, nsp: &str) -> Result<(), StoreError>
     Ok(conn.batch_execute(&query)?)
 }
 
-pub fn account_like(conn: &PgConnection, site: &Site) -> Result<HashSet<String>, StoreError> {
-    use table_stats as ts;
-    let names = ts::table
-        .filter(ts::deployment.eq(site.id))
-        .select((ts::table_name, ts::is_account_like))
-        .get_results::<(String, Option<bool>)>(conn)
-        .optional()?
-        .unwrap_or(vec![])
-        .into_iter()
-        .filter_map(|(name, account_like)| {
-            if account_like == Some(true) {
-                Some(name)
-            } else {
-                None
-            }
-        })
-        .collect();
-    Ok(names)
-}
-
-pub fn set_account_like(
-    conn: &PgConnection,
-    site: &Site,
-    table_name: &SqlName,
-    is_account_like: bool,
-) -> Result<(), StoreError> {
-    use table_stats as ts;
-    insert_into(ts::table)
-        .values((
-            ts::deployment.eq(site.id),
-            ts::table_name.eq(table_name.as_str()),
-            ts::is_account_like.eq(is_account_like),
-        ))
-        .on_conflict((ts::deployment, ts::table_name))
-        .do_update()
-        .set(ts::is_account_like.eq(is_account_like))
-        .execute(conn)?;
-    Ok(())
-}
-
-pub fn copy_account_like(conn: &PgConnection, src: &Site, dst: &Site) -> Result<usize, StoreError> {
-    let src_nsp = if src.shard == dst.shard {
-        "subgraphs".to_string()
-    } else {
-        ForeignServer::metadata_schema(&src.shard)
-    };
-    let query = format!(
-        "insert into subgraphs.table_stats(deployment, table_name, is_account_like)
-         select $2 as deployment, ts.table_name, ts.is_account_like
-           from {src_nsp}.table_stats ts
-          where ts.deployment = $1",
-        src_nsp = src_nsp
-    );
-    Ok(sql_query(&query)
-        .bind::<Integer, _>(src.id)
-        .bind::<Integer, _>(dst.id)
-        .execute(conn)?)
-}
-
 pub(crate) mod table_schema {
     use super::*;
 
@@ -362,4 +303,24 @@ pub fn create_foreign_table(
         )
     })?;
     Ok(query)
+}
+
+pub fn account_like(conn: &PgConnection, site: &Site) -> Result<HashSet<String>, StoreError> {
+    use table_stats as ts;
+    let names = ts::table
+        .filter(ts::deployment.eq(site.id))
+        .select((ts::table_name, ts::is_account_like))
+        .get_results::<(String, Option<bool>)>(conn)
+        .optional()?
+        .unwrap_or(vec![])
+        .into_iter()
+        .filter_map(|(name, account_like)| {
+            if account_like == Some(true) {
+                Some(name)
+            } else {
+                None
+            }
+        })
+        .collect();
+    Ok(names)
 }

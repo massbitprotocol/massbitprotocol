@@ -8,7 +8,8 @@ edition = "2018"
 [dependencies]
 massbit = { path = "../massbit" }
 massbit-store-postgres = { path = "../store/postgres" }
-indexer = { path = "../indexer" }
+chain-ethereum = { path = "../chain/ethereum" }
+runtime-wasm = { path = "../runtime/wasm" }
 regex = "1.5.4"
 serde = { version = "1.0.126", features = ["derive", "rc"] }
 serde_regex = "1.1.0"
@@ -22,8 +23,20 @@ clap = "2.33.3"
 env_logger = "0.9.0"
 git-testament = "0.2"
 graphql-parser = "0.3"
-futures = { version = "0.3.1", features = ["compat"] }
 lazy_static = "1.2.0"
 url = "2.2.1"
 crossbeam-channel = "0.5.1"
 jsonrpc-http-server = "14.0.6"
+async-trait = "0.1.50"
+atomic_refcell = "0.1.7"
+bytes = "0.5"
+futures01 = { package="futures", version="0.1.31" }
+futures = { version="0.3.4", features=["compat"] }
+lru_time_cache = "0.11"
+semver = "1.0.3"
+serde_json = "1.0"
+serde_yaml = "0.8"
+walkdir = "2.3.2"
+hex = "0.4.3"
+pretty_assertions = "0.7.2"
+anyhow = "1.0"

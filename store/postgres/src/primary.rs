@@ -21,8 +21,8 @@ use diesel::{
     },
     Connection as _,
 };
-use massbit::components::store::DeploymentId as IndexerDeploymentId;
-use massbit::data::schema::generate_entity_id;
+use massbit::components::store::{DeploymentId as IndexerDeploymentId, DeploymentLocator};
+use massbit::constraint_violation;
 use massbit::prelude::*;
 use maybe_owned::MaybeOwned;
 use std::{
@@ -36,6 +36,7 @@ use std::{
 
 use crate::block_range::UNVERSIONED_RANGE;
 use crate::Shard;
+use massbit::data::indexer::schema::generate_entity_id;
 
 table! {
     indexer (vid) {
@@ -57,14 +58,28 @@ table! {
         name -> Text,
         shard -> Text,
         network -> Text,
-        /// If there are multiple entries for the same IPFS hash (`subgraph`)
+        /// If there are multiple entries for the same IPFS hash (`indexer`)
         /// only one of them will be active. That's the one we use for
         /// querying
         active -> Bool,
     }
 }
 
-allow_tables_to_appear_in_same_query!(indexer, deployment_schemas,);
+allow_tables_to_appear_in_same_query!(indexer, deployment_schemas);
+
+/// Information about the database schema that stores the entities for a
+/// indexer.
+#[derive(Clone, Queryable, QueryableByName, Debug)]
+#[table_name = "deployment_schemas"]
+struct Schema {
+    pub id: DeploymentId,
+    pub created_at: PgTimestamp,
+    pub indexer: String,
+    pub name: String,
+    pub shard: String,
+    pub network: String,
+    pub(crate) active: bool,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, AsExpression, FromSqlRow)]
 #[sql_type = "diesel::sql_types::Text"]
@@ -155,7 +170,7 @@ impl ToSql<Integer, Pg> for DeploymentId {
 /// Any instance of this struct must originate in the database
 pub struct Site {
     pub id: DeploymentId,
-    /// The subgraph deployment
+    /// The indexer deployment
     pub deployment: DeploymentHash,
     /// The name of the database shard
     pub shard: Shard,
@@ -169,6 +184,38 @@ pub struct Site {
     pub(crate) active: bool,
     /// Only the store and tests can create Sites
     _creation_disallowed: (),
+}
+
+impl TryFrom<Schema> for Site {
+    type Error = StoreError;
+
+    fn try_from(schema: Schema) -> Result<Self, Self::Error> {
+        let deployment = DeploymentHash::new(&schema.indexer)
+            .map_err(|s| constraint_violation!("Invalid deployment id {}", s))?;
+        let namespace = Namespace::new(schema.name.clone()).map_err(|nsp| {
+            constraint_violation!(
+                "Invalid schema name {} for deployment {}",
+                nsp,
+                &schema.indexer
+            )
+        })?;
+        let shard = Shard::new(schema.shard)?;
+        Ok(Self {
+            id: schema.id,
+            deployment,
+            namespace,
+            shard,
+            network: schema.network,
+            active: schema.active,
+            _creation_disallowed: (),
+        })
+    }
+}
+
+impl From<&Site> for DeploymentLocator {
+    fn from(site: &Site) -> Self {
+        DeploymentLocator::new(site.id.into(), site.deployment.clone())
+    }
 }
 
 /// A wrapper for a database connection that provides access to functionality
@@ -190,9 +237,9 @@ impl<'a> Connection<'a> {
         self.0.transaction(f)
     }
 
-    /// Create a new subgraph with the given name. If one already exists, use
+    /// Create a new indexer with the given name. If one already exists, use
     /// the existing one. Return the `id` of the newly created or existing
-    /// subgraph
+    /// indexer
     pub fn create_indexer(&self, name: &IndexerName) -> Result<String, StoreError> {
         use indexer as s;
 
@@ -224,6 +271,15 @@ impl<'a> Connection<'a> {
         }
     }
 
+    pub fn indexer_exists(&self, name: &IndexerName) -> Result<bool, StoreError> {
+        use indexer as s;
+
+        Ok(
+            diesel::select(exists(s::table.filter(s::name.eq(name.as_str()))))
+                .get_result::<bool>(self.0.as_ref())?,
+        )
+    }
+
     pub fn find_site_by_ref(&self, id: DeploymentId) -> Result<Option<Site>, StoreError> {
         let schema = deployment_schemas::table
             .find(id)
@@ -239,5 +295,61 @@ impl<'a> Connection<'a> {
             .first::<Schema>(self.0.as_ref())
             .optional()?;
         schema.map(|schema| schema.try_into()).transpose()
+    }
+
+    /// Create a new site and possibly set it to the active site. This
+    /// function only performs the basic operations for creation, and the
+    /// caller must check that other conditions (like whether there already
+    /// is an active site for the deployment) are met
+    fn create_site(
+        &self,
+        shard: Shard,
+        deployment: DeploymentHash,
+        network: String,
+        active: bool,
+    ) -> Result<Site, StoreError> {
+        use deployment_schemas as ds;
+
+        let conn = self.0.as_ref();
+
+        let schemas: Vec<(DeploymentId, String)> = diesel::insert_into(ds::table)
+            .values((
+                ds::indexer.eq(deployment.as_str()),
+                ds::shard.eq(shard.as_str()),
+                ds::network.eq(network.as_str()),
+                ds::active.eq(active),
+            ))
+            .returning((ds::id, ds::name))
+            .get_results(conn)?;
+        let (id, namespace) = schemas
+            .first()
+            .cloned()
+            .ok_or_else(|| anyhow!("failed to read schema name for {} back", deployment))?;
+        let namespace = Namespace::new(namespace).map_err(|name| {
+            constraint_violation!("Generated database schema name {} is invalid", name)
+        })?;
+
+        Ok(Site {
+            id,
+            deployment,
+            shard,
+            namespace,
+            network,
+            active: true,
+            _creation_disallowed: (),
+        })
+    }
+
+    pub fn allocate_site(
+        &self,
+        shard: Shard,
+        indexer: &DeploymentHash,
+        network: String,
+    ) -> Result<Site, StoreError> {
+        if let Some(site) = self.find_active_site(indexer)? {
+            return Ok(site);
+        }
+
+        self.create_site(shard, indexer.clone(), network, true)
     }
 }

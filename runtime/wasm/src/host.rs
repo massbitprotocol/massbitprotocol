@@ -148,8 +148,6 @@ where
         trigger: C::MappingTrigger,
         block_ptr: BlockPtr,
     ) -> Result<BlockState<C>, MappingError> {
-        let handler = trigger.handler_name().to_string();
-
         let (result_sender, result_receiver) = channel();
 
         self.mapping_request_sender
@@ -171,14 +169,6 @@ where
         let result = result_receiver
             .await
             .context("Mapping terminated before handling trigger")?;
-
-        // info!(
-        //     logger, "Done processing trigger";
-        //     &extras,
-        //     "total_ms" => elapsed.as_millis(),
-        //     "handler" => handler,
-        //     "data_source" => &self.data_source.name(),
-        // );
 
         result
     }

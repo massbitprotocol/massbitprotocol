@@ -24,9 +24,13 @@ mod catalog;
 pub mod connection_pool;
 mod deployment;
 mod deployment_store;
+mod detail;
+mod dynds;
 mod indexer_store;
 mod primary;
 mod relational;
+mod relational_queries;
+mod sql_value;
 
 pub use self::indexer_store::{IndexerStore, Shard, PRIMARY_SHARD};
 

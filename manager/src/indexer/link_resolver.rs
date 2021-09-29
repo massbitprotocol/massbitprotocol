@@ -1,21 +1,21 @@
-use anyhow::anyhow;
 use async_trait::async_trait;
 use bytes::BytesMut;
 use futures01::{stream::poll_fn, try_ready};
 use futures03::stream::FuturesUnordered;
 use lazy_static::lazy_static;
 use lru_time_cache::LruCache;
+use serde_json::Value;
+use std::env;
+use std::str::FromStr;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+
 use massbit::data::indexer::Link;
 use massbit::util::futures::RetryConfigNoTimeout;
 use massbit::{
     ipfs_client::{IpfsClient, ObjectStatResponse},
     prelude::{LinkResolver as LinkResolverTrait, *},
 };
-use serde_json::Value;
-use std::env;
-use std::str::FromStr;
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
 /// Environment variable for limiting the `ipfs.map` file size limit.
 const MAX_IPFS_MAP_FILE_SIZE_VAR: &'static str = "GRAPH_MAX_IPFS_MAP_FILE_SIZE";

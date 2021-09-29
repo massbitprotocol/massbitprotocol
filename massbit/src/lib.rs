@@ -75,6 +75,10 @@ pub mod prelude {
 
     pub use crate::blockchain::BlockPtr;
 
+    pub use crate::components::ethereum::{
+        EthereumBlock, EthereumBlockWithCalls, EthereumCall, EthereumNetworkIdentifier,
+        LightEthereumBlock, LightEthereumBlockExt,
+    };
     pub use crate::components::indexer::{
         BlockState, IndexerAssignmentProvider, IndexerInstanceManager, IndexerRegistrar,
         RuntimeHost, RuntimeHostBuilder,
@@ -83,6 +87,7 @@ pub mod prelude {
     pub use crate::components::server::admin::JsonRpcServer;
     pub use crate::components::store::{
         BlockNumber, EntityCache, EntityKey, EntityModification, IndexerStore, StoreError,
+        BLOCK_NUMBER_MAX,
     };
 
     pub use crate::data::indexer::{
