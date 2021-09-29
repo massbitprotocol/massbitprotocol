@@ -37,8 +37,7 @@ use web3::{
 const CHAIN_TYPE: ChainType = ChainType::Ethereum;
 const PULLING_INTERVAL: u64 = 200;
 const USE_WEBSOCKET: bool = false;
-// const BLOCK_BATCH_SIZE: u64 = 10;
-const BLOCK_BATCH_SIZE: u64 = 5;
+const BLOCK_BATCH_SIZE: u64 = 10;
 const RETRY_GET_BLOCK_LIMIT: u32 = 10;
 const GET_BLOCK_TIMEOUT_SEC: u64 = 60;
 
@@ -78,11 +77,7 @@ async fn wait_for_new_block_http(
     got_block_number: &Option<u64>,
 ) -> u64 {
     loop {
-        info!("waiting for new block");
-
         let block_header = web3_http.eth().block(Web3BlockNumber::Latest.into()).wait();
-
-        info!("{:?}",block_header);
         if let Ok(Some(block_header)) = block_header {
             let latest_block_number = block_header.number.unwrap().as_u64();
             if let None = got_block_number {
@@ -144,80 +139,80 @@ pub fn get_logs(
     logs
 }
 
-// pub async fn get_receipts(
-//     block: &EthBlock<H256>,
-//     web3: &Web3<Transport>,
-// ) -> HashMap<H256, TransactionReceipt> {
-//     let block = block.clone();
-//     let block_hash = block.hash.unwrap();
-//     let batching_web3 = Web3::new(Batch::new(web3.transport().clone()));
-//
-//     let receipt_futures = block
-//         .transactions
-//         .iter()
-//         .map(|tx| {
-//             let tx_hash = tx.hash;
-//             batching_web3
-//                 .eth()
-//                 .transaction_receipt(tx_hash)
-//                 .from_err()
-//                 .map_err(IngestorError::Unknown)
-//                 .and_then(move |receipt_opt| {
-//                     receipt_opt.ok_or_else(move || {
-//                         // No receipt was returned.
-//                         //
-//                         // This can be because the Ethereum node no longer
-//                         // considers this block to be part of the main chain,
-//                         // and so the transaction is no longer in the main
-//                         // chain.  Nothing we can do from here except give up
-//                         // trying to ingest this block.
-//                         //
-//                         // This could also be because the receipt is simply not
-//                         // available yet.  For that case, we should retry until
-//                         // it becomes available.
-//                         IngestorError::BlockUnavailable(block_hash)
-//                     })
-//                 })
-//                 .and_then(move |receipt| {
-//                     // Parity nodes seem to return receipts with no block hash
-//                     // when a transaction is no longer in the main chain, so
-//                     // treat that case the same as a receipt being absent
-//                     // entirely.
-//                     let receipt_block_hash = receipt
-//                         .block_hash
-//                         .ok_or_else(|| IngestorError::BlockUnavailable(block_hash))?;
-//
-//                     // Check if receipt is for the right block
-//                     if receipt_block_hash != block_hash {
-//                         // If the receipt came from a different block, then the
-//                         // Ethereum node no longer considers this block to be
-//                         // in the main chain.  Nothing we can do from here
-//                         // except give up trying to ingest this block.
-//                         // There is no way to get the transaction receipt from
-//                         // this block.
-//                         Err(IngestorError::BlockUnavailable(block_hash))
-//                     } else {
-//                         Ok((tx_hash, receipt))
-//                     }
-//                 })
-//         })
-//         .collect::<Vec<_>>();
-//
-//     let my_receipts = batching_web3
-//         .transport()
-//         .submit_batch()
-//         .from_err()
-//         .map_err(IngestorError::Unknown)
-//         .and_then(move |_| stream::futures_ordered(receipt_futures).collect())
-//         .compat()
-//         .await;
-//     let receipts = my_receipts
-//         .unwrap_or(Vec::new())
-//         .into_iter()
-//         .collect::<HashMap<H256, TransactionReceipt>>();
-//
-//     receipts
-// }
+pub async fn get_receipts(
+    block: &EthBlock<Transaction>,
+    web3: &Web3<Transport>,
+) -> HashMap<H256, TransactionReceipt> {
+    let block = block.clone();
+    let block_hash = block.hash.unwrap();
+    let batching_web3 = Web3::new(Batch::new(web3.transport().clone()));
+
+    let receipt_futures = block
+        .transactions
+        .iter()
+        .map(|tx| {
+            let tx_hash = tx.hash;
+            batching_web3
+                .eth()
+                .transaction_receipt(tx_hash)
+                .from_err()
+                .map_err(IngestorError::Unknown)
+                .and_then(move |receipt_opt| {
+                    receipt_opt.ok_or_else(move || {
+                        // No receipt was returned.
+                        //
+                        // This can be because the Ethereum node no longer
+                        // considers this block to be part of the main chain,
+                        // and so the transaction is no longer in the main
+                        // chain.  Nothing we can do from here except give up
+                        // trying to ingest this block.
+                        //
+                        // This could also be because the receipt is simply not
+                        // available yet.  For that case, we should retry until
+                        // it becomes available.
+                        IngestorError::BlockUnavailable(block_hash)
+                    })
+                })
+                .and_then(move |receipt| {
+                    // Parity nodes seem to return receipts with no block hash
+                    // when a transaction is no longer in the main chain, so
+                    // treat that case the same as a receipt being absent
+                    // entirely.
+                    let receipt_block_hash = receipt
+                        .block_hash
+                        .ok_or_else(|| IngestorError::BlockUnavailable(block_hash))?;
+
+                    // Check if receipt is for the right block
+                    if receipt_block_hash != block_hash {
+                        // If the receipt came from a different block, then the
+                        // Ethereum node no longer considers this block to be
+                        // in the main chain.  Nothing we can do from here
+                        // except give up trying to ingest this block.
+                        // There is no way to get the transaction receipt from
+                        // this block.
+                        Err(IngestorError::BlockUnavailable(block_hash))
+                    } else {
+                        Ok((tx_hash, receipt))
+                    }
+                })
+        })
+        .collect::<Vec<_>>();
+
+    let my_receipts = batching_web3
+        .transport()
+        .submit_batch()
+        .from_err()
+        .map_err(IngestorError::Unknown)
+        .and_then(move |_| stream::futures_ordered(receipt_futures).collect())
+        .compat()
+        .await;
+    let receipts = my_receipts
+        .unwrap_or(Vec::new())
+        .into_iter()
+        .collect::<HashMap<H256, TransactionReceipt>>();
+
+    receipts
+}
 
 async fn get_block(
     block_number: u64,
@@ -228,27 +223,23 @@ async fn get_block(
     debug!("Before permit block {}", block_number);
     let _permit = permit;
     debug!("After permit block {}", block_number);
-
     // Get receipts
     let mut block = clone_web3
         .eth()
-        // .block_with_txs(BlockId::Number(Web3BlockNumber::from(block_number)))
-        .block(BlockId::Number(Web3BlockNumber::from(block_number)))
+        .block_with_txs(BlockId::Number(Web3BlockNumber::from(block_number)))
         .wait();
-
-    // debug!("After block_with_txs block {}", block_number);
-    // for i in 0..RETRY_GET_BLOCK_LIMIT {
-    //     if block.is_err() {
-    //         info!("Getting ETHEREUM block {} retry {} times", block_number, i);
-    //         block = clone_web3
-    //             .eth()
-    //             // .block_with_txs(BlockId::Number(Web3BlockNumber::from(block_number)))
-    //             .block(BlockId::Number(Web3BlockNumber::from(block_number)))
-    //             .wait();
-    //     } else {
-    //         break;
-    //     }
-    // }
+    debug!("After block_with_txs block {}", block_number);
+    for i in 0..RETRY_GET_BLOCK_LIMIT {
+        if block.is_err() {
+            info!("Getting ETHEREUM block {} retry {} times", block_number, i);
+            block = clone_web3
+                .eth()
+                .block_with_txs(BlockId::Number(Web3BlockNumber::from(block_number)))
+                .wait();
+        } else {
+            break;
+        }
+    }
 
     if let Ok(Some(block)) = block {
         //println!("Got ETHEREUM Block {:?}",block);
@@ -257,28 +248,25 @@ async fn get_block(
 
         // Get receipts
         info!("Getting ETHEREUM of block: {}", block_number);
-
-        // let receipts = get_receipts(&block, &clone_web3).await;
-
-        // info!(
-        //     "Got ETHEREUM {} receipts of block: {}",
-        //     receipts.len(),
-        //     block_number
-        // );
-
+        let receipts = get_receipts(&block, &clone_web3).await;
+        info!(
+            "Got ETHEREUM {} receipts of block: {}",
+            receipts.len(),
+            block_number
+        );
         // Get logs
         let logs = get_logs(
             &clone_web3,
             Web3BlockNumber::from(block_number),
             Web3BlockNumber::from(block_number),
         )
-        .unwrap_or(Vec::new());
+            .unwrap_or(Vec::new());
 
         let eth_block = Block {
             version: clone_version.clone(),
             timestamp: block.timestamp.as_u64(),
             block,
-            // receipts,
+            receipts,
             logs,
         };
 
@@ -318,16 +306,12 @@ pub async fn loop_get_block(
         None => None,
     };
     loop {
-        info!("A");
         if exit.load(Ordering::Relaxed) {
             eprintln!("{}", "exit".to_string());
             break;
         }
-        info!("B");
-
         let latest_block_number = wait_for_new_block_http(&WEB3, &got_block_number).await;
 
-        info!("C");
         if got_block_number == None {
             got_block_number = Some(latest_block_number - 1);
         }
@@ -353,7 +337,7 @@ pub async fn loop_get_block(
 
         let mut tasks = vec![];
         for block_number in
-            (got_block_number.unwrap() + 1)..(got_block_number.unwrap() + 1 + getting_block)
+        (got_block_number.unwrap() + 1)..(got_block_number.unwrap() + 1 + getting_block)
         {
             // Get block
             info!(
@@ -379,7 +363,7 @@ pub async fn loop_get_block(
                     Duration::from_secs(GET_BLOCK_TIMEOUT_SEC),
                     get_block(block_number, permit, clone_web3, clone_version),
                 )
-                .await;
+                    .await;
                 if res.is_err() {
                     warn!("get_block timed out at block {}", &block_number);
                 };
