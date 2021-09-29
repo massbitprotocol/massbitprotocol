@@ -8,7 +8,7 @@ import threading
 import requests
 import yaml
 from helper.helper import write_to_disk, get_abi_files, upload_abi_to_ipfs, ipfs_client_init, get_index_manager_url, \
-    is_template_exist, replace_abi_with_hash, upload_mapping_to_ipfs, replace_mapping_with_hash, replace_abi_and_upload_to_ipfs
+    is_template_exist, upload_mapping_to_ipfs, replace_mapping_v1, replace_abi_v2
 
 success_file = "success.txt"
 error_file = "error.txt"
@@ -96,7 +96,7 @@ def deploy_wasm(data):
     abi = get_abi_files(compilation_id)
 
     # Upload files to IPFS
-    print("Uploading files to IPFS...")
+    print("Uploading files to IPFS for {}...", root_path)
     client = ipfs_client_init()
     schema_res = client.add(schema_path)
     abi_res = upload_abi_to_ipfs(client, abi)
@@ -116,9 +116,9 @@ def deploy_wasm(data):
                                                       ds_mapping_res)
 
     # Replace abi
-    subgraph_content = replace_abi_and_upload_to_ipfs(client, root_path, 'dataSources', subgraph_content)
+    subgraph_content = replace_abi_v2(client, root_path, 'dataSources', subgraph_content)
     if is_template_exist(subgraph_path):
-        subgraph_content = replace_abi_and_upload_to_ipfs(client, root_path, 'templates', subgraph_content)
+        subgraph_content = replace_abi_v2(client, root_path, 'templates', subgraph_content)
 
     # Write new parsed subgraph to local and upload to IPFS
     create_new_parsed_subgraph(parsed_subgraph_path, subgraph_content)
@@ -134,9 +134,9 @@ def replace_mapping_and_schema(subgraph_path, subgraph, schema_res, ds_mapping_r
     """
     # After files are deployed to IFPS, we replace the files IPFS hash in the build/subgraph.yaml file
     subgraph['schema']['file'] = {'/': '/ipfs/' + schema_res['Hash']}
-    subgraph = replace_mapping_with_hash('dataSources', subgraph, ds_mapping_res)
+    subgraph = replace_mapping_v1('dataSources', subgraph, ds_mapping_res)
     if is_template_exist(subgraph_path):
-        subgraph = replace_mapping_with_hash('templates', subgraph, tp_mapping_res)
+        subgraph = replace_mapping_v1('templates', subgraph, tp_mapping_res)
     return subgraph
 
 

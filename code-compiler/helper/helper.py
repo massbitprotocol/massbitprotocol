@@ -90,6 +90,8 @@ def get_file(path):
     return files
 
 
+# To be refactored
+# We'll be traversing subgraph.yaml and upload the content instead of pre-upload the content to IPFS.
 def get_abi_files(compilation_id):
     """
     Build a new array of abi object from the /generated/hash/abis folder
@@ -107,6 +109,8 @@ def get_abi_files(compilation_id):
     return abi
 
 
+# To be refactored
+# We'll be traversing subgraph.yaml and upload the content instead of pre-upload the content to IPFS.
 def upload_abi_to_ipfs(client, abi):
     """
     Upload abi files to IPFS and build a new abi object for ease of access
@@ -125,15 +129,27 @@ def upload_abi_to_ipfs(client, abi):
     return abi
 
 
-def replace_abi_and_upload_to_ipfs(client, root_path, subgraph_type, subgraph):
-    for i in range(len(subgraph[subgraph_type])):
-        for j in range(len(subgraph[subgraph_type][i]['mapping']['abis'])):
-            print(subgraph[subgraph_type][i]['mapping']['abis'][j])
-            res = client.add(os.path.join(root_path, "build", subgraph[subgraph_type][i]['mapping']['abis'][j]['file']))["Hash"]
-            subgraph[subgraph_type][i]['mapping']['abis'][j] = {'name': subgraph[subgraph_type][i]['mapping']['abis'][j]['name'], 'file': {'/': '/ipfs/' + res}}
-    return subgraph
+def replace_abi_v2(client, root_path, subgraph_type, subgraph_content):
+    """
+    Loop through abis in the dataSources, upload them to IPFS and add that IPFS hash back into the subgraph.yml file
+    :param client: IPFS Client
+    :param root_path: Path to the generated/hash folder
+    :param subgraph_type: dataSources / templates
+    :param subgraph_content: python dictionary of the subgraph.yaml
+    :return: parsed subgraph_content
+    """
+    for i in range(len(subgraph_content[subgraph_type])):
+        for j in range(len(subgraph_content[subgraph_type][i]['mapping']['abis'])):
+            res = client.add(
+                os.path.join(root_path, "build", subgraph_content[subgraph_type][i]['mapping']['abis'][j]['file']))[
+                "Hash"]
+            subgraph_content[subgraph_type][i]['mapping']['abis'][j] = {
+                'name': subgraph_content[subgraph_type][i]['mapping']['abis'][j]['name'], 'file': {'/': '/ipfs/' + res}}
+    return subgraph_content
 
 
+# To be refactored
+# We'll be traversing subgraph.yaml and upload the content instead of pre-upload the content to IPFS.
 def upload_mapping_to_ipfs(client, type, root_path, subgraph_path):
     """
     Upload mapping.abi and mapping.files to IPFS and build a new mapping object for ease of access
@@ -178,8 +194,9 @@ def is_template_exist(subgraph_path):
     return False
 
 
-# Deprecated
-def replace_abi_with_hash(subgraph_type, subgraph, abi_res):
+# To be refactored
+# We'll be traversing subgraph.yaml and upload the content instead of pre-upload the content to IPFS.
+def replace_abi_v1(subgraph_type, subgraph, abi_res):
     if subgraph_type in subgraph:
         for iterator in range(len(subgraph[subgraph_type])):
             for i in range(0, len(subgraph[subgraph_type][0]['mapping']['abis'])):
@@ -188,31 +205,26 @@ def replace_abi_with_hash(subgraph_type, subgraph, abi_res):
                 for abi_object in abi_res:
                     if file_name.lower() == abi_object["name"].lower():
                         subgraph[subgraph_type][0]['mapping']['abis'][i] = {'name': name,
-                                                                            'file': {'/': '/ipfs/' + abi_object["hash"]}}
+                                                                            'file': {
+                                                                                '/': '/ipfs/' + abi_object["hash"]}}
     return subgraph
 
 
-def replace_mapping_with_hash(subgraph_type, subgraph, mapping_res):
+# To be refactored
+# We'll be traversing subgraph.yaml and upload the content instead of pre-upload the content to IPFS.
+def replace_mapping_v1(subgraph_type, subgraph, mapping_res):
     if subgraph_type in subgraph:
         for i in range(len(subgraph[subgraph_type])):
-            replace_mapping_file(subgraph_type, subgraph, mapping_res, i)
+            do_replace_mapping(subgraph_type, subgraph, mapping_res, i)
     return subgraph
 
 
-def replace_mapping_file(subgraph_type, subgraph, mapping_res, iterator):
+# To be refactored
+# We'll be traversing subgraph.yaml and upload the content instead of pre-upload the content to IPFS.
+def do_replace_mapping(subgraph_type, subgraph, mapping_res, iterator):
     """
     Replace mapping > file with IPFS hash
     """
     for j in range(len(mapping_res)):  # Add a new iterator to loop through mapping_res
         if subgraph[subgraph_type][iterator]['name'] == mapping_res[j]['name']:
             subgraph[subgraph_type][iterator]['mapping']['file'] = {'/': '/ipfs/' + mapping_res[j]['file_hash']}
-
-
-# def replace_mapping_abis_file(subgraph_type, subgraph, mapping_res, iterator):
-#     """
-#     Replace mapping > abis > file with IPFS hash
-#     """
-#     for j in range(len(mapping_res)):   # Add a new iterator to loop through mapping_res
-#         for k in range(len(mapping_res[j]['abis'])):   # Add a new iterator to loop through mapping_res.abis
-#             if subgraph[subgraph_type][iterator]['mapping']['abis'][k]['file'] == mapping_res[j]['abis'][k]['file']:
-#                 subgraph[subgraph_type][iterator]['mapping']['abis'][k] = {'name': subgraph[subgraph_type][iterator]['mapping']['abis'][k]['name'], 'file': {'/': '/ipfs/' + mapping_res[j]['abis'][k]['hash']}}
