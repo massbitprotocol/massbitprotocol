@@ -6,7 +6,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-#diesel          = { version = "1.4.7", features = ["postgres", "serde_json", "numeric", "r2d2", "chrono"] }
+diesel          = { version = "1.4.7", features = ["postgres", "serde_json", "numeric", "r2d2", "chrono"] }
 diesel-dynamic-schema = { git = "https://github.com/diesel-rs/diesel-dynamic-schema", rev="a8ec4fb1" }
 diesel-derive-enum  = { version = "1.1", features = ["postgres"] }
 diesel_migrations   = "1.4.0"

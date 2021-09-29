@@ -19,20 +19,20 @@ use crate::relational::{Column, ColumnType, Table};
 use crate::util::timestamp_round_to_date;
 use crate::postgres_queries::UpsertConflictFragment;
 
-pub struct EthereumDailyTransaction {
+pub struct EthereumDailyTransactionHandler {
     pub network: Option<NetworkType>,
     pub storage_adapter: Arc<dyn StorageAdapter>,
 
 }
-impl EthereumDailyTransaction {
+impl EthereumDailyTransactionHandler {
     pub fn new(network: &Option<NetworkType>, storage_adapter: Arc<dyn StorageAdapter>) -> Self {
-        EthereumDailyTransaction {
+        EthereumDailyTransactionHandler {
             network: network.clone(),
             storage_adapter
         }
     }
 }
-impl EthereumHandler for EthereumDailyTransaction {
+impl EthereumHandler for EthereumDailyTransactionHandler {
     fn handle_block(&self, block: &LightEthereumBlock) -> Result<(), anyhow::Error> {
         //let timestamp: u64 = block.timestamp.as_u64();
         let timestamp = timestamp_round_to_date(block.timestamp.as_u64());

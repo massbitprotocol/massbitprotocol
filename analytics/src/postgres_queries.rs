@@ -57,7 +57,8 @@ impl<'a> QueryFragment<Pg> for UpsertQuery<'a> {
         }
         out.push_sql("(");
         // Use a `Peekable` iterator to help us decide how to finalize each line.
-        let mut col_iter = self.columns.iter().map(|col| col).peekable();
+        //let mut col_iter = self.columns.iter().map(|col| col).peekable();
+        let mut col_iter = self.columns.iter().peekable();
         while let Some(column) = col_iter.next() {
             out.push_identifier(column.name.as_str());
             //Still has column
@@ -71,10 +72,12 @@ impl<'a> QueryFragment<Pg> for UpsertQuery<'a> {
         out.push_sql(") values\n");
 
         // Use a `Peekable` iterator to help us decide how to finalize each line.
-        let mut iter = self.entities.iter().map(|entity| entity).peekable();
+        //let mut iter = self.entities.iter().map(|entity| entity).peekable();
+        let mut iter = self.entities.iter().peekable();
         while let Some(entity) = iter.next() {
             out.push_sql("(");
-            let mut col_iter = self.columns.iter().map(|col| col).peekable();
+            //let mut col_iter = self.columns.iter().map(|col| col).peekable();
+            let mut col_iter = self.columns.iter().peekable();
             while let Some(column) = col_iter.next() {
                 // If the column name is not within this entity's fields, we will issue the
                 // null value in its place
@@ -97,9 +100,6 @@ impl<'a> QueryFragment<Pg> for UpsertQuery<'a> {
         if self.conflict_fragment.is_some() {
             self.conflict_fragment.as_ref().walk_ast(out.reborrow()).unwrap();
         }
-        // out.push_sql("\nreturning ");
-        // out.push_sql(PRIMARY_KEY_COLUMN);
-        // out.push_sql("::text");
         Ok(())
     }
 }

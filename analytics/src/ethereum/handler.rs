@@ -90,6 +90,8 @@ impl EthereumHandler for EthereumHandlerManager {
 
 pub fn create_ethereum_handler_manager(network: &Option<NetworkType>, storate_adapter: Arc<dyn StorageAdapter>) -> EthereumHandlerManager {
     let mut handler_manager = EthereumHandlerManager::new();
-    handler_manager.add_handler(Box::new(EthereumDailyTransaction::new(network, storate_adapter.clone())))
-        .add_handler(Box::new(EthereumDailyAddressTransaction::new(network, storate_adapter.clone())))
+    handler_manager.add_handler(Box::new(EthereumDailyTransactionHandler::new(network, storate_adapter.clone())))
+        //.add_handler(Box::new(EthereumDailyAddressTransactionHandler::new(network, storate_adapter.clone())))
+        .add_handler(Box::new(EthereumRawBlockHandler::new(network, storate_adapter.clone())))
+        .add_handler(Box::new(EthereumRawTransactionHandler::new(network, storate_adapter.clone())))
 }

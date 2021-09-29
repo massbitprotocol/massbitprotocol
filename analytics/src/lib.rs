@@ -9,7 +9,7 @@ pub mod manager;
 pub mod schema;
 pub mod models;
 pub mod ethereum;
-pub mod solana;
+//pub mod solana;
 //pub mod substrate;
 pub mod storage_adapter;
 pub mod postgres_adapter;
@@ -95,3 +95,30 @@ pub fn get_block_number(conn: &PgConnection, chain_value: String, network_value:
         }
     }
 }
+
+#[macro_export]
+macro_rules! create_columns {
+    ($($att:expr => $exp:expr),*) => {
+        {
+            let mut temp_vec = Vec::new();
+            $(
+                temp_vec.push(Column::new($att, $exp));
+            )*
+            temp_vec
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! create_entity {
+    ($($att:expr => $exp:expr),*) => {
+        {
+            let mut map : HashMap<Attribute, Value> = HashMap::default();
+            $(
+            map.insert(Attribute::from($att), Value::from($exp));
+            )*
+            Entity::from(map)
+        }
+    };
+}
+
