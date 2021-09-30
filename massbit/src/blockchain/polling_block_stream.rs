@@ -165,29 +165,27 @@ where
         //   10000 triggers found, 2 per block, range_size = 1000 / 2 = 500
         // - Scan 500 blocks:
         //   1000 triggers found, 2 per block, range_size = 1000 / 2 = 500
-        // let range_size_upper_limit = max_block_range_size.min(ctx.previous_block_range_size * 10);
-        // let range_size = if ctx.previous_triggers_per_block == 0.0 {
-        //     range_size_upper_limit
-        // } else {
-        //     (self.target_triggers_per_block_range as f64 / ctx.previous_triggers_per_block)
-        //         .max(1.0)
-        //         .min(range_size_upper_limit as f64) as BlockNumber
-        // };
-        // let to = from + range_size - 1;
+        let range_size_upper_limit = max_block_range_size.min(ctx.previous_block_range_size * 10);
+        let range_size = if ctx.previous_triggers_per_block == 0.0 {
+            range_size_upper_limit
+        } else {
+            (self.target_triggers_per_block_range as f64 / ctx.previous_triggers_per_block)
+                .max(1.0)
+                .min(range_size_upper_limit as f64) as BlockNumber
+        };
+        let to = from + range_size - 1;
 
-        let to = from + 100;
         info!(
             ctx.logger,
             "Scanning blocks [{}, {}]", from, to;
-            "range_size" => 100
+            "range_size" => range_size
         );
 
-        let blocks = self
-            .adapter
-            .scan_triggers(from, from + 100, &self.filter)
-            .await?;
+        let blocks = self.adapter.scan_triggers(from, to, &self.filter).await?;
 
-        Ok(ReconciliationStep::ProcessDescendantBlocks(blocks, 100))
+        Ok(ReconciliationStep::ProcessDescendantBlocks(
+            blocks, range_size,
+        ))
     }
 }
 
@@ -212,9 +210,9 @@ impl<C: Blockchain> Stream for PollingBlockStream<C> {
                         Poll::Ready(Ok(NextBlocks::Blocks(next_blocks, block_range_size))) => {
                             let total_triggers =
                                 next_blocks.iter().map(|b| b.trigger_count()).sum::<usize>();
-                            // self.ctx.previous_triggers_per_block =
-                            //     total_triggers as f64 / block_range_size as f64;
-                            // self.ctx.previous_block_range_size = block_range_size;
+                            self.ctx.previous_triggers_per_block =
+                                total_triggers as f64 / block_range_size as f64;
+                            self.ctx.previous_block_range_size = block_range_size;
                             if total_triggers > 0 {
                                 info!(self.ctx.logger, "Processing {} triggers", total_triggers);
                             }
