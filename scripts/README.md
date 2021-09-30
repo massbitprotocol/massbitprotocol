@@ -11,3 +11,8 @@ Deploy the indexer with id, in case the indexer's files already successfully bui
 ```bash
 make dev-deploy id=54e42a73317d80d1cf8289b49af96302
 ```
+
+### Download server logs
+```bash
+sh download-log.sh
+```
