@@ -23,8 +23,7 @@ serde           = { version = "1.0", optional = false }
 serde_json      = { version = "1.0", optional = false }
 thiserror       = { version = "1.0", optional =false }
 primitive-types = { version = "0.6.1", optional = true, features = ["codec"] }
-tonic = "0.4"
-prost = "0.7"
+prost = "0.8.0"
 futures-core = "0.3"
 futures-util = "0.3"
 tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "sync", "time"] }
@@ -46,6 +45,9 @@ chain-ethereum = {path = "../chain/ethereum" }
 ipfs-client = { path = "../core/ipfs-client" }
 massbit = { path = "../massbit" }
 logger = { path = "../core/logger" }
+
+tonic = "0.5"
+prost-types = "0.8.0"
 
 [dependencies.substrate-api-client]
 git = "https://github.com/scs/substrate-api-client.git"
@@ -108,7 +110,7 @@ std = [
 full_crypto = []
 
 [build-dependencies]
-tonic-build = "0.4"
+tonic-build = "0.5"
 
 [[bin]] # Bin to run gRPC server
 name = "chain-filter"
@@ -121,3 +123,7 @@ path = "src/examples/client.rs"
 [[bin]] # Bin to run gRPC server
 name = "client-filter"
 path = "src/examples/client-filter.rs"
+
+[[bin]] # Bin to run gRPC server
+name = "firehose"
+path = "src/examples/firehose.rs"

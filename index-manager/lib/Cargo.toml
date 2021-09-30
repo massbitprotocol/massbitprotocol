@@ -11,7 +11,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.40"
 log = "0.4.0"
 env_logger = "0.8.4"
-tonic = "0.4" # Chain Reader Client
+tonic = { version = "0.5", features = ["tls-roots"] } # Chain Reader Client
 prost = "0.7" # Chain Reader Client
 async-std = "1.9.0"
 tokio = {version = "1.2.0", features = ["full"]} # Required by Tonic
@@ -37,7 +37,7 @@ adapter = { path = "../../plugin/adapter" }
 postgres = "0.19.1"
 
 [build-dependencies]
-tonic-build = "0.4" # Chain Reader Client
+tonic-build = "0.5" # Chain Reader Client
 
 [dependencies.node-template-runtime]
 git = "https://github.com/scs/substrate-api-client-test-node"

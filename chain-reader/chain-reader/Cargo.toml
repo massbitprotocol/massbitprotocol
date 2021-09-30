@@ -24,7 +24,7 @@ serde           = { version = "1.0", optional = false }
 serde_json      = { version = "1.0", optional = false }
 thiserror       = { version = "1.0", optional =false }
 primitive-types = { version = "0.6.1", optional = true, features = ["codec"] }
-tonic = "0.4"
+tonic = { version = "0.5", features = ["tls-roots"] }
 prost = "0.7"
 futures-core = "0.3"
 futures-util = "0.3"
@@ -107,7 +107,7 @@ std = [
 full_crypto = []
 
 [build-dependencies]
-tonic-build = "0.4"
+tonic-build = "0.5"
 
 [[bin]] # Bin to run gRPC server
 name = "chain-reader"

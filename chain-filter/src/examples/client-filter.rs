@@ -1,11 +1,11 @@
 use clap::{App, Arg};
 
-use crate::stream_mod::{
-    streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
-};
 use graph::ipfs_client::IpfsClient;
 use graph_core::LinkResolver;
 use log::{debug, info, warn};
+use massbit::firehose::dstream::{
+    streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
+};
 use massbit_chain_ethereum::data_type::{decode as ethereum_decode, get_events, EthereumBlock};
 use massbit_chain_solana::data_type::{
     convert_solana_encoded_block_to_solana_block, decode as solana_decode, SolanaEncodedBlock,
@@ -42,9 +42,9 @@ use tonic::{
     Request, Response, Status,
 };
 
-pub mod stream_mod {
-    tonic::include_proto!("chaindata");
-}
+// pub mod stream_mod {
+//     tonic::include_proto!("chaindata");
+// }
 
 const URL: &str = "http://127.0.0.1:50051";
 
@@ -96,16 +96,16 @@ pub async fn print_blocks(
     let encoded_filter = serde_json::to_vec(&filter).unwrap();
     // println!("encoded_filter: {:?}", filter);
     // Get start_block_number
-    let start_block_numbers: Vec<i32> = manifest
+    let start_block_number = manifest
         .data_sources
         .iter()
         .map(|data_source| data_source.start_block())
-        .collect();
-
+        .min()
+        .unwrap_or(0);
     // Create GetBlocksRequest
     // Todo: start_block_numbers is array but now use only one value
     let get_blocks_request = GetBlocksRequest {
-        start_block_number: start_block_numbers[0] as u64,
+        start_block_number: start_block_number as u64,
         end_block_number: 1,
         chain_type: chain_type as i32,
         network,

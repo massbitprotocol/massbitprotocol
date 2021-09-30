@@ -1,6 +1,7 @@
 use std::future::Future;
 use std::rc::Rc;
 use std::sync::Arc;
+use tonic::transport::Channel;
 
 /// Things that are fast to clone in the context of an application such as Graph Node
 ///
@@ -26,3 +27,5 @@ impl<T: ?Sized + CheapClone> CheapClone for Box<T> {}
 impl<T: ?Sized + CheapClone> CheapClone for std::pin::Pin<T> {}
 impl<T: CheapClone> CheapClone for Option<T> {}
 impl<F: Future> CheapClone for futures03::future::Shared<F> {}
+
+impl CheapClone for Channel {}

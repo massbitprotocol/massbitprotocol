@@ -66,5 +66,5 @@ branch = "main"
 #package = "sp-runtime"
 #default-features=false
 [build-dependencies]
-tonic-build = "0.4" # Chain Reader Client
+tonic-build = "0.5" # Chain Reader Client
 #[workspace]
