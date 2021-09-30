@@ -1,4 +1,3 @@
-use crate::schema::*;
 use bigdecimal::{BigDecimal, FromPrimitive};
 use massbit_chain_ethereum::data_type::{LightEthereumBlock};
 use graph::prelude::web3::types::Transaction;

@@ -26,37 +26,20 @@ lazy_static! {
     static ref ETHEREUM_URL: String = env::var("ETHEREUM_URL").unwrap_or(String::from("https://main-light.eth.linkpool.io"));
     pub static ref CONFIG: Config = Config{
         chains: [
-            // ChainConfig{
-            //     url: "".to_string(),
-            //     ws: "".to_string(),
-            //     start_block: None,
-            //     chain_type: ChainType::Substrate,
-            //     network: "mainnet".to_string()
-            // },
-            // ChainConfig{
-            //     ws: "ws://api.mainnet-beta.solana.com".to_string(),
-            //     // url: "https://mainnet-beta-solana.massbit.io".to_string(),
-            //     //url: "https://api.mainnet-beta.solana.com".to_string(),
-            //     url: "https://solana-api.projectserum.com".to_string(),
-            //
-            //     start_block: None,
-            //     chain_type: ChainType::Solana,
-            //     network: "mainnet".to_string()
-            // },
-            // ChainConfig{
-            //     url: "".to_string(),
-            //     ws: "".to_string(),
-            //     start_block: None,
-            //     chain_type: ChainType::Substrate,
-            //     network: "mainnet".to_string()
-            // },
-            // ChainConfig{
-            //     ws: SOLANA_WS.to_string(),
-            //     url: SOLANA_URL.to_string(),
-            //     start_block: None,
-            //     chain_type: ChainType::Solana,
-            //     network: "mainnet".to_string()
-            // },
+            ChainConfig{
+                url: "".to_string(),
+                ws: "".to_string(),
+                start_block: None,
+                chain_type: ChainType::Substrate,
+                network: "mainnet".to_string()
+            },
+            ChainConfig{
+                ws: SOLANA_WS.to_string(),
+                url: SOLANA_URL.to_string(),
+                start_block: None,
+                chain_type: ChainType::Solana,
+                network: "mainnet".to_string()
+            },
             ChainConfig{
                 ws: POLYGON_WS.to_string(),
                 url: POLYGON_URL.to_string(),

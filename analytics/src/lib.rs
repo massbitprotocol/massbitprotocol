@@ -9,7 +9,7 @@ pub mod manager;
 pub mod schema;
 pub mod models;
 pub mod ethereum;
-//pub mod solana;
+pub mod solana;
 //pub mod substrate;
 pub mod storage_adapter;
 pub mod postgres_adapter;

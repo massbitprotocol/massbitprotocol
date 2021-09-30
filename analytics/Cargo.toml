@@ -62,6 +62,11 @@ package = "graph-store-postgres"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
 branch = "main"
 
+[dependencies.solana-transaction-status]
+package = "solana-transaction-status"
+git = "https://github.com/massbitprotocol/solana.git"
+branch = "main"
+
 [build-dependencies]
 tonic-build = "0.4"
 

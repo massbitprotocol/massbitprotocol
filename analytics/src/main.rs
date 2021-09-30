@@ -3,7 +3,7 @@ extern crate diesel_migrations;
 use clap::{App, Arg};
 use diesel_migrations::embed_migrations;
 use analytics::ethereum::process_ethereum_stream;
-//use analytics::solana::process_solana_stream;
+use analytics::solana::process_solana_stream;
 //use analytics::substrate::process_substrate_block;
 use lazy_static::lazy_static;
 use log::{info, error};
@@ -71,7 +71,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     let network = matches.value_of("network").unwrap_or("matic");
     let block = matches.value_of("block").unwrap_or("0");
     let start_block: u64 = block.parse().unwrap_or_default();
-    println!("{}", start_block);
     info!("Start client for chain {} and network {}", chain_type, network);
     let storage_adapter = Arc::new(create_postgres_storage());
     loop {
@@ -82,19 +81,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
                 let timeout_channel =
                     Timeout::new(channel, Duration::from_secs(GET_BLOCK_TIMEOUT_SEC));
                 let mut client = StreamoutClient::new(timeout_channel);
+                let network = match matches.value_of("network") {
+                    None => None,
+                    Some(val) => Some(String::from(val))
+                };
                 match chain_type {
                     "solana" => {
-                        //process_solana_stream(&client, storage_adapter.clone()).await;
+                        process_solana_stream(&mut client, storage_adapter.clone(), network,start_block.clone()).await;
                     },
                     "substrate" => {
-                        //process_substrate_block(&client).await;
+                        //process_substrate_stream(&mut client).await;
                     },
                     _ => {
-                        let network = match matches.value_of("network") {
-                            None => None,
-                            Some(val) => Some(String::from(val))
-                        };
-                        match process_ethereum_stream(&mut client, storage_adapter.clone(), &network, start_block).await {
+                        match process_ethereum_stream(&mut client, storage_adapter.clone(), network, start_block.clone()).await {
                             Err(err) => log::error!("{:?}", &err),
                             Ok(_) => {}
                         }

@@ -42,9 +42,9 @@ const DEFAULT_NETWORK: &str = "matic";
 
 pub async fn process_ethereum_stream(client: &mut StreamoutClient<Timeout<Channel>>,
                                       storage_adapter: Arc<PostgresAdapter>,
-                                      network: &Option<NetworkType>,
+                                      network: Option<NetworkType>,
                                       block: u64) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>>{
-    let handler_manager = create_ethereum_handler_manager(network, storage_adapter);
+    let handler_manager = create_ethereum_handler_manager(&network, storage_adapter);
     //Todo: remove this simple connection
     let conn = establish_connection();
     let current_state = get_block_number(&conn, CHAIN.clone(), network.clone().unwrap_or(String::from(DEFAULT_NETWORK)));
@@ -64,7 +64,7 @@ pub async fn process_ethereum_stream(client: &mut StreamoutClient<Timeout<Channe
                 opt_stream = try_create_stream(
                     client,
                     ChainType::Ethereum,
-                    start_block,
+                    start_block.clone(),
                     &network,
                 )
                     .await;
@@ -94,7 +94,7 @@ pub async fn process_ethereum_stream(client: &mut StreamoutClient<Timeout<Channe
                                     match diesel::insert_into(network_state::table)
                                         .values((network_state::chain.eq(CHAIN.clone()),
                                                  network_state::network.eq(network.clone().unwrap_or(DEFAULT_NETWORK.to_string())),
-                                                 network_state::got_block.eq(block_number))
+                                                 network_state::got_block.eq(block_number.clone()))
                                         )
                                         .on_conflict((network_state::chain, network_state::network))
                                         .do_update()
