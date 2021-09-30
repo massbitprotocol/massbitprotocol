@@ -57,14 +57,14 @@ impl<L, S, P> IndexerRegistrarTrait for IndexerRegistrar<L, S, P>
 where
     L: LinkResolver,
     S: IndexerStore,
-    P: IndexerAssignmentProvider,
+    P: IndexerAssignmentProviderTrait,
 {
     async fn create_indexer(
         &self,
         name: IndexerName,
         hash: DeploymentHash,
         node_id: NodeId,
-    ) -> Result<CreateIndexerResponse, Error> {
+    ) -> Result<CreateIndexerResponse, IndexerRegistrarError> {
         let id = self.store.create_indexer(name.clone())?;
 
         // We don't have a location for the subgraph yet; that will be
@@ -109,9 +109,23 @@ where
             }
         };
 
-        self.provider
-            .start(DeploymentLocator::new(DeploymentId(1), hash))
-            .await;
+        let locations = self.store.locators(&hash)?;
+        let deployment = match locations.len() {
+            0 => return Err(IndexerRegistrarError::DeploymentNotFound(hash.to_string())),
+            1 => locations[0].clone(),
+            _ => {
+                return Err(IndexerRegistrarError::StoreError(
+                    anyhow!(
+                        "there are {} different deployments with id {}",
+                        locations.len(),
+                        hash.as_str()
+                    )
+                    .into(),
+                ))
+            }
+        };
+
+        self.provider.start(deployment).await;
 
         Ok(CreateIndexerResponse { id })
     }
@@ -193,15 +207,4 @@ async fn resolve_indexer_chain_blocks(
     };
 
     Ok(start_block_ptr)
-}
-
-async fn start_indexer(
-    deployment: DeploymentLocator,
-    provider: Arc<impl IndexerAssignmentProviderTrait>,
-) {
-    let result = provider.start(deployment).await;
-    match result {
-        Ok(()) => (),
-        Err(e) => {}
-    }
 }

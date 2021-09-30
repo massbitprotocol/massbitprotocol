@@ -307,6 +307,16 @@ impl IndexerStoreTrait for IndexerStore {
     fn input_schema(&self, indexer_id: &DeploymentHash) -> Result<Arc<Schema>, StoreError> {
         todo!()
     }
+
+    /// Find the deployment locators for the subgraph with the given hash
+    fn locators(&self, hash: &str) -> Result<Vec<DeploymentLocator>, StoreError> {
+        Ok(self
+            .primary_conn()?
+            .find_sites(vec![hash.to_string()], false)?
+            .iter()
+            .map(|site| site.into())
+            .collect())
+    }
 }
 
 /// A wrapper around `IndexerStore` that only exposes functions that are

@@ -101,7 +101,7 @@ where
                 Ok(()) => {}
                 Err(err) => error!(
                     err_logger,
-                    "Failed to start subgraph";
+                    "Failed to start indexer";
                     "error" => format!("{}", err),
                     "code" => LogCode::IndexerStartFailure,
                 ),
@@ -143,7 +143,7 @@ where
         let store = self.indexer_store.writable(&deployment)?;
 
         let manifest: IndexerManifest<C> = {
-            info!(logger, "Resolve subgraph files using IPFS");
+            info!(logger, "Resolve indexer files using IPFS");
 
             let mut manifest = IndexerManifest::resolve_from_raw(
                 deployment.hash.cheap_clone(),
@@ -161,7 +161,7 @@ where
                     .await
                     .context("Failed to load dynamic data sources")?;
 
-            info!(logger, "Successfully resolved subgraph files using IPFS");
+            info!(logger, "Successfully resolved indexer files using IPFS");
 
             // Add dynamic data sources to the indexer
             manifest.data_sources.extend(data_sources);

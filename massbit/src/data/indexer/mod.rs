@@ -24,6 +24,7 @@ use crate::blockchain::{
 };
 use crate::components::link_resolver::LinkResolver;
 use crate::components::store::DeploymentLocator;
+use crate::data::graphql::TryFromValue;
 use crate::data::query::QueryExecutionError;
 use crate::data::schema::{SchemaImportError, SchemaValidationError};
 use crate::data::store::Entity;
@@ -156,7 +157,14 @@ impl<'de> de::Deserialize<'de> for DeploymentHash {
     {
         let s: String = de::Deserialize::deserialize(deserializer)?;
         DeploymentHash::new(s)
-            .map_err(|s| de::Error::invalid_value(de::Unexpected::Str(&s), &"valid indexer name"))
+            .map_err(|s| de::Error::invalid_value(de::Unexpected::Str(&s), &"valid subgraph name"))
+    }
+}
+
+impl TryFromValue for DeploymentHash {
+    fn try_from_value(value: &q::Value) -> Result<Self, Error> {
+        Self::new(String::try_from_value(value)?)
+            .map_err(|s| anyhow!("Invalid subgraph ID `{}`", s))
     }
 }
 
