@@ -12,6 +12,8 @@ use crate::runtime::DeterministicHostError;
 
 #[derive(Debug)]
 pub enum MappingError {
+    /// A possible reorg was detected while running the mapping.
+    PossibleReorg(anyhow::Error),
     Unknown(anyhow::Error),
 }
 
@@ -31,6 +33,7 @@ impl MappingError {
     pub fn context(self, s: String) -> Self {
         use MappingError::*;
         match self {
+            PossibleReorg(e) => PossibleReorg(e.context(s)),
             Unknown(e) => Unknown(e.context(s)),
         }
     }

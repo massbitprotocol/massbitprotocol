@@ -240,10 +240,11 @@ impl<C: Blockchain> HostExports<C> {
 
         let start = Instant::now();
         let mut last_log = start;
+        let logger = ctx.logger.new(o!("ipfs_map" => link.clone()));
 
         let result = {
             let mut stream: JsonValueStream =
-                block_on03(link_resolver.json_stream(&Link { link }))?;
+                block_on03(link_resolver.json_stream(&logger, &Link { link }))?;
             let mut v = Vec::new();
             while let Some(sv) = block_on03(stream.next()) {
                 let sv = sv?;

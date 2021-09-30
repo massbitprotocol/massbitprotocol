@@ -39,5 +39,5 @@ pub trait LinkResolver: Send + Sync + 'static {
     /// values. The values must each be on a single line; newlines are significant
     /// as they are used to split the file contents and each line is deserialized
     /// separately.
-    async fn json_stream(&self, link: &Link) -> Result<JsonValueStream, Error>;
+    async fn json_stream(&self, logger: &Logger, link: &Link) -> Result<JsonValueStream, Error>;
 }

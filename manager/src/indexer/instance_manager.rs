@@ -273,8 +273,9 @@ where
             .inputs
             .chain
             .new_block_stream(
+                ctx.inputs.store.clone(),
                 ctx.inputs.deployment.clone(),
-                indexer_ptr,
+                ctx.inputs.start_blocks.clone(),
                 Arc::new(ctx.state.filter.clone()),
             )
             .await?
@@ -370,7 +371,7 @@ enum BlockProcessingError {
     #[error("{0}")]
     Deterministic(IndexerError),
 
-    #[error("subgraph stopped while processing triggers")]
+    #[error("indexer stopped while processing triggers")]
     Canceled,
 }
 
@@ -409,7 +410,7 @@ async fn process_block<T: RuntimeHostBuilder<C>, C: Blockchain>(
     } else if triggers.len() > 1 {
         info!(
             &logger,
-            "{} triggers found in this block for this subgraph",
+            "{} triggers found in this block for this indexer",
             triggers.len()
         );
     }
@@ -433,6 +434,22 @@ async fn process_block<T: RuntimeHostBuilder<C>, C: Blockchain>(
 
         // Some form of unknown or non-deterministic error ocurred.
         Err(MappingError::Unknown(e)) => return Err(BlockProcessingError::Unknown(e)),
+        Err(MappingError::PossibleReorg(e)) => {
+            info!(ctx.state.logger,
+                    "Possible reorg detected, retrying";
+                    "error" => format!("{:#}", e),
+                    "id" => ctx.inputs.deployment.hash.to_string(),
+            );
+
+            // In case of a possible reorg, we want this function to do nothing and restart the
+            // block stream so it has a chance to detect the reorg.
+            //
+            // The `ctx` is unchanged at this point, except for having cleared the entity cache.
+            // Losing the cache is a bit annoying but not an issue for correctness.
+            //
+            // See also b21fa73b-6453-4340-99fb-1a78ec62efb1.
+            return Ok((ctx, true));
+        }
     };
 
     // If new data sources have been created, restart the indexer after this block.
@@ -497,8 +514,16 @@ async fn process_block<T: RuntimeHostBuilder<C>, C: Blockchain>(
                 block_state,
             )
             .await
-            .map_err(|e| match e {
-                MappingError::Unknown(e) => BlockProcessingError::Unknown(e),
+            .map_err(|e| {
+                // This treats a `PossibleReorg` as an ordinary error which will fail the subgraph.
+                // This can cause an unnecessary subgraph failure, to fix it we need to figure out a
+                // way to revert the effect of `create_dynamic_data_sources` so we may return a
+                // clean context as in b21fa73b-6453-4340-99fb-1a78ec62efb1.
+                match e {
+                    MappingError::PossibleReorg(e) | MappingError::Unknown(e) => {
+                        BlockProcessingError::Unknown(e)
+                    }
+                }
             })?;
         }
     }

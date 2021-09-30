@@ -169,7 +169,7 @@ async fn create_indexer_version<C: Blockchain, S: IndexerStore, L: LinkResolver>
         return Err(IndexerRegistrarError::NameNotFound(name.to_string()));
     }
 
-    let start_block = resolve_indexer_chain_blocks(&manifest, chain).await?;
+    let start_block = resolve_indexer_chain_blocks(&manifest, chain, logger).await?;
 
     // Apply the indexer versioning and deployment operations,
     // creating a new indexer deployment if one doesn't exist.
@@ -184,6 +184,7 @@ async fn create_indexer_version<C: Blockchain, S: IndexerStore, L: LinkResolver>
 async fn resolve_indexer_chain_blocks(
     manifest: &IndexerManifest<impl Blockchain>,
     chain: Arc<impl Blockchain>,
+    logger: &Logger,
 ) -> Result<Option<BlockPtr>, IndexerRegistrarError> {
     // If the minimum start block is 0 (i.e. the genesis block),
     // return `None` to start indexing from the genesis block. Otherwise
@@ -196,7 +197,7 @@ async fn resolve_indexer_chain_blocks(
     {
         0 => None,
         min_start_block => chain
-            .block_pointer_from_number(min_start_block - 1)
+            .block_pointer_from_number(logger, min_start_block - 1)
             .await
             .map(Some)
             .map_err(move |_| {

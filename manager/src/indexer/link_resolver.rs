@@ -55,13 +55,14 @@ fn read_u64_from_env(name: &str) -> Option<u64> {
 fn retry_policy<I: Send + Sync>(
     always_retry: bool,
     op: &'static str,
+    logger: &Logger,
 ) -> RetryConfigNoTimeout<I, massbit::prelude::reqwest::Error> {
     // Even if retries were not requested, networking errors are still retried until we either get
     // a valid HTTP response or a timeout.
     if always_retry {
-        retry(op).no_limit()
+        retry(op, logger).no_limit()
     } else {
-        retry(op)
+        retry(op, logger)
             .no_limit()
             .when(|res: &Result<_, reqwest::Error>| match res {
                 Ok(_) => false,
@@ -88,6 +89,7 @@ async fn select_fastest_client_with_stat(
     path: String,
     timeout: Duration,
     do_retry: bool,
+    logger: Logger,
 ) -> Result<(ObjectStatResponse, Arc<IpfsClient>), Error> {
     let mut err: Option<Error> = None;
 
@@ -97,7 +99,7 @@ async fn select_fastest_client_with_stat(
         .map(|(i, c)| {
             let c = c.cheap_clone();
             let path = path.clone();
-            retry_policy(do_retry, "object.stat").run(move || {
+            retry_policy(do_retry, "object.stat", &logger).run(move || {
                 let path = path.clone();
                 let c = c.cheap_clone();
                 async move { c.object_stat(path, timeout).map_ok(move |s| (s, i)).await }
@@ -205,6 +207,7 @@ impl LinkResolverTrait for LinkResolver {
             path.clone(),
             self.timeout,
             self.retry,
+            logger.cheap_clone(),
         )
         .await?;
 
@@ -217,7 +220,7 @@ impl LinkResolverTrait for LinkResolver {
         let this = self.clone();
         let timeout = self.timeout;
         let logger = logger.clone();
-        let data = retry_policy(self.retry, "ipfs.cat")
+        let data = retry_policy(self.retry, "ipfs.cat", &logger)
             .run(move || {
                 let path = path.clone();
                 let client = client.clone();
@@ -246,7 +249,7 @@ impl LinkResolverTrait for LinkResolver {
         Ok(data)
     }
 
-    async fn json_stream(&self, link: &Link) -> Result<JsonValueStream, Error> {
+    async fn json_stream(&self, logger: &Logger, link: &Link) -> Result<JsonValueStream, Error> {
         // Discard the `/ipfs/` prefix (if present) to get the hash.
         let path = link.link.trim_start_matches("/ipfs/");
 
@@ -255,6 +258,7 @@ impl LinkResolverTrait for LinkResolver {
             path.to_string(),
             self.timeout,
             self.retry,
+            logger.cheap_clone(),
         )
         .await?;
 

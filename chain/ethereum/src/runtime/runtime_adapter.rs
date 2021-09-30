@@ -20,6 +20,7 @@ use crate::{
     Chain, DataSource, EthereumAdapter, EthereumAdapterTrait, EthereumContractCall,
     EthereumContractCallError,
 };
+use massbit::prelude::Logger;
 
 pub struct RuntimeAdapter {
     pub(crate) eth_adapters: Arc<EthereumNetworkAdapters>,
@@ -61,7 +62,7 @@ fn ethereum_call(
         asc_get::<_, AscUnresolvedContractCall, _>(ctx.heap, wasm_ptr.into())?
     };
 
-    let result = eth_call(eth_adapter, &ctx.block_ptr, call, abis)?;
+    let result = eth_call(&ctx.logger, eth_adapter, &ctx.block_ptr, call, abis)?;
     match result {
         Some(tokens) => Ok(asc_new(ctx.heap, tokens.as_slice())?),
         None => Ok(AscPtr::null()),
@@ -70,6 +71,7 @@ fn ethereum_call(
 
 /// Returns `Ok(None)` if the call was reverted.
 fn eth_call(
+    logger: &Logger,
     eth_adapter: &EthereumAdapter,
     block_ptr: &BlockPtr,
     unresolved_call: UnresolvedContractCall,
@@ -135,7 +137,7 @@ fn eth_call(
 
     // Run Ethereum call in tokio runtime
     let result = match massbit::block_on(
-        eth_adapter.contract_call(call).compat()
+        eth_adapter.contract_call(&logger.clone(), call).compat()
     ) {
         Ok(tokens) => Ok(Some(tokens)),
         Err(EthereumContractCallError::Revert(reason)) => {
