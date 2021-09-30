@@ -359,11 +359,13 @@ pub trait EthereumAdapter: Send + Sync + 'static {
 
     fn block_hash_by_block_number(
         &self,
+        logger: &Logger,
         block_number: BlockNumber,
     ) -> Box<dyn Future<Item = Option<H256>, Error = Error> + Send>;
 
     fn load_blocks(
         &self,
+        logger: Logger,
         block_hashes: HashSet<H256>,
     ) -> Box<dyn Stream<Item = LightEthereumBlock, Error = Error> + Send>;
 }

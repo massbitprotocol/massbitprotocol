@@ -5,7 +5,7 @@ use massbit::blockchain::{
     block_stream::BlockWithTriggers, Block, BlockStream, Blockchain, BlockchainKind,
     PollingBlockStream, TriggersAdapter as TriggersAdapterTrait,
 };
-use massbit::components::store::DeploymentLocator;
+use massbit::components::store::{DeploymentLocator, WritableStore};
 use massbit::prelude::*;
 
 use crate::data_source::{
@@ -113,8 +113,9 @@ impl Blockchain for Chain {
 
     async fn new_block_stream(
         &self,
+        indexer_store: Arc<dyn WritableStore>,
         deployment: DeploymentLocator,
-        start_block: BlockNumber,
+        start_blocks: Vec<BlockNumber>,
         filter: Arc<Self::TriggerFilter>,
     ) -> Result<Box<dyn BlockStream<Self>>, Error> {
         let logger = self
@@ -126,21 +127,29 @@ impl Blockchain for Chain {
 
         Ok(Box::new(PollingBlockStream::new(
             logger,
+            indexer_store,
             triggers_adapter,
             filter,
-            start_block,
+            start_blocks,
             *MAX_BLOCK_RANGE_SIZE,
             *TARGET_TRIGGERS_PER_BLOCK_RANGE,
         )))
     }
 
-    async fn block_pointer_from_number(&self, number: BlockNumber) -> Result<BlockPtr, Error> {
+    async fn block_pointer_from_number(
+        &self,
+        logger: &Logger,
+        number: BlockNumber,
+    ) -> Result<BlockPtr, Error> {
         let eth_adapter = self
             .eth_adapters
             .cheapest()
             .with_context(|| format!("no adapter for chain {}", self.name))?
             .clone();
-        eth_adapter.block_pointer_from_number(number).compat().await
+        eth_adapter
+            .block_pointer_from_number(logger, number)
+            .compat()
+            .await
     }
 }
 

@@ -255,6 +255,7 @@ async fn create_ethereum_networks(
                     name.to_string(),
                     Arc::new(
                         chain_ethereum::EthereumAdapter::new(
+                            logger,
                             provider.label,
                             &web3.url,
                             transport,

@@ -147,6 +147,10 @@ impl<C: Blockchain> WasmInstance<C> {
         // This `match` will return early if there was a non-deterministic trap.
         let deterministic_error: Option<Error> = match func.typed()?.call(arg.wasm_ptr()) {
             Ok(()) => None,
+            Err(trap) if self.instance_ctx().possible_reorg => {
+                self.instance_ctx_mut().ctx.state.exit_handler();
+                return Err(MappingError::PossibleReorg(trap.into()));
+            }
             Err(trap) if trap.to_string().contains(TRAP_TIMEOUT) => {
                 self.instance_ctx_mut().ctx.state.exit_handler();
                 return Err(MappingError::Unknown(Error::from(trap).context(format!(
@@ -364,6 +368,7 @@ impl<C: Blockchain> WasmInstance<C> {
                     };
 
                     let ctx = HostFnCtx {
+                        logger: instance.ctx.logger.cheap_clone(),
                         block_ptr: instance.ctx.block_ptr.cheap_clone(),
                         heap: instance,
                     };

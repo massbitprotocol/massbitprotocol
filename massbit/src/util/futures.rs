@@ -1,6 +1,6 @@
 use crate::ext::futures::FutureExtension;
 use futures03::{Future, FutureExt, TryFutureExt};
-use log::{debug, trace, warn};
+use slog::{debug, trace, warn, Logger};
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::sync::Arc;
@@ -47,9 +47,10 @@ use tokio_retry::Retry;
 //         })
 // }
 // ```
-pub fn retry<I, E>(operation_name: impl ToString) -> RetryConfig<I, E> {
+pub fn retry<I, E>(operation_name: impl ToString, logger: &Logger) -> RetryConfig<I, E> {
     RetryConfig {
         operation_name: operation_name.to_string(),
+        logger: logger.to_owned(),
         condition: RetryIf::Error,
         log_after: 1,
         warn_after: 10,
@@ -61,6 +62,7 @@ pub fn retry<I, E>(operation_name: impl ToString) -> RetryConfig<I, E> {
 
 pub struct RetryConfig<I, E> {
     operation_name: String,
+    logger: Logger,
     condition: RetryIf<I, E>,
     log_after: u64,
     warn_after: u64,
@@ -160,16 +162,16 @@ where
         R: Future<Output = Result<I, E>> + Send + 'static,
     {
         let operation_name = self.inner.operation_name;
+        let logger = self.inner.logger.clone();
         let condition = self.inner.condition;
         let log_after = self.inner.log_after;
         let warn_after = self.inner.warn_after;
         let limit_opt = self.inner.limit.unwrap(&operation_name, "limit");
         let timeout = self.timeout;
 
-        trace!("Run with retry: {}", operation_name);
-
         run_retry(
             operation_name,
+            logger,
             condition,
             log_after,
             warn_after,
@@ -199,15 +201,15 @@ impl<I, E> RetryConfigNoTimeout<I, E> {
         R: Future<Output = Result<I, E>> + Send,
     {
         let operation_name = self.inner.operation_name;
+        let logger = self.inner.logger.clone();
         let condition = self.inner.condition;
         let log_after = self.inner.log_after;
         let warn_after = self.inner.warn_after;
         let limit_opt = self.inner.limit.unwrap(&operation_name, "limit");
 
-        trace!("Run with retry: {}", operation_name);
-
         run_retry(
             operation_name,
+            logger,
             condition,
             log_after,
             warn_after,
@@ -248,6 +250,7 @@ impl<T: Debug + Send + Sync + 'static> TimeoutError<T> {
 
 fn run_retry<O, E, F, R>(
     operation_name: String,
+    logger: Logger,
     condition: RetryIf<O, E>,
     log_after: u64,
     warn_after: u64,
@@ -266,6 +269,7 @@ where
 
     Retry::spawn(retry_strategy(limit_opt), move || {
         let operation_name = operation_name.clone();
+        let logger = logger.clone();
         let condition = condition.clone();
 
         attempt_count += 1;
@@ -280,8 +284,10 @@ where
             if is_elapsed {
                 if attempt_count >= log_after {
                     debug!(
+                        logger,
                         "Trying again after {} timed out (attempt #{})",
-                        &operation_name, attempt_count,
+                        &operation_name,
+                        attempt_count,
                     );
                 }
 
@@ -300,14 +306,20 @@ where
                         // to use log! slog complains about requiring a const for the log level
                         // See also b05e1594-e408-4047-aefb-71fc60d70e8f
                         warn!(
+                            logger,
                             "Trying again after {} failed (attempt #{}) with result {:?}",
-                            &operation_name, attempt_count, result
+                            &operation_name,
+                            attempt_count,
+                            result
                         );
                     } else if attempt_count >= log_after {
                         // See also b05e1594-e408-4047-aefb-71fc60d70e8f
                         debug!(
+                            logger,
                             "Trying again after {} failed (attempt #{}) with result {:?}",
-                            &operation_name, attempt_count, result
+                            &operation_name,
+                            attempt_count,
+                            result
                         );
                     }
 

@@ -22,7 +22,9 @@ use std::{
 
 use crate::components::indexer::DataSourceTemplateInfo;
 use crate::components::link_resolver::LinkResolver;
-use crate::components::store::{BlockNumber, DeploymentLocator, StoredDynamicDataSource};
+use crate::components::store::{
+    BlockNumber, DeploymentLocator, StoredDynamicDataSource, WritableStore,
+};
 use crate::data::indexer::{DataSourceContext, IndexerManifestValidationError};
 use crate::prelude::{CheapClone, Logger};
 use crate::runtime::{AscHeap, AscPtr, DeterministicHostError, HostExportError};
@@ -83,12 +85,17 @@ pub trait Blockchain: Debug + Sized + Send + Sync + Unpin + 'static {
 
     async fn new_block_stream(
         &self,
+        store: Arc<dyn WritableStore>,
         deployment: DeploymentLocator,
-        start_block: BlockNumber,
+        start_block: Vec<BlockNumber>,
         filter: Arc<Self::TriggerFilter>,
     ) -> Result<Box<dyn BlockStream<Self>>, Error>;
 
-    async fn block_pointer_from_number(&self, number: BlockNumber) -> Result<BlockPtr, Error>;
+    async fn block_pointer_from_number(
+        &self,
+        logger: &Logger,
+        number: BlockNumber,
+    ) -> Result<BlockPtr, Error>;
 }
 
 pub trait TriggerFilter<C: Blockchain>: Default + Clone + Send + Sync {
@@ -186,6 +193,7 @@ pub trait MappingTrigger: Send + Sync {
 }
 
 pub struct HostFnCtx<'a> {
+    pub logger: Logger,
     pub block_ptr: BlockPtr,
     pub heap: &'a mut dyn AscHeap,
 }
