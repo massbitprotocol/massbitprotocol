@@ -144,6 +144,7 @@ impl EthereumAdapter {
 
     async fn traces(
         self,
+        logger: Logger,
         from: BlockNumber,
         to: BlockNumber,
         addresses: Vec<H160>,
@@ -166,15 +167,23 @@ impl EthereumAdapter {
                         .build(),
                 };
 
+                let logger_for_triggers = logger.clone();
+                let logger_for_error = logger.clone();
                 eth.web3
                     .trace()
                     .filter(trace_filter)
                     .map(move |traces| {
                         if traces.len() > 0 {
                             if to == from {
-                                debug!("Received {} traces for block {}", traces.len(), to);
+                                debug!(
+                                    logger_for_triggers,
+                                    "Received {} traces for block {}",
+                                    traces.len(),
+                                    to
+                                );
                             } else {
                                 debug!(
+                                    logger_for_triggers,
                                     "Received {} traces for blocks [{}, {}]",
                                     traces.len(),
                                     from,
@@ -188,8 +197,11 @@ impl EthereumAdapter {
                     .then(move |result| {
                         if result.is_err() {
                             debug!(
+                                logger_for_error,
                                 "Error querying traces error = {:?} from = {:?} to = {:?}",
-                                result, from, to
+                                result,
+                                from,
+                                to
                             );
                         }
                         result
@@ -249,6 +261,7 @@ impl EthereumAdapter {
 
     fn trace_stream(
         self,
+        logger: &Logger,
         from: BlockNumber,
         to: BlockNumber,
         addresses: Vec<H160>,
@@ -263,6 +276,7 @@ impl EthereumAdapter {
         let step_size = *TRACE_STREAM_STEP_SIZE;
 
         let eth = self.clone();
+        let logger = logger.to_owned();
         stream::unfold(from, move |start| {
             if start > to {
                 return None;
@@ -270,13 +284,13 @@ impl EthereumAdapter {
             let end = (start + step_size - 1).min(to);
             let new_start = end + 1;
             if start == end {
-                debug!("Requesting traces for block {}", start);
+                debug!(logger, "Requesting traces for block {}", start);
             } else {
-                debug!("Requesting traces for blocks [{}, {}]", start, end);
+                debug!(logger, "Requesting traces for blocks [{}, {}]", start, end);
             }
             Some(futures::future::ok((
                 eth.clone()
-                    .traces(start, end, addresses.clone())
+                    .traces(logger.cheap_clone(), start, end, addresses.clone())
                     .boxed()
                     .compat(),
                 new_start,
@@ -524,6 +538,7 @@ impl EthereumAdapter {
 
     pub(crate) fn calls_in_block_range<'a>(
         &self,
+        logger: &Logger,
         from: BlockNumber,
         to: BlockNumber,
         call_filter: &'a EthereumCallFilter,
@@ -546,7 +561,7 @@ impl EthereumAdapter {
         }
 
         Box::new(
-            eth.trace_stream(from, to, addresses)
+            eth.trace_stream(&logger, from, to, addresses)
                 .filter_map(|trace| EthereumCall::try_from_trace(&trace))
                 .filter(move |call| {
                     // `trace_filter` can only filter by calls `to` an address and
@@ -624,12 +639,13 @@ impl EthereumAdapter {
     /// Reorg safety: `to` must be a final block.
     pub(crate) fn block_range_to_ptrs(
         &self,
+        logger: Logger,
         from: BlockNumber,
         to: BlockNumber,
     ) -> Box<dyn Future<Item = Vec<BlockPtr>, Error = Error> + Send> {
         // Currently we can't go to the DB for this because there might be duplicate entries for
         // the same block number.
-        debug!("Requesting hashes for blocks [{}, {}]", from, to);
+        debug!(&logger, "Requesting hashes for blocks [{}, {}]", from, to);
         Box::new(self.load_block_ptrs_rpc((from..=to).collect()).collect())
     }
 
@@ -849,6 +865,7 @@ impl EthereumAdapterTrait for EthereumAdapter {
 /// It is recommended that `to` be far behind the block number of latest block the Ethereum
 /// node is aware of.
 pub(crate) async fn blocks_with_triggers(
+    logger: Logger,
     adapter: Arc<EthereumAdapter>,
     from: BlockNumber,
     to: BlockNumber,
@@ -880,7 +897,7 @@ pub(crate) async fn blocks_with_triggers(
 
     if !filter.call.is_empty() {
         trigger_futs.push(Box::new(
-            eth.calls_in_block_range(from, to, &filter.call)
+            eth.calls_in_block_range(&logger, from, to, &filter.call)
                 .map(Arc::new)
                 .map(EthereumTrigger::Call)
                 .collect(),
@@ -888,19 +905,21 @@ pub(crate) async fn blocks_with_triggers(
     }
 
     if filter.block.trigger_every_block {
-        trigger_futs.push(Box::new(adapter.block_range_to_ptrs(from, to).map(
-            move |ptrs| {
-                ptrs.into_iter()
-                    .map(|ptr| EthereumTrigger::Block(ptr, EthereumBlockTriggerType::Every))
-                    .collect()
-            },
-        )))
+        trigger_futs.push(Box::new(
+            adapter
+                .block_range_to_ptrs(logger.clone(), from, to)
+                .map(move |ptrs| {
+                    ptrs.into_iter()
+                        .map(|ptr| EthereumTrigger::Block(ptr, EthereumBlockTriggerType::Every))
+                        .collect()
+                }),
+        ))
     } else if !filter.block.contract_addresses.is_empty() {
         // To determine which blocks include a call to addresses
         // in the block filter, transform the `block_filter` into
         // a `call_filter` and run `blocks_with_calls`
         trigger_futs.push(Box::new(
-            eth.calls_in_block_range(from, to, &call_filter)
+            eth.calls_in_block_range(&logger, from, to, &call_filter)
                 .map(|call| {
                     EthereumTrigger::Block(
                         BlockPtr::from(&call),
@@ -931,7 +950,7 @@ pub(crate) async fn blocks_with_triggers(
             map
         });
 
-    debug!("Found {} relevant block(s)", block_hashes.len());
+    debug!(logger, "Found {} relevant block(s)", block_hashes.len());
 
     // Make sure `to` is included, even if empty.
     block_hashes.insert(to_hash);

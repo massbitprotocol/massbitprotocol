@@ -10,6 +10,7 @@ use massbit_store_postgres::{IndexerStore, Shard as ShardName};
 use crate::config::{Config, Shard};
 
 pub struct StoreBuilder {
+    logger: Logger,
     indexer_store: Arc<IndexerStore>,
     pools: HashMap<ShardName, ConnectionPool>,
 }
@@ -18,8 +19,8 @@ impl StoreBuilder {
     /// Set up all stores, and run migrations. This does a complete store
     /// setup whereas other methods here only get connections for an already
     /// initialized store
-    pub async fn new(config: &Config) -> Self {
-        let (store, pools) = Self::make_indexer_store_and_pools(config);
+    pub async fn new(logger: &Logger, config: &Config) -> Self {
+        let (store, pools) = Self::make_indexer_store_and_pools(logger, config);
 
         // Try to perform setup (migrations etc.) for all the pools. If this
         // attempt doesn't work for all of them because the database is
@@ -28,6 +29,7 @@ impl StoreBuilder {
         join_all(pools.iter().map(|(_, pool)| async move { pool.setup() })).await;
 
         Self {
+            logger: logger.cheap_clone(),
             indexer_store: store,
             pools,
         }
@@ -41,6 +43,7 @@ impl StoreBuilder {
     /// the main connection pools for each shard, but not any pools for
     /// replicas
     pub fn make_indexer_store_and_pools(
+        logger: &Logger,
         config: &Config,
     ) -> (Arc<IndexerStore>, HashMap<ShardName, ConnectionPool>) {
         let servers = config
@@ -55,10 +58,11 @@ impl StoreBuilder {
             .stores
             .iter()
             .map(|(name, shard)| {
-                let conn_pool = Self::main_pool(name, shard, servers.clone());
+                let logger = logger.new(o!("shard" => name.to_string()));
+                let conn_pool = Self::main_pool(&logger, name, shard, servers.clone());
 
                 let (read_only_conn_pools, weights) =
-                    Self::replica_pools(name, shard, servers.clone());
+                    Self::replica_pools(&logger, name, shard, servers.clone());
 
                 let name =
                     ShardName::new(name.to_string()).expect("shard names have been validated");
@@ -72,7 +76,7 @@ impl StoreBuilder {
                 .map(|(name, pool, _, _)| (name.clone(), pool.clone())),
         );
 
-        let store = Arc::new(IndexerStore::new(shards));
+        let store = Arc::new(IndexerStore::new(logger, shards));
 
         (store, pools)
     }
@@ -80,11 +84,13 @@ impl StoreBuilder {
     /// Create a connection pool for the main database of hte primary shard
     /// without connecting to all the other configured databases
     pub fn main_pool(
+        logger: &Logger,
         name: &str,
         shard: &Shard,
         servers: Arc<Vec<ForeignServer>>,
     ) -> ConnectionPool {
-        info!("Connecting to Postgres");
+        let logger = logger.new(o!("pool" => "main"));
+        info!(logger, "Connecting to Postgres");
         ConnectionPool::create(
             name,
             PoolName::Main,
@@ -92,11 +98,13 @@ impl StoreBuilder {
             10,
             Some(10),
             servers,
+            &logger,
         )
     }
 
     /// Create connection pools for each of the replicas
     fn replica_pools(
+        logger: &Logger,
         name: &str,
         shard: &Shard,
         servers: Arc<Vec<ForeignServer>>,
@@ -109,7 +117,7 @@ impl StoreBuilder {
                 .enumerate()
                 .map(|(i, replica)| {
                     let pool = format!("replica{}", i + 1);
-                    info!("Connecting to Postgres (read replica {})", i + 1);
+                    info!(&logger, "Connecting to Postgres (read replica {})", i + 1);
                     weights.push(replica.weight);
                     ConnectionPool::create(
                         name,
@@ -118,6 +126,7 @@ impl StoreBuilder {
                         10,
                         None,
                         servers.clone(),
+                        &logger,
                     )
                 })
                 .collect(),

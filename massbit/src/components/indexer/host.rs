@@ -41,12 +41,14 @@ impl MappingError {
 pub trait RuntimeHost<C: Blockchain>: Send + Sync + 'static {
     fn match_and_decode(
         &self,
+        logger: &Logger,
         trigger: &C::TriggerData,
         block: Arc<C::Block>,
     ) -> Result<Option<C::MappingTrigger>, Error>;
 
     async fn process_mapping_trigger(
         &self,
+        logger: &Logger,
         block_ptr: BlockPtr,
         trigger: C::MappingTrigger,
         state: BlockState<C>,
@@ -76,5 +78,6 @@ pub trait RuntimeHostBuilder<C: Blockchain>: Clone + Send + Sync + 'static {
     fn spawn_mapping(
         raw_module: Vec<u8>,
         subgraph_id: DeploymentHash,
+        logger: Logger,
     ) -> Result<mpsc::Sender<Self::Req>, anyhow::Error>;
 }

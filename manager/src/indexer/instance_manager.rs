@@ -51,6 +51,7 @@ struct IndexingInputs<C: Blockchain> {
 }
 
 struct IndexingState<T: RuntimeHostBuilder<C>, C: Blockchain> {
+    logger: Logger,
     instance: IndexerInstance<C, T>,
     instances: SharedInstanceKeepAliveMap,
     filter: C::TriggerFilter,
@@ -66,6 +67,7 @@ struct IndexingContext<T: RuntimeHostBuilder<C>, C: Blockchain> {
 }
 
 pub struct IndexerInstanceManager<S, L> {
+    logger_factory: LoggerFactory,
     indexer_store: Arc<S>,
     chains: Arc<BlockchainMap>,
     instances: SharedInstanceKeepAliveMap,
@@ -79,13 +81,15 @@ where
     L: LinkResolver + Clone,
 {
     async fn start_indexer(self: Arc<Self>, loc: DeploymentLocator, manifest: serde_yaml::Mapping) {
+        let logger = self.logger_factory.indexer_logger(&loc);
+        let err_logger = logger.clone();
         let instance_manager = self.cheap_clone();
 
         let indexer_start_future = async move {
             match BlockchainKind::from_manifest(&manifest)? {
                 BlockchainKind::Ethereum => {
                     instance_manager
-                        .start_indexer_inner::<chain_ethereum::Chain>(loc, manifest)
+                        .start_indexer_inner::<chain_ethereum::Chain>(logger, loc, manifest)
                         .await
                 }
             }
@@ -94,7 +98,12 @@ where
         massbit::spawn(async move {
             match indexer_start_future.await {
                 Ok(()) => {}
-                Err(err) => error!("Failed to start indexer, error: {}", format!("{}", err)),
+                Err(err) => error!(
+                    err_logger,
+                    "Failed to start subgraph";
+                    "error" => format!("{}", err),
+                    "code" => LogCode::IndexerStartFailure,
+                ),
             }
         });
     }
@@ -105,8 +114,17 @@ where
     S: IndexerStore,
     L: LinkResolver + Clone,
 {
-    pub fn new(indexer_store: Arc<S>, chains: Arc<BlockchainMap>, link_resolver: Arc<L>) -> Self {
+    pub fn new(
+        logger_factory: &LoggerFactory,
+        indexer_store: Arc<S>,
+        chains: Arc<BlockchainMap>,
+        link_resolver: Arc<L>,
+    ) -> Self {
+        let logger = logger_factory.component_logger("IndexerInstanceManager");
+        let logger_factory = logger_factory.with_parent(logger.clone());
+
         IndexerInstanceManager {
+            logger_factory,
             indexer_store,
             chains,
             instances: SharedInstanceKeepAliveMap::default(),
@@ -116,6 +134,7 @@ where
 
     async fn start_indexer_inner<C: Blockchain>(
         self: Arc<Self>,
+        logger: Logger,
         deployment: DeploymentLocator,
         manifest: serde_yaml::Mapping,
     ) -> Result<(), Error> {
@@ -123,13 +142,14 @@ where
         let store = self.indexer_store.writable(&deployment)?;
 
         let manifest: IndexerManifest<C> = {
-            info!("Resolve indexer files using IPFS");
+            info!(logger, "Resolve subgraph files using IPFS");
 
             let mut manifest = IndexerManifest::resolve_from_raw(
                 deployment.hash.cheap_clone(),
                 manifest,
                 // Allow for infinite retries for indexer definition files.
                 &self.link_resolver.as_ref().clone().with_retries(),
+                &logger,
                 MAX_SPEC_VERSION.clone(),
             )
             .await
@@ -140,12 +160,13 @@ where
                     .await
                     .context("Failed to load dynamic data sources")?;
 
-            info!("Successfully resolved indexer files using IPFS");
+            info!(logger, "Successfully resolved subgraph files using IPFS");
 
             // Add dynamic data sources to the indexer
             manifest.data_sources.extend(data_sources);
 
             info!(
+                logger,
                 "Data source count at start: {}",
                 manifest.data_sources.len()
             );
@@ -168,7 +189,7 @@ where
         let templates = Arc::new(manifest.templates.clone());
 
         let triggers_adapter = chain
-            .triggers_adapter()
+            .triggers_adapter(&deployment)
             .map_err(|e| anyhow!("expected triggers adapter that matches deployment"))?
             .clone();
 
@@ -178,7 +199,7 @@ where
             indexer_store,
         );
 
-        let instance = IndexerInstance::from_manifest(manifest, host_builder)?;
+        let instance = IndexerInstance::from_manifest(&logger, manifest, host_builder)?;
 
         // The indexer state tracks the state of the indexer instance over time
         let ctx = IndexingContext {
@@ -191,6 +212,7 @@ where
                 templates,
             },
             state: IndexingState {
+                logger: logger.cheap_clone(),
                 instance,
                 instances: self.instances.cheap_clone(),
                 filter,
@@ -213,7 +235,11 @@ where
         // https://github.com/tokio-rs/tokio/issues/3493.
         massbit::spawn_thread(deployment.to_string(), move || {
             if let Err(e) = massbit::block_on(task::unconstrained(run_indexer(ctx))) {
-                error!("Indexer instance failed to run: {}", format!("{:#}", e));
+                error!(
+                    &logger,
+                    "Indexer instance failed to run: {}",
+                    format!("{:#}", e)
+                );
             }
         });
 
@@ -227,21 +253,27 @@ where
     C: Blockchain,
 {
     // Clone a few things for different parts of the async processing
+    let logger = ctx.state.logger.cheap_clone();
     let store_for_err = ctx.inputs.store.cheap_clone();
     let id_for_err = ctx.inputs.deployment.hash.clone();
     let mut first_run = true;
 
     loop {
-        debug!("Starting or restarting indexer");
+        debug!(logger, "Starting or restarting indexer");
 
         let block_stream_canceler = CancelGuard::new();
         let block_stream_cancel_handle = block_stream_canceler.handle();
+        let indexer_ptr = ctx
+            .inputs
+            .store
+            .block_ptr()?
+            .map_or(0, |ptr| ptr.number + 1);
         let mut block_stream = ctx
             .inputs
             .chain
             .new_block_stream(
                 ctx.inputs.deployment.clone(),
-                ctx.inputs.start_blocks[0].clone(),
+                indexer_ptr,
                 Arc::new(ctx.state.filter.clone()),
             )
             .await?
@@ -263,6 +295,11 @@ where
                 // Log and drop the errors from the block_stream
                 // The block stream will continue attempting to produce blocks
                 Some(Err(e)) => {
+                    debug!(
+                        &logger,
+                        "Block stream produced a non-fatal error";
+                        "error" => format!("{}", e),
+                    );
                     continue;
                 }
                 None => unreachable!("The block stream stopped producing blocks"),
@@ -270,6 +307,7 @@ where
 
             let block_ptr = block.ptr();
             let res = process_block(
+                &logger,
                 ctx.inputs.triggers_adapter.cheap_clone(),
                 ctx,
                 block_stream_cancel_handle.clone(),
@@ -332,6 +370,7 @@ impl From<Error> for BlockProcessingError {
 /// Processes a block and returns the updated context and a boolean flag indicating
 /// whether new dynamic data sources have been added to the indexer.
 async fn process_block<T: RuntimeHostBuilder<C>, C: Blockchain>(
+    logger: &Logger,
     triggers_adapter: Arc<C::TriggersAdapter>,
     mut ctx: IndexingContext<T, C>,
     block_stream_cancel_handle: CancelHandle,
@@ -342,10 +381,11 @@ async fn process_block<T: RuntimeHostBuilder<C>, C: Blockchain>(
     let block_ptr = block.ptr();
 
     if triggers.len() == 1 {
-        info!("1 trigger found in this block for this indexer");
+        info!(&logger, "1 trigger found in this block for this subgraph");
     } else if triggers.len() > 1 {
         info!(
-            "{} triggers found in this block for this indexer",
+            &logger,
+            "{} triggers found in this block for this subgraph",
             triggers.len()
         );
     }
@@ -353,6 +393,7 @@ async fn process_block<T: RuntimeHostBuilder<C>, C: Blockchain>(
     // Process events one after the other, passing in entity operations
     // collected previously to every new event being processed
     let mut block_state = match process_triggers(
+        &logger,
         BlockState::new(
             ctx.inputs.store.clone(),
             std::mem::take(&mut ctx.state.entity_lfu_cache),
@@ -384,22 +425,29 @@ async fn process_block<T: RuntimeHostBuilder<C>, C: Blockchain>(
     // very contrived indexer would be able to observe this.
     while block_state.has_created_data_sources() {
         // Instantiate dynamic data sources, removing them from the block state.
-        let (data_sources, runtime_hosts) =
-            create_dynamic_data_sources(&mut ctx, block_state.drain_created_data_sources())?;
+        let (data_sources, runtime_hosts) = create_dynamic_data_sources(
+            logger.clone(),
+            &mut ctx,
+            block_state.drain_created_data_sources(),
+        )?;
 
         let filter = C::TriggerFilter::from_data_sources(data_sources.iter());
 
         // Reprocess the triggers from this block that match the new data sources
         let block_with_triggers = triggers_adapter
-            .triggers_in_block(block.as_ref().clone(), &filter)
+            .triggers_in_block(&logger, block.as_ref().clone(), &filter)
             .await?;
 
         let triggers = block_with_triggers.trigger_data;
 
         if triggers.len() == 1 {
-            info!("1 trigger found in this block for the new data sources");
+            info!(
+                &logger,
+                "1 trigger found in this block for the new data sources"
+            );
         } else if triggers.len() > 1 {
             info!(
+                &logger,
                 "{} triggers found in this block for the new data sources",
                 triggers.len()
             );
@@ -407,12 +455,18 @@ async fn process_block<T: RuntimeHostBuilder<C>, C: Blockchain>(
 
         // Add entity operations for the new data sources to the block state
         // and add runtimes for the data sources to the indexer instance.
-        persist_dynamic_data_sources(&mut ctx, &mut block_state.entity_cache, data_sources);
+        persist_dynamic_data_sources(
+            logger.clone(),
+            &mut ctx,
+            &mut block_state.entity_cache,
+            data_sources,
+        );
 
         // Process the triggers in each host in the same order the
         // corresponding data sources have been created.
         for trigger in triggers {
             block_state = IndexerInstance::<C, T>::process_trigger_in_runtime_hosts(
+                &logger,
                 &runtime_hosts,
                 &block,
                 &trigger,
@@ -446,7 +500,7 @@ async fn process_block<T: RuntimeHostBuilder<C>, C: Blockchain>(
     ctx.state.entity_lfu_cache = cache;
 
     if !mods.is_empty() {
-        info!("Applying {} entity operation(s)", mods.len());
+        info!(&logger, "Applying {} entity operation(s)", mods.len());
     }
 
     // Transact entity operations into the store and update the
@@ -460,6 +514,7 @@ async fn process_block<T: RuntimeHostBuilder<C>, C: Blockchain>(
 }
 
 async fn process_triggers<C: Blockchain>(
+    logger: &Logger,
     mut block_state: BlockState<C>,
     instance: &IndexerInstance<C, impl RuntimeHostBuilder<C>>,
     block: &Arc<C::Block>,
@@ -468,7 +523,7 @@ async fn process_triggers<C: Blockchain>(
     for trigger in triggers.into_iter() {
         let start = Instant::now();
         block_state = instance
-            .process_trigger(block, &trigger, block_state)
+            .process_trigger(&logger, block, &trigger, block_state)
             .await
             .map_err(move |mut e| {
                 let error_context = trigger.error_context();
@@ -482,6 +537,7 @@ async fn process_triggers<C: Blockchain>(
 }
 
 fn create_dynamic_data_sources<T: RuntimeHostBuilder<C>, C: Blockchain>(
+    logger: Logger,
     ctx: &mut IndexingContext<T, C>,
     created_data_sources: Vec<DataSourceTemplateInfo<C>>,
 ) -> Result<(Vec<C::DataSource>, Vec<Arc<T::Host>>), Error> {
@@ -493,10 +549,11 @@ fn create_dynamic_data_sources<T: RuntimeHostBuilder<C>, C: Blockchain>(
         let data_source = C::DataSource::try_from(info)?;
 
         // Try to create a runtime host for the data source
-        let host = ctx
-            .state
-            .instance
-            .add_dynamic_data_source(data_source.clone(), ctx.inputs.templates.clone())?;
+        let host = ctx.state.instance.add_dynamic_data_source(
+            &logger,
+            data_source.clone(),
+            ctx.inputs.templates.clone(),
+        )?;
 
         match host {
             Some(host) => {
@@ -513,13 +570,28 @@ fn create_dynamic_data_sources<T: RuntimeHostBuilder<C>, C: Blockchain>(
 }
 
 fn persist_dynamic_data_sources<T: RuntimeHostBuilder<C>, C: Blockchain>(
+    logger: Logger,
     ctx: &mut IndexingContext<T, C>,
     entity_cache: &mut EntityCache,
     data_sources: Vec<C::DataSource>,
 ) {
+    if !data_sources.is_empty() {
+        debug!(
+            logger,
+            "Creating {} dynamic data source(s)",
+            data_sources.len()
+        );
+    }
+
     // Add entity operations to the block state in order to persist
     // the dynamic data sources
     for data_source in data_sources.iter() {
+        debug!(
+            logger,
+            "Persisting data_source";
+            "name" => &data_source.name(),
+            "address" => &data_source.address().map(|address| hex::encode(address)).unwrap_or("none".to_string()),
+        );
         entity_cache.add_data_source(data_source);
     }
 

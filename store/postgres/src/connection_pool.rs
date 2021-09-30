@@ -14,13 +14,13 @@ use std::{collections::HashMap, sync::RwLock};
 
 use massbit::cheap_clone::CheapClone;
 use massbit::constraint_violation;
-use massbit::prelude::tokio;
 use massbit::prelude::tokio::time::Instant;
+use massbit::prelude::{tokio, Logger};
 use massbit::util::timed_rw_lock::TimedMutex;
 use massbit::{
     prelude::{
         anyhow::{self, anyhow, bail},
-        debug, error, info,
+        crit, debug, error, info, o,
         tokio::sync::Semaphore,
         CancelGuard, CancelHandle, CancelToken as _, CancelableError, StoreError,
     },
@@ -255,6 +255,7 @@ enum PoolState {
 #[derive(Clone)]
 pub struct ConnectionPool {
     inner: Arc<TimedMutex<PoolState>>,
+    logger: Logger,
 }
 
 /// The name of the pool, mostly for logging, and what purpose it serves.
@@ -290,6 +291,7 @@ impl ConnectionPool {
         pool_size: u32,
         fdw_pool_size: Option<u32>,
         servers: Arc<Vec<ForeignServer>>,
+        logger: &Logger,
     ) -> ConnectionPool {
         let pool = PoolInner::create(
             shard_name,
@@ -297,6 +299,7 @@ impl ConnectionPool {
             postgres_url,
             pool_size,
             fdw_pool_size,
+            logger,
         );
         let pool_state = if pool_name.is_replica() {
             PoolState::Ready(Arc::new(pool))
@@ -305,6 +308,7 @@ impl ConnectionPool {
         };
         ConnectionPool {
             inner: Arc::new(TimedMutex::new(pool_state, format!("pool-{}", shard_name))),
+            logger: logger.clone(),
         }
     }
 
@@ -395,8 +399,9 @@ impl ConnectionPool {
 
     pub fn get_with_timeout_warning(
         &self,
+        logger: &Logger,
     ) -> Result<PooledConnection<ConnectionManager<PgConnection>>, StoreError> {
-        self.get_ready()?.get_with_timeout_warning()
+        self.get_ready()?.get_with_timeout_warning(logger)
     }
 
     /// Get a connection from the pool for foreign data wrapper access;
@@ -408,12 +413,13 @@ impl ConnectionPool {
     /// error, otherwise we try again to get a connection.
     pub fn get_fdw<F>(
         &self,
+        logger: &Logger,
         timeout: F,
     ) -> Result<PooledConnection<ConnectionManager<PgConnection>>, StoreError>
     where
         F: FnMut() -> bool,
     {
-        self.get_ready()?.get_fdw(timeout)
+        self.get_ready()?.get_fdw(logger, timeout)
     }
 
     pub fn connection_detail(&self) -> Result<ForeignServer, StoreError> {
@@ -449,6 +455,7 @@ impl ConnectionPool {
 
 #[derive(Clone)]
 pub struct PoolInner {
+    logger: Logger,
     shard: Shard,
     pool: Pool<ConnectionManager<PgConnection>>,
     // A separate pool for connections that will use foreign data wrappers.
@@ -473,7 +480,10 @@ impl PoolInner {
         postgres_url: String,
         pool_size: u32,
         fdw_pool_size: Option<u32>,
+        logger: &Logger,
     ) -> PoolInner {
+        let logger_store = logger.new(o!("component" => "Store"));
+        let logger_pool = logger.new(o!("component" => "ConnectionPool"));
         // Connect to Postgres
         let conn_manager = ConnectionManager::new(postgres_url.clone());
         let builder: Builder<ConnectionManager<PgConnection>> = Pool::builder()
@@ -493,11 +503,12 @@ impl PoolInner {
         });
 
         let limiter = Arc::new(Semaphore::new(pool_size as usize));
-        info!("Pool successfully connected to Postgres");
+        info!(logger_store, "Pool successfully connected to Postgres");
 
         let max_concurrent_queries = pool_size as usize + *EXTRA_QUERY_PERMITS;
         let query_semaphore = Arc::new(tokio::sync::Semaphore::new(max_concurrent_queries));
         PoolInner {
+            logger: logger_pool,
             shard: Shard::new(shard_name.to_string())
                 .expect("shard_name is a valid name for a shard"),
             postgres_url: postgres_url.clone(),
@@ -601,11 +612,14 @@ impl PoolInner {
 
     pub fn get_with_timeout_warning(
         &self,
+        logger: &Logger,
     ) -> Result<PooledConnection<ConnectionManager<PgConnection>>, StoreError> {
         loop {
             match self.pool.get_timeout(*CONNECTION_TIMEOUT) {
                 Ok(conn) => return Ok(conn),
-                Err(e) => error!("Error checking out connection, retrying"),
+                Err(e) => error!(logger, "Error checking out connection, retrying";
+                   "error" => e.to_string(),
+                ),
             }
         }
     }
@@ -619,6 +633,7 @@ impl PoolInner {
     /// error, otherwise we try again to get a connection.
     pub fn get_fdw<F>(
         &self,
+        logger: &Logger,
         mut timeout: F,
     ) -> Result<PooledConnection<ConnectionManager<PgConnection>>, StoreError>
     where
@@ -629,7 +644,7 @@ impl PoolInner {
             None => {
                 const MSG: &str =
                     "internal error: trying to get fdw connection on a pool that doesn't have any";
-                error!("{}", MSG);
+                error!(logger, "{}", MSG);
                 return Err(constraint_violation!(MSG));
             }
         };
@@ -669,7 +684,8 @@ impl PoolInner {
     ///
     /// If any errors happen during the migration, the process panics
     pub fn setup(&self, servers: Arc<Vec<ForeignServer>>) -> Result<(), StoreError> {
-        fn die(msg: &'static str, err: &dyn std::fmt::Display) -> ! {
+        fn die(logger: &Logger, msg: &'static str, err: &dyn std::fmt::Display) -> ! {
+            crit!(logger, "{}", msg; "error" => err.to_string());
             panic!("{}: {}", msg, err);
         }
 
@@ -677,21 +693,21 @@ impl PoolInner {
         let conn = self.get().map_err(|_| StoreError::DatabaseUnavailable)?;
 
         advisory_lock::lock_migration(&conn)
-            .unwrap_or_else(|err| die("failed to get migration lock", &err));
+            .unwrap_or_else(|err| die(&pool.logger, "failed to get migration lock", &err));
         let result = pool
             .configure_fdw(servers.as_ref())
-            .and_then(|()| migrate_schema(&conn))
+            .and_then(|()| migrate_schema(&pool.logger, &conn))
             .and_then(|()| pool.map_primary())
             .and_then(|()| pool.map_metadata(servers.as_ref()));
         advisory_lock::unlock_migration(&conn).unwrap_or_else(|err| {
-            die("failed to release migration lock", &err);
+            die(&pool.logger, "failed to release migration lock", &err);
         });
-        result.unwrap_or_else(|err| die("migrations failed", &err));
+        result.unwrap_or_else(|err| die(&pool.logger, "migrations failed", &err));
         Ok(())
     }
 
     fn configure_fdw(&self, servers: &Vec<ForeignServer>) -> Result<(), StoreError> {
-        info!("Setting up fdw");
+        info!(&self.logger, "Setting up fdw");
         let conn = self.get()?;
         conn.batch_execute("create extension if not exists postgres_fdw")?;
         conn.transaction(|| {
@@ -713,7 +729,7 @@ impl PoolInner {
     /// We recreate this mapping on every server start so that migrations that
     /// change one of the mapped tables actually show up in the imported tables
     fn map_primary(&self) -> Result<(), StoreError> {
-        info!("Mapping primary");
+        info!(&self.logger, "Mapping primary");
         let conn = self.get()?;
         conn.transaction(|| ForeignServer::map_primary(&conn, &self.shard))
     }
@@ -739,13 +755,13 @@ embed_migrations!("./migrations");
 /// When multiple `graph-node` processes start up at the same time, we ensure
 /// that they do not run migrations in parallel by using `blocking_conn` to
 /// serialize them. The `conn` is used to run the actual migration.
-fn migrate_schema(conn: &PgConnection) -> Result<(), StoreError> {
+fn migrate_schema(logger: &Logger, conn: &PgConnection) -> Result<(), StoreError> {
     // Collect migration logging output
     let mut output = vec![];
 
-    info!("Running migrations");
+    info!(logger, "Running migrations");
     let result = embedded_migrations::run_with_output(conn, &mut output);
-    info!("Migrations finished");
+    info!(logger, "Migrations finished");
 
     // If there was any migration output, log it now
     let msg = String::from_utf8(output).unwrap_or_else(|_| String::from("<unreadable>"));
@@ -754,10 +770,10 @@ fn migrate_schema(conn: &PgConnection) -> Result<(), StoreError> {
     if has_output {
         let msg = msg.replace('\n', " ");
         if let Err(e) = result {
-            error!("Postgres migration error");
+            error!(logger, "Postgres migration error"; "output" => msg);
             return Err(StoreError::Unknown(e.into()));
         } else {
-            debug!("Postgres migration output");
+            debug!(logger, "Postgres migration output"; "output" => msg);
         }
     }
 

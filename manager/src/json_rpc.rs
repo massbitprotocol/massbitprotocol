@@ -40,6 +40,7 @@ struct IndexerDeployParams {
 pub struct JsonRpcServer<R> {
     node_id: NodeId,
     registrar: Arc<R>,
+    logger: Logger,
 }
 
 impl<R: IndexerRegistrar> JsonRpcServer<R> {
@@ -47,10 +48,7 @@ impl<R: IndexerRegistrar> JsonRpcServer<R> {
         &self,
         params: IndexerDeployParams,
     ) -> Result<Value, jsonrpc_core::Error> {
-        info!(
-            "Received indexer request, params {}",
-            format!("{:?}", params)
-        );
+        info!(&self.logger, "Received indexer_deploy request"; "params" => format!("{:?}", params));
 
         match self
             .registrar
@@ -77,17 +75,28 @@ where
 {
     type Server = Server;
 
-    fn serve(port: u16, registrar: Arc<R>, node_id: NodeId) -> Result<Self::Server, io::Error> {
+    fn serve(
+        port: u16,
+        registrar: Arc<R>,
+        node_id: NodeId,
+        logger: Logger,
+    ) -> Result<Self::Server, io::Error> {
+        let logger = logger.new(o!("component" => "JsonRpcServer"));
+
         info!(
-            "Starting JSON-RPC admin server at: http://localhost:{}",
-            port
+            logger,
+            "Starting JSON-RPC admin server at: http://localhost:{}", port
         );
 
         let addr = SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), port);
 
         let mut handler = IoHandler::with_compatibility(Compatibility::Both);
 
-        let arc_self = Arc::new(JsonRpcServer { node_id, registrar });
+        let arc_self = Arc::new(JsonRpcServer {
+            node_id,
+            registrar,
+            logger,
+        });
 
         let (task_sender, task_receiver) =
             mpsc::channel::<Box<dyn std::future::Future<Output = ()> + Send + Unpin>>(100);

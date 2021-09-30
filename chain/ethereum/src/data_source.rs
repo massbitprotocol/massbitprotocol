@@ -12,6 +12,7 @@ use massbit::components::store::StoredDynamicDataSource;
 use massbit::data::indexer::{
     calls_host_fn, DataSourceContext, IndexerManifestValidationError, Link, Source,
 };
+use massbit::prelude::anyhow::Context;
 use massbit::prelude::futures03::future::try_join;
 use massbit::prelude::futures03::stream::FuturesOrdered;
 use massbit::prelude::Entity;
@@ -49,11 +50,12 @@ impl blockchain::DataSource<Chain> for DataSource {
 
     fn match_and_decode(
         &self,
+        logger: &Logger,
         trigger: &<Chain as Blockchain>::TriggerData,
         block: Arc<<Chain as Blockchain>::Block>,
     ) -> Result<Option<<Chain as Blockchain>::MappingTrigger>, Error> {
         let block = block.light_block();
-        self.match_and_decode(trigger, block)
+        self.match_and_decode(trigger, block, logger)
     }
 
     fn name(&self) -> &str {
@@ -430,6 +432,7 @@ impl DataSource {
         &self,
         trigger: &EthereumTrigger,
         block: Arc<LightEthereumBlock>,
+        logger: &Logger,
     ) -> Result<Option<MappingTrigger>, Error> {
         if !self.matches_trigger_address(&trigger) {
             return Ok(None);
@@ -644,7 +647,11 @@ pub struct UnresolvedDataSource {
 
 #[async_trait]
 impl blockchain::UnresolvedDataSource<Chain> for UnresolvedDataSource {
-    async fn resolve(self, resolver: &impl LinkResolver) -> Result<DataSource, anyhow::Error> {
+    async fn resolve(
+        self,
+        resolver: &impl LinkResolver,
+        logger: &Logger,
+    ) -> Result<DataSource, anyhow::Error> {
         let UnresolvedDataSource {
             kind,
             network,
@@ -654,9 +661,9 @@ impl blockchain::UnresolvedDataSource<Chain> for UnresolvedDataSource {
             context,
         } = self;
 
-        // info!(logger, "Resolve data source"; "name" => &name, "source" => &source.start_block);
+        info!(logger, "Resolve data source"; "name" => &name, "source" => &source.start_block);
 
-        let mapping = mapping.resolve(&*resolver).await?;
+        let mapping = mapping.resolve(&*resolver, logger).await?;
 
         DataSource::from_manifest(kind, network, name, source, mapping, context)
     }
@@ -730,6 +737,7 @@ impl blockchain::UnresolvedDataSourceTemplate<Chain> for UnresolvedDataSourceTem
     async fn resolve(
         self,
         resolver: &impl LinkResolver,
+        logger: &Logger,
     ) -> Result<DataSourceTemplate, anyhow::Error> {
         let UnresolvedDataSourceTemplate {
             kind,
@@ -739,14 +747,14 @@ impl blockchain::UnresolvedDataSourceTemplate<Chain> for UnresolvedDataSourceTem
             mapping,
         } = self;
 
-        // info!(logger, "Resolve data source template"; "name" => &name);
+        info!(logger, "Resolve data source template"; "name" => &name);
 
         Ok(DataSourceTemplate {
             kind,
             network,
             name,
             source,
-            mapping: mapping.resolve(resolver).await?,
+            mapping: mapping.resolve(resolver, logger).await?,
         })
     }
 }
@@ -822,7 +830,11 @@ impl Mapping {
 }
 
 impl UnresolvedMapping {
-    pub async fn resolve(self, resolver: &impl LinkResolver) -> Result<Mapping, anyhow::Error> {
+    pub async fn resolve(
+        self,
+        resolver: &impl LinkResolver,
+        logger: &Logger,
+    ) -> Result<Mapping, anyhow::Error> {
         let UnresolvedMapping {
             kind,
             api_version,
@@ -835,7 +847,7 @@ impl UnresolvedMapping {
             file: link,
         } = self;
 
-        // info!(logger, "Resolve mapping"; "link" => &link.link);
+        info!(logger, "Resolve mapping"; "link" => &link.link);
 
         let api_version = semver::Version::parse(&api_version)?;
 
@@ -843,12 +855,14 @@ impl UnresolvedMapping {
             // resolve each abi
             abis.into_iter()
                 .map(|unresolved_abi| async {
-                    Result::<_, Error>::Ok(Arc::new(unresolved_abi.resolve(resolver).await?))
+                    Result::<_, Error>::Ok(Arc::new(
+                        unresolved_abi.resolve(resolver, logger).await?,
+                    ))
                 })
                 .collect::<FuturesOrdered<_>>()
                 .try_collect::<Vec<_>>(),
             async {
-                let module_bytes = resolver.cat(&link).await?;
+                let module_bytes = resolver.cat(&logger, &link).await?;
                 Ok(Arc::new(module_bytes))
             },
         )
@@ -882,15 +896,19 @@ pub struct MappingABI {
 }
 
 impl UnresolvedMappingABI {
-    pub async fn resolve(self, resolver: &impl LinkResolver) -> Result<MappingABI, anyhow::Error> {
-        // info!(
-        //     logger,
-        //     "Resolve ABI";
-        //     "name" => &self.name,
-        //     "link" => &self.file.link
-        // );
+    pub async fn resolve(
+        self,
+        resolver: &impl LinkResolver,
+        logger: &Logger,
+    ) -> Result<MappingABI, anyhow::Error> {
+        info!(
+            logger,
+            "Resolve ABI";
+            "name" => &self.name,
+            "link" => &self.file.link
+        );
 
-        let contract_bytes = resolver.cat(&self.file).await?;
+        let contract_bytes = resolver.cat(logger, &self.file).await?;
         let contract = Contract::load(&*contract_bytes)?;
         Ok(MappingABI {
             name: self.name,

@@ -67,6 +67,8 @@ pub(crate) struct IndexerInfo {
 }
 
 pub struct StoreInner {
+    logger: Logger,
+
     conn: ConnectionPool,
     read_only_pools: Vec<ConnectionPool>,
 
@@ -103,6 +105,7 @@ impl Deref for DeploymentStore {
 
 impl DeploymentStore {
     pub fn new(
+        logger: &Logger,
         pool: ConnectionPool,
         read_only_pools: Vec<ConnectionPool>,
         mut pool_weights: Vec<usize>,
@@ -129,6 +132,7 @@ impl DeploymentStore {
 
         // Create the store
         let store = StoreInner {
+            logger: logger.clone(),
             conn: pool,
             read_only_pools,
             replica_order,
@@ -246,7 +250,7 @@ impl DeploymentStore {
 
     /// Deprecated. Use `with_conn` instead.
     fn get_conn(&self) -> Result<PooledConnection<ConnectionManager<PgConnection>>, StoreError> {
-        self.conn.get_with_timeout_warning()
+        self.conn.get_with_timeout_warning(&self.logger)
     }
 
     pub(crate) fn get(
@@ -389,5 +393,17 @@ impl DeploymentStore {
         ptr: &BlockPtr,
     ) -> Result<usize, StoreError> {
         layout.insert(conn, entity_type, data, block_number(ptr))
+    }
+
+    pub(crate) fn block_ptr(&self, site: &Site) -> Result<Option<BlockPtr>, Error> {
+        let conn = self.get_conn()?;
+        Self::block_ptr_with_conn(&site.deployment, &conn)
+    }
+
+    fn block_ptr_with_conn(
+        indexer_id: &DeploymentHash,
+        conn: &PgConnection,
+    ) -> Result<Option<BlockPtr>, Error> {
+        Ok(deployment::block_ptr(&conn, indexer_id)?)
     }
 }
