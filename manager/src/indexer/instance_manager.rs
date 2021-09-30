@@ -399,8 +399,13 @@ async fn process_block<T: RuntimeHostBuilder<C>, C: Blockchain>(
     let block = Arc::new(block.block);
     let block_ptr = block.ptr();
 
+    let logger = logger.new(o!(
+        "block_number" => format!("{:?}", block_ptr.number),
+        "block_hash" => format!("{}", block_ptr.hash)
+    ));
+
     if triggers.len() == 1 {
-        info!(&logger, "1 trigger found in this block for this subgraph");
+        info!(&logger, "1 trigger found in this block for this indexer");
     } else if triggers.len() > 1 {
         info!(
             &logger,

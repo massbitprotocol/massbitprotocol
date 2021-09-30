@@ -217,7 +217,7 @@ impl<C: Blockchain> Stream for PollingBlockStream<C> {
                                 info!(self.ctx.logger, "Processing {} triggers", total_triggers);
                             }
 
-                            self.ctx.stream_ptr = self.ctx.stream_ptr + block_range_size + 1;
+                            self.ctx.stream_ptr = self.ctx.stream_ptr + block_range_size;
 
                             // Switch to yielding state until next_blocks is depleted
                             self.state = BlockStreamState::YieldingBlocks(Box::new(next_blocks));

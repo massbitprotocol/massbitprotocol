@@ -1,4 +1,7 @@
 -- Your SQL goes here
+-- This requires superuser privileges
+create extension if not exists btree_gist;
+
 create table deployment_schemas
 (
     id         serial
