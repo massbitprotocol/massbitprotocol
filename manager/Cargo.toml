@@ -10,6 +10,7 @@ massbit = { path = "../massbit" }
 massbit-store-postgres = { path = "../store/postgres" }
 chain-ethereum = { path = "../chain/ethereum" }
 runtime-wasm = { path = "../runtime/wasm" }
+logger = { path = "../core/logger" }
 regex = "1.5.4"
 serde = { version = "1.0.126", features = ["derive", "rc"] }
 serde_regex = "1.1.0"

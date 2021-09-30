@@ -10,6 +10,7 @@ mod types;
 use anyhow::{anyhow, Context, Error};
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
+use slog::{self, SendSyncRefUnwindSafeKV};
 use std::any::Any;
 use std::collections::{BTreeMap, HashMap};
 use std::convert::TryFrom;
@@ -23,7 +24,7 @@ use crate::components::indexer::DataSourceTemplateInfo;
 use crate::components::link_resolver::LinkResolver;
 use crate::components::store::{BlockNumber, DeploymentLocator, StoredDynamicDataSource};
 use crate::data::indexer::{DataSourceContext, IndexerManifestValidationError};
-use crate::prelude::CheapClone;
+use crate::prelude::{CheapClone, Logger};
 use crate::runtime::{AscHeap, AscPtr, DeterministicHostError, HostExportError};
 
 pub use block_stream::{BlockStream, TriggersAdapter};
@@ -73,7 +74,10 @@ pub trait Blockchain: Debug + Sized + Send + Sync + Unpin + 'static {
 
     type RuntimeAdapter: RuntimeAdapter<Self>;
 
-    fn triggers_adapter(&self) -> Result<Arc<Self::TriggersAdapter>, Error>;
+    fn triggers_adapter(
+        &self,
+        loc: &DeploymentLocator,
+    ) -> Result<Arc<Self::TriggersAdapter>, Error>;
 
     fn runtime_adapter(&self) -> Arc<Self::RuntimeAdapter>;
 
@@ -116,6 +120,7 @@ pub trait DataSource<C: Blockchain>:
     /// A return of `Ok(None)` mean the trigger does not match.
     fn match_and_decode(
         &self,
+        logger: &Logger,
         trigger: &C::TriggerData,
         block: Arc<C::Block>,
     ) -> Result<Option<C::MappingTrigger>, Error>;
@@ -137,7 +142,11 @@ pub trait DataSource<C: Blockchain>:
 pub trait UnresolvedDataSource<C: Blockchain>:
     'static + Sized + Send + Sync + DeserializeOwned
 {
-    async fn resolve(self, resolver: &impl LinkResolver) -> Result<C::DataSource, anyhow::Error>;
+    async fn resolve(
+        self,
+        resolver: &impl LinkResolver,
+        logger: &Logger,
+    ) -> Result<C::DataSource, anyhow::Error>;
 }
 
 #[async_trait]
@@ -147,6 +156,7 @@ pub trait UnresolvedDataSourceTemplate<C: Blockchain>:
     async fn resolve(
         self,
         resolver: &impl LinkResolver,
+        logger: &Logger,
     ) -> Result<C::DataSourceTemplate, anyhow::Error>;
 }
 
@@ -168,6 +178,11 @@ pub trait MappingTrigger: Send + Sync {
     /// A flexible interface for writing a type to AS memory, any pointer can be returned.
     /// Use `AscPtr::erased` to convert `AscPtr<T>` into `AscPtr<()>`.
     fn to_asc_ptr<H: AscHeap>(self, heap: &mut H) -> Result<AscPtr<()>, DeterministicHostError>;
+
+    /// Additional key-value pairs to be logged with the "Done processing trigger" message.
+    fn logging_extras(&self) -> Box<dyn SendSyncRefUnwindSafeKV> {
+        Box::new(slog::o! {})
+    }
 }
 
 pub struct HostFnCtx<'a> {

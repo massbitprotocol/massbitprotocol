@@ -192,7 +192,7 @@ impl LinkResolverTrait for LinkResolver {
     }
 
     /// Supports links of the form `/ipfs/ipfs_hash` or just `ipfs_hash`.
-    async fn cat(&self, link: &Link) -> Result<Vec<u8>, Error> {
+    async fn cat(&self, logger: &Logger, link: &Link) -> Result<Vec<u8>, Error> {
         // Discard the `/ipfs/` prefix (if present) to get the hash.
         let path = link.link.trim_start_matches("/ipfs/").to_owned();
 
@@ -216,11 +216,13 @@ impl LinkResolverTrait for LinkResolver {
         let path = path.clone();
         let this = self.clone();
         let timeout = self.timeout;
+        let logger = logger.clone();
         let data = retry_policy(self.retry, "ipfs.cat")
             .run(move || {
                 let path = path.clone();
                 let client = client.clone();
                 let this = this.clone();
+                let logger = logger.clone();
                 async move {
                     let data = client.cat_all(path.clone(), timeout).await?.to_vec();
 
@@ -231,10 +233,10 @@ impl LinkResolverTrait for LinkResolver {
                             cache.insert(path.to_owned(), data.clone());
                         }
                     } else {
-                        // debug!(logger, "File too large for cache";
-                        //             "path" => path,
-                        //             "size" => data.len()
-                        // );
+                        debug!(logger, "File too large for cache";
+                                    "path" => path,
+                                    "size" => data.len()
+                        );
                     }
                     Result::<Vec<u8>, reqwest::Error>::Ok(data)
                 }

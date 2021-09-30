@@ -6,7 +6,7 @@ use futures03::prelude::Stream;
 use serde_json::Value;
 
 use crate::data::indexer::Link;
-use crate::prelude::Error;
+use crate::prelude::{Error, Logger};
 
 /// The values that `json_stream` returns. The struct contains the deserialized
 /// JSON value from the input stream, together with the line number from which
@@ -33,7 +33,7 @@ pub trait LinkResolver: Send + Sync + 'static {
         Self: Sized;
 
     /// Fetches the link contents as bytes.
-    async fn cat(&self, link: &Link) -> Result<Vec<u8>, Error>;
+    async fn cat(&self, logger: &Logger, link: &Link) -> Result<Vec<u8>, Error>;
 
     /// Read the contents of `link` and deserialize them into a stream of JSON
     /// values. The values must each be on a single line; newlines are significant

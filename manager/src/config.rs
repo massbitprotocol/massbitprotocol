@@ -1,6 +1,6 @@
 use massbit::prelude::{
     anyhow::{anyhow, bail, Context, Result},
-    info, serde_json, NodeId,
+    info, serde_json, Logger, NodeId,
 };
 use massbit_store_postgres::{Shard as ShardName, PRIMARY_SHARD};
 
@@ -132,15 +132,18 @@ impl Config {
 
     /// Load a configuration file if `opt.config` is set. If not, generate
     /// a config from the command line arguments in `opt`
-    pub fn load(opt: &Opt) -> Result<Config> {
+    pub fn load(logger: &Logger, opt: &Opt) -> Result<Config> {
         if let Some(config) = &opt.config {
-            info!("Reading configuration file `{}`", config);
+            info!(logger, "Reading configuration file `{}`", config);
             let config = read_to_string(config)?;
             let mut config: Config = toml::from_str(&config)?;
             config.validate()?;
             Ok(config)
         } else {
-            info!("Generating configuration from command line arguments");
+            info!(
+                logger,
+                "Generating configuration from command line arguments"
+            );
             Self::from_opt(opt)
         }
     }

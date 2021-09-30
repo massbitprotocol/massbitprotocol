@@ -608,6 +608,9 @@ pub struct StoredDynamicDataSource {
 
 #[async_trait]
 pub trait WritableStore: Send + Sync + 'static {
+    /// Get a pointer to the most recently processed block in the indexer.
+    fn block_ptr(&self) -> Result<Option<BlockPtr>, Error>;
+
     /// Looks up an entity using the given store key at the latest block.
     fn get(&self, key: &EntityKey) -> Result<Option<Entity>, QueryExecutionError>;
 

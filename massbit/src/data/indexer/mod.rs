@@ -393,9 +393,10 @@ impl UnresolvedSchema {
         self,
         id: DeploymentHash,
         resolver: &impl LinkResolver,
+        logger: &Logger,
     ) -> Result<Schema, anyhow::Error> {
-        info!("Resolve schema, link {}", &self.file.link);
-        let schema_bytes = resolver.cat(&self.file).await?;
+        info!(logger, "Resolve schema"; "link" => &self.file.link);
+        let schema_bytes = resolver.cat(logger, &self.file).await?;
         Schema::parse(&String::from_utf8(schema_bytes)?, id)
     }
 }
@@ -470,10 +471,12 @@ impl<C: Blockchain> UnvalidatedIndexerManifest<C> {
         id: DeploymentHash,
         raw: serde_yaml::Mapping,
         resolver: Arc<impl LinkResolver>,
+        logger: &Logger,
         max_spec_version: semver::Version,
     ) -> Result<Self, IndexerManifestResolveError> {
         Ok(Self(
-            IndexerManifest::resolve_from_raw(id, raw, resolver.deref(), max_spec_version).await?,
+            IndexerManifest::resolve_from_raw(id, raw, resolver.deref(), logger, max_spec_version)
+                .await?,
         ))
     }
 
@@ -540,6 +543,7 @@ impl<C: Blockchain> IndexerManifest<C> {
         id: DeploymentHash,
         mut raw: serde_yaml::Mapping,
         resolver: &impl LinkResolver,
+        logger: &Logger,
         max_spec_version: semver::Version,
     ) -> Result<Self, IndexerManifestResolveError> {
         // Inject the IPFS hash as the ID of the indexer into the definition.
@@ -552,7 +556,7 @@ impl<C: Blockchain> IndexerManifest<C> {
         let unresolved: UnresolvedIndexerManifest<C> = serde_yaml::from_value(raw.into())?;
 
         unresolved
-            .resolve(&*resolver, max_spec_version)
+            .resolve(&*resolver, logger, max_spec_version)
             .await
             .map_err(IndexerManifestResolveError::ResolveError)
     }
@@ -586,6 +590,7 @@ impl<C: Blockchain> UnresolvedIndexerManifest<C> {
     pub async fn resolve(
         self,
         resolver: &impl LinkResolver,
+        logger: &Logger,
         max_spec_version: semver::Version,
     ) -> Result<IndexerManifest<C>, anyhow::Error> {
         let UnresolvedIndexerManifest {
@@ -610,15 +615,15 @@ impl<C: Blockchain> UnresolvedIndexerManifest<C> {
         }
 
         let (schema, data_sources, templates) = try_join3(
-            schema.resolve(id.clone(), resolver),
+            schema.resolve(id.clone(), resolver, logger),
             data_sources
                 .into_iter()
-                .map(|ds| ds.resolve(resolver))
+                .map(|ds| ds.resolve(resolver, logger))
                 .collect::<FuturesOrdered<_>>()
                 .try_collect::<Vec<_>>(),
             templates
                 .into_iter()
-                .map(|template| template.resolve(resolver))
+                .map(|template| template.resolve(resolver, logger))
                 .collect::<FuturesOrdered<_>>()
                 .try_collect::<Vec<_>>(),
         )

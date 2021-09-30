@@ -13,6 +13,7 @@ use massbit::blockchain::{self, TriggerData};
 use massbit::prelude::*;
 use massbit::runtime::{asc_new, AscHeap, AscPtr, DeterministicHostError};
 use massbit::semver::Version;
+use massbit::slog::{o, SendSyncRefUnwindSafeKV};
 
 use crate::data_source::{MappingBlockHandler, MappingCallHandler, MappingEventHandler};
 use crate::runtime::abi::{
@@ -176,6 +177,20 @@ impl blockchain::MappingTrigger for MappingTrigger {
                 asc_new(heap, &block)?.erase()
             }
         })
+    }
+
+    fn logging_extras(&self) -> Box<dyn SendSyncRefUnwindSafeKV> {
+        match self {
+            MappingTrigger::Log { handler, log, .. } => Box::new(o! {
+                "signature" => handler.event.to_string(),
+                "address" => format!("{}", &log.address),
+            }),
+            MappingTrigger::Call { handler, call, .. } => Box::new(o! {
+                "function" => handler.function.to_string(),
+                "to" => format!("{}", &call.to),
+            }),
+            MappingTrigger::Block { .. } => Box::new(o! {}),
+        }
     }
 }
 

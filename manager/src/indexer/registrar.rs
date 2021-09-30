@@ -15,6 +15,8 @@ use massbit::prelude::{
 };
 
 pub struct IndexerRegistrar<L, S, P> {
+    logger: Logger,
+    logger_factory: LoggerFactory,
     resolver: Arc<L>,
     store: Arc<S>,
     chains: Arc<BlockchainMap>,
@@ -29,13 +31,18 @@ where
     P: IndexerAssignmentProviderTrait,
 {
     pub fn new(
+        logger_factory: &LoggerFactory,
         node_id: NodeId,
         chains: Arc<BlockchainMap>,
         resolver: Arc<L>,
         store: Arc<S>,
         provider: Arc<P>,
     ) -> Self {
+        let logger = logger_factory.component_logger("IndexerRegistrar");
+        let logger_factory = logger_factory.with_parent(logger.clone());
         IndexerRegistrar {
+            logger,
+            logger_factory,
             resolver: Arc::new(resolver.as_ref().clone().with_retries()),
             store,
             chains,
@@ -60,10 +67,23 @@ where
     ) -> Result<CreateIndexerResponse, Error> {
         let id = self.store.create_indexer(name.clone())?;
 
+        // We don't have a location for the subgraph yet; that will be
+        // assigned when we deploy for real. For logging purposes, make up a
+        // fake locator
+        let logger = self
+            .logger_factory
+            .indexer_logger(&DeploymentLocator::new(DeploymentId(0), hash.clone()));
+
         let raw: serde_yaml::Mapping = {
-            let file_bytes = self.resolver.cat(&hash.to_ipfs_link()).await.map_err(|e| {
-                IndexerRegistrarError::ResolveError(IndexerManifestResolveError::ResolveError(e))
-            })?;
+            let file_bytes = self
+                .resolver
+                .cat(&logger, &hash.to_ipfs_link())
+                .await
+                .map_err(|e| {
+                    IndexerRegistrarError::ResolveError(IndexerManifestResolveError::ResolveError(
+                        e,
+                    ))
+                })?;
 
             serde_yaml::from_slice(&file_bytes)
                 .map_err(|e| IndexerRegistrarError::ResolveError(e.into()))?
@@ -76,6 +96,7 @@ where
         match kind {
             BlockchainKind::Ethereum => {
                 create_indexer_version::<chain_ethereum::Chain, _, _>(
+                    &logger,
                     self.store.clone(),
                     self.chains.cheap_clone(),
                     name.clone(),
@@ -97,6 +118,7 @@ where
 }
 
 async fn create_indexer_version<C: Blockchain, S: IndexerStore, L: LinkResolver>(
+    logger: &Logger,
     store: Arc<S>,
     chains: Arc<BlockchainMap>,
     name: IndexerName,
@@ -109,6 +131,7 @@ async fn create_indexer_version<C: Blockchain, S: IndexerStore, L: LinkResolver>
         deployment,
         raw,
         resolver,
+        &logger,
         MAX_SPEC_VERSION.clone(),
     )
     .map_err(IndexerRegistrarError::ResolveError)

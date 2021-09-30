@@ -9,6 +9,7 @@ use massbit::{
 };
 
 pub struct IndexerAssignmentProvider<L, I> {
+    logger_factory: LoggerFactory,
     indexers_running: Arc<Mutex<HashSet<DeploymentId>>>,
     link_resolver: Arc<L>,
     instance_manager: Arc<I>,
@@ -19,9 +20,13 @@ where
     L: LinkResolver + CheapClone,
     I: IndexerInstanceManager,
 {
-    pub fn new(link_resolver: Arc<L>, instance_manager: I) -> Self {
+    pub fn new(logger_factory: &LoggerFactory, link_resolver: Arc<L>, instance_manager: I) -> Self {
+        let logger = logger_factory.component_logger("IndexerAssignmentProvider");
+        let logger_factory = logger_factory.with_parent(logger.clone());
+
         // Create the subgraph provider
         IndexerAssignmentProvider {
+            logger_factory,
             indexers_running: Arc::new(Mutex::new(HashSet::new())),
             link_resolver: Arc::new(link_resolver.as_ref().cheap_clone().with_retries()),
             instance_manager: Arc::new(instance_manager),
@@ -36,9 +41,11 @@ where
     I: IndexerInstanceManager,
 {
     async fn start(&self, loc: DeploymentLocator) -> Result<(), IndexerAssignmentProviderError> {
+        let logger = self.logger_factory.indexer_logger(&loc);
+
         // If subgraph ID already in set
         if !self.indexers_running.lock().unwrap().insert(loc.id) {
-            info!("Indexer deployment is already running");
+            info!(logger, "Indexer deployment is already running");
 
             return Err(IndexerAssignmentProviderError::AlreadyRunning(
                 loc.hash.clone(),
@@ -47,7 +54,7 @@ where
 
         let file_bytes = self
             .link_resolver
-            .cat(&loc.hash.to_ipfs_link())
+            .cat(&logger, &loc.hash.to_ipfs_link())
             .await
             .map_err(IndexerAssignmentProviderError::ResolveError)?;
 

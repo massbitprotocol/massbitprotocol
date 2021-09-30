@@ -95,9 +95,12 @@ pub struct IndexerStore {
 }
 
 impl IndexerStore {
-    pub fn new(stores: Vec<(Shard, ConnectionPool, Vec<ConnectionPool>, Vec<usize>)>) -> Self {
+    pub fn new(
+        logger: &Logger,
+        stores: Vec<(Shard, ConnectionPool, Vec<ConnectionPool>, Vec<usize>)>,
+    ) -> Self {
         Self {
-            inner: Arc::new(IndexerStoreInner::new(stores)),
+            inner: Arc::new(IndexerStoreInner::new(logger, stores)),
         }
     }
 }
@@ -111,6 +114,7 @@ impl std::ops::Deref for IndexerStore {
 }
 
 pub struct IndexerStoreInner {
+    logger: Logger,
     primary: ConnectionPool,
     stores: HashMap<Shard, Arc<DeploymentStore>>,
     /// Cache for the mapping from deployment id to shard/namespace/id. Only
@@ -123,7 +127,10 @@ pub struct IndexerStoreInner {
 }
 
 impl IndexerStoreInner {
-    pub fn new(stores: Vec<(Shard, ConnectionPool, Vec<ConnectionPool>, Vec<usize>)>) -> Self {
+    pub fn new(
+        logger: &Logger,
+        stores: Vec<(Shard, ConnectionPool, Vec<ConnectionPool>, Vec<usize>)>,
+    ) -> Self {
         let primary = stores
             .iter()
             .find(|(name, _, _, _)| name == &*PRIMARY_SHARD)
@@ -131,14 +138,22 @@ impl IndexerStoreInner {
             .expect("we always have a primary shard");
         let stores = HashMap::from_iter(stores.into_iter().map(
             |(name, main_pool, read_only_pools, weights)| {
+                let logger = logger.new(o!("shard" => name.to_string()));
                 (
                     name,
-                    Arc::new(DeploymentStore::new(main_pool, read_only_pools, weights)),
+                    Arc::new(DeploymentStore::new(
+                        &logger,
+                        main_pool,
+                        read_only_pools,
+                        weights,
+                    )),
                 )
             },
         ));
         let sites = TimedCache::new(SITES_CACHE_TTL);
+        let logger = logger.new(o!("shard" => PRIMARY_SHARD.to_string()));
         IndexerStoreInner {
+            logger,
             primary,
             stores,
             sites,
@@ -167,7 +182,7 @@ impl IndexerStoreInner {
     /// of connections in between getting the first one and trying to get the
     /// second one.
     fn primary_conn(&self) -> Result<primary::Connection, StoreError> {
-        let conn = self.primary.get_with_timeout_warning()?;
+        let conn = self.primary.get_with_timeout_warning(&self.logger)?;
         Ok(primary::Connection::new(conn))
     }
 
@@ -331,6 +346,10 @@ impl WritableStore {
 
 #[async_trait::async_trait]
 impl WritableStoreTrait for WritableStore {
+    fn block_ptr(&self) -> Result<Option<BlockPtr>, Error> {
+        self.writable.block_ptr(self.site.as_ref())
+    }
+
     fn get(&self, key: &EntityKey) -> Result<Option<Entity>, QueryExecutionError> {
         self.writable.get(self.site.cheap_clone(), key)
     }

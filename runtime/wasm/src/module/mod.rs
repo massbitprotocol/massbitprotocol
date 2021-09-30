@@ -894,7 +894,7 @@ impl<C: Blockchain> WasmInstanceContext<C> {
         }
 
         let link = asc_get(self, link_ptr)?;
-        let ipfs_res = self.ctx.host_exports.ipfs_cat(link);
+        let ipfs_res = self.ctx.host_exports.ipfs_cat(&self.ctx.logger, link);
         match ipfs_res {
             Ok(bytes) => asc_new(self, &*bytes).map_err(Into::into),
 
@@ -1252,6 +1252,7 @@ impl<C: Blockchain> WasmInstanceContext<C> {
         let name: String = asc_get(self, name_ptr)?;
         let params: Vec<String> = asc_get(self, params_ptr)?;
         self.ctx.host_exports.data_source_create(
+            &self.ctx.logger,
             &mut self.ctx.state,
             name,
             params,
@@ -1271,6 +1272,7 @@ impl<C: Blockchain> WasmInstanceContext<C> {
         let params: Vec<String> = asc_get(self, params_ptr)?;
         let context: HashMap<_, _> = try_asc_get(self, context_ptr)?;
         self.ctx.host_exports.data_source_create(
+            &self.ctx.logger,
             &mut self.ctx.state,
             name,
             params,
@@ -1312,7 +1314,7 @@ impl<C: Blockchain> WasmInstanceContext<C> {
     ) -> Result<(), DeterministicHostError> {
         let level = LogLevel::from(level).into();
         let msg: String = asc_get(self, msg)?;
-        self.ctx.host_exports.log_log(level, msg)
+        self.ctx.host_exports.log_log(&self.ctx.logger, level, msg)
     }
 
     /// function encode(token: ethereum.Value): Bytes | null
