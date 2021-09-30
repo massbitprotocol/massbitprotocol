@@ -24,7 +24,7 @@ where
         let logger = logger_factory.component_logger("IndexerAssignmentProvider");
         let logger_factory = logger_factory.with_parent(logger.clone());
 
-        // Create the subgraph provider
+        // Create the indexer provider
         IndexerAssignmentProvider {
             logger_factory,
             indexers_running: Arc::new(Mutex::new(HashSet::new())),
@@ -43,7 +43,7 @@ where
     async fn start(&self, loc: DeploymentLocator) -> Result<(), IndexerAssignmentProviderError> {
         let logger = self.logger_factory.indexer_logger(&loc);
 
-        // If subgraph ID already in set
+        // If indexer ID already in set
         if !self.indexers_running.lock().unwrap().insert(loc.id) {
             info!(logger, "Indexer deployment is already running");
 
@@ -63,7 +63,7 @@ where
 
         self.instance_manager
             .cheap_clone()
-            .start_indexer(loc, raw)
+            .start_indexer(loc.clone(), raw)
             .await;
 
         Ok(())

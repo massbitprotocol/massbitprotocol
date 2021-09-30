@@ -670,4 +670,7 @@ pub trait IndexerStore: Send + Sync + 'static {
 
     /// Return the GraphQL schema supplied by the user
     fn input_schema(&self, indexer_id: &DeploymentHash) -> Result<Arc<Schema>, StoreError>;
+
+    /// Find the deployment locators for the subgraph with the given hash
+    fn locators(&self, hash: &str) -> Result<Vec<DeploymentLocator>, StoreError>;
 }

@@ -352,4 +352,35 @@ impl<'a> Connection<'a> {
 
         self.create_site(shard, indexer.clone(), network, true)
     }
+
+    /// Find sites by their subgraph deployment hashes. If `ids` is empty,
+    /// return all sites
+    pub fn find_sites(&self, ids: Vec<String>, only_active: bool) -> Result<Vec<Site>, StoreError> {
+        use deployment_schemas as ds;
+
+        let schemas = if ids.is_empty() {
+            if only_active {
+                ds::table
+                    .filter(ds::active)
+                    .load::<Schema>(self.0.as_ref())?
+            } else {
+                ds::table.load::<Schema>(self.0.as_ref())?
+            }
+        } else {
+            if only_active {
+                ds::table
+                    .filter(ds::active)
+                    .filter(ds::indexer.eq_any(ids))
+                    .load::<Schema>(self.0.as_ref())?
+            } else {
+                ds::table
+                    .filter(ds::indexer.eq_any(ids))
+                    .load::<Schema>(self.0.as_ref())?
+            }
+        };
+        schemas
+            .into_iter()
+            .map(|schema| schema.try_into())
+            .collect()
+    }
 }
