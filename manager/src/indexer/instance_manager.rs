@@ -23,6 +23,7 @@ use massbit::util::lfu_cache::LfuCache;
 
 use super::loader::load_dynamic_data_sources;
 use super::IndexerInstance;
+use massbit::data::indexer::schema::IndexerError;
 
 lazy_static! {
     /// Size limit of the entity LFU cache, in bytes.
@@ -345,6 +346,13 @@ where
                 Err(e) => {
                     let message = format!("{:#}", e).replace("\n", "\t");
                     let err = anyhow!("{}", message);
+                    let error = IndexerError {
+                        indexer_id: id_for_err.clone(),
+                        message,
+                        block_ptr: Some(block_ptr),
+                        handler: None,
+                        deterministic: e.is_deterministic(),
+                    };
                     return Err(err);
                 }
             }
@@ -357,8 +365,19 @@ enum BlockProcessingError {
     #[error("{0:#}")]
     Unknown(Error),
 
-    #[error("indexer stopped while processing triggers")]
+    // The error had a deterministic cause but, for a possibly non-deterministic reason, we chose to
+    // halt processing due to the error.
+    #[error("{0}")]
+    Deterministic(IndexerError),
+
+    #[error("subgraph stopped while processing triggers")]
     Canceled,
+}
+
+impl BlockProcessingError {
+    fn is_deterministic(&self) -> bool {
+        matches!(self, BlockProcessingError::Deterministic(_))
+    }
 }
 
 impl From<Error> for BlockProcessingError {
@@ -520,8 +539,9 @@ async fn process_triggers<C: Blockchain>(
     block: &Arc<C::Block>,
     triggers: Vec<C::TriggerData>,
 ) -> Result<BlockState<C>, MappingError> {
+    use massbit::blockchain::TriggerData;
+
     for trigger in triggers.into_iter() {
-        let start = Instant::now();
         block_state = instance
             .process_trigger(&logger, block, &trigger, block_state)
             .await
@@ -533,6 +553,7 @@ async fn process_triggers<C: Blockchain>(
                 e.context("failed to process trigger".to_string())
             })?;
     }
+
     Ok(block_state)
 }
 
