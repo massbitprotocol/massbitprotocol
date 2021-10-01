@@ -55,10 +55,6 @@ impl IndexerStore {
     }
     pub fn get_active_indexers() -> Vec<Indexer> {
         let conn = establish_connection();
-        match embedded_migrations::run(&conn) {
-            Ok(res) => println!("Finished embedded_migration {:?}", &res),
-            Err(err) => println!("{:?}", &err)
-        };
         match indexers::table.load::<Indexer>(&conn) {
             Ok(results) => results,
             Err(err) => {
