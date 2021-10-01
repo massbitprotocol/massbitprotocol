@@ -276,10 +276,6 @@ impl<C: Blockchain> WasmInstance<C> {
 
         macro_rules! link {
             ($wasm_name:expr, $rust_name:ident, $($param:ident),*) => {
-                link!($wasm_name, $rust_name, "host_export_other", $($param),*)
-            };
-
-            ($wasm_name:expr, $rust_name:ident, $section:expr, $($param:ident),*) => {
                 let modules = valid_module
                     .import_name_to_modules
                     .get($wasm_name)
@@ -394,31 +390,16 @@ impl<C: Blockchain> WasmInstance<C> {
 
         link!("abort", abort, message_ptr, file_name_ptr, line, column);
 
-        link!("store.get", store_get, "host_export_store_get", entity, id);
-        link!(
-            "store.set",
-            store_set,
-            "host_export_store_set",
-            entity,
-            id,
-            data
-        );
+        link!("store.get", store_get, entity, id);
+        link!("store.set", store_set, entity, id, data);
 
         // All IPFS-related functions exported by the host WASM runtime should be listed in the
         // graph::data::subgraph::features::IPFS_ON_ETHEREUM_CONTRACTS_FUNCTION_NAMES array for
         // automatic feature detection to work.
         //
         // For reference, search this codebase for: ff652476-e6ad-40e4-85b8-e815d6c6e5e2
-        link!("ipfs.cat", ipfs_cat, "host_export_ipfs_cat", hash_ptr);
-        link!(
-            "ipfs.map",
-            ipfs_map,
-            "host_export_ipfs_map",
-            link_ptr,
-            callback,
-            user_data,
-            flags
-        );
+        link!("ipfs.cat", ipfs_cat, hash_ptr);
+        link!("ipfs.map", ipfs_map, link_ptr, callback, user_data, flags);
 
         link!("store.remove", store_remove, entity_ptr, id_ptr);
 
