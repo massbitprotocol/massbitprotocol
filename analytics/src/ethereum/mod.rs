@@ -103,7 +103,8 @@ pub async fn process_ethereum_stream(client: &mut StreamoutClient<Timeout<Channe
                                         Ok(_) => {}
                                         Err(err) => log::error!("{:?}",&err)
                                     };
-                                    log::info!("Block {} is processed in {:?}", block_number, start.elapsed());
+                                    log::info!("Block {} with {} receipts and {} transactions is processed in {:?}",
+                                        block_number, block.receipts.len(), block.block.transactions.len(), start.elapsed());
                                 }
                                 _ => {
                                     warn!("Not support this type in Ethereum");

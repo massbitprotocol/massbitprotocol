@@ -1,5 +1,5 @@
 use bigdecimal::{BigDecimal, FromPrimitive};
-use massbit_chain_ethereum::data_type::{LightEthereumBlock};
+use massbit_chain_ethereum::data_type::{LightEthereumBlock, ExtBlock};
 use graph::prelude::web3::types::Transaction;
 use graph::prelude::{Entity, Attribute, Value};
 use crate::ethereum::handler::EthereumHandler;
@@ -26,8 +26,8 @@ impl EthereumRawBlockHandler {
 }
 
 impl EthereumHandler for EthereumRawBlockHandler {
-    fn handle_block(&self, block: &LightEthereumBlock) -> Result<(), anyhow::Error> {
-        let entity = create_entity(block);
+    fn handle_block(&self, block: &ExtBlock) -> Result<(), anyhow::Error> {
+        let entity = create_entity(&block.block);
         let table = Table::new("ethereum_block", Some("t"));
         let columns = create_columns();
         self.storage_adapter.upsert(&table,

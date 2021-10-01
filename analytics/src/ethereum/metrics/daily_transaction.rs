@@ -33,7 +33,7 @@ impl EthereumDailyTransactionHandler {
     }
 }
 impl EthereumHandler for EthereumDailyTransactionHandler {
-    fn handle_block(&self, block: &LightEthereumBlock) -> Result<(), anyhow::Error> {
+    fn handle_block(&self, block: &ExtBlock) -> Result<(), anyhow::Error> {
 
         let table = Table::new("ethereum_daily_transaction", Some("t"));
         let columns = create_columns();
@@ -62,8 +62,9 @@ fn create_columns() -> Vec<Column> {
         "average_gas_price" => ColumnType::BigDecimal
     )
 }
-fn create_entity(network_name: Option<NetworkType>, block: &LightEthereumBlock) -> Entity {
+fn create_entity(network_name: Option<NetworkType>, ext_block: &ExtBlock) -> Entity {
     //let timestamp: u64 = block.timestamp.as_u64();
+    let block = &ext_block.block;
     let timestamp = timestamp_round_to_date(block.timestamp.as_u64());
     let time = UNIX_EPOCH + Duration::from_secs(block.timestamp.as_u64());
     // Create DateTime from SystemTime

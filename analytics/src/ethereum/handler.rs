@@ -7,24 +7,9 @@ use super::metrics::*;
 use std::sync::Arc;
 use crate::storage_adapter::StorageAdapter;
 use massbit_common::NetworkType;
-
+use massbit_common::prelude::tokio;
 pub trait EthereumHandler : Sync + Send {
-    fn handle_block(&self, block: &LightEthereumBlock) -> Result<(), anyhow::Error> {
-        Ok(())
-    }
-    fn handle_blocks(&self, vec_blocks: &Vec<LightEthereumBlock>) -> Result<(), anyhow::Error> {
-        Ok(())
-    }
-    fn handle_transaction(&self, transaction: &Transaction) -> Result<(), anyhow::Error> {
-        Ok(())
-    }
-    fn handle_transactions(&self, transactions: &Vec<Transaction>) -> Result<(), anyhow::Error> {
-        Ok(())
-    }
-    fn handle_receipt(&self, receipt: &TransactionReceipt) -> Result<(), anyhow::Error> {
-        Ok(())
-    }
-    fn handle_receipts(&self, receipts: &HashMap<H256, TransactionReceipt>) -> Result<(), anyhow::Error> {
+    fn handle_block(&self, block: &ExtBlock) -> Result<(), anyhow::Error> {
         Ok(())
     }
 }
@@ -42,47 +27,12 @@ impl EthereumHandlerManager {
         self
     }
     pub fn handle_ext_block(&self, block: &ExtBlock) -> Result<(), anyhow::Error> {
-        self.handle_block(&block.block);
-        self.handle_transactions(&block.block.transactions);
-        self.handle_receipts(&block.receipts);
-        Ok(())
-    }
-}
-
-impl EthereumHandler for EthereumHandlerManager {
-    fn handle_block(&self, block: &LightEthereumBlock) -> Result<(), anyhow::Error> {
         self.handlers.iter().for_each(|handler| {
+            //Todo: move each handler to separated thread
+            // tokio::spawn( async {
+            //     // Process each socket concurrently.
+            // });
             handler.handle_block(block);
-        });
-        Ok(())
-    }
-    fn handle_blocks(&self, vec_blocks: &Vec<LightEthereumBlock>) -> Result<(), anyhow::Error> {
-        self.handlers.iter().for_each(|handler| {
-            handler.handle_blocks(vec_blocks);
-        });
-        Ok(())
-    }
-    fn handle_transaction(&self, transaction: &Transaction) -> Result<(), anyhow::Error> {
-        self.handlers.iter().for_each(|handler| {
-            handler.handle_transaction(transaction);
-        });
-        Ok(())
-    }
-    fn handle_transactions(&self, transactions: &Vec<Transaction>) -> Result<(), anyhow::Error> {
-        self.handlers.iter().for_each(|handler| {
-            handler.handle_transactions(transactions);
-        });
-        Ok(())
-    }
-    fn handle_receipt(&self, receipt: &TransactionReceipt) -> Result<(), anyhow::Error> {
-        self.handlers.iter().for_each(|handler| {
-            handler.handle_receipt(receipt);
-        });
-        Ok(())
-    }
-    fn handle_receipts(&self, receipts: &HashMap<H256, TransactionReceipt>) -> Result<(), anyhow::Error> {
-        self.handlers.iter().for_each(|handler| {
-            handler.handle_receipts(receipts);
         });
         Ok(())
     }

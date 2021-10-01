@@ -11,6 +11,8 @@ use graph::prelude::{Attribute, Entity, Value};
 // use massbit_drive::{FromEntity, ToMap};
 use massbit_chain_ethereum::types::LightEthereumBlock;
 use crate::{create_columns, create_entity};
+use massbit_chain_ethereum::data_type::ExtBlock;
+
 pub struct EthereumRawTransactionHandler {
     pub network: Option<NetworkType>,
     pub storage_adapter: Arc<dyn StorageAdapter>,
@@ -26,8 +28,8 @@ impl EthereumRawTransactionHandler {
 }
 
 impl EthereumHandler for EthereumRawTransactionHandler {
-    fn handle_block(&self, block: &LightEthereumBlock) -> Result<(), anyhow::Error> {
-        let values = block.transactions.iter().map(|tran| {
+    fn handle_block(&self, block: &ExtBlock) -> Result<(), anyhow::Error> {
+        let values = block.block.transactions.iter().map(|tran| {
             create_entity(block, tran)
         }).collect::<Vec<Entity>>();
         let table = Table::new("ethereum_transaction", Some("t"));
@@ -54,13 +56,16 @@ fn create_columns() -> Vec<Column> {
         "timestamp" => ColumnType::BigInt
     )
 }
-fn create_entity(block: &LightEthereumBlock, trans: &Transaction) -> Entity {
+fn create_entity(block: &ExtBlock, trans: &Transaction) -> Entity {
+    let tran_receipt = block.receipts.get(&trans.hash);
+    //tran_receipt.and_then(|r|r.status).
     create_entity!(
         "transaction_hash" => trans.hash,
         "block_hash" => trans.block_hash,
         "block_number" => trans.block_number,
         "nonce" => trans.nonce,
         "sender" => trans.from,
+        //"status" => tran_receipt.
         "receiver" => trans.to,
         "value" => trans.value,
         "gas" => trans.gas,

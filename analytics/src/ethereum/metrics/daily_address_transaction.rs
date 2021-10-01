@@ -33,8 +33,8 @@ impl EthereumDailyAddressTransactionHandler {
 }
 
 impl EthereumHandler for EthereumDailyAddressTransactionHandler {
-    fn handle_block(&self, block: &LightEthereumBlock) -> Result<(), anyhow::Error> {
-        let values = create_entities(block);
+    fn handle_block(&self, block: &ExtBlock) -> Result<(), anyhow::Error> {
+        let values = create_entities(&block.block);
         let table = Table::new("ethereum_daily_address_transaction", Some("t"));
         let columns = create_columns();
         let mut conflict_frag = UpsertConflictFragment::new("ethereum_daily_address_transaction_date_uindex");
