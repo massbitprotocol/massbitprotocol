@@ -20,17 +20,6 @@ use crate::{
     relational::SqlName,
 };
 
-// This is a view not a table. We only read from it
-table! {
-    information_schema.foreign_tables(foreign_table_schema, foreign_table_name) {
-        foreign_table_catalog -> Text,
-        foreign_table_schema -> Text,
-        foreign_table_name -> Text,
-        foreign_server_catalog -> Text,
-        foreign_server_name -> Text,
-    }
-}
-
 // Readonly; we only access the name
 table! {
     pg_namespace(nspname) {
@@ -156,25 +145,6 @@ pub fn has_namespace(conn: &PgConnection, namespace: &Namespace) -> Result<bool,
         nsp::table.filter(nsp::nspname.eq(namespace.as_str())),
     ))
     .get_result::<bool>(conn)?)
-}
-
-/// Drop the schema for `src` if it is a foreign schema imported from
-/// another database. If the schema does not exist, or is not a foreign
-/// schema, do nothing. This crucially depends on the fact that we never mix
-/// foreign and local tables in the same schema.
-pub fn drop_foreign_schema(conn: &PgConnection, src: &Site) -> Result<(), StoreError> {
-    use foreign_tables as ft;
-
-    let is_foreign = select(diesel::dsl::exists(
-        ft::table.filter(ft::foreign_table_schema.eq(src.namespace.as_str())),
-    ))
-    .get_result::<bool>(conn)?;
-
-    if is_foreign {
-        let query = format!("drop schema if exists {} cascade", src.namespace);
-        conn.batch_execute(&query)?;
-    }
-    Ok(())
 }
 
 /// Drop the schema `nsp` and all its contents if it exists, and create it

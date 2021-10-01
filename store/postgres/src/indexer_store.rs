@@ -171,7 +171,7 @@ impl IndexerStoreInner {
             .ok_or_else(|| StoreError::DeploymentNotFound(id.to_string()))?;
         let site = Arc::new(site);
 
-        self.cache_active(&site);
+        self.cache_site(&site);
         Ok(site)
     }
 
@@ -186,10 +186,8 @@ impl IndexerStoreInner {
         Ok(primary::Connection::new(conn))
     }
 
-    fn cache_active(&self, site: &Arc<Site>) {
-        if site.active {
-            self.sites.set(site.deployment.clone(), site.clone());
-        }
+    fn cache_site(&self, site: &Arc<Site>) {
+        self.sites.set(site.deployment.clone(), site.clone());
     }
 
     /// Return the active `Site` for this deployment hash
@@ -200,11 +198,11 @@ impl IndexerStoreInner {
 
         let conn = self.primary_conn()?;
         let site = conn
-            .find_active_site(id)?
+            .find_site(id)?
             .ok_or_else(|| StoreError::DeploymentNotFound(id.to_string()))?;
         let site = Arc::new(site);
 
-        self.cache_active(&site);
+        self.cache_site(&site);
         Ok(site)
     }
 
@@ -312,7 +310,7 @@ impl IndexerStoreTrait for IndexerStore {
     fn locators(&self, hash: &str) -> Result<Vec<DeploymentLocator>, StoreError> {
         Ok(self
             .primary_conn()?
-            .find_sites(vec![hash.to_string()], false)?
+            .find_sites(vec![hash.to_string()])?
             .iter()
             .map(|site| site.into())
             .collect())

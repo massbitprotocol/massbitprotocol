@@ -1,20 +1,12 @@
-use futures::stream::poll_fn;
-use futures::{Async, Poll, Stream};
+use futures::Stream;
 use graphql_parser::schema as s;
-use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use stable_hash::prelude::*;
-use std::collections::btree_map::Entry;
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-use std::env;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::fmt::Display;
-use std::str::FromStr;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, RwLock};
-use std::time::Duration;
+use std::sync::Arc;
 use thiserror::Error;
-use web3::types::{Address, H256};
 
 use crate::blockchain::{Blockchain, DataSource};
 use crate::data::indexer::schema::IndexerDeploymentEntity;
@@ -226,12 +218,6 @@ impl EntityCache {
         for (key, op) in handler_updates {
             self.entity_op(key, op)
         }
-    }
-
-    pub(crate) fn exit_handler_and_discard_changes(&mut self) {
-        assert!(self.in_handler);
-        self.in_handler = false;
-        self.handler_updates.clear();
     }
 
     pub fn get(&mut self, key: &EntityKey) -> Result<Option<Entity>, QueryExecutionError> {

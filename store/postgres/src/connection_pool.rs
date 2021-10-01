@@ -34,11 +34,11 @@ lazy_static::lazy_static! {
     // There is typically no need to configure this. But this can be used to effectivey disable the
     // query semaphore by setting it to a high number.
     static ref EXTRA_QUERY_PERMITS: usize = {
-        std::env::var("GRAPH_EXTRA_QUERY_PERMITS")
+        std::env::var("EXTRA_QUERY_PERMITS")
             .ok()
             .map(|s| {
                 usize::from_str(&s).unwrap_or_else(|_| {
-                    panic!("GRAPH_EXTRA_QUERY_PERMITS must be a number, but is `{}`", s)
+                    panic!("EXTRA_QUERY_PERMITS must be a number, but is `{}`", s)
                 })
             })
             .unwrap_or(0)
@@ -49,18 +49,18 @@ lazy_static::lazy_static! {
     // likely that they should be configured differently for each pool
 
     static ref CONNECTION_TIMEOUT: Duration = {
-        std::env::var("GRAPH_STORE_CONNECTION_TIMEOUT").ok().map(|s| Duration::from_millis(u64::from_str(&s).unwrap_or_else(|_| {
-            panic!("GRAPH_STORE_CONNECTION_TIMEOUT must be a positive number, but is `{}`", s)
+        std::env::var("STORE_CONNECTION_TIMEOUT").ok().map(|s| Duration::from_millis(u64::from_str(&s).unwrap_or_else(|_| {
+            panic!("STORE_CONNECTION_TIMEOUT must be a positive number, but is `{}`", s)
         }))).unwrap_or(Duration::from_secs(5))
     };
     static ref MIN_IDLE: Option<u32> = {
-        std::env::var("GRAPH_STORE_CONNECTION_MIN_IDLE").ok().map(|s| u32::from_str(&s).unwrap_or_else(|_| {
-           panic!("GRAPH_STORE_CONNECTION_MIN_IDLE must be a positive number but is `{}`", s)
+        std::env::var("STORE_CONNECTION_MIN_IDLE").ok().map(|s| u32::from_str(&s).unwrap_or_else(|_| {
+           panic!("STORE_CONNECTION_MIN_IDLE must be a positive number but is `{}`", s)
         }))
     };
     static ref IDLE_TIMEOUT: Duration = {
-        std::env::var("GRAPH_STORE_CONNECTION_IDLE_TIMEOUT").ok().map(|s| Duration::from_secs(u64::from_str(&s).unwrap_or_else(|_| {
-            panic!("GRAPH_STORE_CONNECTION_IDLE_TIMEOUT must be a positive number, but is `{}`", s)
+        std::env::var("STORE_CONNECTION_IDLE_TIMEOUT").ok().map(|s| Duration::from_secs(u64::from_str(&s).unwrap_or_else(|_| {
+            panic!("STORE_CONNECTION_IDLE_TIMEOUT must be a positive number, but is `{}`", s)
         }))).unwrap_or(Duration::from_secs(600))
     };
 }
