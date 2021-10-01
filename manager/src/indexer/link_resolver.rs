@@ -1,21 +1,21 @@
-use anyhow::anyhow;
 use async_trait::async_trait;
 use bytes::BytesMut;
 use futures01::{stream::poll_fn, try_ready};
 use futures03::stream::FuturesUnordered;
 use lazy_static::lazy_static;
 use lru_time_cache::LruCache;
+use serde_json::Value;
+use std::env;
+use std::str::FromStr;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+
 use massbit::data::indexer::Link;
 use massbit::util::futures::RetryConfigNoTimeout;
 use massbit::{
     ipfs_client::{IpfsClient, ObjectStatResponse},
     prelude::{LinkResolver as LinkResolverTrait, *},
 };
-use serde_json::Value;
-use std::env;
-use std::str::FromStr;
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
 /// Environment variable for limiting the `ipfs.map` file size limit.
 const MAX_IPFS_MAP_FILE_SIZE_VAR: &'static str = "GRAPH_MAX_IPFS_MAP_FILE_SIZE";
@@ -55,13 +55,14 @@ fn read_u64_from_env(name: &str) -> Option<u64> {
 fn retry_policy<I: Send + Sync>(
     always_retry: bool,
     op: &'static str,
+    logger: &Logger,
 ) -> RetryConfigNoTimeout<I, massbit::prelude::reqwest::Error> {
     // Even if retries were not requested, networking errors are still retried until we either get
     // a valid HTTP response or a timeout.
     if always_retry {
-        retry(op).no_limit()
+        retry(op, logger).no_limit()
     } else {
-        retry(op)
+        retry(op, logger)
             .no_limit()
             .when(|res: &Result<_, reqwest::Error>| match res {
                 Ok(_) => false,
@@ -88,6 +89,7 @@ async fn select_fastest_client_with_stat(
     path: String,
     timeout: Duration,
     do_retry: bool,
+    logger: Logger,
 ) -> Result<(ObjectStatResponse, Arc<IpfsClient>), Error> {
     let mut err: Option<Error> = None;
 
@@ -97,7 +99,7 @@ async fn select_fastest_client_with_stat(
         .map(|(i, c)| {
             let c = c.cheap_clone();
             let path = path.clone();
-            retry_policy(do_retry, "object.stat").run(move || {
+            retry_policy(do_retry, "object.stat", &logger).run(move || {
                 let path = path.clone();
                 let c = c.cheap_clone();
                 async move { c.object_stat(path, timeout).map_ok(move |s| (s, i)).await }
@@ -192,7 +194,7 @@ impl LinkResolverTrait for LinkResolver {
     }
 
     /// Supports links of the form `/ipfs/ipfs_hash` or just `ipfs_hash`.
-    async fn cat(&self, link: &Link) -> Result<Vec<u8>, Error> {
+    async fn cat(&self, logger: &Logger, link: &Link) -> Result<Vec<u8>, Error> {
         // Discard the `/ipfs/` prefix (if present) to get the hash.
         let path = link.link.trim_start_matches("/ipfs/").to_owned();
 
@@ -205,6 +207,7 @@ impl LinkResolverTrait for LinkResolver {
             path.clone(),
             self.timeout,
             self.retry,
+            logger.cheap_clone(),
         )
         .await?;
 
@@ -216,11 +219,13 @@ impl LinkResolverTrait for LinkResolver {
         let path = path.clone();
         let this = self.clone();
         let timeout = self.timeout;
-        let data = retry_policy(self.retry, "ipfs.cat")
+        let logger = logger.clone();
+        let data = retry_policy(self.retry, "ipfs.cat", &logger)
             .run(move || {
                 let path = path.clone();
                 let client = client.clone();
                 let this = this.clone();
+                let logger = logger.clone();
                 async move {
                     let data = client.cat_all(path.clone(), timeout).await?.to_vec();
 
@@ -231,10 +236,10 @@ impl LinkResolverTrait for LinkResolver {
                             cache.insert(path.to_owned(), data.clone());
                         }
                     } else {
-                        // debug!(logger, "File too large for cache";
-                        //             "path" => path,
-                        //             "size" => data.len()
-                        // );
+                        debug!(logger, "File too large for cache";
+                                    "path" => path,
+                                    "size" => data.len()
+                        );
                     }
                     Result::<Vec<u8>, reqwest::Error>::Ok(data)
                 }
@@ -244,7 +249,7 @@ impl LinkResolverTrait for LinkResolver {
         Ok(data)
     }
 
-    async fn json_stream(&self, link: &Link) -> Result<JsonValueStream, Error> {
+    async fn json_stream(&self, logger: &Logger, link: &Link) -> Result<JsonValueStream, Error> {
         // Discard the `/ipfs/` prefix (if present) to get the hash.
         let path = link.link.trim_start_matches("/ipfs/");
 
@@ -253,6 +258,7 @@ impl LinkResolverTrait for LinkResolver {
             path.to_string(),
             self.timeout,
             self.retry,
+            logger.cheap_clone(),
         )
         .await?;
 

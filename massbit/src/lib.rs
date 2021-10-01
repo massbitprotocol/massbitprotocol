@@ -22,12 +22,16 @@ pub mod runtime;
 /// Wrapper for spawning tasks that abort on panic, which is our default.
 mod task_spawn;
 
+/// Logging utilities
+pub mod log;
+
 pub use task_spawn::{
     block_on, spawn, spawn_allow_panic, spawn_blocking, spawn_blocking_allow_panic, spawn_thread,
 };
 
 pub use petgraph;
 pub use semver;
+pub use slog;
 pub use stable_hash;
 
 /// A prelude that makes all system component traits and data types available.
@@ -53,12 +57,12 @@ pub mod prelude {
     pub use futures03::stream::{StreamExt as _, TryStreamExt};
     pub use hex;
     pub use lazy_static::lazy_static;
-    pub use log::{debug, error, info, warn};
     pub use reqwest;
     pub use serde;
     pub use serde_derive::{Deserialize, Serialize};
     pub use serde_json;
     pub use serde_yaml;
+    pub use slog::{self, crit, debug, error, info, o, trace, warn, Logger};
     pub use std::convert::TryFrom;
     pub use std::fmt::Debug;
     pub use std::iter::FromIterator;
@@ -75,18 +79,28 @@ pub mod prelude {
 
     pub use crate::blockchain::BlockPtr;
 
+    pub use crate::components::ethereum::{
+        EthereumBlock, EthereumBlockWithCalls, EthereumCall, EthereumNetworkIdentifier,
+        LightEthereumBlock, LightEthereumBlockExt,
+    };
     pub use crate::components::indexer::{
-        BlockState, IndexerInstanceManager, RuntimeHost, RuntimeHostBuilder,
+        BlockState, IndexerAssignmentProvider, IndexerInstanceManager, IndexerRegistrar,
+        RuntimeHost, RuntimeHostBuilder,
     };
     pub use crate::components::link_resolver::{JsonStreamValue, JsonValueStream, LinkResolver};
+    pub use crate::components::server::admin::JsonRpcServer;
     pub use crate::components::store::{
-        BlockNumber, EntityCache, EntityKey, EntityModification, StoreError,
+        BlockNumber, EntityCache, EntityKey, EntityModification, IndexerStore, StoreError,
+        BLOCK_NUMBER_MAX,
     };
 
-    pub use crate::data::indexer::{DeploymentHash, IndexerManifest};
+    pub use crate::data::indexer::{
+        DeploymentHash, IndexerAssignmentProviderError, IndexerManifest, IndexerName,
+    };
+    pub use crate::data::schema::{ApiSchema, Schema};
     pub use crate::data::store::scalar::{BigDecimal, BigInt, BigIntSign};
     pub use crate::data::store::{
-        Attribute, Entity, ToEntityId, ToEntityKey, TryIntoEntity, Value,
+        Attribute, Entity, NodeId, ToEntityId, ToEntityKey, TryIntoEntity, Value, ValueType,
     };
 
     pub use crate::cheap_clone::CheapClone;
@@ -94,6 +108,10 @@ pub mod prelude {
         CancelGuard, CancelHandle, CancelToken, CancelableError, FutureExtension,
         SharedCancelGuard, StreamExtension,
     };
+    pub use crate::impl_slog_value;
+    pub use crate::log::codes::LogCode;
+    pub use crate::log::factory::LoggerFactory;
+    pub use crate::log::split::split_logger;
     pub use crate::util::cache_weight::CacheWeight;
     pub use crate::util::futures::{retry, TimeoutError};
 

@@ -35,11 +35,9 @@ chain-reader/data/
 index-manager/generated/*
 !index-manager/generated/.gitkeep
 
-migrations/
 log.html
 output.xml
 report.html
 e2e-test/robot*
 e2e-test/bin*
-log/
 *.log

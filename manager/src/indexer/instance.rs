@@ -1,13 +1,14 @@
 use futures01::sync::mpsc::Sender;
 use lazy_static::lazy_static;
+use std::collections::HashMap;
+use std::env;
+use std::str::FromStr;
+
 use massbit::{blockchain::DataSource, prelude::*};
 use massbit::{
     blockchain::{Block, Blockchain},
     components::indexer::MappingError,
 };
-use std::collections::HashMap;
-use std::env;
-use std::str::FromStr;
 
 pub struct IndexerInstance<C: Blockchain, T: RuntimeHostBuilder<C>> {
     indexer_id: DeploymentHash,
@@ -30,6 +31,7 @@ where
     T: RuntimeHostBuilder<C>,
 {
     pub(crate) fn from_manifest(
+        logger: &Logger,
         manifest: IndexerManifest<C>,
         host_builder: T,
     ) -> Result<Self, Error> {
@@ -49,7 +51,7 @@ where
         // we use the same order here as in the subgraph manifest to make the
         // event processing behavior predictable
         for ds in manifest.data_sources {
-            let host = this.new_host(ds, templates.cheap_clone())?;
+            let host = this.new_host(logger.cheap_clone(), ds, templates.cheap_clone())?;
             this.hosts.push(Arc::new(host))
         }
 
@@ -58,6 +60,7 @@ where
 
     fn new_host(
         &mut self,
+        logger: Logger,
         data_source: C::DataSource,
         templates: Arc<Vec<C::DataSourceTemplate>>,
     ) -> Result<T::Host, Error> {
@@ -67,7 +70,8 @@ where
             if let Some(sender) = self.module_cache.get(&module_hash) {
                 sender.clone()
             } else {
-                let sender = T::spawn_mapping(module_bytes.to_owned(), self.indexer_id.clone())?;
+                let sender =
+                    T::spawn_mapping(module_bytes.to_owned(), self.indexer_id.clone(), logger)?;
                 self.module_cache.insert(module_hash, sender.clone());
                 sender
             }
@@ -83,30 +87,33 @@ where
 
     pub(crate) async fn process_trigger(
         &self,
+        logger: &Logger,
         block: &Arc<C::Block>,
         trigger: &C::TriggerData,
         state: BlockState<C>,
     ) -> Result<BlockState<C>, MappingError> {
-        Self::process_trigger_in_runtime_hosts(&self.hosts, block, trigger, state).await
+        Self::process_trigger_in_runtime_hosts(logger, &self.hosts, block, trigger, state).await
     }
 
     pub(crate) async fn process_trigger_in_runtime_hosts(
+        logger: &Logger,
         hosts: &[Arc<T::Host>],
         block: &Arc<C::Block>,
         trigger: &C::TriggerData,
         mut state: BlockState<C>,
     ) -> Result<BlockState<C>, MappingError> {
         for host in hosts {
-            let mapping_trigger = match host.match_and_decode(trigger, block.cheap_clone())? {
-                // Trigger matches and was decoded as a mapping trigger.
-                Some(mapping_trigger) => mapping_trigger,
+            let mapping_trigger =
+                match host.match_and_decode(logger, trigger, block.cheap_clone())? {
+                    // Trigger matches and was decoded as a mapping trigger.
+                    Some(mapping_trigger) => mapping_trigger,
 
-                // Trigger does not match, do not process it.
-                None => continue,
-            };
+                    // Trigger does not match, do not process it.
+                    None => continue,
+                };
 
             state = host
-                .process_mapping_trigger(block.ptr(), mapping_trigger, state)
+                .process_mapping_trigger(logger, block.ptr(), mapping_trigger, state)
                 .await?;
         }
 
@@ -115,6 +122,7 @@ where
 
     pub(crate) fn add_dynamic_data_source(
         &mut self,
+        logger: &Logger,
         data_source: C::DataSource,
         templates: Arc<Vec<C::DataSourceTemplate>>,
     ) -> Result<Option<Arc<T::Host>>, Error> {
@@ -125,7 +133,7 @@ where
                 <= data_source.creation_block()
         );
 
-        let host = Arc::new(self.new_host(data_source, templates)?);
+        let host = Arc::new(self.new_host(logger.clone(), data_source, templates)?);
 
         Ok(if self.hosts.contains(&host) {
             None

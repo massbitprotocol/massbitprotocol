@@ -8,6 +8,7 @@ use massbit::{
 use massbit::{prelude::serde_json, runtime::DeterministicHostError};
 use runtime_derive::AscType;
 use semver::Version;
+use slog;
 use std::mem::size_of;
 
 ///! Rust types that have with a direct correspondence to an Asc class,
@@ -44,11 +45,11 @@ impl AscType for ArrayBuffer {
 
     fn from_asc_bytes(
         asc_obj: &[u8],
-        api_version: &Version,
+        api_version: Version,
     ) -> Result<Self, DeterministicHostError> {
-        match api_version {
+        match &api_version {
             version if *version <= Version::new(0, 0, 4) => Ok(Self::ApiVersion0_0_4(
-                v0_0_4::ArrayBuffer::from_asc_bytes(asc_obj, api_version)?,
+                v0_0_4::ArrayBuffer::from_asc_bytes(asc_obj, api_version.clone())?,
             )),
             _ => Ok(Self::ApiVersion0_0_5(v0_0_5::ArrayBuffer::from_asc_bytes(
                 asc_obj,
@@ -84,7 +85,7 @@ pub enum TypedArray<T> {
 }
 
 impl<T: AscValue> TypedArray<T> {
-    pub fn new<H: AscHeap + ?Sized>(
+    pub(crate) fn new<H: AscHeap + ?Sized>(
         content: &[T],
         heap: &mut H,
     ) -> Result<Self, DeterministicHostError> {
@@ -119,11 +120,11 @@ impl<T> AscType for TypedArray<T> {
 
     fn from_asc_bytes(
         asc_obj: &[u8],
-        api_version: &Version,
+        api_version: Version,
     ) -> Result<Self, DeterministicHostError> {
-        match api_version {
+        match &api_version {
             version if *version <= Version::new(0, 0, 4) => Ok(Self::ApiVersion0_0_4(
-                v0_0_4::TypedArray::from_asc_bytes(asc_obj, api_version)?,
+                v0_0_4::TypedArray::from_asc_bytes(asc_obj, api_version.clone())?,
             )),
             _ => Ok(Self::ApiVersion0_0_5(v0_0_5::TypedArray::from_asc_bytes(
                 asc_obj,
@@ -214,11 +215,11 @@ impl AscType for AscString {
 
     fn from_asc_bytes(
         asc_obj: &[u8],
-        api_version: &Version,
+        api_version: Version,
     ) -> Result<Self, DeterministicHostError> {
-        match api_version {
+        match &api_version {
             version if *version <= Version::new(0, 0, 4) => Ok(Self::ApiVersion0_0_4(
-                v0_0_4::AscString::from_asc_bytes(asc_obj, api_version)?,
+                v0_0_4::AscString::from_asc_bytes(asc_obj, api_version.clone())?,
             )),
             _ => Ok(Self::ApiVersion0_0_5(v0_0_5::AscString::from_asc_bytes(
                 asc_obj,
@@ -283,11 +284,11 @@ impl<T> AscType for Array<T> {
 
     fn from_asc_bytes(
         asc_obj: &[u8],
-        api_version: &Version,
+        api_version: Version,
     ) -> Result<Self, DeterministicHostError> {
-        match api_version {
+        match &api_version {
             version if *version <= Version::new(0, 0, 4) => Ok(Self::ApiVersion0_0_4(
-                v0_0_4::Array::from_asc_bytes(asc_obj, api_version)?,
+                v0_0_4::Array::from_asc_bytes(asc_obj, api_version.clone())?,
             )),
             _ => Ok(Self::ApiVersion0_0_5(v0_0_5::Array::from_asc_bytes(
                 asc_obj,
@@ -387,7 +388,7 @@ impl AscType for EnumPayload {
 
     fn from_asc_bytes(
         asc_obj: &[u8],
-        api_version: &Version,
+        api_version: Version,
     ) -> Result<Self, DeterministicHostError> {
         Ok(EnumPayload(u64::from_asc_bytes(asc_obj, api_version)?))
     }
@@ -579,7 +580,7 @@ pub(crate) type AscTypedMapEntryArray<K, V> = Array<AscPtr<AscTypedMapEntry<K, V
 #[repr(C)]
 #[derive(AscType)]
 pub struct AscTypedMap<K, V> {
-    pub entries: AscPtr<AscTypedMapEntryArray<K, V>>,
+    pub(crate) entries: AscPtr<AscTypedMapEntryArray<K, V>>,
 }
 
 impl AscIndexId for AscTypedMap<AscString, AscEnum<StoreValueKind>> {
@@ -643,6 +644,27 @@ pub struct AscBigDecimal {
 
 impl AscIndexId for AscBigDecimal {
     const INDEX_ASC_TYPE_ID: IndexForAscTypeId = IndexForAscTypeId::BigDecimal;
+}
+
+#[repr(u32)]
+pub(crate) enum LogLevel {
+    Critical,
+    Error,
+    Warning,
+    Info,
+    Debug,
+}
+
+impl From<LogLevel> for slog::Level {
+    fn from(level: LogLevel) -> slog::Level {
+        match level {
+            LogLevel::Critical => slog::Level::Critical,
+            LogLevel::Error => slog::Level::Error,
+            LogLevel::Warning => slog::Level::Warning,
+            LogLevel::Info => slog::Level::Info,
+            LogLevel::Debug => slog::Level::Debug,
+        }
+    }
 }
 
 #[repr(C)]

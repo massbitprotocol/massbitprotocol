@@ -17,8 +17,11 @@ lazy_static! {
         .unwrap_or(100);
 }
 
+use crate::components::store::{DeploymentLocator, WritableStore};
 #[cfg(debug_assertions)]
 use fail::fail_point;
+use std::cmp;
+
 enum BlockStreamState<C>
 where
     C: Blockchain,
@@ -54,17 +57,32 @@ struct BlockStreamContext<C>
 where
     C: Blockchain,
 {
+    logger: Logger,
+    indexer_store: Arc<dyn WritableStore>,
     adapter: Arc<C::TriggersAdapter>,
     filter: Arc<C::TriggerFilter>,
-    stream_block_number: BlockNumber,
+    // Current block pointer of stream
+    start_blocks: Vec<BlockNumber>,
+    previous_triggers_per_block: f64,
+    // Not a BlockNumber, but the difference between two block numbers
+    previous_block_range_size: BlockNumber,
+    // Not a BlockNumber, but the difference between two block numbers
+    max_block_range_size: BlockNumber,
+    target_triggers_per_block_range: u64,
 }
 
 impl<C: Blockchain> Clone for BlockStreamContext<C> {
     fn clone(&self) -> Self {
         Self {
+            indexer_store: self.indexer_store.cheap_clone(),
+            logger: self.logger.clone(),
             adapter: self.adapter.clone(),
             filter: self.filter.clone(),
-            stream_block_number: self.stream_block_number,
+            start_blocks: self.start_blocks.clone(),
+            previous_triggers_per_block: self.previous_triggers_per_block,
+            previous_block_range_size: self.previous_block_range_size,
+            max_block_range_size: self.max_block_range_size,
+            target_triggers_per_block_range: self.target_triggers_per_block_range,
         }
     }
 }
@@ -88,16 +106,27 @@ where
     C: Blockchain,
 {
     pub fn new(
+        logger: Logger,
+        indexer_store: Arc<dyn WritableStore>,
         adapter: Arc<C::TriggersAdapter>,
         filter: Arc<C::TriggerFilter>,
-        start_block: BlockNumber,
+        start_blocks: Vec<BlockNumber>,
+        max_block_range_size: BlockNumber,
+        target_triggers_per_block_range: u64,
     ) -> Self {
         PollingBlockStream {
             state: BlockStreamState::BeginReconciliation,
             ctx: BlockStreamContext {
+                logger,
+                indexer_store,
                 adapter,
                 filter,
-                stream_block_number: start_block,
+                start_blocks,
+                // A high number here forces a slow start, with a range of 1.
+                previous_triggers_per_block: 1_000_000.0,
+                previous_block_range_size: 1,
+                max_block_range_size,
+                target_triggers_per_block_range,
             },
         }
     }
@@ -124,16 +153,64 @@ where
 
     /// Determine the next reconciliation step. Does not modify Store or ChainStore.
     async fn get_next_step(&self) -> Result<ReconciliationStep<C>, Error> {
-        let from = self.stream_block_number;
+        let ctx = self.clone();
+        let start_blocks = self.start_blocks.clone();
+        let max_block_range_size = self.max_block_range_size;
 
-        let blocks = self
-            .adapter
-            .scan_triggers(from, from + *STREAM_BLOCK_RANGE_SIZE, &self.filter)
-            .await?;
+        let indexer_ptr = ctx.indexer_store.block_ptr()?;
+
+        // Start with first block after subgraph ptr; if the ptr is None,
+        // then we start with the genesis block
+        let from = indexer_ptr.map_or(0, |ptr| ptr.number + 1);
+
+        // Get the next subsequent data source start block to ensure the block
+        // range is aligned with data source. This is not necessary for
+        // correctness, but it avoids an ineffecient situation such as the range
+        // being 0..100 and the start block for a data source being 99, then
+        // `calls_in_block_range` would request unecessary traces for the blocks
+        // 0 to 98 because the start block is within the range.
+        let next_start_block: BlockNumber = start_blocks
+            .into_iter()
+            .filter(|block_num| block_num > &from)
+            .min()
+            .unwrap_or(BLOCK_NUMBER_MAX);
+
+        let to_limit = next_start_block - 1;
+
+        // Calculate the range size according to the target number of triggers,
+        // respecting the global maximum and also not increasing too
+        // drastically from the previous block range size.
+        //
+        // An example of the block range dynamics:
+        // - Start with a block range of 1, target of 1000.
+        // - Scan 1 block:
+        //   0 triggers found, max_range_size = 10, range_size = 10
+        // - Scan 10 blocks:
+        //   2 triggers found, 0.2 per block, range_size = 1000 / 0.2 = 5000
+        // - Scan 5000 blocks:
+        //   10000 triggers found, 2 per block, range_size = 1000 / 2 = 500
+        // - Scan 500 blocks:
+        //   1000 triggers found, 2 per block, range_size = 1000 / 2 = 500
+        let range_size_upper_limit = max_block_range_size.min(ctx.previous_block_range_size * 10);
+        let range_size = if ctx.previous_triggers_per_block == 0.0 {
+            range_size_upper_limit
+        } else {
+            (self.target_triggers_per_block_range as f64 / ctx.previous_triggers_per_block)
+                .max(1.0)
+                .min(range_size_upper_limit as f64) as BlockNumber
+        };
+        let to = cmp::min(from + range_size - 1, to_limit);
+
+        info!(
+            ctx.logger,
+            "Scanning blocks [{}, {}]", from, to;
+            "range_size" => range_size
+        );
+
+        let blocks = self.adapter.scan_triggers(from, to, &self.filter).await?;
 
         Ok(ReconciliationStep::ProcessDescendantBlocks(
-            blocks,
-            *STREAM_BLOCK_RANGE_SIZE,
+            blocks, range_size,
         ))
     }
 }
@@ -159,12 +236,12 @@ impl<C: Blockchain> Stream for PollingBlockStream<C> {
                         Poll::Ready(Ok(NextBlocks::Blocks(next_blocks, block_range_size))) => {
                             let total_triggers =
                                 next_blocks.iter().map(|b| b.trigger_count()).sum::<usize>();
+                            self.ctx.previous_triggers_per_block =
+                                total_triggers as f64 / block_range_size as f64;
+                            self.ctx.previous_block_range_size = block_range_size;
                             if total_triggers > 0 {
-                                info!("Processing {} triggers", total_triggers);
+                                debug!(self.ctx.logger, "Processing {} triggers", total_triggers);
                             }
-
-                            self.ctx.stream_block_number =
-                                self.ctx.stream_block_number + block_range_size + 1;
 
                             // Switch to yielding state until next_blocks is depleted
                             self.state = BlockStreamState::YieldingBlocks(Box::new(next_blocks));

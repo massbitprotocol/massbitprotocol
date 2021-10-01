@@ -2987,7 +2987,7 @@ dependencies = [
  "lru_time_cache",
  "maybe-owned",
  "pin-utils",
- "postgres 0.19.1",
+ "postgres",
  "rand 0.6.5",
  "serde",
  "stable-hash",
@@ -3587,7 +3587,7 @@ dependencies = [
  "massbit-chain-solana",
  "massbit-chain-substrate",
  "node-template-runtime",
- "postgres 0.19.1",
+ "postgres",
  "prost",
  "rand 0.8.4",
  "reqwest 0.10.10",
@@ -3642,32 +3642,6 @@ dependencies = [
  "tokio 1.11.0",
  "tokio-postgres",
  "uuid 0.8.2",
-]
-
-[[package]]
-name = "indexer"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "atomic_refcell",
- "bytes 0.5.6",
- "chain-ethereum",
- "fail",
- "futures 0.1.31",
- "futures 0.3.17",
- "graphql-parser",
- "hex",
- "lazy_static",
- "lru_time_cache",
- "massbit",
- "pretty_assertions",
- "runtime-wasm",
- "semver 1.0.4",
- "serde",
- "serde_json",
- "serde_yaml",
- "walkdir",
 ]
 
 [[package]]
@@ -4235,6 +4209,47 @@ dependencies = [
 ]
 
 [[package]]
+name = "manager"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "atomic_refcell",
+ "bytes 0.5.6",
+ "chain-ethereum",
+ "clap",
+ "crossbeam-channel",
+ "diesel",
+ "env_logger 0.9.0",
+ "fail",
+ "futures 0.1.31",
+ "futures 0.3.17",
+ "git-testament",
+ "graphql-parser",
+ "hex",
+ "http 0.1.21",
+ "jsonrpc-http-server",
+ "lazy_static",
+ "logger",
+ "lru_time_cache",
+ "massbit",
+ "massbit-store-postgres",
+ "pretty_assertions",
+ "regex",
+ "runtime-wasm",
+ "semver 1.0.4",
+ "serde",
+ "serde_json",
+ "serde_regex",
+ "serde_yaml",
+ "shellexpand",
+ "structopt",
+ "toml",
+ "url 2.2.2",
+ "walkdir",
+]
+
+[[package]]
 name = "maplit"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4244,6 +4259,7 @@ checksum = "3e2e65a1a2e43cfcb47a895c4c8b10d1f4a61097f9f254f183aee60cad9c651d"
 name = "massbit"
 version = "0.1.0"
 dependencies = [
+ "Inflector",
  "anyhow",
  "async-trait",
  "bigdecimal",
@@ -4257,14 +4273,17 @@ dependencies = [
  "graphql-parser",
  "hex",
  "http 0.2.3",
+ "isatty",
  "itertools 0.10.1",
  "lazy_static",
  "log 0.4.14",
  "num-bigint",
  "num-traits",
  "num_cpus",
+ "parking_lot 0.11.2",
  "petgraph 0.6.0",
  "priority-queue",
+ "rand 0.6.5",
  "reqwest 0.11.4",
  "semver 1.0.4",
  "serde",
@@ -4272,6 +4291,10 @@ dependencies = [
  "serde_json",
  "serde_plain",
  "serde_yaml",
+ "slog",
+ "slog-async",
+ "slog-envlogger",
+ "slog-term",
  "stable-hash",
  "strum 0.21.0",
  "strum_macros 0.21.1",
@@ -4280,6 +4303,7 @@ dependencies = [
  "tokio 1.11.0",
  "tokio-retry 0.3.0",
  "tokio-stream",
+ "url 2.2.2",
  "wasmparser 0.78.2",
  "web3",
 ]
@@ -4434,6 +4458,40 @@ dependencies = [
  "wasmparser 0.80.1",
  "wasmtime",
  "web3",
+]
+
+[[package]]
+name = "massbit-store-postgres"
+version = "0.1.0"
+dependencies = [
+ "Inflector",
+ "anyhow",
+ "async-trait",
+ "backtrace",
+ "blake3 0.3.8",
+ "chain-ethereum",
+ "derive_more",
+ "diesel",
+ "diesel-derive-enum",
+ "diesel-dynamic-schema",
+ "diesel_derives",
+ "diesel_migrations",
+ "fallible-iterator",
+ "futures 0.1.31",
+ "git-testament",
+ "graph-graphql",
+ "graphql-parser",
+ "itertools 0.10.1",
+ "lazy_static",
+ "lru_time_cache",
+ "massbit",
+ "maybe-owned",
+ "pin-utils",
+ "postgres",
+ "rand 0.6.5",
+ "serde",
+ "stable-hash",
+ "uuid 0.8.2",
 ]
 
 [[package]]
@@ -5819,39 +5877,6 @@ dependencies = [
 
 [[package]]
 name = "postgres"
-version = "0.1.0"
-dependencies = [
- "Inflector",
- "anyhow",
- "async-trait",
- "backtrace",
- "blake3 0.3.8",
- "chain-ethereum",
- "derive_more",
- "diesel",
- "diesel-derive-enum",
- "diesel-dynamic-schema",
- "diesel_derives",
- "diesel_migrations",
- "fallible-iterator",
- "futures 0.1.31",
- "git-testament",
- "graphql-parser",
- "itertools 0.10.1",
- "lazy_static",
- "lru_time_cache",
- "massbit",
- "maybe-owned",
- "pin-utils",
- "postgres 0.19.1",
- "rand 0.6.5",
- "serde",
- "stable-hash",
- "uuid 0.8.2",
-]
-
-[[package]]
-name = "postgres"
 version = "0.19.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c7871ee579860d8183f542e387b176a25f2656b9fb5211e045397f745a68d1c2"
@@ -6751,6 +6776,10 @@ dependencies = [
  "never",
  "runtime-derive",
  "semver 1.0.4",
+ "slog",
+ "slog-async",
+ "slog-envlogger",
+ "slog-term",
  "strum 0.21.0",
  "strum_macros 0.21.1",
  "tiny-keccak 1.5.0",

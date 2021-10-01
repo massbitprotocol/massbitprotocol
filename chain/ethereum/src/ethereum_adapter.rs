@@ -1,11 +1,5 @@
 use ethabi::{ParamType, Token};
 use futures::prelude::*;
-use massbit::blockchain::block_stream::BlockWithTriggers;
-use massbit::prelude::web3::types::H256;
-use massbit::prelude::{
-    futures03::{self, compat::Future01CompatExt, FutureExt, StreamExt, TryStreamExt},
-    *,
-};
 use std::collections::{HashMap, HashSet};
 use web3::{
     types::{
@@ -15,6 +9,13 @@ use web3::{
     Web3,
 };
 
+use massbit::blockchain::block_stream::BlockWithTriggers;
+use massbit::prelude::web3::types::H256;
+use massbit::prelude::{
+    futures03::{self, compat::Future01CompatExt, FutureExt, StreamExt, TryStreamExt},
+    *,
+};
+
 use crate::adapter::{
     EthGetLogsFilter, EthereumAdapter as EthereumAdapterTrait, EthereumCallFilter,
     EthereumLogFilter,
@@ -22,8 +23,7 @@ use crate::adapter::{
 use crate::chain::BlockFinality;
 use crate::transport::Transport;
 use crate::trigger::{EthereumBlockTriggerType, EthereumTrigger};
-use crate::types::{LightEthereumBlock, LightEthereumBlockExt};
-use crate::{EthereumCall, EthereumContractCall, EthereumContractCallError, TriggerFilter};
+use crate::{EthereumContractCall, EthereumContractCallError, TriggerFilter};
 
 lazy_static! {
     static ref TRACE_STREAM_STEP_SIZE: BlockNumber = std::env::var("ETHEREUM_TRACE_STREAM_STEP_SIZE")
@@ -102,6 +102,7 @@ const GETH_ETH_CALL_ERRORS: &[&str] = &[
 
 #[derive(Clone)]
 pub struct EthereumAdapter {
+    logger: Logger,
     url_hostname: Arc<String>,
     web3: Arc<Web3<Transport>>,
     provider: String,
@@ -111,6 +112,7 @@ pub struct EthereumAdapter {
 impl CheapClone for EthereumAdapter {
     fn cheap_clone(&self) -> Self {
         Self {
+            logger: self.logger.clone(),
             provider: self.provider.clone(),
             url_hostname: self.url_hostname.cheap_clone(),
             web3: self.web3.cheap_clone(),
@@ -121,6 +123,7 @@ impl CheapClone for EthereumAdapter {
 
 impl EthereumAdapter {
     pub async fn new(
+        logger: Logger,
         provider: String,
         url: &str,
         transport: Transport,
@@ -135,6 +138,7 @@ impl EthereumAdapter {
         let web3 = Arc::new(Web3::new(transport));
 
         EthereumAdapter {
+            logger,
             provider,
             url_hostname: Arc::new(hostname),
             web3,
@@ -144,13 +148,14 @@ impl EthereumAdapter {
 
     async fn traces(
         self,
+        logger: Logger,
         from: BlockNumber,
         to: BlockNumber,
         addresses: Vec<H160>,
     ) -> Result<Vec<Trace>, Error> {
         let eth = self.clone();
 
-        retry("trace_filter RPC call")
+        retry("trace_filter RPC call", &logger)
             .limit(*REQUEST_RETRIES)
             .timeout_secs(*JSON_RPC_TIMEOUT)
             .run(move || {
@@ -166,15 +171,23 @@ impl EthereumAdapter {
                         .build(),
                 };
 
+                let logger_for_triggers = logger.clone();
+                let logger_for_error = logger.clone();
                 eth.web3
                     .trace()
                     .filter(trace_filter)
                     .map(move |traces| {
                         if traces.len() > 0 {
                             if to == from {
-                                debug!("Received {} traces for block {}", traces.len(), to);
+                                debug!(
+                                    logger_for_triggers,
+                                    "Received {} traces for block {}",
+                                    traces.len(),
+                                    to
+                                );
                             } else {
                                 debug!(
+                                    logger_for_triggers,
                                     "Received {} traces for blocks [{}, {}]",
                                     traces.len(),
                                     from,
@@ -188,8 +201,11 @@ impl EthereumAdapter {
                     .then(move |result| {
                         if result.is_err() {
                             debug!(
+                                logger_for_error,
                                 "Error querying traces error = {:?} from = {:?} to = {:?}",
-                                result, from, to
+                                result,
+                                from,
+                                to
                             );
                         }
                         result
@@ -211,6 +227,7 @@ impl EthereumAdapter {
 
     async fn logs_with_sigs(
         &self,
+        logger: Logger,
         from: BlockNumber,
         to: BlockNumber,
         filter: Arc<EthGetLogsFilter>,
@@ -218,7 +235,7 @@ impl EthereumAdapter {
     ) -> Result<Vec<Log>, TimeoutError<web3::error::Error>> {
         let eth_adapter = self.clone();
 
-        retry("eth_getLogs RPC call")
+        retry("eth_getLogs RPC call", &logger)
             .when(move |res: &Result<_, web3::error::Error>| match res {
                 Ok(_) => false,
                 Err(e) => !too_many_logs_fingerprints
@@ -249,6 +266,7 @@ impl EthereumAdapter {
 
     fn trace_stream(
         self,
+        logger: &Logger,
         from: BlockNumber,
         to: BlockNumber,
         addresses: Vec<H160>,
@@ -263,6 +281,7 @@ impl EthereumAdapter {
         let step_size = *TRACE_STREAM_STEP_SIZE;
 
         let eth = self.clone();
+        let logger = logger.to_owned();
         stream::unfold(from, move |start| {
             if start > to {
                 return None;
@@ -270,13 +289,13 @@ impl EthereumAdapter {
             let end = (start + step_size - 1).min(to);
             let new_start = end + 1;
             if start == end {
-                debug!("Requesting traces for block {}", start);
+                debug!(logger, "Requesting traces for block {}", start);
             } else {
-                debug!("Requesting traces for blocks [{}, {}]", start, end);
+                debug!(logger, "Requesting traces for blocks [{}, {}]", start, end);
             }
             Some(futures::future::ok((
                 eth.clone()
-                    .traces(start, end, addresses.clone())
+                    .traces(logger.cheap_clone(), start, end, addresses.clone())
                     .boxed()
                     .compat(),
                 new_start,
@@ -289,6 +308,7 @@ impl EthereumAdapter {
 
     fn log_stream(
         &self,
+        logger: Logger,
         from: BlockNumber,
         to: BlockNumber,
         filter: EthGetLogsFilter,
@@ -322,6 +342,7 @@ impl EthereumAdapter {
         // node returns an error that signifies the request is to heavy to process, the range will
         // be broken down to smaller steps.
         futures03::stream::try_unfold((from, step), move |(start, step)| {
+            let logger = logger.cheap_clone();
             let filter = filter.cheap_clone();
             let eth = eth.cheap_clone();
 
@@ -332,7 +353,13 @@ impl EthereumAdapter {
 
                 let end = (start + step).min(to);
                 let res = eth
-                    .logs_with_sigs(start, end, filter.cheap_clone(), TOO_MANY_LOGS_FINGERPRINTS)
+                    .logs_with_sigs(
+                        logger.cheap_clone(),
+                        start,
+                        end,
+                        filter.cheap_clone(),
+                        TOO_MANY_LOGS_FINGERPRINTS,
+                    )
                     .await;
 
                 match res {
@@ -364,6 +391,7 @@ impl EthereumAdapter {
 
     fn call(
         &self,
+        logger: Logger,
         contract_address: Address,
         call_data: Bytes,
         block_ptr: BlockPtr,
@@ -378,7 +406,7 @@ impl EthereumAdapter {
             BlockId::Hash(block_ptr.hash_as_h256())
         };
 
-        retry("eth_call RPC call")
+        retry("eth_call RPC call", &logger)
             .when(|result| match result {
                 Ok(_) | Err(EthereumContractCallError::Revert(_)) => false,
                 Err(_) => true,
@@ -505,17 +533,18 @@ impl EthereumAdapter {
 
     pub(crate) fn logs_in_block_range(
         &self,
+        logger: &Logger,
         from: BlockNumber,
         to: BlockNumber,
         log_filter: EthereumLogFilter,
     ) -> DynTryFuture<'static, Vec<Log>, Error> {
         let eth: Self = self.cheap_clone();
-        futures03::stream::iter(
-            log_filter
-                .eth_logs_filters
-                .into_iter()
-                .map(move |filter| eth.cheap_clone().log_stream(from, to, filter)),
-        )
+        let logger = logger.clone();
+
+        futures03::stream::iter(log_filter.eth_logs_filters.into_iter().map(move |filter| {
+            eth.cheap_clone()
+                .log_stream(logger.cheap_clone(), from, to, filter)
+        }))
         // Real limits on the number of parallel requests are imposed within the adapter.
         .buffered(1000)
         .try_concat()
@@ -524,6 +553,7 @@ impl EthereumAdapter {
 
     pub(crate) fn calls_in_block_range<'a>(
         &self,
+        logger: &Logger,
         from: BlockNumber,
         to: BlockNumber,
         call_filter: &'a EthereumCallFilter,
@@ -546,7 +576,7 @@ impl EthereumAdapter {
         }
 
         Box::new(
-            eth.trace_stream(from, to, addresses)
+            eth.trace_stream(&logger, from, to, addresses)
                 .filter_map(|trace| EthereumCall::try_from_trace(&trace))
                 .filter(move |call| {
                     // `trace_filter` can only filter by calls `to` an address and
@@ -561,13 +591,14 @@ impl EthereumAdapter {
     /// Request blocks by hash through JSON-RPC.
     fn load_blocks_rpc(
         &self,
+        logger: Logger,
         ids: Vec<H256>,
     ) -> impl Stream<Item = LightEthereumBlock, Error = Error> + Send {
         let web3 = self.web3.clone();
 
         stream::iter_ok::<_, Error>(ids.into_iter().map(move |hash| {
             let web3 = web3.clone();
-            retry(format!("load block {}", hash))
+            retry(format!("load block {}", hash), &logger)
                 .limit(*REQUEST_RETRIES)
                 .timeout_secs(*JSON_RPC_TIMEOUT)
                 .run(move || {
@@ -593,13 +624,14 @@ impl EthereumAdapter {
     /// Reorg safety: If ids are numbers, they must be a final blocks.
     fn load_block_ptrs_rpc(
         &self,
+        logger: Logger,
         block_nums: Vec<BlockNumber>,
     ) -> impl Stream<Item = BlockPtr, Error = Error> + Send {
         let web3 = self.web3.clone();
 
         stream::iter_ok::<_, Error>(block_nums.into_iter().map(move |block_num| {
             let web3 = web3.clone();
-            retry(format!("load block ptr {}", block_num))
+            retry(format!("load block ptr {}", block_num), &logger)
                 .no_limit()
                 .timeout_secs(*JSON_RPC_TIMEOUT)
                 .run(move || {
@@ -624,17 +656,73 @@ impl EthereumAdapter {
     /// Reorg safety: `to` must be a final block.
     pub(crate) fn block_range_to_ptrs(
         &self,
+        logger: Logger,
         from: BlockNumber,
         to: BlockNumber,
     ) -> Box<dyn Future<Item = Vec<BlockPtr>, Error = Error> + Send> {
         // Currently we can't go to the DB for this because there might be duplicate entries for
         // the same block number.
-        debug!("Requesting hashes for blocks [{}, {}]", from, to);
-        Box::new(self.load_block_ptrs_rpc((from..=to).collect()).collect())
+        debug!(&logger, "Requesting hashes for blocks [{}, {}]", from, to);
+        Box::new(
+            self.load_block_ptrs_rpc(logger, (from..=to).collect())
+                .collect(),
+        )
+    }
+
+    pub fn block_pointer_from_number(
+        &self,
+        logger: &Logger,
+        block_number: BlockNumber,
+    ) -> Box<dyn Future<Item = BlockPtr, Error = Error> + Send> {
+        Box::new(
+            self.block_hash_by_block_number(logger, block_number)
+                .and_then(move |block_hash_opt| {
+                    block_hash_opt.ok_or_else(|| {
+                        anyhow!(
+                            "Ethereum node could not find start block hash by block number {}",
+                            &block_number
+                        )
+                    })
+                })
+                .from_err()
+                .map(move |block_hash| BlockPtr::from((block_hash, block_number))),
+        )
+    }
+
+    fn block_hash_by_block_number(
+        &self,
+        logger: &Logger,
+        block_number: BlockNumber,
+    ) -> Box<dyn Future<Item = Option<H256>, Error = Error> + Send> {
+        let web3 = self.web3.clone();
+
+        Box::new(
+            retry("eth_getBlockByNumber RPC call", &logger)
+                .no_limit()
+                .timeout_secs(*JSON_RPC_TIMEOUT)
+                .run(move || {
+                    web3.eth()
+                        .block(BlockId::Number(block_number.into()))
+                        .from_err()
+                        .map(|block_opt| block_opt.map(|block| block.hash).flatten())
+                        .compat()
+                })
+                .boxed()
+                .compat()
+                .map_err(move |e| {
+                    e.into_inner().unwrap_or_else(move || {
+                        anyhow!(
+                            "Ethereum node took too long to return data for block #{}",
+                            block_number
+                        )
+                    })
+                }),
+        )
     }
 
     pub fn contract_call(
         &self,
+        logger: &Logger,
         call: EthereumContractCall,
     ) -> Box<dyn Future<Item = Vec<Token>, Error = EthereumContractCallError> + Send> {
         // Emit custom error for type mismatches.
@@ -659,6 +747,7 @@ impl EthereumAdapter {
 
         Box::new(
             self.call(
+                logger.clone(),
                 call.address,
                 Bytes(call_data.clone()),
                 call.block_ptr.clone(),
@@ -688,14 +777,65 @@ impl EthereumAdapterTrait for EthereumAdapter {
         &self.provider
     }
 
+    async fn net_identifiers(&self) -> Result<EthereumNetworkIdentifier, Error> {
+        let logger = self.logger.clone();
+
+        let web3 = self.web3.clone();
+        let net_version_future = retry("net_version RPC call", &logger)
+            .no_limit()
+            .timeout_secs(20)
+            .run(move || web3.net().version().from_err().compat())
+            .boxed()
+            .compat();
+
+        let web3 = self.web3.clone();
+        let gen_block_hash_future = retry("eth_getBlockByNumber(0, false) RPC call", &logger)
+            .no_limit()
+            .timeout_secs(30)
+            .run(move || {
+                web3.eth()
+                    .block(BlockId::Number(Web3BlockNumber::Number(0.into())))
+                    .from_err()
+                    .and_then(|gen_block_opt| {
+                        future::result(
+                            gen_block_opt
+                                .and_then(|gen_block| gen_block.hash)
+                                .ok_or_else(|| {
+                                    anyhow!("Ethereum node could not find genesis block")
+                                }),
+                        )
+                    })
+                    .compat()
+            })
+            .boxed()
+            .compat();
+
+        net_version_future
+            .join(gen_block_hash_future)
+            .compat()
+            .await
+            .map(
+                |(net_version, genesis_block_hash)| EthereumNetworkIdentifier {
+                    net_version,
+                    genesis_block_hash,
+                },
+            )
+            .map_err(|e| {
+                e.into_inner().unwrap_or_else(|| {
+                    anyhow!("Ethereum node took too long to read network identifiers")
+                })
+            })
+    }
+
     fn block_hash_by_block_number(
         &self,
+        logger: &Logger,
         block_number: BlockNumber,
     ) -> Box<dyn Future<Item = Option<H256>, Error = Error> + Send> {
         let web3 = self.web3.clone();
 
         Box::new(
-            retry("eth_getBlockByNumber RPC call")
+            retry("eth_getBlockByNumber RPC call", &logger)
                 .no_limit()
                 .timeout_secs(*JSON_RPC_TIMEOUT)
                 .run(move || {
@@ -721,12 +861,13 @@ impl EthereumAdapterTrait for EthereumAdapter {
     /// Load Ethereum blocks in bulk, returning results as they come back as a Stream.
     fn load_blocks(
         &self,
+        logger: Logger,
         block_hashes: HashSet<H256>,
     ) -> Box<dyn Stream<Item = LightEthereumBlock, Error = Error> + Send> {
         let mut blocks: Vec<LightEthereumBlock> = vec![];
         // Return a stream that lazily loads batches of blocks.
         Box::new(
-            self.load_blocks_rpc(block_hashes.into_iter().collect())
+            self.load_blocks_rpc(logger.clone(), block_hashes.into_iter().collect())
                 .collect()
                 .map(move |new_blocks| {
                     blocks.extend(new_blocks);
@@ -752,6 +893,7 @@ impl EthereumAdapterTrait for EthereumAdapter {
 /// It is recommended that `to` be far behind the block number of latest block the Ethereum
 /// node is aware of.
 pub(crate) async fn blocks_with_triggers(
+    logger: Logger,
     adapter: Arc<EthereumAdapter>,
     from: BlockNumber,
     to: BlockNumber,
@@ -770,7 +912,7 @@ pub(crate) async fn blocks_with_triggers(
     // Scan the block range from triggers to find relevant blocks
     if !filter.log.is_empty() {
         trigger_futs.push(Box::new(
-            eth.logs_in_block_range(from, to, filter.log.clone())
+            eth.logs_in_block_range(&logger, from, to, filter.log.clone())
                 .map_ok(|logs: Vec<Log>| {
                     logs.into_iter()
                         .map(Arc::new)
@@ -783,7 +925,7 @@ pub(crate) async fn blocks_with_triggers(
 
     if !filter.call.is_empty() {
         trigger_futs.push(Box::new(
-            eth.calls_in_block_range(from, to, &filter.call)
+            eth.calls_in_block_range(&logger, from, to, &filter.call)
                 .map(Arc::new)
                 .map(EthereumTrigger::Call)
                 .collect(),
@@ -791,19 +933,21 @@ pub(crate) async fn blocks_with_triggers(
     }
 
     if filter.block.trigger_every_block {
-        trigger_futs.push(Box::new(adapter.block_range_to_ptrs(from, to).map(
-            move |ptrs| {
-                ptrs.into_iter()
-                    .map(|ptr| EthereumTrigger::Block(ptr, EthereumBlockTriggerType::Every))
-                    .collect()
-            },
-        )))
+        trigger_futs.push(Box::new(
+            adapter
+                .block_range_to_ptrs(logger.clone(), from, to)
+                .map(move |ptrs| {
+                    ptrs.into_iter()
+                        .map(|ptr| EthereumTrigger::Block(ptr, EthereumBlockTriggerType::Every))
+                        .collect()
+                }),
+        ))
     } else if !filter.block.contract_addresses.is_empty() {
         // To determine which blocks include a call to addresses
         // in the block filter, transform the `block_filter` into
         // a `call_filter` and run `blocks_with_calls`
         trigger_futs.push(Box::new(
-            eth.calls_in_block_range(from, to, &call_filter)
+            eth.calls_in_block_range(&logger, from, to, &call_filter)
                 .map(|call| {
                     EthereumTrigger::Block(
                         BlockPtr::from(&call),
@@ -814,17 +958,21 @@ pub(crate) async fn blocks_with_triggers(
         ));
     }
 
-    let (triggers, to_hash) =
-        trigger_futs
-            .concat2()
-            .join(adapter.clone().block_hash_by_block_number(to).then(
-                move |to_hash| match to_hash {
+    let logger1 = logger.cheap_clone();
+    let eth_clone = eth.cheap_clone();
+    let (triggers, to_hash) = trigger_futs
+        .concat2()
+        .join(
+            adapter
+                .clone()
+                .block_hash_by_block_number(&logger, to)
+                .then(move |to_hash| match to_hash {
                     Ok(n) => n.ok_or_else(|| anyhow!("Block {} not found in the chain", to)),
                     Err(e) => Err(e),
-                },
-            ))
-            .compat()
-            .await?;
+                }),
+        )
+        .compat()
+        .await?;
 
     let mut block_hashes: HashSet<H256> =
         triggers.iter().map(EthereumTrigger::block_hash).collect();
@@ -834,14 +982,14 @@ pub(crate) async fn blocks_with_triggers(
             map
         });
 
-    debug!("Found {} relevant block(s)", block_hashes.len());
+    debug!(logger, "Found {} relevant block(s)", block_hashes.len());
 
     // Make sure `to` is included, even if empty.
     block_hashes.insert(to_hash);
     triggers_by_block.entry(to).or_insert(Vec::new());
 
     let mut blocks = adapter
-        .load_blocks(block_hashes)
+        .load_blocks(logger1, block_hashes)
         .and_then(
             move |block| match triggers_by_block.remove(&(block.number() as BlockNumber)) {
                 Some(triggers) => Ok(BlockWithTriggers::new(

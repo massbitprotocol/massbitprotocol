@@ -17,6 +17,7 @@ use thiserror::Error;
 use web3::types::{Address, H256};
 
 use crate::blockchain::{Blockchain, DataSource};
+use crate::data::indexer::schema::IndexerDeploymentEntity;
 use crate::data::indexer::Source;
 use crate::data::query::QueryExecutionError;
 use crate::data::store::Entity;
@@ -27,6 +28,8 @@ use crate::util::lfu_cache::LfuCache;
 /// since Postgres does not support unsigned integer types. But 2G ought to
 /// be enough for everybody
 pub type BlockNumber = i32;
+
+pub const BLOCK_NUMBER_MAX: BlockNumber = std::i32::MAX;
 
 /// An internal identifer for the specific instance of a deployment. The
 /// identifier only has meaning in the context of a specific instance of
@@ -421,7 +424,7 @@ pub enum EntityOperation {
 }
 
 /// The type name of an entity. This is the string that is used in the
-/// subgraph's GraphQL schema as `type NAME @entity { .. }`
+/// indexer's GraphQL schema as `type NAME @entity { .. }`
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct EntityType(String);
 
@@ -528,12 +531,12 @@ pub enum StoreError {
     #[error("invalid identifier: {0}")]
     InvalidIdentifier(String),
     #[error(
-        "subgraph `{0}` has already processed block `{1}`; \
-         there are most likely two (or more) nodes indexing this subgraph"
+        "indexer `{0}` has already processed block `{1}`; \
+         there are most likely two (or more) nodes indexing this indexer"
     )]
     DuplicateBlockProcessing(DeploymentHash, BlockNumber),
     /// An internal error where we expected the application logic to enforce
-    /// some constraint, e.g., that subgraph names are unique, but found that
+    /// some constraint, e.g., that indexer names are unique, but found that
     /// constraint to not hold
     #[error("internal constraint violated: {0}")]
     ConstraintViolation(String),
@@ -547,6 +550,17 @@ pub enum StoreError {
     Canceled,
     #[error("database unavailable")]
     DatabaseUnavailable,
+}
+
+// Convenience to report a constraint violation
+#[macro_export]
+macro_rules! constraint_violation {
+    ($msg:expr) => {{
+        StoreError::ConstraintViolation(format!("{}", $msg))
+    }};
+    ($fmt:expr, $($arg:tt)*) => {{
+        StoreError::ConstraintViolation(format!($fmt, $($arg)*))
+    }}
 }
 
 impl From<::diesel::result::Error> for StoreError {
@@ -594,6 +608,9 @@ pub struct StoredDynamicDataSource {
 
 #[async_trait]
 pub trait WritableStore: Send + Sync + 'static {
+    /// Get a pointer to the most recently processed block in the indexer.
+    fn block_ptr(&self) -> Result<Option<BlockPtr>, Error>;
+
     /// Looks up an entity using the given store key at the latest block.
     fn get(&self, key: &EntityKey) -> Result<Option<Entity>, QueryExecutionError>;
 
@@ -605,9 +622,9 @@ pub trait WritableStore: Send + Sync + 'static {
     ) -> Result<BTreeMap<EntityType, Vec<Entity>>, StoreError>;
 
     /// Transact the entity changes from a single block atomically into the store, and update the
-    /// subgraph block pointer to `block_ptr_to`.
+    /// indexer block pointer to `block_ptr_to`.
     ///
-    /// `block_ptr_to` must point to a child block of the current subgraph block pointer.
+    /// `block_ptr_to` must point to a child block of the current indexer block pointer.
     fn transact_block_operations(
         &self,
         block_ptr_to: BlockPtr,
@@ -622,10 +639,38 @@ pub trait WritableStore: Send + Sync + 'static {
 /// Common trait for store implementations.
 #[async_trait]
 pub trait IndexerStore: Send + Sync + 'static {
+    /// Create a new deployment for the indexer `name`. If the deployment
+    /// already exists (as identified by the `schema.id`), reuse that, otherwise
+    /// create a new deployment, and point the current or pending version of
+    /// `name` at it, depending on the `mode`
+    fn create_indexer_deployment(
+        &self,
+        name: IndexerName,
+        schema: &Schema,
+        deployment: IndexerDeploymentEntity,
+        node_id: NodeId,
+        network: String,
+    ) -> Result<DeploymentLocator, StoreError>;
+
     /// Return a `WritableStore` that is used for indexer. Only
     /// code that is part of indexing a indexer should ever use this.
     fn writable(
         &self,
         deployment: &DeploymentLocator,
     ) -> Result<Arc<dyn WritableStore>, StoreError>;
+
+    /// Create a new indexer with the given name. If one already exists, use
+    /// the existing one. Return the `id` of the newly created or existing
+    /// indexer
+    fn create_indexer(&self, name: IndexerName) -> Result<String, StoreError>;
+
+    /// Return `true` if a indexer `name` exists, regardless of whether the
+    /// indexer has any deployments attached to it
+    fn indexer_exists(&self, name: &IndexerName) -> Result<bool, StoreError>;
+
+    /// Return the GraphQL schema supplied by the user
+    fn input_schema(&self, indexer_id: &DeploymentHash) -> Result<Arc<Schema>, StoreError>;
+
+    /// Find the deployment locators for the subgraph with the given hash
+    fn locators(&self, hash: &str) -> Result<Vec<DeploymentLocator>, StoreError>;
 }

@@ -1,5 +1,5 @@
 [package]
-name = "postgres"
+name = "massbit-store-postgres"
 version = "0.1.0"
 edition = "2018"
 
@@ -35,3 +35,8 @@ anyhow = "1.0.44"
 git-testament = "0.2.0"
 itertools = "0.10.1"
 pin-utils = "0.1"
+
+[dependencies.graph-graphql]
+package = "graph-graphql"
+git = "https://github.com/massbitprotocol/massbit-graph-node"
+branch = "main"

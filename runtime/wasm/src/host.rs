@@ -64,6 +64,7 @@ impl<C: Blockchain> RuntimeHostBuilderTrait<C> for RuntimeHostBuilder<C> {
     fn spawn_mapping(
         raw_module: Vec<u8>,
         subgraph_id: DeploymentHash,
+        logger: Logger,
     ) -> Result<Sender<Self::Req>, Error> {
         let experimental_features = ExperimentalFeatures {
             allow_non_deterministic_ipfs: *ALLOW_NON_DETERMINISTIC_IPFS,
@@ -74,6 +75,7 @@ impl<C: Blockchain> RuntimeHostBuilderTrait<C> for RuntimeHostBuilder<C> {
             tokio::runtime::Handle::current(),
             *TIMEOUT,
             experimental_features,
+            logger,
         )
     }
 
@@ -144,11 +146,13 @@ where
     /// and awaits the result.
     async fn send_mapping_request(
         &self,
+        logger: &Logger,
         state: BlockState<C>,
         trigger: C::MappingTrigger,
         block_ptr: BlockPtr,
     ) -> Result<BlockState<C>, MappingError> {
         let handler = trigger.handler_name().to_string();
+        let extras = trigger.logging_extras();
 
         let (result_sender, result_receiver) = channel();
 
@@ -156,6 +160,7 @@ where
             .clone()
             .send(MappingRequest {
                 ctx: MappingContext {
+                    logger: logger.cheap_clone(),
                     state,
                     host_exports: self.host_exports.cheap_clone(),
                     block_ptr,
@@ -172,13 +177,12 @@ where
             .await
             .context("Mapping terminated before handling trigger")?;
 
-        // info!(
-        //     logger, "Done processing trigger";
-        //     &extras,
-        //     "total_ms" => elapsed.as_millis(),
-        //     "handler" => handler,
-        //     "data_source" => &self.data_source.name(),
-        // );
+        info!(
+            logger, "Done processing trigger";
+            &extras,
+            "handler" => handler,
+            "data_source" => &self.data_source.name(),
+        );
 
         result
     }
@@ -188,19 +192,22 @@ where
 impl<C: Blockchain> RuntimeHostTrait<C> for RuntimeHost<C> {
     fn match_and_decode(
         &self,
+        logger: &Logger,
         trigger: &C::TriggerData,
         block: Arc<C::Block>,
     ) -> Result<Option<C::MappingTrigger>, Error> {
-        self.data_source.match_and_decode(trigger, block)
+        self.data_source.match_and_decode(logger, trigger, block)
     }
 
     async fn process_mapping_trigger(
         &self,
+        logger: &Logger,
         block_ptr: BlockPtr,
         trigger: C::MappingTrigger,
         state: BlockState<C>,
     ) -> Result<BlockState<C>, MappingError> {
-        self.send_mapping_request(state, trigger, block_ptr).await
+        self.send_mapping_request(logger, state, trigger, block_ptr)
+            .await
     }
 
     fn creation_block_number(&self) -> Option<BlockNumber> {

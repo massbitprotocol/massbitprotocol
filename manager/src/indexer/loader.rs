@@ -1,16 +1,15 @@
-use massbit::blockchain::{Blockchain, DataSource, DataSourceTemplate as _};
-use massbit::components::store::WritableStore;
-use massbit::prelude::*;
 use std::collections::BTreeMap;
 use std::iter::FromIterator;
 use std::time::Instant;
+
+use massbit::blockchain::{Blockchain, DataSource, DataSourceTemplate as _};
+use massbit::components::store::WritableStore;
+use massbit::prelude::*;
 
 pub async fn load_dynamic_data_sources<C: Blockchain>(
     store: Arc<dyn WritableStore>,
     templates: Vec<C::DataSourceTemplate>,
 ) -> Result<Vec<C::DataSource>, Error> {
-    let start_time = Instant::now();
-
     let template_map: BTreeMap<&str, _> =
         BTreeMap::from_iter(templates.iter().map(|template| (template.name(), template)));
     let mut data_sources: Vec<C::DataSource> = vec![];

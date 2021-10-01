@@ -1,9 +1,10 @@
 use jsonrpc_core::types::Call;
-use massbit::prelude::*;
 use serde_json::Value;
 use std::env;
 use web3::transports::{http, ipc, ws};
 use web3::RequestId;
+
+use massbit::prelude::*;
 
 pub use web3::transports::EventLoopHandle;
 
