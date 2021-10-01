@@ -1,7 +1,6 @@
 use rand::rngs::OsRng;
 use rand::Rng;
 use stable_hash::{SequenceNumber, StableHash, StableHasher};
-use std::str::FromStr;
 use std::{fmt, fmt::Display};
 
 use crate::blockchain::Blockchain;

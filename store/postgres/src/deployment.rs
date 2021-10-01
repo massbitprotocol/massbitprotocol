@@ -23,8 +23,6 @@ table! {
         deployment -> Text,
         failed -> Bool,
         synced -> Bool,
-        fatal_error -> Nullable<Text>,
-        non_fatal_errors -> Array<Text>,
         earliest_ethereum_block_hash -> Nullable<Binary>,
         earliest_ethereum_block_number -> Nullable<Numeric>,
         latest_ethereum_block_hash -> Nullable<Binary>,
@@ -32,10 +30,6 @@ table! {
         last_healthy_ethereum_block_hash -> Nullable<Binary>,
         last_healthy_ethereum_block_number -> Nullable<Numeric>,
         entity_count -> Numeric,
-        reorg_count -> Integer,
-        current_reorg_depth -> Integer,
-        max_reorg_depth -> Integer,
-        firehose_cursor -> Nullable<Text>,
     }
 }
 
@@ -105,8 +99,6 @@ pub fn create_deployment(
         d::deployment.eq(site.deployment.as_str()),
         d::failed.eq(failed),
         d::synced.eq(synced),
-        d::fatal_error.eq::<Option<String>>(None),
-        d::non_fatal_errors.eq::<Vec<String>>(vec![]),
         d::earliest_ethereum_block_hash.eq(b(&earliest_block)),
         d::earliest_ethereum_block_number.eq(n(&earliest_block)),
         d::latest_ethereum_block_hash.eq(b(&latest_block)),
@@ -177,7 +169,6 @@ pub fn forward_block_ptr(
     .set((
         d::latest_ethereum_block_number.eq(sql(&number)),
         d::latest_ethereum_block_hash.eq(ptr.hash_slice()),
-        d::current_reorg_depth.eq(0),
     ))
     .execute(conn)
     .map_err(StoreError::from)?;

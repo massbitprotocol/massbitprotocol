@@ -1,5 +1,5 @@
 use crate::data::indexer::DeploymentHash;
-use crate::prelude::{q, s, CacheWeight, EntityKey};
+use crate::prelude::{q, CacheWeight, EntityKey};
 use anyhow::{anyhow, Error};
 use itertools::Itertools;
 use serde::de;

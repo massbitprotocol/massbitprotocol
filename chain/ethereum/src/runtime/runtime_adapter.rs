@@ -16,10 +16,7 @@ use massbit::{
 use super::abi::{AscUnresolvedContractCall, AscUnresolvedContractCall_0_0_4};
 use crate::data_source::MappingABI;
 use crate::network::EthereumNetworkAdapters;
-use crate::{
-    Chain, DataSource, EthereumAdapter, EthereumAdapterTrait, EthereumContractCall,
-    EthereumContractCallError,
-};
+use crate::{Chain, DataSource, EthereumAdapter, EthereumContractCall, EthereumContractCallError};
 use massbit::prelude::Logger;
 
 pub struct RuntimeAdapter {
