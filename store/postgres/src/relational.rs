@@ -27,7 +27,6 @@ use massbit::prelude::{
 
 use crate::block_range::BLOCK_RANGE_COLUMN;
 pub use crate::catalog::Catalog;
-use crate::connection_pool::ForeignServer;
 use crate::primary::{Namespace, Site};
 use crate::relational_queries::{
     ClampRangeQuery, EntityData, FindManyQuery, FindQuery, InsertQuery,
@@ -395,41 +394,6 @@ impl Layout {
         }
 
         Ok(out)
-    }
-
-    /// Import the database schema for this layout from its own database
-    /// shard (in `self.site.shard`) into the database represented by `conn`
-    /// if the schema for this layout does not exist yet
-    pub fn import_schema(&self, conn: &PgConnection) -> Result<(), StoreError> {
-        let make_query = || -> Result<String, fmt::Error> {
-            let nsp = self.site.namespace.as_str();
-            let srvname = ForeignServer::name(&self.site.shard);
-
-            let mut query = String::new();
-            writeln!(query, "create schema {};", nsp)?;
-            // Postgres does not import enums. We recreate them in the target
-            // database, otherwise importing tables that use them fails
-            self.write_enum_ddl(&mut query)?;
-            writeln!(
-                query,
-                "import foreign schema {nsp} from server {srvname} into {nsp}",
-                nsp = nsp,
-                srvname = srvname
-            )?;
-            Ok(query)
-        };
-
-        if !catalog::has_namespace(conn, &self.site.namespace)? {
-            let query = make_query().map_err(|_| {
-                StoreError::Unknown(anyhow!(
-                    "failed to generate SQL to import foreign schema {}",
-                    self.site.namespace
-                ))
-            })?;
-
-            conn.batch_execute(&query)?;
-        }
-        Ok(())
     }
 
     /// Find the table with the provided `name`. The name must exactly match
