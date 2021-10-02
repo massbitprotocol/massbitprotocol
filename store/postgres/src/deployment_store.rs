@@ -28,15 +28,15 @@ use crate::primary::Site;
 use crate::relational::{Layout, LayoutCache};
 use massbit::prelude::reqwest::Client;
 lazy_static! {
-    /// `GRAPH_QUERY_STATS_REFRESH_INTERVAL` is how long statistics that
+    /// `QUERY_STATS_REFRESH_INTERVAL` is how long statistics that
     /// influence query execution are cached in memory (in seconds) before
     /// they are reloaded from the database. Defaults to 300s (5 minutes).
     static ref STATS_REFRESH_INTERVAL: Duration = {
-        env::var("GRAPH_QUERY_STATS_REFRESH_INTERVAL")
+        env::var("QUERY_STATS_REFRESH_INTERVAL")
         .ok()
         .map(|s| {
             let secs = u64::from_str(&s).unwrap_or_else(|_| {
-                panic!("GRAPH_QUERY_STATS_REFRESH_INTERVAL must be a number, but is `{}`", s)
+                panic!("QUERY_STATS_REFRESH_INTERVAL must be a number, but is `{}`", s)
             });
             Duration::from_secs(secs)
         }).unwrap_or(Duration::from_secs(300))
@@ -80,9 +80,6 @@ pub struct StoreInner {
     /// The current position in `replica_order` so we know which one to
     /// pick next
     conn_round_robin_counter: AtomicUsize,
-
-    /// A cache of commonly needed data about a indexer.
-    indexer_cache: Mutex<LruCache<DeploymentHash, IndexerInfo>>,
 
     /// A cache for the layout metadata for indexers. The Store just
     /// hosts this because it lives long enough, but it is managed from
@@ -138,53 +135,12 @@ impl DeploymentStore {
             read_only_pools,
             replica_order,
             conn_round_robin_counter: AtomicUsize::new(0),
-            indexer_cache: Mutex::new(LruCache::with_capacity(100)),
             layout_cache: LayoutCache::new(*STATS_REFRESH_INTERVAL),
         };
         let store = DeploymentStore(Arc::new(store));
         store
     }
 
-    /// Execute a closure with a connection to the database.
-    ///
-    /// # API
-    ///   The API of using a closure to bound the usage of the connection serves several
-    ///   purposes:
-    ///
-    ///   * Moves blocking database access out of the `Future::poll`. Within
-    ///     `Future::poll` (which includes all `async` methods) it is illegal to
-    ///     perform a blocking operation. This includes all accesses to the
-    ///     database, acquiring of locks, etc. Calling a blocking operation can
-    ///     cause problems with `Future` combinators (including but not limited
-    ///     to select, timeout, and FuturesUnordered) and problems with
-    ///     executors/runtimes. This method moves the database work onto another
-    ///     thread in a way which does not block `Future::poll`.
-    ///
-    ///   * Limit the total number of connections. Because the supplied closure
-    ///     takes a reference, we know the scope of the usage of all entity
-    ///     connections and can limit their use in a non-blocking way.
-    ///
-    /// # Cancellation
-    ///   The normal pattern for futures in Rust is drop to cancel. Once we
-    ///   spawn the database work in a thread though, this expectation no longer
-    ///   holds because the spawned task is the independent of this future. So,
-    ///   this method provides a cancel token which indicates that the `Future`
-    ///   has been dropped. This isn't *quite* as good as drop on cancel,
-    ///   because a drop on cancel can do things like cancel http requests that
-    ///   are in flight, but checking for cancel periodically is a significant
-    ///   improvement.
-    ///
-    ///   The implementation of the supplied closure should check for cancel
-    ///   between every operation that is potentially blocking. This includes
-    ///   any method which may interact with the database. The check can be
-    ///   conveniently written as `token.check_cancel()?;`. It is low overhead
-    ///   to check for cancel, so when in doubt it is better to have too many
-    ///   checks than too few.
-    ///
-    /// # Panics:
-    ///   * This task will panic if the supplied closure panics
-    ///   * This task will panic if the supplied closure returns Err(Cancelled)
-    ///     when the supplied cancel token is not cancelled.
     pub(crate) async fn with_conn<T: Send + 'static>(
         &self,
         f: impl 'static

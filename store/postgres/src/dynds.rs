@@ -17,7 +17,6 @@ use massbit::{
     },
 };
 
-use crate::connection_pool::ForeignServer;
 use crate::primary::Site;
 
 table! {

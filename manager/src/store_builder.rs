@@ -4,7 +4,7 @@ use std::iter::FromIterator;
 use std::sync::Arc;
 
 use massbit::prelude::*;
-use massbit_store_postgres::connection_pool::{ConnectionPool, ForeignServer, PoolName};
+use massbit_store_postgres::connection_pool::{ConnectionPool, PoolName};
 use massbit_store_postgres::{IndexerStore, Shard as ShardName};
 
 use crate::config::{Config, Shard};
@@ -46,23 +46,14 @@ impl StoreBuilder {
         logger: &Logger,
         config: &Config,
     ) -> (Arc<IndexerStore>, HashMap<ShardName, ConnectionPool>) {
-        let servers = config
-            .stores
-            .iter()
-            .map(|(name, shard)| ForeignServer::new_from_raw(name.to_string(), &shard.connection))
-            .collect::<Result<Vec<_>, _>>()
-            .expect("connection url's contain enough detail");
-        let servers = Arc::new(servers);
-
         let shards: Vec<_> = config
             .stores
             .iter()
             .map(|(name, shard)| {
                 let logger = logger.new(o!("shard" => name.to_string()));
-                let conn_pool = Self::main_pool(&logger, name, shard, servers.clone());
+                let conn_pool = Self::main_pool(&logger, name, shard);
 
-                let (read_only_conn_pools, weights) =
-                    Self::replica_pools(&logger, name, shard, servers.clone());
+                let (read_only_conn_pools, weights) = Self::replica_pools(&logger, name, shard);
 
                 let name =
                     ShardName::new(name.to_string()).expect("shard names have been validated");
@@ -83,12 +74,7 @@ impl StoreBuilder {
 
     /// Create a connection pool for the main database of hte primary shard
     /// without connecting to all the other configured databases
-    pub fn main_pool(
-        logger: &Logger,
-        name: &str,
-        shard: &Shard,
-        servers: Arc<Vec<ForeignServer>>,
-    ) -> ConnectionPool {
+    pub fn main_pool(logger: &Logger, name: &str, shard: &Shard) -> ConnectionPool {
         let logger = logger.new(o!("pool" => "main"));
         info!(logger, "Connecting to Postgres");
         ConnectionPool::create(
@@ -96,8 +82,6 @@ impl StoreBuilder {
             PoolName::Main,
             shard.connection.to_owned(),
             10,
-            Some(10),
-            servers,
             &logger,
         )
     }
@@ -107,7 +91,6 @@ impl StoreBuilder {
         logger: &Logger,
         name: &str,
         shard: &Shard,
-        servers: Arc<Vec<ForeignServer>>,
     ) -> (Vec<ConnectionPool>, Vec<usize>) {
         let mut weights: Vec<_> = vec![shard.weight];
         (
@@ -124,8 +107,6 @@ impl StoreBuilder {
                         PoolName::Replica(pool),
                         replica.connection.clone(),
                         10,
-                        None,
-                        servers.clone(),
                         &logger,
                     )
                 })

@@ -14,7 +14,6 @@ use std::sync::Arc;
 use massbit::prelude::anyhow::anyhow;
 use massbit::prelude::StoreError;
 
-use crate::connection_pool::ForeignServer;
 use crate::{
     primary::{Namespace, Site},
     relational::SqlName,
