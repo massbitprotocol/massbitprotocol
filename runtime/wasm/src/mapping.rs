@@ -7,7 +7,6 @@ use std::sync::Arc;
 use std::thread;
 
 use massbit::components::indexer::{BlockState, MappingError};
-use massbit::prelude::*;
 
 use crate::module::{ExperimentalFeatures, WasmInstance};
 

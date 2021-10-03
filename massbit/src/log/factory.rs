@@ -1,8 +1,6 @@
-use std::time::Duration;
+use slog::*;
 
 use crate::components::store::DeploymentLocator;
-use crate::log::split::*;
-use slog::*;
 
 /// Factory for creating component and indexer loggers.
 #[derive(Clone)]

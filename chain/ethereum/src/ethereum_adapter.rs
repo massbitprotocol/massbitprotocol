@@ -959,7 +959,6 @@ pub(crate) async fn blocks_with_triggers(
     }
 
     let logger1 = logger.cheap_clone();
-    let eth_clone = eth.cheap_clone();
     let (triggers, to_hash) = trigger_futs
         .concat2()
         .join(

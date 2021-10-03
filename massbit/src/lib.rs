@@ -84,23 +84,23 @@ pub mod prelude {
         LightEthereumBlock, LightEthereumBlockExt,
     };
     pub use crate::components::indexer::{
-        BlockState, IndexerAssignmentProvider, IndexerInstanceManager, IndexerRegistrar,
-        RuntimeHost, RuntimeHostBuilder,
+        BlockState, IndexerInstanceManager, IndexerProvider, IndexerRegistrar, RuntimeHost,
+        RuntimeHostBuilder,
     };
     pub use crate::components::link_resolver::{JsonStreamValue, JsonValueStream, LinkResolver};
-    pub use crate::components::server::admin::JsonRpcServer;
+    pub use crate::components::server::manager::JsonRpcServer;
     pub use crate::components::store::{
         BlockNumber, EntityCache, EntityKey, EntityModification, IndexerStore, StoreError,
         BLOCK_NUMBER_MAX,
     };
 
     pub use crate::data::indexer::{
-        DeploymentHash, IndexerAssignmentProviderError, IndexerManifest, IndexerName,
+        DeploymentHash, IndexerManifest, IndexerName, IndexerProviderError,
     };
     pub use crate::data::schema::{ApiSchema, Schema};
     pub use crate::data::store::scalar::{BigDecimal, BigInt, BigIntSign};
     pub use crate::data::store::{
-        Attribute, Entity, NodeId, ToEntityId, ToEntityKey, TryIntoEntity, Value, ValueType,
+        Attribute, Entity, ToEntityId, ToEntityKey, TryIntoEntity, Value, ValueType,
     };
 
     pub use crate::cheap_clone::CheapClone;

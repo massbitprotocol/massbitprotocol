@@ -1,9 +1,11 @@
 use futures03::{stream::Stream, Future, FutureExt};
+use std::cmp;
 use std::collections::VecDeque;
 use std::task::{Context, Poll};
 
 use crate::blockchain::block_stream::{BlockStreamEvent, BlockWithTriggers, TriggersAdapter};
 use crate::blockchain::{BlockStream, Blockchain};
+use crate::components::store::WritableStore;
 use crate::prelude::*;
 
 lazy_static! {
@@ -16,11 +18,6 @@ lazy_static! {
         })
         .unwrap_or(100);
 }
-
-use crate::components::store::{DeploymentLocator, WritableStore};
-#[cfg(debug_assertions)]
-use fail::fail_point;
-use std::cmp;
 
 enum BlockStreamState<C>
 where

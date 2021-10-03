@@ -1,4 +1,3 @@
-use futures::Stream;
 use graphql_parser::schema as s;
 use serde::{Deserialize, Serialize};
 use stable_hash::prelude::*;
@@ -218,6 +217,12 @@ impl EntityCache {
         for (key, op) in handler_updates {
             self.entity_op(key, op)
         }
+    }
+
+    pub(crate) fn exit_handler_and_discard_changes(&mut self) {
+        assert!(self.in_handler);
+        self.in_handler = false;
+        self.handler_updates.clear();
     }
 
     pub fn get(&mut self, key: &EntityKey) -> Result<Option<Entity>, QueryExecutionError> {
@@ -634,7 +639,6 @@ pub trait IndexerStore: Send + Sync + 'static {
         name: IndexerName,
         schema: &Schema,
         deployment: IndexerDeploymentEntity,
-        node_id: NodeId,
         network: String,
     ) -> Result<DeploymentLocator, StoreError>;
 

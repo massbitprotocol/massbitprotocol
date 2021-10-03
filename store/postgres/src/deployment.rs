@@ -83,22 +83,13 @@ pub fn create_deployment(
                 features,
                 schema,
             },
-        failed,
-        synced,
-        fatal_error: _,
-        non_fatal_errors: _,
         earliest_block,
         latest_block,
-        reorg_count: _,
-        current_reorg_depth: _,
-        max_reorg_depth: _,
     } = deployment;
 
     let deployment_values = (
         d::id.eq(site.id),
         d::deployment.eq(site.deployment.as_str()),
-        d::failed.eq(failed),
-        d::synced.eq(synced),
         d::earliest_ethereum_block_hash.eq(b(&earliest_block)),
         d::earliest_ethereum_block_number.eq(n(&earliest_block)),
         d::latest_ethereum_block_hash.eq(b(&latest_block)),

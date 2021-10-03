@@ -128,7 +128,7 @@ impl ConnectionPool {
     /// or the pool is marked as unavailable, return
     /// `StoreError::DatabaseUnavailable`
     fn get_ready(&self) -> Result<Arc<PoolInner>, StoreError> {
-        let mut guard = self.inner.lock();
+        let mut guard = self.inner.lock(&self.logger);
         match &*guard {
             PoolState::Created(pool) => {
                 let pool2 = pool.clone();
@@ -193,20 +193,11 @@ impl ConnectionPool {
         pool.with_conn(f).await
     }
 
-    pub fn get(&self) -> Result<PooledConnection<ConnectionManager<PgConnection>>, StoreError> {
-        self.get_ready()?.get()
-    }
-
     pub fn get_with_timeout_warning(
         &self,
         logger: &Logger,
     ) -> Result<PooledConnection<ConnectionManager<PgConnection>>, StoreError> {
         self.get_ready()?.get_with_timeout_warning(logger)
-    }
-
-    /// Check that we can connect to the database
-    pub fn check(&self) -> bool {
-        true
     }
 
     /// Setup the database for this pool. This includes configuring foreign
@@ -217,7 +208,7 @@ impl ConnectionPool {
     ///
     /// If any errors happen during the migration, the process panics
     pub fn setup(&self) {
-        let mut guard = self.inner.lock();
+        let mut guard = self.inner.lock(&self.logger);
         match &*guard {
             PoolState::Created(pool) => {
                 // If setup errors, we will try again later

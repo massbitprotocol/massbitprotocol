@@ -240,10 +240,8 @@ impl IndexerStoreInner {
     /// again.
     fn create_deployment_internal(
         &self,
-        name: IndexerName,
         schema: &Schema,
         deployment: IndexerDeploymentEntity,
-        node_id: NodeId,
         network_name: String,
         // replace == true is only used in tests; for non-test code, it must
         // be 'false'
@@ -252,11 +250,10 @@ impl IndexerStoreInner {
         #[cfg(not(debug_assertions))]
         assert!(!replace);
 
-        let (site, node_id) = {
-            let (shard, node_id) = (PRIMARY_SHARD.clone(), node_id);
+        let site = {
             let conn = self.primary_conn()?;
-            let site = conn.allocate_site(shard.clone(), &schema.id, network_name)?;
-            (site, node_id)
+            let site = conn.allocate_site(PRIMARY_SHARD.clone(), &schema.id, network_name)?;
+            site
         };
         let site = Arc::new(site);
 
@@ -278,10 +275,9 @@ impl IndexerStoreTrait for IndexerStore {
         name: IndexerName,
         schema: &Schema,
         deployment: IndexerDeploymentEntity,
-        node_id: NodeId,
         network: String,
     ) -> Result<DeploymentLocator, StoreError> {
-        self.create_deployment_internal(name, schema, deployment, node_id, network, false)
+        self.create_deployment_internal(schema, deployment, network, false)
     }
 
     fn writable(

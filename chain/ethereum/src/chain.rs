@@ -12,7 +12,7 @@ use crate::data_source::{
     DataSource, DataSourceTemplate, UnresolvedDataSource, UnresolvedDataSourceTemplate,
 };
 use crate::ethereum_adapter::blocks_with_triggers;
-use crate::network::{EthereumNetworkAdapter, EthereumNetworkAdapters};
+use crate::network::EthereumNetworkAdapters;
 use crate::TriggerFilter;
 use crate::{EthereumAdapter, RuntimeAdapter};
 
@@ -33,7 +33,6 @@ lazy_static! {
 pub struct Chain {
     logger_factory: LoggerFactory,
     name: String,
-    node_id: NodeId,
     eth_adapters: Arc<EthereumNetworkAdapters>,
 }
 
@@ -47,13 +46,11 @@ impl Chain {
     pub fn new(
         logger_factory: LoggerFactory,
         name: String,
-        node_id: NodeId,
         eth_adapters: EthereumNetworkAdapters,
     ) -> Self {
         Chain {
             logger_factory,
             name,
-            node_id,
             eth_adapters: Arc::new(eth_adapters),
         }
     }

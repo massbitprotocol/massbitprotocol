@@ -4,9 +4,10 @@ use crate::{components::store::DeploymentLocator, prelude::*};
 
 /// Common trait for indexer providers.
 #[async_trait]
-pub trait IndexerAssignmentProvider: Send + Sync + 'static {
+pub trait IndexerProvider: Send + Sync + 'static {
     async fn start(
         &self,
         deployment: DeploymentLocator,
-    ) -> Result<(), IndexerAssignmentProviderError>;
+        manifest: serde_yaml::Mapping,
+    ) -> Result<(), IndexerProviderError>;
 }

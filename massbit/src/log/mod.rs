@@ -43,7 +43,7 @@ pub fn logger(show_debug: bool) -> Logger {
             },
         )
         .parse(
-            env::var_os("GRAPH_LOG")
+            env::var_os("MASSBIT_LOG")
                 .unwrap_or_else(|| "".into())
                 .to_str()
                 .unwrap(),
@@ -109,10 +109,10 @@ where
             record.kv().serialize(record, &mut serializer)?;
             let body_kvs = serializer.finish();
 
-            // Collect subgraph ID, components and extra key values from the record
+            // Collect indexer ID, components and extra key values from the record
             let mut serializer = HeaderSerializer::new();
             values.serialize(record, &mut serializer)?;
-            let (subgraph_id, components, header_kvs) = serializer.finish();
+            let (indexer_id, components, header_kvs) = serializer.finish();
 
             // Regular key values first
             for (k, v) in body_kvs.iter().chain(header_kvs.iter()) {
@@ -129,19 +129,19 @@ where
                 write!(decorator, "{}", v)?;
             }
 
-            // Then log the subgraph ID (if present)
-            if let Some(subgraph_id) = subgraph_id.as_ref() {
+            // Then log the indexer ID (if present)
+            if let Some(indexer_id) = indexer_id.as_ref() {
                 decorator.start_comma()?;
                 write!(decorator, ", ")?;
                 decorator.start_key()?;
-                write!(decorator, "subgraph_id")?;
+                write!(decorator, "indexer_id")?;
                 decorator.start_separator()?;
                 write!(decorator, ": ")?;
                 decorator.start_value()?;
                 if self.use_color {
-                    write!(decorator, "\u{001b}[35m{}\u{001b}[0m", subgraph_id)?;
+                    write!(decorator, "\u{001b}[35m{}\u{001b}[0m", indexer_id)?;
                 } else {
-                    write!(decorator, "{}", subgraph_id)?;
+                    write!(decorator, "{}", indexer_id)?;
                 }
             }
 
@@ -174,7 +174,7 @@ where
 }
 
 struct HeaderSerializer {
-    subgraph_id: Option<String>,
+    indexer_id: Option<String>,
     components: Vec<String>,
     kvs: Vec<(String, String)>,
 }
@@ -182,7 +182,7 @@ struct HeaderSerializer {
 impl HeaderSerializer {
     pub fn new() -> Self {
         Self {
-            subgraph_id: None,
+            indexer_id: None,
             components: vec![],
             kvs: vec![],
         }
@@ -192,7 +192,7 @@ impl HeaderSerializer {
         // Reverse components so the parent components come first
         self.components.reverse();
 
-        (self.subgraph_id, self.components, self.kvs)
+        (self.indexer_id, self.components, self.kvs)
     }
 }
 
@@ -200,7 +200,7 @@ macro_rules! s(
     ($s:expr, $k:expr, $v:expr) => {
         Ok(match $k {
             "component" => $s.components.push(format!("{}", $v)),
-            "subgraph_id" => $s.subgraph_id = Some(format!("{}", $v)),
+            "indexer_id" => $s.indexer_id = Some(format!("{}", $v)),
             _ => $s.kvs.push(($k.into(), format!("{}", $v))),
         })
     };

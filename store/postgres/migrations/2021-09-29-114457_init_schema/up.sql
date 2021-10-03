@@ -64,8 +64,6 @@ create table indexer_deployment
     deployment                         text              not null
         constraint indexer_deployment_id_key
             unique,
-    failed                             boolean           not null,
-    synced                             boolean           not null,
     earliest_ethereum_block_hash       bytea,
     earliest_ethereum_block_number     numeric,
     latest_ethereum_block_hash         bytea,

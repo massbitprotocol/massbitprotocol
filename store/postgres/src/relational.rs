@@ -737,7 +737,7 @@ impl EnumType {
     }
 }
 
-/// This is almost the same as graph::data::store::ValueType, but without
+/// This is almost the same as massbit::data::store::ValueType, but without
 /// ID and List; with this type, we only care about scalar types that directly
 /// correspond to Postgres scalar types
 #[derive(Clone, Debug, PartialEq)]

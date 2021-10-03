@@ -10,17 +10,14 @@ use massbit::data::indexer::{
 };
 use massbit::prelude::LinkResolver;
 use massbit::prelude::{
-    IndexerAssignmentProvider as IndexerAssignmentProviderTrait,
-    IndexerRegistrar as IndexerRegistrarTrait, *,
+    IndexerProvider as IndexerAssignmentProviderTrait, IndexerRegistrar as IndexerRegistrarTrait, *,
 };
 
 pub struct IndexerRegistrar<L, S, P> {
-    logger: Logger,
     logger_factory: LoggerFactory,
     resolver: Arc<L>,
     store: Arc<S>,
     chains: Arc<BlockchainMap>,
-    node_id: NodeId,
     provider: Arc<P>,
 }
 
@@ -32,7 +29,6 @@ where
 {
     pub fn new(
         logger_factory: &LoggerFactory,
-        node_id: NodeId,
         chains: Arc<BlockchainMap>,
         resolver: Arc<L>,
         store: Arc<S>,
@@ -41,12 +37,10 @@ where
         let logger = logger_factory.component_logger("IndexerRegistrar");
         let logger_factory = logger_factory.with_parent(logger.clone());
         IndexerRegistrar {
-            logger,
             logger_factory,
             resolver: Arc::new(resolver.as_ref().clone().with_retries()),
             store,
             chains,
-            node_id,
             provider,
         }
     }
@@ -63,11 +57,10 @@ where
         &self,
         name: IndexerName,
         hash: DeploymentHash,
-        node_id: NodeId,
     ) -> Result<CreateIndexerResponse, IndexerRegistrarError> {
         let id = self.store.create_indexer(name.clone())?;
 
-        // We don't have a location for the subgraph yet; that will be
+        // We don't have a location for the indexer yet; that will be
         // assigned when we deploy for real. For logging purposes, make up a
         // fake locator
         let logger = self
@@ -95,14 +88,13 @@ where
 
         match kind {
             BlockchainKind::Ethereum => {
-                create_indexer_version::<chain_ethereum::Chain, _, _>(
+                create_indexer_deployment::<chain_ethereum::Chain, _, _>(
                     &logger,
                     self.store.clone(),
                     self.chains.cheap_clone(),
                     name.clone(),
                     hash.cheap_clone(),
-                    raw,
-                    node_id,
+                    raw.clone(),
                     self.resolver.cheap_clone(),
                 )
                 .await?
@@ -125,27 +117,26 @@ where
             }
         };
 
-        self.provider.start(deployment).await;
+        self.provider.start(deployment, raw.clone()).await;
 
         Ok(CreateIndexerResponse { id })
     }
 }
 
-async fn create_indexer_version<C: Blockchain, S: IndexerStore, L: LinkResolver>(
+async fn create_indexer_deployment<C: Blockchain, S: IndexerStore, L: LinkResolver>(
     logger: &Logger,
     store: Arc<S>,
     chains: Arc<BlockchainMap>,
     name: IndexerName,
     deployment: DeploymentHash,
     raw: serde_yaml::Mapping,
-    node_id: NodeId,
     resolver: Arc<L>,
 ) -> Result<(), IndexerRegistrarError> {
     let unvalidated = UnvalidatedIndexerManifest::<C>::resolve(
+        &logger,
         deployment,
         raw,
         resolver,
-        &logger,
         MAX_SPEC_VERSION.clone(),
     )
     .map_err(IndexerRegistrarError::ResolveError)
@@ -169,22 +160,22 @@ async fn create_indexer_version<C: Blockchain, S: IndexerStore, L: LinkResolver>
         return Err(IndexerRegistrarError::NameNotFound(name.to_string()));
     }
 
-    let start_block = resolve_indexer_chain_blocks(&manifest, chain, logger).await?;
+    let start_block = resolve_indexer_chain_blocks(logger, &manifest, chain).await?;
 
     // Apply the indexer versioning and deployment operations,
     // creating a new indexer deployment if one doesn't exist.
-    let deployment = IndexerDeploymentEntity::new(&manifest, false, start_block);
+    let deployment = IndexerDeploymentEntity::new(&manifest, start_block);
     deployment_store
-        .create_indexer_deployment(name, &manifest.schema, deployment, node_id, network_name)
+        .create_indexer_deployment(name, &manifest.schema, deployment, network_name)
         .map_err(|e| IndexerRegistrarError::IndexerDeploymentError(e))
         .map(|_| ())
 }
 
-/// Resolves the indexer's earliest block and the manifest's graft base block
+/// Resolves the indexer's earliest block
 async fn resolve_indexer_chain_blocks(
+    logger: &Logger,
     manifest: &IndexerManifest<impl Blockchain>,
     chain: Arc<impl Blockchain>,
-    logger: &Logger,
 ) -> Result<Option<BlockPtr>, IndexerRegistrarError> {
     // If the minimum start block is 0 (i.e. the genesis block),
     // return `None` to start indexing from the genesis block. Otherwise
