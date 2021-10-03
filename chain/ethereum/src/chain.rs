@@ -110,9 +110,8 @@ impl Blockchain for Chain {
 
     async fn new_block_stream(
         &self,
-        indexer_store: Arc<dyn WritableStore>,
         deployment: DeploymentLocator,
-        start_blocks: Vec<BlockNumber>,
+        start_block: BlockNumber,
         filter: Arc<Self::TriggerFilter>,
     ) -> Result<Box<dyn BlockStream<Self>>, Error> {
         let logger = self
@@ -124,10 +123,9 @@ impl Blockchain for Chain {
 
         Ok(Box::new(PollingBlockStream::new(
             logger,
-            indexer_store,
             triggers_adapter,
             filter,
-            start_blocks,
+            start_block,
             *MAX_BLOCK_RANGE_SIZE,
             *TARGET_TRIGGERS_PER_BLOCK_RANGE,
         )))

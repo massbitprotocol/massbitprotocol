@@ -260,18 +260,13 @@ where
 
         let block_stream_canceler = CancelGuard::new();
         let block_stream_cancel_handle = block_stream_canceler.handle();
-        let indexer_ptr = ctx
-            .inputs
-            .store
-            .block_ptr()?
-            .map_or(0, |ptr| ptr.number + 1);
+        let indexer_ptr = ctx.inputs.store.block_ptr()?.map_or(0, |ptr| ptr.number);
         let mut block_stream = ctx
             .inputs
             .chain
             .new_block_stream(
-                ctx.inputs.store.clone(),
                 ctx.inputs.deployment.clone(),
-                ctx.inputs.start_blocks.clone(),
+                indexer_ptr,
                 Arc::new(ctx.state.filter.clone()),
             )
             .await?

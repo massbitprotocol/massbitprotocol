@@ -85,9 +85,8 @@ pub trait Blockchain: Debug + Sized + Send + Sync + Unpin + 'static {
 
     async fn new_block_stream(
         &self,
-        store: Arc<dyn WritableStore>,
         deployment: DeploymentLocator,
-        start_block: Vec<BlockNumber>,
+        start_block: BlockNumber,
         filter: Arc<Self::TriggerFilter>,
     ) -> Result<Box<dyn BlockStream<Self>>, Error>;
 
