@@ -18,26 +18,26 @@ use massbit::{
 };
 
 /// Environment variable for limiting the `ipfs.map` file size limit.
-const MAX_IPFS_MAP_FILE_SIZE_VAR: &'static str = "GRAPH_MAX_IPFS_MAP_FILE_SIZE";
+const MAX_IPFS_MAP_FILE_SIZE_VAR: &'static str = "MAX_IPFS_MAP_FILE_SIZE";
 
 /// The default file size limit for `ipfs.map` is 256MiB.
 const DEFAULT_MAX_IPFS_MAP_FILE_SIZE: u64 = 256 * 1024 * 1024;
 
 /// Environment variable for limiting the `ipfs.cat` file size limit.
-const MAX_IPFS_FILE_SIZE_VAR: &'static str = "GRAPH_MAX_IPFS_FILE_BYTES";
+const MAX_IPFS_FILE_SIZE_VAR: &'static str = "MAX_IPFS_FILE_BYTES";
 
 lazy_static! {
     /// The default file size limit for the IPFS cache is 1MiB.
-    static ref MAX_IPFS_CACHE_FILE_SIZE: u64 = read_u64_from_env("GRAPH_MAX_IPFS_CACHE_FILE_SIZE")
+    static ref MAX_IPFS_CACHE_FILE_SIZE: u64 = read_u64_from_env("MAX_IPFS_CACHE_FILE_SIZE")
         .unwrap_or(1024 * 1024);
 
     /// The default size limit for the IPFS cache is 50 items.
-    static ref MAX_IPFS_CACHE_SIZE: u64 = read_u64_from_env("GRAPH_MAX_IPFS_CACHE_SIZE")
+    static ref MAX_IPFS_CACHE_SIZE: u64 = read_u64_from_env("MAX_IPFS_CACHE_SIZE")
         .unwrap_or(50);
 
     /// The timeout for IPFS requests in seconds
     static ref IPFS_TIMEOUT: Duration = Duration::from_secs(
-        read_u64_from_env("GRAPH_IPFS_TIMEOUT").unwrap_or(30)
+        read_u64_from_env("IPFS_TIMEOUT").unwrap_or(30)
     );
 }
 
@@ -211,8 +211,6 @@ impl LinkResolverTrait for LinkResolver {
         )
         .await?;
 
-        // FIXME: Having an env variable here is a problem for consensus.
-        // Index Nodes should not disagree on whether the file should be read.
         let max_file_size: Option<u64> = read_u64_from_env(MAX_IPFS_FILE_SIZE_VAR);
         restrict_file_size(&path, &stat, &max_file_size)?;
 

@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 use std::iter::FromIterator;
-use std::time::Instant;
 
 use massbit::blockchain::{Blockchain, DataSource, DataSourceTemplate as _};
 use massbit::components::store::WritableStore;

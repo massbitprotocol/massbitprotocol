@@ -41,6 +41,7 @@ lazy_static! {
             Duration::from_secs(secs)
         }).unwrap_or(Duration::from_secs(300))
     };
+
     static ref HASURA_URL: String = env::var("HASURA_URL").unwrap_or(String::from("http://localhost:8080/v1/query"));
 }
 
@@ -160,7 +161,6 @@ impl DeploymentStore {
         site: Arc<Site>,
         replace: bool,
     ) -> Result<(), StoreError> {
-        println!("Deployment Indexer");
         let conn = self.get_conn()?;
         let result = conn.transaction(|| -> Result<_, StoreError> {
             let exists = deployment::exists(&conn, &site)?;
@@ -180,6 +180,7 @@ impl DeploymentStore {
                 Ok(None)
             }
         });
+
         /// Call hasura to tracking tables and relationships
         match result {
             Ok(Some(layout)) => {
@@ -194,9 +195,9 @@ impl DeploymentStore {
                     //log::info!("Hasura {:?}", response);
                 });
                 Ok(())
-            },
+            }
             Err(err) => Err(err),
-            _ => Ok(())
+            _ => Ok(()),
         }
     }
 
@@ -288,7 +289,7 @@ impl DeploymentStore {
         mods: Vec<EntityModification>,
         data_sources: Vec<StoredDynamicDataSource>,
     ) -> Result<(), StoreError> {
-        // All operations should apply only to data or metadata for this subgraph
+        // All operations should apply only to data or metadata for this indexer
         if mods
             .iter()
             .map(|modification| modification.entity_key())
@@ -296,7 +297,7 @@ impl DeploymentStore {
         {
             panic!(
                 "transact_block_operations must affect only entities \
-                 in the subgraph or in the subgraph of subgraphs"
+                 in the indexer or in the indexer of indexers"
             );
         }
 

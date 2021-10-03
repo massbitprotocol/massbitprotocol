@@ -1,8 +1,5 @@
 use futures01::sync::mpsc::Sender;
-use lazy_static::lazy_static;
 use std::collections::HashMap;
-use std::env;
-use std::str::FromStr;
 
 use massbit::{blockchain::DataSource, prelude::*};
 use massbit::{
@@ -141,18 +138,5 @@ where
             self.hosts.push(host.clone());
             Some(host)
         })
-    }
-
-    pub(crate) fn revert_data_sources(&mut self, reverted_block: BlockNumber) {
-        // `hosts` is ordered by the creation block.
-        // See also 8f1bca33-d3b7-4035-affc-fd6161a12448.
-        while self
-            .hosts
-            .last()
-            .filter(|h| h.creation_block_number() >= Some(reverted_block))
-            .is_some()
-        {
-            self.hosts.pop();
-        }
     }
 }

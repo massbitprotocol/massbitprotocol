@@ -9,15 +9,13 @@ use std::sync::Arc;
 use thiserror::Error;
 
 use crate::components::store::{EntityType, IndexerStore};
-use crate::data::graphql::ext::{DirectiveExt, DirectiveFinder, DocumentExt, TypeExt, ValueExt};
+use crate::data::graphql::ext::{DirectiveExt, DirectiveFinder, DocumentExt, TypeExt};
 use crate::data::indexer::{DeploymentHash, IndexerName};
 use crate::data::store::ValueType;
 use crate::prelude::{
     q::Value,
     s::{self, Definition, InterfaceType, ObjectType, TypeDefinition, *},
 };
-
-use crate::stable_hash::StableHasher;
 
 pub const SCHEMA_TYPE_NAME: &str = "_Schema_";
 

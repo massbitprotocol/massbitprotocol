@@ -1,6 +1,6 @@
 use std::cmp::PartialEq;
 use std::str::FromStr;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use async_trait::async_trait;
 use futures::sync::mpsc::Sender;
@@ -90,7 +90,6 @@ impl<C: Blockchain> RuntimeHostBuilderTrait<C> for RuntimeHostBuilder<C> {
         RuntimeHost::new(
             self.runtime_adapter.cheap_clone(),
             self.link_resolver.clone(),
-            self.store.clone(),
             network_name,
             subgraph_id,
             data_source,
@@ -114,7 +113,6 @@ where
     fn new(
         runtime_adapter: Arc<C::RuntimeAdapter>,
         link_resolver: Arc<dyn LinkResolver>,
-        store: Arc<dyn IndexerStore>,
         network_name: String,
         subgraph_id: DeploymentHash,
         data_source: C::DataSource,
@@ -129,7 +127,6 @@ where
             network_name,
             templates,
             link_resolver,
-            store,
         ));
 
         let host_fns = Arc::new(runtime_adapter.host_fns(&data_source)?);

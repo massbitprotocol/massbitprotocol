@@ -3,6 +3,7 @@ extern crate lazy_static;
 extern crate massbit;
 extern crate serde;
 
+use self::massbit::data::indexer::IndexerRegistrarError;
 use futures::StreamExt;
 use jsonrpc_http_server::{
     jsonrpc_core::{self, Compatibility, IoHandler, Params, Value},
@@ -11,9 +12,7 @@ use jsonrpc_http_server::{
 use lazy_static::lazy_static;
 use massbit::prelude::futures03::channel::{mpsc, oneshot};
 use massbit::prelude::futures03::SinkExt;
-use massbit::prelude::serde_json;
 use massbit::prelude::{JsonRpcServer as JsonRpcServerTrait, *};
-use std::collections::BTreeMap;
 use std::env;
 use std::io;
 use std::net::{Ipv4Addr, SocketAddrV4};
@@ -26,19 +25,14 @@ lazy_static! {
 }
 
 const JSON_RPC_DEPLOY_ERROR: i64 = 0;
-const JSON_RPC_REMOVE_ERROR: i64 = 1;
-const JSON_RPC_CREATE_ERROR: i64 = 2;
-const JSON_RPC_REASSIGN_ERROR: i64 = 3;
 
 #[derive(Debug, Deserialize)]
 struct IndexerDeployParams {
     name: IndexerName,
     ipfs_hash: DeploymentHash,
-    node_id: Option<NodeId>,
 }
 
 pub struct JsonRpcServer<R> {
-    node_id: NodeId,
     registrar: Arc<R>,
     logger: Logger,
 }
@@ -52,16 +46,14 @@ impl<R: IndexerRegistrar> JsonRpcServer<R> {
 
         match self
             .registrar
-            .create_indexer(
-                params.name.clone(),
-                params.ipfs_hash.clone(),
-                self.node_id.clone(),
-            )
+            .create_indexer(params.name.clone(), params.ipfs_hash.clone())
             .await
         {
             Ok(_) => Ok(Value::Null),
             Err(e) => Err(json_rpc_error(
-                "subgraph_deploy",
+                &self.logger,
+                "indexer_deploy",
+                e,
                 JSON_RPC_DEPLOY_ERROR,
                 params,
             )),
@@ -75,28 +67,19 @@ where
 {
     type Server = Server;
 
-    fn serve(
-        port: u16,
-        registrar: Arc<R>,
-        node_id: NodeId,
-        logger: Logger,
-    ) -> Result<Self::Server, io::Error> {
-        let logger = logger.new(o!("component" => "JsonRpcServer"));
+    fn serve(port: u16, registrar: Arc<R>, logger: Logger) -> Result<Self::Server, io::Error> {
+        let logger = logger.new(o!("component" => "IndexerManager"));
 
         info!(
             logger,
-            "Starting JSON-RPC admin server at: http://localhost:{}", port
+            "Starting JSON-RPC indexer manager server at: http://localhost:{}", port
         );
 
         let addr = SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), port);
 
         let mut handler = IoHandler::with_compatibility(Compatibility::Both);
 
-        let arc_self = Arc::new(JsonRpcServer {
-            node_id,
-            registrar,
-            logger,
-        });
+        let arc_self = Arc::new(JsonRpcServer { registrar, logger });
 
         let (task_sender, task_receiver) =
             mpsc::channel::<Box<dyn std::future::Future<Output = ()> + Send + Unpin>>(100);
@@ -150,23 +133,26 @@ where
     }
 }
 
-fn json_rpc_error(operation: &str, code: i64, params: impl std::fmt::Debug) -> jsonrpc_core::Error {
-    let message = "internal error".to_owned();
+fn json_rpc_error(
+    logger: &Logger,
+    operation: &str,
+    e: IndexerRegistrarError,
+    code: i64,
+    params: impl std::fmt::Debug,
+) -> jsonrpc_core::Error {
+    error!(logger, "{} failed", operation;
+        "error" => format!("{:?}", e),
+        "params" => format!("{:?}", params));
+
+    let message = if let IndexerRegistrarError::Unknown(_) = e {
+        "internal error".to_owned()
+    } else {
+        e.to_string()
+    };
+
     jsonrpc_core::Error {
         code: jsonrpc_core::ErrorCode::ServerError(code),
         message,
         data: None,
-    }
-}
-
-pub fn parse_response(response: Value) -> Result<(), jsonrpc_core::Error> {
-    // serde deserialization of the `id` field to an `Id` struct is somehow
-    // incompatible with the `arbitrary-precision` feature which we use, so we
-    // need custom parsing logic.
-    let object = response.as_object().unwrap();
-    if let Some(error) = object.get("error") {
-        Err(serde_json::from_value(error.clone()).unwrap())
-    } else {
-        Ok(())
     }
 }

@@ -29,10 +29,6 @@ use crate::data::store::Entity;
 use crate::prelude::*;
 
 lazy_static! {
-    static ref DISABLE_GRAFTS: bool = std::env::var("GRAPH_DISABLE_GRAFTS")
-        .ok()
-        .map(|s| s.eq_ignore_ascii_case("true"))
-        .unwrap_or(false);
     pub static ref MAX_SPEC_VERSION: Version = std::env::var("GRAPH_MAX_SPEC_VERSION")
         .ok()
         .and_then(|api_version_str| Version::parse(&api_version_str).ok())
@@ -307,7 +303,7 @@ impl From<IndexerManifestValidationError> for IndexerRegistrarError {
 }
 
 #[derive(Error, Debug)]
-pub enum IndexerAssignmentProviderError {
+pub enum IndexerProviderError {
     #[error("Indexer resolve error: {0}")]
     ResolveError(Error),
     /// Occurs when attempting to remove a indexer that's not hosted.
@@ -319,15 +315,15 @@ pub enum IndexerAssignmentProviderError {
     Unknown(anyhow::Error),
 }
 
-impl From<Error> for IndexerAssignmentProviderError {
+impl From<Error> for IndexerProviderError {
     fn from(e: Error) -> Self {
-        IndexerAssignmentProviderError::Unknown(e)
+        IndexerProviderError::Unknown(e)
     }
 }
 
-impl From<::diesel::result::Error> for IndexerAssignmentProviderError {
+impl From<::diesel::result::Error> for IndexerProviderError {
     fn from(e: ::diesel::result::Error) -> Self {
-        IndexerAssignmentProviderError::Unknown(e.into())
+        IndexerProviderError::Unknown(e.into())
     }
 }
 
@@ -349,8 +345,6 @@ pub enum IndexerManifestValidationError {
     SchemaImportError(Vec<SchemaImportError>),
     #[error("schema validation failed: {0:?}")]
     SchemaValidationError(Vec<SchemaValidationError>),
-    #[error("the graft base is invalid: {0}")]
-    GraftBaseInvalid(String),
     #[error("indexer must use a single apiVersion across its data sources. Found: {}", format_versions(.0))]
     DifferentApiVersions(BTreeSet<Version>),
 }
@@ -474,21 +468,19 @@ impl<C: Blockchain> UnvalidatedIndexerManifest<C> {
     /// Right now the only supported links are of the form:
     /// `/ipfs/QmUmg7BZC1YP1ca66rRtWKxpXp77WgVHrnv263JtDuvs2k`
     pub async fn resolve(
+        logger: &Logger,
         id: DeploymentHash,
         raw: serde_yaml::Mapping,
         resolver: Arc<impl LinkResolver>,
-        logger: &Logger,
         max_spec_version: semver::Version,
     ) -> Result<Self, IndexerManifestResolveError> {
         Ok(Self(
-            IndexerManifest::resolve_from_raw(id, raw, resolver.deref(), logger, max_spec_version)
+            IndexerManifest::resolve_from_raw(logger, id, raw, resolver.deref(), max_spec_version)
                 .await?,
         ))
     }
 
     /// Validates the indexer manifest file.
-    ///
-    /// Graft base validation will be skipped if the parameter `validate_graft_base` is false.
     pub fn validate<S: IndexerStore>(
         self,
         store: Arc<S>,
@@ -546,10 +538,10 @@ impl<C: Blockchain> UnvalidatedIndexerManifest<C> {
 impl<C: Blockchain> IndexerManifest<C> {
     /// Entry point for resolving a indexer definition.
     pub async fn resolve_from_raw(
+        logger: &Logger,
         id: DeploymentHash,
         mut raw: serde_yaml::Mapping,
         resolver: &impl LinkResolver,
-        logger: &Logger,
         max_spec_version: semver::Version,
     ) -> Result<Self, IndexerManifestResolveError> {
         // Inject the IPFS hash as the ID of the indexer into the definition.

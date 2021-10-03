@@ -6,7 +6,6 @@ pub use massbit::runtime::{DeterministicHostError, HostExportError};
 use never::Never;
 use semver::Version;
 use std::collections::HashMap;
-use std::ops::Deref;
 use std::str::FromStr;
 use std::time::{Duration, Instant};
 use wasmtime::Trap;
@@ -18,8 +17,8 @@ use massbit::blockchain::DataSource;
 use massbit::blockchain::{Blockchain, DataSourceTemplate as _};
 use massbit::components::indexer::{BlockState, DataSourceTemplateInfo};
 use massbit::components::link_resolver::{JsonValueStream, LinkResolver};
+use massbit::components::store::EntityKey;
 use massbit::components::store::EntityType;
-use massbit::components::store::{EntityKey, IndexerStore};
 use massbit::data::indexer::{DataSourceContext, Link};
 use massbit::data::store;
 use massbit::data::store::Entity;
@@ -57,7 +56,6 @@ pub struct HostExports<C: Blockchain> {
     causality_region: String,
     templates: Arc<Vec<C::DataSourceTemplate>>,
     pub(crate) link_resolver: Arc<dyn LinkResolver>,
-    store: Arc<dyn IndexerStore>,
 }
 
 impl<C: Blockchain> HostExports<C> {
@@ -67,7 +65,6 @@ impl<C: Blockchain> HostExports<C> {
         data_source_network: String,
         templates: Arc<Vec<C::DataSourceTemplate>>,
         link_resolver: Arc<dyn LinkResolver>,
-        store: Arc<dyn IndexerStore>,
     ) -> Self {
         let causality_region = format!("ethereum/{}", data_source_network);
 
@@ -81,7 +78,6 @@ impl<C: Blockchain> HostExports<C> {
             causality_region,
             templates,
             link_resolver,
-            store,
         }
     }
 
@@ -107,7 +103,11 @@ impl<C: Blockchain> HostExports<C> {
             ),
             _ => unreachable!(),
         };
-        Err(DeterministicHostError(anyhow::anyhow!("Mapping aborted")))
+        Err(DeterministicHostError(anyhow::anyhow!(
+            "Mapping aborted at {}, with {}",
+            location,
+            message
+        )))
     }
 
     pub(crate) fn store_set(
@@ -518,10 +518,8 @@ impl<C: Blockchain> HostExports<C> {
         Ok(())
     }
 
-    pub(crate) fn ens_name_by_hash(&self, hash: &str) -> Result<Option<String>, anyhow::Error> {
-        // Ok(self.store.find_ens_name(hash)?)
-        // TODO: Implement this for store
-        Ok(Some("".to_string()))
+    pub(crate) fn ens_name_by_hash(&self, _: &str) -> Result<Option<String>, anyhow::Error> {
+        unimplemented!()
     }
 
     pub(crate) fn data_source_address(&self) -> Vec<u8> {
