@@ -5,7 +5,7 @@ use massbit::blockchain::{
     block_stream::BlockWithTriggers, Block, BlockStream, Blockchain, BlockchainKind,
     PollingBlockStream, TriggersAdapter as TriggersAdapterTrait,
 };
-use massbit::components::store::{DeploymentLocator, WritableStore};
+use massbit::components::store::DeploymentLocator;
 use massbit::prelude::*;
 
 use crate::data_source::{
