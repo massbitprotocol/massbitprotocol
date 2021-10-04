@@ -8,7 +8,7 @@ import threading
 import requests
 import yaml
 from helper.helper import write_to_disk, get_abi_files, upload_abi_to_ipfs, ipfs_client_init, get_index_manager_url, \
-    is_template_exist, upload_mapping_to_ipfs, replace_mapping_v1, replace_abi_v2
+    is_template_exist, upload_mapping_to_ipfs, replace_mapping_v1, replace_abi_v2, get_index_manager_url_v2
 
 success_file = "success.txt"
 error_file = "error.txt"
@@ -125,7 +125,7 @@ def deploy_wasm(data):
     parsed_subgraph_res = client.add(parsed_subgraph_path)
 
     # Deploy a new index to Index Manager
-    deploy_to_index_manager(parsed_subgraph_res, ds_mapping_res, schema_res, abi_res)
+    deploy_to_index_manager_v2(parsed_subgraph_res, ds_mapping_res, schema_res, abi_res)
 
 
 def replace_mapping_and_schema(subgraph_path, subgraph, schema_res, ds_mapping_res, tp_mapping_res=None):
@@ -140,17 +140,14 @@ def replace_mapping_and_schema(subgraph_path, subgraph, schema_res, ds_mapping_r
     return subgraph
 
 
-def deploy_to_index_manager(parsed_subgraph_res, ds_mapping_res, schema_res, abi_res):
+def deploy_to_index_manager_v2(parsed_subgraph_res, ds_mapping_res, schema_res, abi_res):
     # Todo: remove abi_res, ds_mapping_res
-    res = requests.post(get_index_manager_url(),
+    res = requests.post(get_index_manager_url_v2(),
                         json={
                             'jsonrpc': '2.0',
-                            'method': 'index_deploy',
+                            'method': 'subgraph_deploy',
                             'params': [
-                                parsed_subgraph_res['Hash'],
-                                ds_mapping_res[0]['file_hash'],
-                                schema_res['Hash'],
-                                abi_res,
+                                'test',
                                 parsed_subgraph_res['Hash']
                             ],
                             'id': '1',
