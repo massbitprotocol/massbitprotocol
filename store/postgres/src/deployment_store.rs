@@ -184,12 +184,7 @@ impl DeploymentStore {
         if let Ok(Some(layout)) = result {
             let payload = layout.create_hasura_tracking();
             massbit::spawn(async move {
-                let response = Client::new()
-                    .post(&*HASURA_URL)
-                    .json(&payload)
-                    .send()
-                    .await
-                    .unwrap();
+                Client::new().post(&*HASURA_URL).json(&payload).send().await;
             });
         }
 

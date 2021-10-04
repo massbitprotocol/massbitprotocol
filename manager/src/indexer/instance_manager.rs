@@ -36,7 +36,6 @@ type SharedInstanceKeepAliveMap = Arc<RwLock<HashMap<DeploymentId, CancelGuard>>
 
 struct IndexingInputs<C: Blockchain> {
     deployment: DeploymentLocator,
-    start_blocks: Vec<BlockNumber>,
     store: Arc<dyn WritableStore>,
     triggers_adapter: Arc<C::TriggersAdapter>,
     chain: Arc<C>,
@@ -177,7 +176,6 @@ where
 
         // Obtain filters from the manifest
         let filter = C::TriggerFilter::from_data_sources(manifest.data_sources.iter());
-        let start_blocks = manifest.start_blocks();
 
         let templates = Arc::new(manifest.templates.clone());
 
@@ -204,7 +202,6 @@ where
         let ctx = IndexingContext {
             inputs: IndexingInputs {
                 deployment: deployment.clone(),
-                start_blocks,
                 store,
                 triggers_adapter,
                 chain,
