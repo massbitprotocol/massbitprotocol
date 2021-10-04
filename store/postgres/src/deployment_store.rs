@@ -26,7 +26,7 @@ use crate::deployment;
 use crate::dynds;
 use crate::primary::Site;
 use crate::relational::{Layout, LayoutCache};
-
+use massbit::prelude::reqwest::Client;
 lazy_static! {
     /// `GRAPH_QUERY_STATS_REFRESH_INTERVAL` is how long statistics that
     /// influence query execution are cached in memory (in seconds) before
@@ -41,6 +41,7 @@ lazy_static! {
             Duration::from_secs(secs)
         }).unwrap_or(Duration::from_secs(300))
     };
+    static ref HASURA_URL: String = env::var("HASURA_URL").unwrap_or(String::from("http://localhost:8080/v1/query"));
 }
 
 /// When connected to read replicas, this allows choosing which DB server to use for an operation.
@@ -203,8 +204,9 @@ impl DeploymentStore {
         site: Arc<Site>,
         replace: bool,
     ) -> Result<(), StoreError> {
+        println!("Deployment Indexer");
         let conn = self.get_conn()?;
-        conn.transaction(|| -> Result<_, StoreError> {
+        let result = conn.transaction(|| -> Result<_, StoreError> {
             let exists = deployment::exists(&conn, &site)?;
 
             // Create (or update) the metadata. Update only happens in tests
@@ -216,10 +218,30 @@ impl DeploymentStore {
             if !exists {
                 let query = format!("create schema {}", &site.namespace);
                 conn.batch_execute(&query)?;
-                let _ = Layout::create_relational_schema(&conn, site.clone(), schema)?;
+                let layout = Layout::create_relational_schema(&conn, site.clone(), schema)?;
+                Ok(Some(layout))
+            } else {
+                Ok(None)
             }
-            Ok(())
-        })
+        });
+        /// Call hasura to tracking tables and relationships
+        match result {
+            Ok(Some(layout)) => {
+                let payload = layout.create_hasura_tracking();
+                tokio::spawn(async move {
+                    let response = Client::new()
+                        .post(&*HASURA_URL)
+                        .json(&payload)
+                        .send()
+                        .await
+                        .unwrap();
+                    //log::info!("Hasura {:?}", response);
+                });
+                Ok(())
+            },
+            Err(err) => Err(err),
+            _ => Ok(())
+        }
     }
 
     /// Return the layout for a deployment. Since constructing a `Layout`
