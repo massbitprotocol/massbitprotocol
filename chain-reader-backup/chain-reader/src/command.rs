@@ -5,17 +5,15 @@ use crate::{
     grpc_stream::stream_mod::{streamout_server::StreamoutServer, ChainType, GenericDataProto},
     CONFIG,
 };
-use chain_ethereum::network::{EthereumNetworkAdapter, EthereumNetworkAdapters, EthereumNetworks};
-use chain_ethereum::{manifest, Chain, EthereumAdapter, Transport};
 use graph::semver::Op;
 use log::error;
 use massbit_common::NetworkType;
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::thread::sleep;
 use std::time::Duration;
 use tokio::sync::broadcast;
 use tonic::transport::Server;
+
 #[derive(Clone, Debug)]
 pub struct Config {
     pub chains: Vec<ChainConfig>,
@@ -44,7 +42,6 @@ pub struct ChainConfig {
     pub start_block: Option<u64>,
     pub chain_type: ChainType,
     pub network: NetworkType,
-    pub supports_eip_1898: bool,
 }
 
 pub fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>) {
@@ -57,31 +54,11 @@ pub fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>) {
     });
 }
 
-async fn create_adaptor(chain_type: &ChainType, network: &NetworkType) -> EthereumAdapter {
-    let config = CONFIG.get_chain_config(chain_type, network).unwrap();
-    let websocket_url = config.ws.clone();
-    let http_url = config.url.clone();
-    let supports_eip_1898 = config.supports_eip_1898;
-
-    let (transport_event_loop, transport) = match crate::ethereum_chain::USE_WEBSOCKET {
-        false => Transport::new_rpc(&http_url, Default::default()),
-        true => Transport::new_ws(&websocket_url),
-    };
-    std::mem::forget(transport_event_loop);
-    EthereumAdapter::new(
-        config.network,
-        http_url.as_str(),
-        transport,
-        supports_eip_1898,
-    )
-    .await
-}
-
 pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     // Broadcast Channel
     let mut chans: HashMap<(ChainType, NetworkType), broadcast::Sender<GenericDataProto>> =
         HashMap::new();
-    let mut chains: HashMap<(ChainType, NetworkType), Arc<Chain>> = HashMap::new();
+
     // Spawm thread get_data
     for config in CONFIG.chains.clone().into_iter() {
         let chain_type = config.chain_type;
@@ -149,26 +126,14 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
                 // add chan to chans
                 //chans.insert(ChainType::Solana, chan);
             }
-            ChainType::Ethereum => {
-                let chain = Chain {
-                    eth_adapters: Arc::new(EthereumNetworkAdapters {
-                        adapters: vec![EthereumNetworkAdapter {
-                            adapter: Arc::new(create_adaptor(&chain_type, &network).await),
-                        }],
-                    }),
-                };
-                chains.insert(
-                    (ChainType::Ethereum, network_clone.clone()),
-                    Arc::new(chain),
-                );
-            }
+            ChainType::Ethereum => {}
         }
         // add chan to chans
         chans.insert((chain_type, network), chan);
     }
 
     // Run StreamoutServer
-    let stream_service = StreamService { chans, chains };
+    let stream_service = StreamService { chans: chans };
 
     let addr = CONFIG.url.parse()?;
     Server::builder()

@@ -1,10 +1,14 @@
 use tokio::sync::{broadcast, mpsc};
+use tokio::task;
 use tokio_stream::wrappers::ReceiverStream;
 
 use crate::ethereum_chain;
+use chain_ethereum::network::{EthereumNetworkAdapter, EthereumNetworkAdapters};
+use chain_ethereum::{manifest, Chain, EthereumAdapter, Transport, TriggerFilter};
 use log::{error, info};
 use massbit_common::NetworkType;
 use std::collections::HashMap;
+use std::sync::Arc;
 use stream_mod::{
     streamout_server::Streamout, ChainType, GenericDataProto, GetBlocksRequest, HelloReply,
     HelloRequest,
@@ -20,6 +24,24 @@ pub mod stream_mod {
 #[derive(Debug)]
 pub struct StreamService {
     pub chans: HashMap<(ChainType, NetworkType), broadcast::Sender<GenericDataProto>>,
+    pub chains: HashMap<(ChainType, NetworkType), Arc<Chain>>,
+}
+
+async fn create_ethereum_adapter() -> EthereumAdapter {
+    let (transport_event_loop, transport) =
+        Transport::new_rpc("https://rpc-mainnet.matic.network", Default::default());
+
+    // If we drop the event loop the transport will stop working.
+    // For now it's fine to just leak it.
+    std::mem::forget(transport_event_loop);
+
+    chain_ethereum::EthereumAdapter::new(
+        "matic".to_string(),
+        "https://rpc-mainnet.matic.network",
+        transport,
+        false,
+    )
+    .await
 }
 
 #[tonic::async_trait]
@@ -46,7 +68,9 @@ impl Streamout for StreamService {
         info!("Request = {:?}", request);
         let chain_type: ChainType = ChainType::from_i32(request.get_ref().chain_type).unwrap();
         let network: NetworkType = request.get_ref().network.clone();
+        let start_block = request.get_ref().start_block_number;
         let (tx, rx) = mpsc::channel(QUEUE_BUFFER);
+        let encoded_filter: Vec<u8> = request.get_ref().filter.clone();
         match chain_type {
             ChainType::Substrate | ChainType::Solana => {
                 // tx, rx for out stream gRPC
@@ -73,16 +97,33 @@ impl Streamout for StreamService {
                 });
             }
             ChainType::Ethereum => {
-                let start_block = request.get_ref().start_block_number;
-                tokio::spawn(async move {
-                    let start_block = match start_block {
-                        0 => None,
-                        _ => Some(start_block),
-                    };
-                    let resp =
-                        ethereum_chain::loop_get_block(tx.clone(), &start_block, &network).await;
+                let name = "deployment".to_string();
+                let chain = self
+                    .chains
+                    .get(&(chain_type, network.clone()))
+                    .unwrap()
+                    .clone();
 
-                    error!("Stop loop_get_block, error: {:?}", resp);
+                graph::spawn_thread(name, move || {
+                    graph::block_on(task::unconstrained(async {
+                        let start_block = match start_block {
+                            0 => None,
+                            _ => Some(start_block),
+                        };
+
+                        let filter: TriggerFilter =
+                            serde_json::from_slice(&encoded_filter).unwrap();
+                        let resp = ethereum_chain::loop_get_block(
+                            tx.clone(),
+                            &start_block,
+                            &network,
+                            chain,
+                            filter,
+                        )
+                        .await;
+
+                        error!("Stop loop_get_block, error: {:?}", resp);
+                    }))
                 });
             }
         }

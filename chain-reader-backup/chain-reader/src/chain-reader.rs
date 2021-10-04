@@ -1,4 +1,4 @@
-use chain_filter::command;
+use chain_reader::command;
 use logger::core::init_logger;
 
 #[tokio::main]

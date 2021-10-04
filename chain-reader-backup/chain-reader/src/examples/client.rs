@@ -45,15 +45,13 @@ pub async fn print_blocks(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     // Debug
     let mut count = 0;
-    let network = "matic".to_string();
-    let filter = Vec::new();
+
     // Not use start_block_number start_block_number yet
     let get_blocks_request = GetBlocksRequest {
         start_block_number: 1,
         end_block_number: 1,
         chain_type: chain_type as i32,
         network,
-        filter,
     };
     println!("Creating Stream ...");
     let mut stream = Some(
@@ -232,55 +230,55 @@ pub async fn create_ipfs_clients(ipfs_addresses: &Vec<String>) -> Vec<IpfsClient
         .collect()
 }
 
-// async fn get_data_source(
-//     file_hash: &String,
-// ) -> Result<Vec<DataSource>, SubgraphAssignmentProviderError> {
-//     let logger = logger(false);
-//     let ipfs_addresses = vec![String::from("0.0.0.0:5001")];
-//     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await;
-//
-//     // let mut resolver = TextResolver::default();
-//     let file_bytes = ipfs_clients[0]
-//         .cat_all(file_hash.to_string(), Duration::from_secs(10))
-//         .compat()
-//         .await
-//         .unwrap()
-//         .to_vec();
-//
-//     // Get raw manifest
-//     let file = String::from_utf8(file_bytes).unwrap();
-//     println!("File: {}", file);
-//
-//     let raw: serde_yaml::Value = serde_yaml::from_str(&file).unwrap();
-//
-//     let mut raw_manifest = match raw {
-//         serde_yaml::Value::Mapping(m) => m,
-//         _ => panic!("Wrong type raw_manifest"),
-//     };
-//
-//     // Inject the IPFS hash as the ID of the subgraph into the definition.
-//     let id = "deployment_hash";
-//     raw_manifest.insert(
-//         serde_yaml::Value::from("id"),
-//         serde_yaml::Value::from(id.to_string()),
-//     );
-//
-//     // Parse the YAML data into an UnresolvedSubgraphManifest
-//     let value: Value = raw_manifest.into();
-//     let unresolved: UnresolvedSubgraphManifest<Chain> = serde_yaml::from_value(value).unwrap();
-//     let resolver = Arc::new(LinkResolver::from(ipfs_clients));
-//
-//     //debug!("Features {:?}", unresolved.features);
-//     let manifest = unresolved
-//         .resolve(&*resolver, &logger)
-//         .compat()
-//         .await
-//         .map_err(SubgraphAssignmentProviderError::ResolveError)?;
-//
-//     println!("data_sources: {:#?}", &manifest.data_sources);
-//
-//     Ok(manifest.data_sources)
-// }
+async fn get_data_source(
+    file_hash: &String,
+) -> Result<Vec<DataSource>, SubgraphAssignmentProviderError> {
+    let logger = logger(false);
+    let ipfs_addresses = vec![String::from("0.0.0.0:5001")];
+    let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await;
+
+    // let mut resolver = TextResolver::default();
+    let file_bytes = ipfs_clients[0]
+        .cat_all(file_hash.to_string(), Duration::from_secs(10))
+        .compat()
+        .await
+        .unwrap()
+        .to_vec();
+
+    // Get raw manifest
+    let file = String::from_utf8(file_bytes).unwrap();
+    println!("File: {}", file);
+
+    let raw: serde_yaml::Value = serde_yaml::from_str(&file).unwrap();
+
+    let mut raw_manifest = match raw {
+        serde_yaml::Value::Mapping(m) => m,
+        _ => panic!("Wrong type raw_manifest"),
+    };
+
+    // Inject the IPFS hash as the ID of the subgraph into the definition.
+    let id = "deployment_hash";
+    raw_manifest.insert(
+        serde_yaml::Value::from("id"),
+        serde_yaml::Value::from(id.to_string()),
+    );
+
+    // Parse the YAML data into an UnresolvedSubgraphManifest
+    let value: Value = raw_manifest.into();
+    let unresolved: UnresolvedSubgraphManifest<Chain> = serde_yaml::from_value(value).unwrap();
+    let resolver = Arc::new(LinkResolver::from(ipfs_clients));
+
+    //debug!("Features {:?}", unresolved.features);
+    let manifest = unresolved
+        .resolve(&*resolver, &logger)
+        .compat()
+        .await
+        .map_err(SubgraphAssignmentProviderError::ResolveError)?;
+
+    println!("data_sources: {:#?}", &manifest.data_sources);
+
+    Ok(manifest.data_sources)
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
