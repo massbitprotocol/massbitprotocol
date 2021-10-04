@@ -181,24 +181,19 @@ impl DeploymentStore {
             }
         });
 
-        /// Call hasura to tracking tables and relationships
-        match result {
-            Ok(Some(layout)) => {
-                let payload = layout.create_hasura_tracking();
-                tokio::spawn(async move {
-                    let response = Client::new()
-                        .post(&*HASURA_URL)
-                        .json(&payload)
-                        .send()
-                        .await
-                        .unwrap();
-                    //log::info!("Hasura {:?}", response);
-                });
-                Ok(())
-            }
-            Err(err) => Err(err),
-            _ => Ok(()),
+        if let Ok(Some(layout)) = result {
+            let payload = layout.create_hasura_tracking();
+            massbit::spawn(async move {
+                let response = Client::new()
+                    .post(&*HASURA_URL)
+                    .json(&payload)
+                    .send()
+                    .await
+                    .unwrap();
+            });
         }
+
+        Ok(())
     }
 
     /// Return the layout for a deployment. Since constructing a `Layout`

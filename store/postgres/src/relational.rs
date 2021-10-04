@@ -557,7 +557,7 @@ impl Layout {
         Ok(count)
     }
 }
-/// Create Hasura payload
+
 impl Layout {
     pub fn create_hasura_tracking(&self) -> serde_json::Value {
         let (track_tables, _) = self.create_hasura_tracking_tables();
@@ -573,6 +573,7 @@ impl Layout {
             "args" : vec![track_tables, track_relationships, reload_metadata]
         })
     }
+
     fn create_hasura_tracking_tables(&self) -> (serde_json::Value, serde_json::Value) {
         //Generate hasura request to track tables + relationships
         let mut hasura_tables: Vec<serde_json::Value> = Vec::new();
@@ -601,8 +602,7 @@ impl Layout {
                 },
             }));
         });
-        //hasura_tables.append(&mut hasura_relations);
-        //hasura_down_relations.append(&mut hasura_down_tables);
+
         (
             serde_json::json!({
                 "type": "bulk",
@@ -614,6 +614,7 @@ impl Layout {
             }),
         )
     }
+
     fn create_hasura_tracking_relationships(&self) -> (serde_json::Value, serde_json::Value) {
         let mut hasura_relations: Vec<serde_json::Value> = Vec::new();
         let mut hasura_down_relations: Vec<serde_json::Value> = Vec::new();
