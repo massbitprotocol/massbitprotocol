@@ -44,7 +44,7 @@ impl EthereumHandler for EthereumDailyAddressTransactionHandler {
         self.storage_adapter.upsert(&table,
                                     &columns,
                                     &values,
-                                    Some(conflict_frag));
+                                    &Some(conflict_frag));
         Ok(())
     }
 }

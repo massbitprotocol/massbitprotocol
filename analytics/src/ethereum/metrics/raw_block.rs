@@ -33,7 +33,7 @@ impl EthereumHandler for EthereumRawBlockHandler {
         self.storage_adapter.upsert(&table,
                                     &columns,
                                     &vec![entity],
-                                    None);
+                                    &None);
         Ok(())
     }
 }

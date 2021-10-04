@@ -15,8 +15,20 @@ create table solana_transactions
     id                  bigserial constraint solana_transactions_pk primary key,
     block_hash          varchar(50),
     block_number        bigint,
+    parent_slot         bigint,
     signatures          text,
     signers             text,
-    timestamp       bigint,
-    reward          bigint default 0
+    block_time          bigint,
+    reward              bigint default 0,
+    fee                 bigint,
+    status              varchar(10)
 );
+
+create table solana_account_transactions
+(
+    id                  bigserial constraint solana_account_transactions_pk primary key,
+    account             varchar(100),
+    tx_hash             varchar(100),
+    pre_balance         bigint,
+    post_balance        bigint
+)

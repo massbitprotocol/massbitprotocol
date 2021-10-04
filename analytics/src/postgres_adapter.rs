@@ -16,6 +16,7 @@ use massbit_common::prelude::diesel::pg::Pg;
 use crate::postgres_queries::{UpsertQuery, UpsertConflictFragment};
 use crate::relational::{Column, Table};
 use std::time::Instant;
+use crate::models::CommandData;
 
 const MAX_POOL_SIZE : u32 = 10;
 
@@ -24,7 +25,7 @@ pub struct PostgresAdapter {
 }
 
 impl StorageAdapter for PostgresAdapter {
-    fn upsert(&self, table: &Table, columns: &Vec<Column>, entities: &Vec<Entity>, conflict_fragment: Option<UpsertConflictFragment>) -> Result<(), anyhow::Error> {
+    fn upsert(&self, table: &Table, columns: &Vec<Column>, entities: &Vec<Entity>, conflict_fragment: &Option<UpsertConflictFragment>) -> Result<(), anyhow::Error> {
         let start = Instant::now();
         match self.pool.get() {
             Ok(conn) => {
@@ -39,6 +40,31 @@ impl StorageAdapter for PostgresAdapter {
                         Err(err.into())
                     }
                 }
+            }
+            Err(err) => {
+                log::error!("{:?}", &err);
+                Err(err.into())
+            }
+        }
+    }
+    fn transact_upserts(&self, commands: Vec<CommandData>) -> Result<(), anyhow::Error> {
+        let start = Instant::now();
+        match self.pool.get() {
+            Ok(conn) => {
+                conn.transaction::<(), anyhow::Error,_>(||{
+                    commands.iter().for_each(|cmd| {
+                        let upsert_query = UpsertQuery::from(cmd);
+                        match upsert_query.execute(conn.deref()) {
+                            Ok(val) => {
+                                log::debug!("Upsert {} entities into table {} in {:?}", cmd.values.len(), cmd.table.name, start.elapsed());
+                            },
+                            Err(err) => {
+                                log::error!("{:?}", &err);
+                            }
+                        }
+                    });
+                    Ok(())
+                })
             }
             Err(err) => {
                 log::error!("{:?}", &err);

@@ -37,7 +37,7 @@ impl EthereumHandler for EthereumRawTransactionHandler {
         self.storage_adapter.upsert(&table,
                                     &columns,
                                     &values,
-                                    None);
+                                    &None);
         Ok(())
     }
 }

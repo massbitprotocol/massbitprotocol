@@ -1,5 +1,7 @@
 pub mod metrics;
 pub mod handler;
+pub mod model;
+
 use crate::stream_mod::{
     streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
 };
@@ -87,7 +89,7 @@ pub async fn process_solana_stream(client: &mut StreamoutClient<Timeout<Channel>
                                         solana_decode(&mut data.payload).unwrap();
                                     // Decode
                                     let block = convert_solana_encoded_block_to_solana_block(encoded_block);
-                                    let block_number = block.block.parent_slot as i64;
+                                    let block_number = block.block.block_height.unwrap() as i64;
                                     handler_manager.handle_ext_block(&block);
                                     match diesel::insert_into(network_state::table)
                                         .values((network_state::chain.eq(CHAIN.clone()),
@@ -101,7 +103,7 @@ pub async fn process_solana_stream(client: &mut StreamoutClient<Timeout<Channel>
                                         Ok(_) => {}
                                         Err(err) => log::error!("{:?}",&err)
                                     };
-                                    log::info!("Block {} with {} transactions is processed in {:?}", block_number, block.block.transactions.len(), start.elapsed());
+                                    log::info!("Block height {} with {} transactions is processed in {:?}", block_number, block.block.transactions.len(), start.elapsed());
                                 }
                                 _ => {
                                     warn!("Not support this type in Ethereum");

@@ -9,6 +9,7 @@ use graph::data::store::scalar;
 use core::str::FromStr;
 use crate::sql_value::SqlValue;
 use crate::relational::{Column, SqlName, ColumnType, Table};
+use crate::models::CommandData;
 
 const PRIMARY_KEY_COLUMN : &str = "id";
 #[derive(Debug)]
@@ -16,14 +17,14 @@ pub struct UpsertQuery<'a>{
     table: &'a Table<'a>,
     entities: &'a Vec<Entity>,
     columns: &'a Vec<Column>,
-    conflict_fragment: Option<UpsertConflictFragment<'a>>,
+    conflict_fragment: &'a Option<UpsertConflictFragment<'a>>,
 }
 impl<'a> UpsertQuery<'a> {
     pub fn new(
         table: &'a Table,
         columns: &'a Vec<Column>,
         entities: &'a Vec<Entity>,
-        conflict_fragment: Option<UpsertConflictFragment<'a>>,
+        conflict_fragment: &'a Option<UpsertConflictFragment<'a>>,
     ) -> Result<UpsertQuery<'a>, StoreError> {
         Ok(UpsertQuery {
             table,
@@ -33,7 +34,16 @@ impl<'a> UpsertQuery<'a> {
         })
     }
 }
-
+impl<'a> From<&CommandData<'a>> for UpsertQuery<'a> {
+    fn from(cmd: &CommandData<'a>) -> Self {
+        UpsertQuery {
+            table: cmd.table,
+            entities: cmd.values,
+            columns: cmd.columns,
+            conflict_fragment: cmd.conflict_fragment
+        }
+    }
+}
 impl<'a> QueryFragment<Pg> for UpsertQuery<'a> {
     fn walk_ast(&self, mut out: AstPass<Pg>) -> QueryResult<()> {
         out.unsafe_to_cache_prepared();

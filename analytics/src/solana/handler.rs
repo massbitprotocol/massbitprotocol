@@ -40,7 +40,7 @@ pub fn create_solana_handler_manager(network: &Option<NetworkType>, storate_adap
     -> SolanaHandlerManager {
     let mut handler_manager = SolanaHandlerManager::new();
     handler_manager
-        .add_handler(Box::new(SolanaRawBlockHandler::new(network, storate_adapter.clone())))
+        //.add_handler(Box::new(SolanaRawBlockHandler::new(network, storate_adapter.clone())))
         .add_handler(Box::new(SolanaRawTransactionHandler::new(network, storate_adapter.clone())))
         //.add_handler(Box::new(SolanaDailyTransactionHandler::new(network, storate_adapter.clone())))
         //.add_handler(Box::new(SolanaDailyAddressTransactionHandler::new(network, storate_adapter.clone())))

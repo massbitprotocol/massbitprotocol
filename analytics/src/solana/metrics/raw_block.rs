@@ -8,7 +8,7 @@ use graph::data::store::ValueType::BigInt;
 use crate::{create_columns,create_entity};
 use crate::solana::handler::SolanaHandler;
 use massbit_chain_solana::data_type::SolanaBlock;
-use solana_transaction_status::ConfirmedBlock;
+use solana_transaction_status::{ConfirmedBlock, RewardType, Reward};
 pub struct SolanaRawBlockHandler {
     pub network: Option<NetworkType>,
     pub storage_adapter: Arc<dyn StorageAdapter>,
@@ -32,14 +32,14 @@ impl SolanaHandler for SolanaRawBlockHandler {
         self.storage_adapter.upsert(&table,
                                     &columns,
                                     &vec![entity],
-                                    None);
+                                    &None);
         Ok(())
     }
 }
 fn create_columns() -> Vec<Column> {
     create_columns!(
         "previous_block_hash" => ColumnType::String,
-        "parent_slot" => ColumnType::String,
+        "parent_slot" => ColumnType::BigInt,
         "block_hash" => ColumnType::String,
         "block_height" => ColumnType::BigInt,
         "transaction_number" => ColumnType::BigInt,
@@ -53,8 +53,16 @@ fn create_entity(block: &ConfirmedBlock) -> Entity {
         None => 0_u64,
         Some(val) => val as u64
     };
-    //block.rewards.iter().reduce(|reward|{ reward.commission});
-    //Todo: Calculate leader and reward of the block
+    //Calculate leader and reward of the block ad reward with tye Fee
+    let mut validator = String::from("");
+    let mut fee_reward = 0_u64;
+    for reward in &block.rewards {
+        if Some(RewardType::Fee) == reward.reward_type {
+            validator = reward.pubkey.clone();
+            fee_reward = reward.lamports as u64;
+            break;
+        }
+    }
     create_entity!(
         "previous_block_hash" => block.previous_blockhash.clone(),
         "parent_slot" => block.parent_slot,
@@ -62,8 +70,8 @@ fn create_entity(block: &ConfirmedBlock) -> Entity {
         "block_height" => block.block_height,
         "transaction_number" => block.transactions.len() as u64,
         "timestamp" => timestamp,
-        "leader" => String::from(""),
-        "reward" => 0_u64
+        "leader" => validator,
+        "reward" => fee_reward
     )
 }
 
