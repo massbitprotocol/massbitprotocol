@@ -125,7 +125,7 @@ def deploy_wasm(data):
     parsed_subgraph_res = client.add(parsed_subgraph_path)
 
     # Deploy a new index to Index Manager
-    deploy_to_index_manager_v2(parsed_subgraph_res, ds_mapping_res, schema_res, abi_res)
+    deploy_to_index_manager_v2(subgraph_content, parsed_subgraph_res)
 
 
 def replace_mapping_and_schema(subgraph_path, subgraph, schema_res, ds_mapping_res, tp_mapping_res=None):
@@ -140,14 +140,13 @@ def replace_mapping_and_schema(subgraph_path, subgraph, schema_res, ds_mapping_r
     return subgraph
 
 
-def deploy_to_index_manager_v2(parsed_subgraph_res, ds_mapping_res, schema_res, abi_res):
-    # Todo: remove abi_res, ds_mapping_res
+def deploy_to_index_manager_v2(subgraph_content, parsed_subgraph_res):
     res = requests.post(get_index_manager_url_v2(),
                         json={
                             'jsonrpc': '2.0',
                             'method': 'subgraph_deploy',
                             'params': [
-                                'test',
+                                subgraph_content['dataSources'][0]['name'] + parsed_subgraph_res['Hash'][0:5],
                                 parsed_subgraph_res['Hash']
                             ],
                             'id': '1',
