@@ -27,7 +27,6 @@ pub struct StreamService {
     pub chains: HashMap<(ChainType, NetworkType), Arc<Chain>>,
 }
 
-
 #[tonic::async_trait]
 impl Streamout for StreamService {
     async fn say_hello(
@@ -94,8 +93,8 @@ impl Streamout for StreamService {
                     .unwrap()
                     .clone();
 
-                graph::spawn_thread(name, move || {
-                    graph::block_on(task::unconstrained(async {
+                massbit::spawn_thread(name, move || {
+                    massbit::block_on(task::unconstrained(async {
                         let start_block = match start_block {
                             0 => None,
                             _ => Some(start_block),

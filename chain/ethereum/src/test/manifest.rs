@@ -10,9 +10,9 @@ use massbit::log::logger;
 use massbit::slog::Logger;
 
 const GQL_SCHEMA: &str = "type Thing @entity { id: ID! }";
-const GQL_SCHEMA_FULLTEXT: &str = include_str!("../examples/full-text.graphql");
+const GQL_SCHEMA_FULLTEXT: &str = include_str!("../../examples/full-text.graphql");
 const MAPPING_WITH_IPFS_FUNC_WASM: &[u8] =
-    include_bytes!("../examples/ipfs-on-ethereum-contracts.wasm");
+    include_bytes!("../../examples/ipfs-on-ethereum-contracts.wasm");
 const ABI: &str = "[{\"type\":\"function\", \"inputs\": [{\"name\": \"i\",\"type\": \"uint256\"}],\"name\":\"get\",\"outputs\": [{\"type\": \"address\",\"name\": \"o\"}]}]";
 
 #[derive(Default, Debug)]

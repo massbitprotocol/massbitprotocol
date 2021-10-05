@@ -866,7 +866,6 @@ dependencies = [
  "anyhow",
  "ethabi 12.0.0-graph",
  "futures 0.1.31",
- "graph 0.24.0",
  "http 0.1.21",
  "jsonrpc-core 14.2.0",
  "massbit",
