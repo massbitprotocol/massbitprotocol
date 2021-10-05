@@ -1,17 +1,17 @@
-use massbit_common::prelude::bigdecimal::{BigDecimal, FromPrimitive};
-use graph::prelude::web3::types::Transaction;
-use massbit_common::NetworkType;
-use crate::storage_adapter::StorageAdapter;
-use std::sync::Arc;
-use std::collections::HashMap;
 use crate::ethereum::handler::EthereumHandler;
-use crate::relational::{Table, Column, ColumnType};
+use crate::relational::{Column, ColumnType, Table};
+use crate::storage_adapter::StorageAdapter;
+use graph::prelude::web3::types::Transaction;
 use graph::prelude::{Attribute, Entity, Value};
+use massbit_common::prelude::bigdecimal::{BigDecimal, FromPrimitive};
+use massbit_common::NetworkType;
+use std::collections::HashMap;
+use std::sync::Arc;
 // use index_store::{EntityValue, FromEntity, FromValueTrait, ToMap, ValueFrom};
 // use massbit_drive::{FromEntity, ToMap};
-use massbit_chain_ethereum::types::LightEthereumBlock;
 use crate::{create_columns, create_entity};
 use massbit_chain_ethereum::data_type::ExtBlock;
+use massbit_chain_ethereum::types::LightEthereumBlock;
 
 pub struct EthereumRawTransactionHandler {
     pub network: Option<NetworkType>,
@@ -22,22 +22,23 @@ impl EthereumRawTransactionHandler {
     pub fn new(network: &Option<NetworkType>, storage_adapter: Arc<dyn StorageAdapter>) -> Self {
         EthereumRawTransactionHandler {
             network: network.clone(),
-            storage_adapter
+            storage_adapter,
         }
     }
 }
 
 impl EthereumHandler for EthereumRawTransactionHandler {
     fn handle_block(&self, block: &ExtBlock) -> Result<(), anyhow::Error> {
-        let values = block.block.transactions.iter().map(|tran| {
-            create_entity(block, tran)
-        }).collect::<Vec<Entity>>();
+        let values = block
+            .block
+            .transactions
+            .iter()
+            .map(|tran| create_entity(block, tran))
+            .collect::<Vec<Entity>>();
         let table = Table::new("ethereum_transaction", Some("t"));
         let columns = create_columns();
-        self.storage_adapter.upsert(&table,
-                                    &columns,
-                                    &values,
-                                    &None);
+        self.storage_adapter
+            .upsert(&table, &columns, &values, &None);
         Ok(())
     }
 }

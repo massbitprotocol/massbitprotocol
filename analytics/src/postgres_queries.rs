@@ -1,19 +1,21 @@
-use massbit_common::prelude::diesel::{Connection, r2d2, insert_into, RunQueryDsl, sql_query, QueryResult, IntoSql};
-use graph::prelude::{Value, Entity};
-use massbit_common::prelude::diesel::pg::Pg;
-use graph::components::store::StoreError;
-use massbit_common::prelude::diesel::query_builder::{AstPass, QueryFragment, QueryId};
-use massbit_common::prelude::diesel::sql_types::{Integer, Text, Bool, Array, Binary, Varchar};
-use massbit_common::prelude::diesel::result::Error as DieselError;
-use graph::data::store::scalar;
-use core::str::FromStr;
-use crate::sql_value::SqlValue;
-use crate::relational::{Column, SqlName, ColumnType, Table};
 use crate::models::CommandData;
+use crate::relational::{Column, ColumnType, SqlName, Table};
+use crate::sql_value::SqlValue;
+use core::str::FromStr;
+use graph::components::store::StoreError;
+use graph::data::store::scalar;
+use graph::prelude::{Entity, Value};
+use massbit_common::prelude::diesel::pg::Pg;
+use massbit_common::prelude::diesel::query_builder::{AstPass, QueryFragment, QueryId};
+use massbit_common::prelude::diesel::result::Error as DieselError;
+use massbit_common::prelude::diesel::sql_types::{Array, Binary, Bool, Integer, Text, Varchar};
+use massbit_common::prelude::diesel::{
+    insert_into, r2d2, sql_query, Connection, IntoSql, QueryResult, RunQueryDsl,
+};
 
-const PRIMARY_KEY_COLUMN : &str = "id";
+const PRIMARY_KEY_COLUMN: &str = "id";
 #[derive(Debug)]
-pub struct UpsertQuery<'a>{
+pub struct UpsertQuery<'a> {
     table: &'a Table<'a>,
     entities: &'a Vec<Entity>,
     columns: &'a Vec<Column>,
@@ -30,7 +32,7 @@ impl<'a> UpsertQuery<'a> {
             table,
             entities,
             columns,
-            conflict_fragment
+            conflict_fragment,
         })
     }
 }
@@ -40,7 +42,7 @@ impl<'a> From<&CommandData<'a>> for UpsertQuery<'a> {
             table: cmd.table,
             entities: cmd.values,
             columns: cmd.columns,
-            conflict_fragment: cmd.conflict_fragment
+            conflict_fragment: cmd.conflict_fragment,
         }
     }
 }
@@ -75,7 +77,7 @@ impl<'a> QueryFragment<Pg> for UpsertQuery<'a> {
             if col_iter.peek().is_some() {
                 out.push_sql(", ");
             }
-        };
+        }
 
         //out.push_identifier(BLOCK_RANGE_COLUMN)?;
 
@@ -92,7 +94,9 @@ impl<'a> QueryFragment<Pg> for UpsertQuery<'a> {
                 // If the column name is not within this entity's fields, we will issue the
                 // null value in its place
                 if let Some(value) = entity.get(column.name.as_str()) {
-                    QueryValue(value, &column.column_type).walk_ast(out.reborrow()).unwrap();
+                    QueryValue(value, &column.column_type)
+                        .walk_ast(out.reborrow())
+                        .unwrap();
                 } else {
                     out.push_sql("null");
                 }
@@ -100,7 +104,7 @@ impl<'a> QueryFragment<Pg> for UpsertQuery<'a> {
                 if col_iter.peek().is_some() {
                     out.push_sql(", ");
                 }
-            };
+            }
             out.push_sql(")");
             // finalize line according to remaining entities to insert
             if iter.peek().is_some() {
@@ -108,7 +112,10 @@ impl<'a> QueryFragment<Pg> for UpsertQuery<'a> {
             }
         }
         if self.conflict_fragment.is_some() {
-            self.conflict_fragment.as_ref().walk_ast(out.reborrow()).unwrap();
+            self.conflict_fragment
+                .as_ref()
+                .walk_ast(out.reborrow())
+                .unwrap();
         }
         Ok(())
     }
@@ -124,18 +131,15 @@ impl<'a, Conn> RunQueryDsl<Conn> for UpsertQuery<'a> {}
 #[derive(Debug, Clone)]
 pub struct UpdateExpression<'a> {
     field: &'a str,
-    expression: &'a str
+    expression: &'a str,
 }
 impl<'a> UpdateExpression<'a> {
     pub fn new(field: &'a str, expression: &'a str) -> Self {
-        UpdateExpression {
-            field,
-            expression
-        }
+        UpdateExpression { field, expression }
     }
 }
 #[derive(Debug, Clone)]
-pub struct UpsertConflictFragment<'a>{
+pub struct UpsertConflictFragment<'a> {
     constraint: &'a str,
     expressions: Vec<UpdateExpression<'a>>,
 }
@@ -143,16 +147,12 @@ impl<'a> UpsertConflictFragment<'a> {
     pub fn new(constraint: &'a str) -> Self {
         UpsertConflictFragment {
             constraint,
-            expressions: Vec::default()
+            expressions: Vec::default(),
         }
     }
     pub fn add_expression(&mut self, field: &'a str, expression: &'a str) -> &mut Self {
-        self.expressions.push(
-            UpdateExpression {
-                field,
-                expression
-            }
-        );
+        self.expressions
+            .push(UpdateExpression { field, expression });
         self
     }
 }
@@ -239,6 +239,7 @@ impl<'a> QueryFragment<Pg> for QueryValue<'a> {
                     ColumnType::Int => out.push_bind_param::<Array<Integer>, _>(&sql_values),
                     ColumnType::String => out.push_bind_param::<Array<Text>, _>(&sql_values),
                     ColumnType::Varchar => out.push_bind_param::<Array<Varchar>, _>(&sql_values),
+                    ColumnType::TextArray => out.push_bind_param::<Array<Text>, _>(&sql_values),
                     ColumnType::Enum(enum_type) => {
                         out.push_bind_param::<Array<Text>, _>(&sql_values)?;
                         out.push_sql("::");

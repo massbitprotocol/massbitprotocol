@@ -1,48 +1,71 @@
 //Public trait for ethereum metric
-use massbit_common::prelude::anyhow;
-use massbit_chain_solana::data_type::SolanaBlock;
-use std::collections::HashMap;
 use super::metrics::*;
-use std::sync::Arc;
 use crate::storage_adapter::StorageAdapter;
+use massbit_chain_solana::data_type::SolanaBlock;
+use massbit_common::prelude::anyhow;
 use massbit_common::NetworkType;
+use std::collections::HashMap;
+use std::sync::Arc;
 
-pub trait SolanaHandler : Sync + Send {
-    fn handle_block(&self, _block: &SolanaBlock) -> Result<(), anyhow::Error> {
+pub trait SolanaHandler: Sync + Send {
+    fn handle_block(&self, _block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
         Ok(())
     }
-    fn handle_blocks(&self, _vec_blocks: &Vec<SolanaBlock>) -> Result<(), anyhow::Error> {
+    fn handle_blocks(&self, _vec_blocks: Arc<Vec<SolanaBlock>>) -> Result<(), anyhow::Error> {
         Ok(())
     }
 }
 
 #[derive(Default)]
 pub struct SolanaHandlerManager {
-    pub handlers: Vec<Box<dyn SolanaHandler>>
+    pub handlers: Vec<Arc<dyn SolanaHandler>>,
 }
 impl SolanaHandlerManager {
     pub fn new() -> SolanaHandlerManager {
         SolanaHandlerManager::default()
     }
-    pub fn add_handler(mut self, handler: Box<dyn SolanaHandler>) -> Self {
+    pub fn add_handler(mut self, handler: Arc<dyn SolanaHandler>) -> Self {
         self.handlers.push(handler);
         self
     }
-    pub fn handle_ext_block(&self, block: &SolanaBlock) -> Result<(), anyhow::Error> {
+    pub fn handle_ext_block(&self, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
         self.handlers.iter().for_each(|handler| {
-            handler.handle_block(block);
+            let clone_handler = handler.clone();
+            let clone_block = Arc::clone(&block);
+            tokio::spawn(async move {
+                clone_handler.handle_block(clone_block);
+            });
         });
         Ok(())
     }
 }
 
-pub fn create_solana_handler_manager(network: &Option<NetworkType>, storate_adapter: Arc<dyn StorageAdapter>)
-    -> SolanaHandlerManager {
+pub fn create_solana_handler_manager(
+    network: &Option<NetworkType>,
+    storate_adapter: Arc<dyn StorageAdapter>,
+) -> SolanaHandlerManager {
     let mut handler_manager = SolanaHandlerManager::new();
     handler_manager
-        .add_handler(Box::new(SolanaRawBlockHandler::new(network, storate_adapter.clone())))
-        .add_handler(Box::new(SolanaRawTransactionHandler::new(network, storate_adapter.clone())))
-        //.add_handler(Box::new(SolanaDailyTransactionHandler::new(network, storate_adapter.clone())))
-        //.add_handler(Box::new(SolanaDailyAddressTransactionHandler::new(network, storate_adapter.clone())))
-
+        .add_handler(Arc::new(SolanaRawBlockHandler::new(
+            network,
+            storate_adapter.clone(),
+        )))
+        .add_handler(Arc::new(SolanaRawTransactionHandler::new(
+            network,
+            storate_adapter.clone(),
+        )))
+        .add_handler(Arc::new(SolanaRawLogHandler::new(
+            network,
+            storate_adapter.clone(),
+        )))
+        .add_handler(Arc::new(SolanaInstructionHandler::new(
+            network,
+            storate_adapter.clone(),
+        )))
+        .add_handler(Arc::new(SolanaTokenBalanceHandler::new(
+            network,
+            storate_adapter.clone(),
+        )))
+    //.add_handler(Box::new(SolanaDailyTransactionHandler::new(network, storate_adapter.clone())))
+    //.add_handler(Box::new(SolanaDailyAddressTransactionHandler::new(network, storate_adapter.clone())))
 }

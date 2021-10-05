@@ -1,14 +1,15 @@
 //Public trait for ethereum metric
-use massbit_common::prelude::anyhow;
-use massbit_chain_ethereum::data_type::{ExtBlock, LightEthereumBlock};
-use graph::prelude::web3::types::{Transaction, TransactionReceipt, H256};
-use std::collections::HashMap;
 use super::metrics::*;
-use std::sync::Arc;
 use crate::storage_adapter::StorageAdapter;
-use massbit_common::NetworkType;
+use graph::prelude::web3::types::{Transaction, TransactionReceipt, H256};
+use massbit_chain_ethereum::data_type::{ExtBlock, LightEthereumBlock};
+use massbit_common::prelude::anyhow;
 use massbit_common::prelude::tokio;
-pub trait EthereumHandler : Sync + Send {
+use massbit_common::NetworkType;
+use std::collections::HashMap;
+use std::sync::Arc;
+
+pub trait EthereumHandler: Sync + Send {
     fn handle_block(&self, block: &ExtBlock) -> Result<(), anyhow::Error> {
         Ok(())
     }
@@ -16,7 +17,7 @@ pub trait EthereumHandler : Sync + Send {
 
 #[derive(Default)]
 pub struct EthereumHandlerManager {
-    pub handlers: Vec<Box<dyn EthereumHandler>>
+    pub handlers: Vec<Box<dyn EthereumHandler>>,
 }
 impl EthereumHandlerManager {
     pub fn new() -> EthereumHandlerManager {
@@ -38,12 +39,26 @@ impl EthereumHandlerManager {
     }
 }
 
-pub fn create_ethereum_handler_manager(network: &Option<NetworkType>, storate_adapter: Arc<dyn StorageAdapter>) -> EthereumHandlerManager {
+pub fn create_ethereum_handler_manager(
+    network: &Option<NetworkType>,
+    storate_adapter: Arc<dyn StorageAdapter>,
+) -> EthereumHandlerManager {
     let mut handler_manager = EthereumHandlerManager::new();
     handler_manager
-        .add_handler(Box::new(EthereumRawBlockHandler::new(network, storate_adapter.clone())))
-        .add_handler(Box::new(EthereumRawTransactionHandler::new(network, storate_adapter.clone())))
-        .add_handler(Box::new(EthereumDailyTransactionHandler::new(network, storate_adapter.clone())))
-        .add_handler(Box::new(EthereumDailyAddressTransactionHandler::new(network, storate_adapter.clone())))
-
+        .add_handler(Box::new(EthereumRawBlockHandler::new(
+            network,
+            storate_adapter.clone(),
+        )))
+        .add_handler(Box::new(EthereumRawTransactionHandler::new(
+            network,
+            storate_adapter.clone(),
+        )))
+        .add_handler(Box::new(EthereumDailyTransactionHandler::new(
+            network,
+            storate_adapter.clone(),
+        )))
+        .add_handler(Box::new(EthereumDailyAddressTransactionHandler::new(
+            network,
+            storate_adapter.clone(),
+        )))
 }

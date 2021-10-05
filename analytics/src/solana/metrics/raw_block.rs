@@ -1,14 +1,14 @@
-use graph::prelude::{Entity, Attribute, Value};
-use massbit_common::NetworkType;
-use crate::storage_adapter::StorageAdapter;
-use std::sync::Arc;
-use crate::relational::{ColumnType, Table, Column};
-use std::collections::HashMap;
-use graph::data::store::ValueType::BigInt;
-use crate::{create_columns,create_entity};
+use crate::relational::{Column, ColumnType, Table};
 use crate::solana::handler::SolanaHandler;
+use crate::storage_adapter::StorageAdapter;
+use crate::{create_columns, create_entity};
+use graph::data::store::ValueType::BigInt;
+use graph::prelude::{Attribute, Entity, Value};
 use massbit_chain_solana::data_type::SolanaBlock;
-use solana_transaction_status::{ConfirmedBlock, RewardType, Reward};
+use massbit_common::NetworkType;
+use solana_transaction_status::{ConfirmedBlock, Reward, RewardType};
+use std::collections::HashMap;
+use std::sync::Arc;
 pub struct SolanaRawBlockHandler {
     pub network: Option<NetworkType>,
     pub storage_adapter: Arc<dyn StorageAdapter>,
@@ -18,21 +18,19 @@ impl SolanaRawBlockHandler {
     pub fn new(network: &Option<NetworkType>, storage_adapter: Arc<dyn StorageAdapter>) -> Self {
         SolanaRawBlockHandler {
             network: network.clone(),
-            storage_adapter
+            storage_adapter,
         }
     }
 }
 
 impl SolanaHandler for SolanaRawBlockHandler {
-    fn handle_block(&self, block: &SolanaBlock) -> Result<(), anyhow::Error> {
+    fn handle_block(&self, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
         let table = Table::new("solana_blocks", Some("t"));
         let columns = create_columns();
         let entity = create_entity(&block.block);
         //println!("Block {:?} has reward {:?}", &block.block.block_height, &block.block.rewards);
-        self.storage_adapter.upsert(&table,
-                                    &columns,
-                                    &vec![entity],
-                                    &None);
+        self.storage_adapter
+            .upsert(&table, &columns, &vec![entity], &None);
         Ok(())
     }
 }
@@ -51,7 +49,7 @@ fn create_columns() -> Vec<Column> {
 fn create_entity(block: &ConfirmedBlock) -> Entity {
     let timestamp = match block.block_time {
         None => 0_u64,
-        Some(val) => val as u64
+        Some(val) => val as u64,
     };
     //Calculate leader and reward of the block ad reward with tye Fee
     let mut validator = String::from("");
@@ -74,4 +72,3 @@ fn create_entity(block: &ConfirmedBlock) -> Entity {
         "reward" => fee_reward
     )
 }
-

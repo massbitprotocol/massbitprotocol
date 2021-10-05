@@ -2,43 +2,41 @@
 extern crate diesel;
 extern crate diesel_migrations;
 
-use std::env;
 use diesel::{prelude::*, Connection, PgConnection};
 use dotenv::dotenv;
-pub mod manager;
-pub mod schema;
-pub mod models;
+use std::env;
 pub mod ethereum;
+pub mod models;
+pub mod schema;
 pub mod solana;
 //pub mod substrate;
-pub mod storage_adapter;
 pub mod postgres_adapter;
 pub mod postgres_queries;
 pub mod relational;
 pub mod sql_value;
+pub mod storage_adapter;
 pub mod util;
 pub mod stream_mod {
     tonic::include_proto!("chaindata");
 }
 use crate::models::NetworkState;
-use tower::timeout::Timeout;
 #[allow(unused_imports)]
 use tonic::{
-    Request,
-    Response, Status, transport::{Channel, Server},
-    Streaming
+    transport::{Channel, Server},
+    Request, Response, Status, Streaming,
 };
+use tower::timeout::Timeout;
 
+use crate::postgres_adapter::{PostgresAdapter, PostgresAdapterBuilder};
+use crate::storage_adapter::StorageAdapter;
 use crate::stream_mod::{
-    ChainType, GenericDataProto, GetBlocksRequest, streamout_client::StreamoutClient,
+    streamout_client::StreamoutClient, ChainType, GenericDataProto, GetBlocksRequest,
 };
 use massbit_common::NetworkType;
-use crate::postgres_adapter::{PostgresAdapterBuilder, PostgresAdapter};
-use crate::storage_adapter::StorageAdapter;
 
 pub const GET_STREAM_TIMEOUT_SEC: u64 = 60;
 pub const GET_BLOCK_TIMEOUT_SEC: u64 = 600;
-pub const DEFAULT_DATABASE_URL : &str = "postgres://graph-node:let-me-in@localhost/analytic";
+pub const DEFAULT_DATABASE_URL: &str = "postgres://graph-node:let-me-in@localhost/analytic";
 
 pub fn create_postgres_storage() -> PostgresAdapter {
     let database_url = env::var("DATABASE_URL").unwrap_or(String::from(DEFAULT_DATABASE_URL));
@@ -79,9 +77,14 @@ pub async fn try_create_stream(
     return None;
 }
 
-pub fn get_block_number(conn: &PgConnection, chain_value: String, network_value: String) -> Option<NetworkState> {
+pub fn get_block_number(
+    conn: &PgConnection,
+    chain_value: String,
+    network_value: String,
+) -> Option<NetworkState> {
     use crate::schema::network_state::dsl::*;
-    let results = network_state.filter(chain.eq(chain_value))
+    let results = network_state
+        .filter(chain.eq(chain_value))
         .filter(network.eq(network_value))
         .limit(1)
         .load::<NetworkState>(conn)
@@ -91,7 +94,7 @@ pub fn get_block_number(conn: &PgConnection, chain_value: String, network_value:
     } else {
         match results.get(0) {
             Some(val) => Some(val.clone()),
-            None => None
+            None => None,
         }
     }
 }
@@ -121,4 +124,3 @@ macro_rules! create_entity {
         }
     };
 }
-

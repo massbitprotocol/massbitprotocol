@@ -1,40 +1,52 @@
 use crate::storage_adapter::StorageAdapter;
-use massbit_common::prelude::diesel::{Connection, r2d2, insert_into, RunQueryDsl, sql_query, QueryResult};
-use massbit_common::prelude::diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
-use std::cmp;
 use diesel::PgConnection;
 use diesel_dynamic_schema::table;
+use massbit_common::prelude::diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
 use massbit_common::prelude::diesel::result::{Error as DieselError, Error};
+use massbit_common::prelude::diesel::{
+    insert_into, r2d2, sql_query, Connection, QueryResult, RunQueryDsl,
+};
+use std::cmp;
 
-
-use core::ops::Deref;
-use massbit_common::prelude::diesel::pg::types::sql_types::Jsonb;
-use std::collections::HashMap;
-use graph::prelude::{Value, StoreError, Entity};
-use massbit_common::prelude::diesel::query_builder::{QueryId, QueryFragment, AstPass};
-use massbit_common::prelude::diesel::pg::Pg;
-use crate::postgres_queries::{UpsertQuery, UpsertConflictFragment};
-use crate::relational::{Column, Table};
-use std::time::Instant;
 use crate::models::CommandData;
+use crate::postgres_queries::{UpsertConflictFragment, UpsertQuery};
+use crate::relational::{Column, Table};
+use core::ops::Deref;
+use graph::prelude::{Entity, StoreError, Value};
+use massbit_common::prelude::diesel::pg::types::sql_types::Jsonb;
+use massbit_common::prelude::diesel::pg::Pg;
+use massbit_common::prelude::diesel::query_builder::{AstPass, QueryFragment, QueryId};
+use std::collections::HashMap;
+use std::time::Instant;
 
-const MAX_POOL_SIZE : u32 = 10;
+const MAX_POOL_SIZE: u32 = 10;
 
 pub struct PostgresAdapter {
-    pool: Pool<ConnectionManager<PgConnection>>
+    pool: Pool<ConnectionManager<PgConnection>>,
 }
 
 impl StorageAdapter for PostgresAdapter {
-    fn upsert(&self, table: &Table, columns: &Vec<Column>, entities: &Vec<Entity>, conflict_fragment: &Option<UpsertConflictFragment>) -> Result<(), anyhow::Error> {
+    fn upsert(
+        &self,
+        table: &Table,
+        columns: &Vec<Column>,
+        entities: &Vec<Entity>,
+        conflict_fragment: &Option<UpsertConflictFragment>,
+    ) -> Result<(), anyhow::Error> {
         let start = Instant::now();
         match self.pool.get() {
             Ok(conn) => {
                 let upsert_query = UpsertQuery::new(table, columns, entities, conflict_fragment)?;
                 match upsert_query.execute(conn.deref()) {
                     Ok(val) => {
-                        log::debug!("Upsert {} entities into table {} in {:?}", entities.len(), table.name, start.elapsed());
+                        log::info!(
+                            "Upsert {} entities into table {} in {:?}",
+                            entities.len(),
+                            table.name,
+                            start.elapsed()
+                        );
                         Ok(())
-                    },
+                    }
                     Err(err) => {
                         log::error!("{:?}", &err);
                         Err(err.into())
@@ -50,22 +62,25 @@ impl StorageAdapter for PostgresAdapter {
     fn transact_upserts(&self, commands: Vec<CommandData>) -> Result<(), anyhow::Error> {
         let start = Instant::now();
         match self.pool.get() {
-            Ok(conn) => {
-                conn.transaction::<(), anyhow::Error,_>(||{
-                    commands.iter().for_each(|cmd| {
-                        let upsert_query = UpsertQuery::from(cmd);
-                        match upsert_query.execute(conn.deref()) {
-                            Ok(val) => {
-                                log::debug!("Upsert {} entities into table {} in {:?}", cmd.values.len(), cmd.table.name, start.elapsed());
-                            },
-                            Err(err) => {
-                                log::error!("{:?}", &err);
-                            }
+            Ok(conn) => conn.transaction::<(), anyhow::Error, _>(|| {
+                commands.iter().for_each(|cmd| {
+                    let upsert_query = UpsertQuery::from(cmd);
+                    match upsert_query.execute(conn.deref()) {
+                        Ok(val) => {
+                            log::info!(
+                                "Upsert {} entities into table {} in {:?}",
+                                cmd.values.len(),
+                                cmd.table.name,
+                                start.elapsed()
+                            );
                         }
-                    });
-                    Ok(())
-                })
-            }
+                        Err(err) => {
+                            log::error!("{:?}", &err);
+                        }
+                    }
+                });
+                Ok(())
+            }),
             Err(err) => {
                 log::error!("{:?}", &err);
                 Err(err.into())
@@ -73,7 +88,6 @@ impl StorageAdapter for PostgresAdapter {
         }
     }
 }
-
 
 #[derive(Default)]
 pub struct PostgresAdapterBuilder {
@@ -98,16 +112,20 @@ impl PostgresAdapterBuilder {
     }
 
     pub fn build(self) -> PostgresAdapter {
-
         let pool_size = cmp::max(self.pool_size, MAX_POOL_SIZE);
-        let conn_pool = create_r2d2_connection_pool::<PgConnection>(self.url.unwrap().as_str(), pool_size);
-        PostgresAdapter {
-            pool: conn_pool
-        }
+        let conn_pool =
+            create_r2d2_connection_pool::<PgConnection>(self.url.unwrap().as_str(), pool_size);
+        PostgresAdapter { pool: conn_pool }
     }
 }
 
-pub fn create_r2d2_connection_pool<T:'static + Connection>(db_url: &str, pool_size: u32) -> r2d2::Pool<ConnectionManager<T>> {
+pub fn create_r2d2_connection_pool<T: 'static + Connection>(
+    db_url: &str,
+    pool_size: u32,
+) -> r2d2::Pool<ConnectionManager<T>> {
     let manager = ConnectionManager::<T>::new(db_url);
-    r2d2::Pool::builder().max_size(pool_size).build(manager).expect("Can not create connection pool")
+    r2d2::Pool::builder()
+        .max_size(pool_size)
+        .build(manager)
+        .expect("Can not create connection pool")
 }

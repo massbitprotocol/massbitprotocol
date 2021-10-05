@@ -1,11 +1,11 @@
-use std::fmt;
-use graph::prelude::{StoreError, q};
-use inflector::Inflector;
+use graph::components::store::EntityType;
 use graph::data::schema::FulltextConfig;
 use graph::prelude::s::EnumType;
+use graph::prelude::{q, StoreError};
 use graph_store_postgres::command_support::Catalog;
-use graph::components::store::EntityType;
+use inflector::Inflector;
 use massbit_common::prelude::log::kv::Source;
+use std::fmt;
 
 /// A string we use as a SQL name for a table or column. The important thing
 /// is that SQL names are snake cased. Using this type makes it easier to
@@ -91,7 +91,6 @@ impl fmt::Display for SqlName {
     }
 }
 
-
 /// This is almost the same as graph::data::store::ValueType, but without
 /// ID and List; with this type, we only care about scalar types that directly
 /// correspond to Postgres scalar types
@@ -104,6 +103,7 @@ pub enum ColumnType {
     Int,
     String,
     Varchar,
+    TextArray,
     TSVector(FulltextConfig),
     Enum(EnumType),
     /// A `bytea` in SQL, represented as a ValueType::String; this is
@@ -121,6 +121,7 @@ impl ColumnType {
             ColumnType::Int => "integer",
             ColumnType::String => "text",
             ColumnType::Varchar => "varchar",
+            ColumnType::TextArray => "text[]",
             ColumnType::TSVector(_) => "tsvector",
             ColumnType::Enum(enum_type) => enum_type.name.as_str(),
             ColumnType::BytesId => "bytea",
@@ -136,10 +137,7 @@ pub struct Column {
 }
 
 impl Column {
-    pub fn new(
-        field: &str,
-        column_type: ColumnType
-    ) -> Column {
+    pub fn new(field: &str, column_type: ColumnType) -> Column {
         let sql_name = SqlName::from(field);
         let is_reference = false;
         Column {
@@ -153,14 +151,14 @@ impl Column {
 #[derive(Clone, Debug)]
 pub struct Table<'a> {
     pub name: SqlName,
-    pub alias: Option<&'a str>
+    pub alias: Option<&'a str>,
 }
 
 impl<'a> Table<'a> {
     pub fn new(name: &'a str, alias: Option<&'a str>) -> Self {
         Table {
             name: SqlName::from(name),
-            alias
+            alias,
         }
     }
 }

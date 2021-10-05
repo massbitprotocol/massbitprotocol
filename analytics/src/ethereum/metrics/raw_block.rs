@@ -1,15 +1,15 @@
-use bigdecimal::{BigDecimal, FromPrimitive};
-use massbit_chain_ethereum::data_type::{LightEthereumBlock, ExtBlock};
-use graph::prelude::web3::types::Transaction;
-use graph::prelude::{Entity, Attribute, Value};
 use crate::ethereum::handler::EthereumHandler;
-use massbit_common::NetworkType;
+use crate::relational::{Column, ColumnType, Table};
 use crate::storage_adapter::StorageAdapter;
-use std::sync::Arc;
-use crate::relational::{ColumnType, Table, Column};
-use std::collections::HashMap;
+use crate::{create_columns, create_entity};
+use bigdecimal::{BigDecimal, FromPrimitive};
 use graph::data::store::ValueType::BigInt;
-use crate::{create_columns,create_entity};
+use graph::prelude::web3::types::Transaction;
+use graph::prelude::{Attribute, Entity, Value};
+use massbit_chain_ethereum::data_type::{ExtBlock, LightEthereumBlock};
+use massbit_common::NetworkType;
+use std::collections::HashMap;
+use std::sync::Arc;
 
 pub struct EthereumRawBlockHandler {
     pub network: Option<NetworkType>,
@@ -20,7 +20,7 @@ impl EthereumRawBlockHandler {
     pub fn new(network: &Option<NetworkType>, storage_adapter: Arc<dyn StorageAdapter>) -> Self {
         EthereumRawBlockHandler {
             network: network.clone(),
-            storage_adapter
+            storage_adapter,
         }
     }
 }
@@ -30,10 +30,8 @@ impl EthereumHandler for EthereumRawBlockHandler {
         let entity = create_entity(&block.block);
         let table = Table::new("ethereum_block", Some("t"));
         let columns = create_columns();
-        self.storage_adapter.upsert(&table,
-                                    &columns,
-                                    &vec![entity],
-                                    &None);
+        self.storage_adapter
+            .upsert(&table, &columns, &vec![entity], &None);
         Ok(())
     }
 }

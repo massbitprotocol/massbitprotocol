@@ -1,19 +1,24 @@
-use std::collections::HashMap;
-use massbit_common::prelude::diesel::Connection;
-use massbit_common::prelude::diesel::r2d2::{PooledConnection, ConnectionManager};
-use massbit_common::prelude::r2d2;
-use graph::prelude::{Value, Entity};
-use crate::relational::{Column, Table};
-use crate::postgres_queries::UpsertConflictFragment;
 use crate::models::CommandData;
+use crate::postgres_queries::UpsertConflictFragment;
+use crate::relational::{Column, Table};
+use graph::prelude::{Entity, Value};
+use massbit_common::prelude::diesel::r2d2::{ConnectionManager, PooledConnection};
+use massbit_common::prelude::diesel::Connection;
+use massbit_common::prelude::r2d2;
+use std::collections::HashMap;
 
-pub trait StorageAdapter : Sync + Send {
+pub trait StorageAdapter: Sync + Send {
     //fn get_connection(&self) -> Result<Connection, anyhow::Error>;
     fn insert(&self, table_name: &str, value: HashMap<&str, Value>) -> Result<(), anyhow::Error> {
         unimplemented!()
     }
-    fn upsert(&self, table: &Table, columns: &Vec<Column>, value: &Vec<Entity>, conflict_fragment: &Option<UpsertConflictFragment>)
-        -> Result<(), anyhow::Error> {
+    fn upsert(
+        &self,
+        table: &Table,
+        columns: &Vec<Column>,
+        value: &Vec<Entity>,
+        conflict_fragment: &Option<UpsertConflictFragment>,
+    ) -> Result<(), anyhow::Error> {
         unimplemented!()
     }
 
@@ -25,6 +30,5 @@ pub trait StorageAdapter : Sync + Send {
 
 enum StorageAdapterType {
     Postgres,
-    BigQuery        //unimplemented
+    BigQuery, //unimplemented
 }
-
