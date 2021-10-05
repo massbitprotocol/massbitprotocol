@@ -10,8 +10,8 @@ pub mod transport;
 pub use self::transport::Transport;
 
 use command::{ChainConfig, Config};
-use grpc_stream::stream_mod::ChainType;
 use lazy_static::lazy_static;
+use massbit::firehose::dstream::ChainType;
 use std::env;
 
 lazy_static! {
@@ -36,14 +36,14 @@ lazy_static! {
             //     network: "mainnet".to_string(),
             //     supports_eip_1898: true,
             // },
-            // ChainConfig{
-            //     ws: SOLANA_WS.to_string(),
-            //     url: SOLANA_URL.to_string(),
-            //     start_block: None,
-            //     chain_type: ChainType::Solana,
-            //     network: "mainnet".to_string(),
-            //     supports_eip_1898: true,
-            // },
+            ChainConfig{
+                ws: SOLANA_WS.to_string(),
+                url: SOLANA_URL.to_string(),
+                start_block: None,
+                chain_type: ChainType::Solana,
+                network: "mainnet".to_string(),
+                supports_eip_1898: true,
+            },
             ChainConfig{
                 ws: POLYGON_WS.to_string(),
                 url: POLYGON_URL.to_string(),

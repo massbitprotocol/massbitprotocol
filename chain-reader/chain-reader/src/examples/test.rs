@@ -13,9 +13,9 @@ use tonic::{
     Request, Response, Status,
 };
 
-pub mod stream_mod {
-    tonic::include_proto!("chaindata");
-}
+// pub mod stream_mod {
+//     tonic::include_proto!("chaindata");
+// }
 use massbit_chain_substrate::data_type::{decode, get_extrinsics_from_block};
 use std::rc::Rc;
 use std::sync::Arc;

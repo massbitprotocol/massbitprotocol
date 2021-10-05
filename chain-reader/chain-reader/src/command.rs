@@ -1,14 +1,12 @@
 use crate::grpc_stream::StreamService;
 use crate::solana_chain;
 use crate::substrate_chain;
-use crate::{
-    grpc_stream::stream_mod::{streamout_server::StreamoutServer, ChainType, GenericDataProto},
-    CONFIG,
-};
+use crate::CONFIG;
 use chain_ethereum::network::{EthereumNetworkAdapter, EthereumNetworkAdapters, EthereumNetworks};
 use chain_ethereum::{manifest, Chain, EthereumAdapter, Transport};
 use graph::semver::Op;
 use log::error;
+use massbit::firehose::dstream::{streamout_server::StreamoutServer, ChainType, GenericDataProto};
 use massbit_common::NetworkType;
 use std::collections::HashMap;
 use std::sync::Arc;

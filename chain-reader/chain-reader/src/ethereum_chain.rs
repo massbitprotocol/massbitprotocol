@@ -1,8 +1,7 @@
 use crate::Transport;
-use crate::{
-    grpc_stream::stream_mod::{ChainType, DataType, GenericDataProto},
-    CONFIG,
-};
+use crate::CONFIG;
+use massbit::firehose::dstream::{ChainType, DataType, GenericDataProto};
+
 use anyhow::Error;
 use chain_ethereum::{manifest, Chain, EthereumAdapter, TriggerFilter};
 use futures::stream;

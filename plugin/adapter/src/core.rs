@@ -1,8 +1,9 @@
 use crate::setting::*;
-pub use crate::stream_mod::{
+pub use crate::{HandlerProxyType, PluginRegistrar, WasmHandlerProxyType};
+pub use massbit::firehose::dstream::{
     streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
 };
-pub use crate::{HandlerProxyType, PluginRegistrar, WasmHandlerProxyType};
+//use graph::blockchain::Blockchain;
 use graph::data::subgraph::SubgraphManifest;
 use graph_chain_ethereum::Chain;
 use graph_chain_ethereum::{DataSource, DataSourceTemplate};
@@ -11,6 +12,10 @@ use index_store::postgres::store_builder::*;
 use index_store::{IndexerState, Store};
 use lazy_static::lazy_static;
 use libloading::Library;
+use massbit::blockchain::Blockchain;
+use massbit::blockchain::TriggerFilter;
+use massbit::prelude::*;
+use massbit_common::prelude::serde_json;
 use massbit_common::prelude::tokio::time::{sleep, timeout, Duration};
 use massbit_common::NetworkType;
 use serde_yaml::Value;
@@ -93,7 +98,7 @@ impl AdapterManager {
         mapping: &PathBuf,
         schema: &PathBuf,
         manifest: &Option<SubgraphManifest<Chain>>,
-        got_block: Option<i64>
+        got_block: Option<i64>,
     ) -> Result<(), Box<dyn Error>> {
         let mut data_sources: Vec<DataSource> = vec![];
         let mut templates: Vec<DataSourceTemplate> = vec![];
@@ -122,7 +127,7 @@ impl AdapterManager {
             Some(mut data_source) => {
                 let start_block = match got_block {
                     None => data_source.source.start_block as u64,
-                    Some(val) => val as u64 + 1
+                    Some(val) => val as u64 + 1,
                 };
                 log::info!(
                     "{} Init Streamout client for chain {} from block {} using language {}",
@@ -152,8 +157,15 @@ impl AdapterManager {
                     }
                     //Default use rust
                     _ => {
-                        self.handle_rust_mapping(hash, data_source, start_block, mapping, schema, &mut client)
-                            .await
+                        self.handle_rust_mapping(
+                            hash,
+                            data_source,
+                            start_block,
+                            mapping,
+                            schema,
+                            &mut client,
+                        )
+                        .await
                     }
                 }
             }
@@ -241,7 +253,10 @@ impl AdapterManager {
                                                 );
                                             }
                                             Ok(_) => {
-                                                store.save_got_block(indexer_hash, data.block_number as i64);
+                                                store.save_got_block(
+                                                    indexer_hash,
+                                                    data.block_number as i64,
+                                                );
                                                 start_block = data.block_number + 1;
                                             }
                                         }
@@ -419,11 +434,16 @@ async fn try_create_stream(
     network: &Option<NetworkType>,
 ) -> Option<Streaming<GenericDataProto>> {
     log::info!("Create new stream from block {}", start_block);
+    let filter =
+        <chain_ethereum::Chain as Blockchain>::TriggerFilter::from_data_sources(vec![].iter());
+    let encoded_filter = serde_json::to_vec(&filter).unwrap();
+
     let get_blocks_request = GetBlocksRequest {
         start_block_number: start_block,
         end_block_number: 0,
         chain_type: *chain_type as i32,
         network: network.clone().unwrap_or(Default::default()),
+        filter: encoded_filter,
     };
     match client
         .list_blocks(Request::new(get_blocks_request.clone()))

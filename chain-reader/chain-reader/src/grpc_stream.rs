@@ -6,20 +6,20 @@ use crate::ethereum_chain;
 use chain_ethereum::network::{EthereumNetworkAdapter, EthereumNetworkAdapters};
 use chain_ethereum::{manifest, Chain, EthereumAdapter, Transport, TriggerFilter};
 use log::{error, info};
-use massbit_common::NetworkType;
-use std::collections::HashMap;
-use std::sync::Arc;
-use stream_mod::{
+use massbit::firehose::dstream::{
     streamout_server::Streamout, ChainType, GenericDataProto, GetBlocksRequest, HelloReply,
     HelloRequest,
 };
+use massbit_common::NetworkType;
+use std::collections::HashMap;
+use std::sync::Arc;
 use tonic::{Request, Response, Status};
 
 const QUEUE_BUFFER: usize = 1024;
 
-pub mod stream_mod {
-    tonic::include_proto!("chaindata");
-}
+// pub mod stream_mod {
+//     tonic::include_proto!("chaindata");
+// }
 
 #[derive(Debug)]
 pub struct StreamService {
@@ -81,8 +81,14 @@ impl Streamout for StreamService {
                     "chains: {:?}, chain_type: {:?}, network: {}",
                     &self.chans, chain_type, network
                 );
+                let sender = self.chans.get(&(chain_type, network));
+                assert!(
+                    sender.is_some(),
+                    "Error: No channel for {:?}, check config value",
+                    chain_type
+                );
 
-                let mut rx_chan = self.chans.get(&(chain_type, network)).unwrap().subscribe();
+                let mut rx_chan = sender.unwrap().subscribe();
 
                 tokio::spawn(async move {
                     loop {
