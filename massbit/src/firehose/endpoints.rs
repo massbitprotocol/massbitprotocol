@@ -10,7 +10,6 @@ use tonic::{
     Request,
 };
 
-use super::bstream;
 use super::dstream;
 
 #[derive(Clone)]
@@ -55,35 +54,6 @@ impl FirehoseEndpoint {
             channel,
             token,
         })
-    }
-
-    pub async fn stream_blocks(
-        self: Arc<Self>,
-        request: bstream::BlocksRequestV2,
-    ) -> Result<tonic::Streaming<bstream::BlockResponseV2>, anyhow::Error> {
-        let token_metadata_opt = match self.token.clone() {
-            Some(token) => Some(MetadataValue::from_str(token.as_str())?),
-            None => None,
-        };
-
-        let mut client = bstream::block_stream_v2_client::BlockStreamV2Client::with_interceptor(
-            self.channel.cheap_clone(),
-            move |mut r: Request<()>| match token_metadata_opt.clone() {
-                Some(t) => {
-                    r.metadata_mut().insert("authorization", t.clone());
-                    Ok(r)
-                }
-                _ => Ok(r),
-            },
-        );
-
-        let response_stream = client
-            .blocks(request)
-            .await
-            .context("unable to fetch blocks from server")?;
-        let block_stream = response_stream.into_inner();
-
-        Ok(block_stream)
     }
 
     pub async fn stream_data(

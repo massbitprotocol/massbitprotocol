@@ -12,10 +12,7 @@ use massbit::firehose::dstream::{
 };
 use massbit::log::logger;
 use massbit::{
-    firehose::{
-        bstream::BlockResponseV2, bstream::BlocksRequestV2, bstream::ForkStep,
-        endpoints::FirehoseEndpoint,
-    },
+    firehose::endpoints::FirehoseEndpoint,
     prelude::{error, info, prost, tokio, warn},
 };
 use massbit_chain_ethereum::data_type::EthereumBlock;
