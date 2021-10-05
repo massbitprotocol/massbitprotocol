@@ -27,22 +27,6 @@ pub struct StreamService {
     pub chains: HashMap<(ChainType, NetworkType), Arc<Chain>>,
 }
 
-async fn create_ethereum_adapter() -> EthereumAdapter {
-    let (transport_event_loop, transport) =
-        Transport::new_rpc("https://rpc-mainnet.matic.network", Default::default());
-
-    // If we drop the event loop the transport will stop working.
-    // For now it's fine to just leak it.
-    std::mem::forget(transport_event_loop);
-
-    chain_ethereum::EthereumAdapter::new(
-        "matic".to_string(),
-        "https://rpc-mainnet.matic.network",
-        transport,
-        false,
-    )
-    .await
-}
 
 #[tonic::async_trait]
 impl Streamout for StreamService {

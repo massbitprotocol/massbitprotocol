@@ -12,6 +12,8 @@ use crate::runtime::DeterministicHostError;
 
 #[derive(Debug)]
 pub enum MappingError {
+    /// A possible reorg was detected while running the mapping.
+    PossibleReorg(anyhow::Error),
     Unknown(anyhow::Error),
 }
 
@@ -31,6 +33,7 @@ impl MappingError {
     pub fn context(self, s: String) -> Self {
         use MappingError::*;
         match self {
+            PossibleReorg(e) => PossibleReorg(e.context(s)),
             Unknown(e) => Unknown(e.context(s)),
         }
     }
@@ -41,12 +44,14 @@ impl MappingError {
 pub trait RuntimeHost<C: Blockchain>: Send + Sync + 'static {
     fn match_and_decode(
         &self,
+        logger: &Logger,
         trigger: &C::TriggerData,
         block: Arc<C::Block>,
     ) -> Result<Option<C::MappingTrigger>, Error>;
 
     async fn process_mapping_trigger(
         &self,
+        logger: &Logger,
         block_ptr: BlockPtr,
         trigger: C::MappingTrigger,
         state: BlockState<C>,
@@ -76,5 +81,6 @@ pub trait RuntimeHostBuilder<C: Blockchain>: Clone + Send + Sync + 'static {
     fn spawn_mapping(
         raw_module: Vec<u8>,
         subgraph_id: DeploymentHash,
+        logger: Logger,
     ) -> Result<mpsc::Sender<Self::Req>, anyhow::Error>;
 }

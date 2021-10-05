@@ -57,6 +57,7 @@ pub fn decode_block_with_trigger(
 
 /// Parses an Ethereum connection string and returns the network name and Ethereum adapter.
 async fn create_ethereum_adapter() -> EthereumAdapter {
+    let logger = logger(true);
     let (transport_event_loop, transport) =
         Transport::new_rpc("https://rpc-mainnet.matic.network", Default::default());
 
@@ -65,6 +66,7 @@ async fn create_ethereum_adapter() -> EthereumAdapter {
     std::mem::forget(transport_event_loop);
 
     chain_ethereum::EthereumAdapter::new(
+        logger,
         "matic".to_string(),
         "https://rpc-mainnet.matic.network",
         transport,
@@ -77,17 +79,21 @@ pub async fn print_blocks(
     mut client: StreamoutClient<Channel>,
     chain_type: ChainType,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+    let logger = logger(true);
+    let logger_factory = LoggerFactory::new(logger.clone());
     let network = "matic".to_string();
     // Load manifest
     let mut manifest = manifest::resolve_manifest_from_text(YAML).await;
     // Create chain
-    let chain = Chain {
-        eth_adapters: Arc::new(EthereumNetworkAdapters {
+    let chain = Chain::new(
+        logger_factory,
+        network.clone(),
+        EthereumNetworkAdapters {
             adapters: vec![EthereumNetworkAdapter {
                 adapter: Arc::new(create_ethereum_adapter().await),
             }],
-        }),
-    };
+        },
+    );
     // Create filter
     let filter = <chain_ethereum::Chain as Blockchain>::TriggerFilter::from_data_sources(
         manifest.data_sources.iter(),

@@ -140,7 +140,7 @@ impl EthereumWasmHandlerProxy {
                     registry,
                     block_ptr,
                 )
-                .unwrap(),
+                    .unwrap(),
             );
         }
     }

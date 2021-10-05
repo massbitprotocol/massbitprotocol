@@ -13,10 +13,10 @@ members = [
     "utils",
     "chain/ethereum",
     "massbit",
-    "indexer",
     "runtime/wasm",
     "runtime/derive",
     "store/postgres",
+    "manager"
 ]
 exclude = ["analytics","code-compiler/generated"]
 

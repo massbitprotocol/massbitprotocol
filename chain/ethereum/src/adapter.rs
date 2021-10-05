@@ -1,10 +1,4 @@
 use ethabi::{Error as ABIError, Function, ParamType, Token};
-use massbit::prelude::*;
-use massbit::{
-    blockchain as bc,
-    petgraph::{self, graphmap::GraphMap},
-    prelude::*,
-};
 use std::cmp;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
@@ -12,10 +6,11 @@ use thiserror::Error;
 use tiny_keccak::keccak256;
 use web3::types::{Address, H256};
 
+use massbit::blockchain as bc;
+use massbit::prelude::*;
+
 use crate::chain::Chain;
 use crate::data_source::{BlockHandlerFilter, DataSource};
-use crate::types::LightEthereumBlock;
-use crate::EthereumCall;
 
 pub type EventSignature = H256;
 pub type FunctionSelector = [u8; 4];
@@ -356,13 +351,17 @@ impl EthereumBlockFilter {
 pub trait EthereumAdapter: Send + Sync + 'static {
     fn provider(&self) -> &str;
 
+    async fn net_identifiers(&self) -> Result<EthereumNetworkIdentifier, Error>;
+
     fn block_hash_by_block_number(
         &self,
+        logger: &Logger,
         block_number: BlockNumber,
     ) -> Box<dyn Future<Item = Option<H256>, Error = Error> + Send>;
 
     fn load_blocks(
         &self,
+        logger: Logger,
         block_hashes: HashSet<H256>,
     ) -> Box<dyn Stream<Item = LightEthereumBlock, Error = Error> + Send>;
 }

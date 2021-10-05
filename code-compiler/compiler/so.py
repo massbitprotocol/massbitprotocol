@@ -9,7 +9,7 @@ import ipfshttpclient
 import requests
 import yaml
 from distutils.dir_util import copy_tree
-from helper.helper import write_to_disk, populate_stub, get_abi_files, upload_abi_to_ipfs, replace_abi_with_hash, \
+from helper.helper import write_to_disk, populate_stub, get_abi_files, upload_abi_to_ipfs, replace_abi_v1, \
     get_index_manager_url
 
 success_file = "success.txt"
@@ -196,7 +196,7 @@ def parse_subgraph(subgraph_path, parsed_subgraph_path, mapping_res, schema_res,
 
     # Quick hack so we have file with ipfs link
     subgraph['dataSources'][0]['mapping']['file'] = {'/': '/ipfs/' + mapping_res['Hash']}
-    subgraph = replace_abi_with_hash('dataSources', subgraph, abi_res)
+    subgraph = replace_abi_v1('dataSources', subgraph, abi_res)
 
     # Write the new file to local disk
     file = open(parsed_subgraph_path, "w")

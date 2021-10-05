@@ -2,10 +2,12 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use massbit::components::link_resolver::{JsonValueStream, LinkResolver as LinkResolverTrait};
-use massbit::data::indexer::{IndexerManifest, Link};
+use massbit::data::indexer::{IndexerManifest, Link, SPEC_VERSION_0_0_4};
 use massbit::prelude::{anyhow, async_trait, serde_yaml, DeploymentHash, Error};
 
 use crate::Chain;
+use massbit::log::logger;
+use massbit::slog::Logger;
 
 const GQL_SCHEMA: &str = "type Thing @entity { id: ID! }";
 const GQL_SCHEMA_FULLTEXT: &str = include_str!("../examples/full-text.graphql");
@@ -37,19 +39,20 @@ impl LinkResolverTrait for TextResolver {
         self
     }
 
-    async fn cat(&self, link: &Link) -> Result<Vec<u8>, Error> {
+    async fn cat(&self, logger: &Logger, link: &Link) -> Result<Vec<u8>, Error> {
         self.texts
             .get(&link.link)
             .ok_or(anyhow!("No text for {}", &link.link))
             .map(Clone::clone)
     }
 
-    async fn json_stream(&self, _link: &Link) -> Result<JsonValueStream, Error> {
+    async fn json_stream(&self, logger: &Logger, _link: &Link) -> Result<JsonValueStream, Error> {
         unimplemented!()
     }
 }
 
 pub async fn resolve_manifest_from_text(text: &str) -> IndexerManifest<Chain> {
+    let logger = logger(true);
     let mut resolver = TextResolver::default();
     let raw = serde_yaml::from_str(text).unwrap();
     let id = DeploymentHash::new("Qmmanifest").unwrap();
@@ -60,7 +63,7 @@ pub async fn resolve_manifest_from_text(text: &str) -> IndexerManifest<Chain> {
     println!("text: {:#?}", &text);
     println!("resolver: {:#?}", &resolver);
 
-    IndexerManifest::resolve_from_raw(id, raw, &resolver)
+    IndexerManifest::resolve_from_raw(&logger, id, raw, &resolver, SPEC_VERSION_0_0_4)
         .await
         .expect("Parsing simple manifest works")
 }

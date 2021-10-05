@@ -2,7 +2,6 @@ use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::rc::Rc;
-use std::time::Instant;
 
 use massbit::blockchain::{Blockchain, HostFnCtx, MappingTrigger};
 use massbit::runtime::HostExportError;
@@ -13,7 +12,7 @@ use wasmtime::{Memory, Trap};
 use crate::error::DeterminismLevel;
 pub use crate::host_exports;
 use crate::mapping::MappingContext;
-use anyhow::Error;
+use anyhow::{Context, Error};
 use massbit::data::store;
 use massbit::prelude::*;
 use massbit::runtime::{asc_get, asc_new, try_asc_get, DeterministicHostError};
@@ -29,6 +28,7 @@ pub mod stopwatch;
 
 pub use into_wasm_ret::IntoWasmRet;
 use massbit::components::indexer::BlockState;
+use massbit::data::indexer::schema::IndexerError;
 pub use stopwatch::TimeoutStopwatch;
 
 pub const TRAP_TIMEOUT: &str = "trap: interrupt";
@@ -147,6 +147,10 @@ impl<C: Blockchain> WasmInstance<C> {
         // This `match` will return early if there was a non-deterministic trap.
         let deterministic_error: Option<Error> = match func.typed()?.call(arg.wasm_ptr()) {
             Ok(()) => None,
+            Err(trap) if self.instance_ctx().possible_reorg => {
+                self.instance_ctx_mut().ctx.state.exit_handler();
+                return Err(MappingError::PossibleReorg(trap.into()));
+            }
             Err(trap) if trap.to_string().contains(TRAP_TIMEOUT) => {
                 self.instance_ctx_mut().ctx.state.exit_handler();
                 return Err(MappingError::Unknown(Error::from(trap).context(format!(
@@ -179,6 +183,25 @@ impl<C: Blockchain> WasmInstance<C> {
         };
 
         if let Some(deterministic_error) = deterministic_error {
+            let message = format!("{:#}", deterministic_error).replace("\n", "\t");
+
+            // Log the error and restore the updates snapshot, effectively reverting the handler.
+            error!(&self.instance_ctx().ctx.logger,
+                "Handler skipped due to execution failure";
+                "handler" => handler,
+                "error" => &message,
+            );
+            let indexer_error = IndexerError {
+                indexer_id: self.instance_ctx().ctx.host_exports.indexer_id.clone(),
+                message,
+                block_ptr: Some(self.instance_ctx().ctx.block_ptr.cheap_clone()),
+                handler: Some(handler.to_string()),
+                deterministic: true,
+            };
+            self.instance_ctx_mut()
+                .ctx
+                .state
+                .exit_handler_and_discard_changes_due_to_error(indexer_error);
         } else {
             self.instance_ctx_mut().ctx.state.exit_handler();
         }
@@ -272,10 +295,6 @@ impl<C: Blockchain> WasmInstance<C> {
 
         macro_rules! link {
             ($wasm_name:expr, $rust_name:ident, $($param:ident),*) => {
-                link!($wasm_name, $rust_name, "host_export_other", $($param),*)
-            };
-
-            ($wasm_name:expr, $rust_name:ident, $section:expr, $($param:ident),*) => {
                 let modules = valid_module
                     .import_name_to_modules
                     .get($wasm_name)
@@ -346,7 +365,6 @@ impl<C: Blockchain> WasmInstance<C> {
                 let func_shared_ctx = Rc::downgrade(&shared_ctx);
                 let host_fn = host_fn.cheap_clone();
                 linker.func(module, host_fn.name, move |call_ptr: u32| {
-                    let start = Instant::now();
                     let instance = func_shared_ctx.upgrade().unwrap();
                     let mut instance = instance.borrow_mut();
 
@@ -364,6 +382,7 @@ impl<C: Blockchain> WasmInstance<C> {
                     };
 
                     let ctx = HostFnCtx {
+                        logger: instance.ctx.logger.cheap_clone(),
                         block_ptr: instance.ctx.block_ptr.cheap_clone(),
                         heap: instance,
                     };
@@ -389,31 +408,16 @@ impl<C: Blockchain> WasmInstance<C> {
 
         link!("abort", abort, message_ptr, file_name_ptr, line, column);
 
-        link!("store.get", store_get, "host_export_store_get", entity, id);
-        link!(
-            "store.set",
-            store_set,
-            "host_export_store_set",
-            entity,
-            id,
-            data
-        );
+        link!("store.get", store_get, entity, id);
+        link!("store.set", store_set, entity, id, data);
 
         // All IPFS-related functions exported by the host WASM runtime should be listed in the
         // graph::data::subgraph::features::IPFS_ON_ETHEREUM_CONTRACTS_FUNCTION_NAMES array for
         // automatic feature detection to work.
         //
         // For reference, search this codebase for: ff652476-e6ad-40e4-85b8-e815d6c6e5e2
-        link!("ipfs.cat", ipfs_cat, "host_export_ipfs_cat", hash_ptr);
-        link!(
-            "ipfs.map",
-            ipfs_map,
-            "host_export_ipfs_map",
-            link_ptr,
-            callback,
-            user_data,
-            flags
-        );
+        link!("ipfs.cat", ipfs_cat, hash_ptr);
+        link!("ipfs.map", ipfs_map, link_ptr, callback, user_data, flags);
 
         link!("store.remove", store_remove, entity_ptr, id_ptr);
 
@@ -468,13 +472,18 @@ impl<C: Blockchain> WasmInstance<C> {
 
         link!("ens.nameByHash", ens_name_by_hash, ptr);
 
+        link!("log.log", log_log, level, msg_ptr);
+
         // `arweave and `box` functionality was removed, but apiVersion <= 0.0.4 must link it.
         if api_version <= Version::new(0, 0, 4) {
             link!("arweave.transactionData", arweave_transaction_data, ptr);
             link!("box.profile", box_profile, ptr);
         }
 
-        let instance = linker.instantiate(&valid_module.module)?;
+        let instance = match linker.instantiate(&valid_module.module) {
+            Ok(instance) => instance,
+            Err(err) => panic!("{:?}", err),
+        };
 
         // Usually `shared_ctx` is still `None` because no host fns were called during start.
         if shared_ctx.borrow().is_none() {
@@ -870,12 +879,12 @@ impl<C: Blockchain> WasmInstanceContext<C> {
     {
         let bytes: Vec<u8> = asc_get(self, bytes_ptr)?;
         let result = host_exports::json_from_bytes(&bytes).map_err(|e| {
-            // warn!(
-            //     &self.ctx.logger,
-            //     "Failed to parse JSON from byte array";
-            //     "bytes" => format!("{:?}", bytes),
-            //     "error" => format!("{}", e)
-            // );
+            warn!(
+                &self.ctx.logger,
+                "Failed to parse JSON from byte array";
+                "bytes" => format!("{:?}", bytes),
+                "error" => format!("{}", e)
+            );
 
             // Map JSON errors to boolean to match the `Result<JSONValue, boolean>`
             // result type expected by mappings
@@ -896,15 +905,15 @@ impl<C: Blockchain> WasmInstanceContext<C> {
         }
 
         let link = asc_get(self, link_ptr)?;
-        let ipfs_res = self.ctx.host_exports.ipfs_cat(link);
+        let ipfs_res = self.ctx.host_exports.ipfs_cat(&self.ctx.logger, link);
         match ipfs_res {
             Ok(bytes) => asc_new(self, &*bytes).map_err(Into::into),
 
             // Return null in case of error.
             Err(e) => {
-                // info!(&self.ctx.logger, "Failed ipfs.cat, returning `null`";
-                //                     "link" => asc_get::<String, _, _>(self, link_ptr)?,
-                //                     "error" => e.to_string());
+                info!(&self.ctx.logger, "Failed ipfs.cat, returning `null`";
+                                    "link" => asc_get::<String, _, _>(self, link_ptr)?,
+                                    "error" => e.to_string());
                 Ok(AscPtr::null())
             }
         }
@@ -935,7 +944,6 @@ impl<C: Blockchain> WasmInstanceContext<C> {
         let defer_stopwatch = self.timeout_stopwatch.clone();
         let _stopwatch_guard = defer::defer(|| defer_stopwatch.lock().unwrap().start());
 
-        let start_time = Instant::now();
         let output_states = HostExports::ipfs_map(
             &self.ctx.host_exports.link_resolver.clone(),
             self,
@@ -945,14 +953,6 @@ impl<C: Blockchain> WasmInstanceContext<C> {
             flags,
         )?;
 
-        // debug!(
-        //     &self.ctx.logger,
-        //     "Successfully processed file with ipfs.map";
-        //     "link" => &link,
-        //     "callback" => &*callback,
-        //     "n_calls" => output_states.len(),
-        //     "time" => format!("{}ms", start_time.elapsed().as_millis())
-        // );
         for output_state in output_states {
             self.ctx.state.extend(output_state);
         }
@@ -1267,6 +1267,7 @@ impl<C: Blockchain> WasmInstanceContext<C> {
         let name: String = asc_get(self, name_ptr)?;
         let params: Vec<String> = asc_get(self, params_ptr)?;
         self.ctx.host_exports.data_source_create(
+            &self.ctx.logger,
             &mut self.ctx.state,
             name,
             params,
@@ -1286,6 +1287,7 @@ impl<C: Blockchain> WasmInstanceContext<C> {
         let params: Vec<String> = asc_get(self, params_ptr)?;
         let context: HashMap<_, _> = try_asc_get(self, context_ptr)?;
         self.ctx.host_exports.data_source_create(
+            &self.ctx.logger,
             &mut self.ctx.state,
             name,
             params,
@@ -1318,6 +1320,16 @@ impl<C: Blockchain> WasmInstanceContext<C> {
         // map `None` to `null`, and `Some(s)` to a runtime string
         name.map(|name| asc_new(self, &*name).map_err(Into::into))
             .unwrap_or(Ok(AscPtr::null()))
+    }
+
+    pub fn log_log(
+        &mut self,
+        level: u32,
+        msg: AscPtr<AscString>,
+    ) -> Result<(), DeterministicHostError> {
+        let level = LogLevel::from(level).into();
+        let msg: String = asc_get(self, msg)?;
+        self.ctx.host_exports.log_log(&self.ctx.logger, level, msg)
     }
 
     /// function encode(token: ethereum.Value): Bytes | null

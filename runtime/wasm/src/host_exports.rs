@@ -6,7 +6,6 @@ pub use massbit::runtime::{DeterministicHostError, HostExportError};
 use never::Never;
 use semver::Version;
 use std::collections::HashMap;
-use std::ops::Deref;
 use std::str::FromStr;
 use std::time::{Duration, Instant};
 use wasmtime::Trap;
@@ -18,13 +17,13 @@ use massbit::blockchain::DataSource;
 use massbit::blockchain::{Blockchain, DataSourceTemplate as _};
 use massbit::components::indexer::{BlockState, DataSourceTemplateInfo};
 use massbit::components::link_resolver::{JsonValueStream, LinkResolver};
+use massbit::components::store::EntityKey;
 use massbit::components::store::EntityType;
-use massbit::components::store::{EntityKey, IndexerStore};
 use massbit::data::indexer::{DataSourceContext, Link};
 use massbit::data::store;
 use massbit::data::store::Entity;
 use massbit::prelude::serde_json;
-use massbit::prelude::*;
+use massbit::prelude::{slog::b, slog::record_static, *};
 
 impl IntoTrap for HostExportError {
     fn determinism_level(&self) -> DeterminismLevel {
@@ -57,7 +56,6 @@ pub struct HostExports<C: Blockchain> {
     causality_region: String,
     templates: Arc<Vec<C::DataSourceTemplate>>,
     pub(crate) link_resolver: Arc<dyn LinkResolver>,
-    store: Arc<dyn IndexerStore>,
 }
 
 impl<C: Blockchain> HostExports<C> {
@@ -67,7 +65,6 @@ impl<C: Blockchain> HostExports<C> {
         data_source_network: String,
         templates: Arc<Vec<C::DataSourceTemplate>>,
         link_resolver: Arc<dyn LinkResolver>,
-        store: Arc<dyn IndexerStore>,
     ) -> Self {
         let causality_region = format!("ethereum/{}", data_source_network);
 
@@ -81,7 +78,6 @@ impl<C: Blockchain> HostExports<C> {
             causality_region,
             templates,
             link_resolver,
-            store,
         }
     }
 
@@ -208,8 +204,8 @@ impl<C: Blockchain> HostExports<C> {
         ))
     }
 
-    pub(crate) fn ipfs_cat(&self, link: String) -> Result<Vec<u8>, anyhow::Error> {
-        block_on03(self.link_resolver.cat(&Link { link }))
+    pub(crate) fn ipfs_cat(&self, logger: &Logger, link: String) -> Result<Vec<u8>, anyhow::Error> {
+        block_on03(self.link_resolver.cat(logger, &Link { link }))
     }
 
     // Read the IPFS file `link`, split it into JSON objects, and invoke the
@@ -244,10 +240,11 @@ impl<C: Blockchain> HostExports<C> {
 
         let start = Instant::now();
         let mut last_log = start;
+        let logger = ctx.logger.new(o!("ipfs_map" => link.clone()));
 
         let result = {
             let mut stream: JsonValueStream =
-                block_on03(link_resolver.json_stream(&Link { link }))?;
+                block_on03(link_resolver.json_stream(&logger, &Link { link }))?;
             let mut v = Vec::new();
             while let Some(sv) = block_on03(stream.next()) {
                 let sv = sv?;
@@ -474,6 +471,7 @@ impl<C: Blockchain> HostExports<C> {
 
     pub(crate) fn data_source_create(
         &self,
+        logger: &Logger,
         state: &mut BlockState<C>,
         name: String,
         params: Vec<String>,
@@ -481,9 +479,10 @@ impl<C: Blockchain> HostExports<C> {
         creation_block: BlockNumber,
     ) -> Result<(), HostExportError> {
         info!(
-            "Create data source, name: {}, params: {}",
-            &name,
-            format!("{}", params.join(","))
+            logger,
+            "Create data source";
+            "name" => &name,
+            "params" => format!("{}", params.join(","))
         );
 
         // Resolve the name into the right template
@@ -519,10 +518,8 @@ impl<C: Blockchain> HostExports<C> {
         Ok(())
     }
 
-    pub(crate) fn ens_name_by_hash(&self, hash: &str) -> Result<Option<String>, anyhow::Error> {
-        // Ok(self.store.find_ens_name(hash)?)
-        // TODO: Implement this for store
-        Ok(Some("".to_string()))
+    pub(crate) fn ens_name_by_hash(&self, _: &str) -> Result<Option<String>, anyhow::Error> {
+        unimplemented!()
     }
 
     pub(crate) fn data_source_address(&self) -> Vec<u8> {
@@ -538,6 +535,28 @@ impl<C: Blockchain> HostExports<C> {
             .as_ref()
             .clone()
             .unwrap_or_default()
+    }
+
+    pub(crate) fn log_log(
+        &self,
+        logger: &Logger,
+        level: slog::Level,
+        msg: String,
+    ) -> Result<(), DeterministicHostError> {
+        let rs = record_static!(level, self.data_source_name.as_str());
+
+        logger.log(&slog::Record::new(
+            &rs,
+            &format_args!("{}", msg),
+            b!("data_source" => &self.data_source_name),
+        ));
+
+        if level == slog::Level::Critical {
+            return Err(DeterministicHostError(anyhow!(
+                "Critical error logged in mapping"
+            )));
+        }
+        Ok(())
     }
 }
 

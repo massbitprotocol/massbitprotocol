@@ -7,6 +7,8 @@ use chain_ethereum::{manifest, Chain, EthereumAdapter, Transport};
 use graph::semver::Op;
 use log::error;
 use massbit::firehose::dstream::{streamout_server::StreamoutServer, ChainType, GenericDataProto};
+use massbit::log::logger;
+use massbit::prelude::LoggerFactory;
 use massbit_common::NetworkType;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -14,6 +16,7 @@ use std::thread::sleep;
 use std::time::Duration;
 use tokio::sync::broadcast;
 use tonic::transport::Server;
+
 #[derive(Clone, Debug)]
 pub struct Config {
     pub chains: Vec<ChainConfig>,
@@ -56,6 +59,7 @@ pub fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>) {
 }
 
 async fn create_adaptor(chain_type: &ChainType, network: &NetworkType) -> EthereumAdapter {
+    let logger = logger(true);
     let config = CONFIG.get_chain_config(chain_type, network).unwrap();
     let websocket_url = config.ws.clone();
     let http_url = config.url.clone();
@@ -67,6 +71,7 @@ async fn create_adaptor(chain_type: &ChainType, network: &NetworkType) -> Ethere
     };
     std::mem::forget(transport_event_loop);
     EthereumAdapter::new(
+        logger,
         config.network,
         http_url.as_str(),
         transport,
@@ -76,6 +81,7 @@ async fn create_adaptor(chain_type: &ChainType, network: &NetworkType) -> Ethere
 }
 
 pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+    let logger = logger(true);
     // Broadcast Channel
     let mut chans: HashMap<(ChainType, NetworkType), broadcast::Sender<GenericDataProto>> =
         HashMap::new();
@@ -89,6 +95,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
         let chan_sender = chan.clone();
         fix_one_thread_not_receive(&chan_sender);
         let network_clone = network.clone();
+        let logger_factory = LoggerFactory::new(logger.clone());
         match chain_type {
             // Spawn Substrate get_data
             ChainType::Substrate => {
@@ -148,13 +155,15 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
                 //chans.insert(ChainType::Solana, chan);
             }
             ChainType::Ethereum => {
-                let chain = Chain {
-                    eth_adapters: Arc::new(EthereumNetworkAdapters {
+                let chain = Chain::new(
+                    logger_factory,
+                    network.clone(),
+                    EthereumNetworkAdapters {
                         adapters: vec![EthereumNetworkAdapter {
                             adapter: Arc::new(create_adaptor(&chain_type, &network).await),
                         }],
-                    }),
-                };
+                    },
+                );
                 chains.insert(
                     (ChainType::Ethereum, network_clone.clone()),
                     Arc::new(chain),

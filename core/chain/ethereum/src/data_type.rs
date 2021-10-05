@@ -97,12 +97,12 @@ pub fn get_events(
 
             let params = match mapping_trigger {
                 Some(MappingTrigger::Log {
-                    block: _,
-                    transaction: _,
-                    log: _,
-                    params,
-                    handler: _,
-                }) => params,
+                         block: _,
+                         transaction: _,
+                         log: _,
+                         params,
+                         handler: _,
+                     }) => params,
                 _ => Vec::new(),
             };
 

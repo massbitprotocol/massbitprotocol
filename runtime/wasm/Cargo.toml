@@ -25,3 +25,7 @@ wasmtime = "0.27.0"
 defer = "0.1"
 never = "0.1"
 tiny-keccak = "1.5.0"
+slog = { version = "2.7.0", features = ["release_max_level_trace", "max_level_trace"] }
+slog-async = "2.5.0"
+slog-envlogger = "2.1.0"
+slog-term = "2.7.0"

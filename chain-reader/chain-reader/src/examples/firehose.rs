@@ -10,6 +10,7 @@ use massbit::blockchain::{Blockchain, TriggerFilter};
 use massbit::firehose::dstream::{
     streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
 };
+use massbit::log::logger;
 use massbit::{
     firehose::{
         bstream::BlockResponseV2, bstream::BlocksRequestV2, bstream::ForkStep,
@@ -35,6 +36,7 @@ pub fn decode_block_with_trigger(
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    let logger = logger(true);
     let res = init_logger(&String::from("firehose"));
     let network = "matic".to_string();
     let chain_type = ChainType::Ethereum;
@@ -102,8 +104,8 @@ async fn main() -> Result<(), Error> {
                 ChainType::Ethereum => match DataType::from_i32(data.data_type) {
                     Some(DataType::Block) => {
                         info!(
-                            "Received ETHREUM Block with Block : {:?}",
-                            &data.block_number
+                            logger,
+                            "Received ETHREUM Block with Block : {}", &data.block_number
                         );
                     }
                     Some(DataType::BlockWithTriggers) => {
@@ -113,16 +115,17 @@ async fn main() -> Result<(), Error> {
                         match block {
                             Ok(block) => {
                                 info!(
+                                    logger,
                                     "Received ETHREUM BlockWithTrigger with Block : {:?}",
                                     &block.block.number()
                                 );
                                 start_block_number = block.block.number();
                             }
-                            Err(e) => error!("Unable to decode {:?}", e),
+                            Err(e) => error!(logger, "Unable to decode {:?}", e),
                         }
                     }
                     _ => {
-                        warn!("Not support this type in Ethereum");
+                        warn!(logger, "Not support this type in Ethereum");
                     }
                 },
             }

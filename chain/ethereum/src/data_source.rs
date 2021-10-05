@@ -1,9 +1,18 @@
 use anyhow::ensure;
 use ethabi::{Address, Contract, Event, Function, LogParam, ParamType, RawLog};
+use std::collections::BTreeMap;
+use std::str::FromStr;
+use std::{convert::TryFrom, sync::Arc};
+use tiny_keccak::{keccak256, Keccak};
+use web3::types::{Log, Transaction, H256};
+
 use massbit::components::indexer::DataSourceTemplateInfo;
 use massbit::components::link_resolver::LinkResolver;
 use massbit::components::store::StoredDynamicDataSource;
-use massbit::data::indexer::{calls_host_fn, DataSourceContext, Link, Source};
+use massbit::data::indexer::{
+    calls_host_fn, DataSourceContext, IndexerManifestValidationError, Link, Source,
+};
+use massbit::prelude::anyhow::Context;
 use massbit::prelude::futures03::future::try_join;
 use massbit::prelude::futures03::stream::FuturesOrdered;
 use massbit::prelude::Entity;
@@ -11,15 +20,9 @@ use massbit::{
     blockchain::{self, Blockchain},
     prelude::*,
 };
-use std::collections::BTreeMap;
-use std::str::FromStr;
-use std::{convert::TryFrom, sync::Arc};
-use tiny_keccak::{keccak256, Keccak};
-use web3::types::{Log, Transaction, H256};
 
 use crate::chain::Chain;
 use crate::trigger::{EthereumBlockTriggerType, EthereumTrigger, MappingTrigger};
-use crate::{EthereumCall, LightEthereumBlock, LightEthereumBlockExt};
 
 /// Runtime representation of a data source.
 // Note: Not great for memory usage that this needs to be `Clone`, considering how there may be tens
@@ -47,11 +50,12 @@ impl blockchain::DataSource<Chain> for DataSource {
 
     fn match_and_decode(
         &self,
+        logger: &Logger,
         trigger: &<Chain as Blockchain>::TriggerData,
         block: Arc<<Chain as Blockchain>::Block>,
     ) -> Result<Option<<Chain as Blockchain>::MappingTrigger>, Error> {
         let block = block.light_block();
-        self.match_and_decode(trigger, block)
+        self.match_and_decode(trigger, block, logger)
     }
 
     fn name(&self) -> &str {
@@ -153,6 +157,40 @@ impl blockchain::DataSource<Chain> for DataSource {
             && mapping.call_handlers == other.mapping.call_handlers
             && mapping.block_handlers == other.mapping.block_handlers
             && context == &other.context
+    }
+
+    fn validate(&self) -> Vec<IndexerManifestValidationError> {
+        let mut errors = vec![];
+
+        // Validate that there is a `source` address if there are call or block handlers
+        let no_source_address = self.address().is_none();
+        let has_call_handlers = !self.mapping.call_handlers.is_empty();
+        let has_block_handlers = !self.mapping.block_handlers.is_empty();
+        if no_source_address && (has_call_handlers || has_block_handlers) {
+            errors.push(IndexerManifestValidationError::SourceAddressRequired);
+        };
+
+        // Validate that there are no more than one of each type of block_handler
+        let has_too_many_block_handlers = {
+            let mut non_filtered_block_handler_count = 0;
+            let mut call_filtered_block_handler_count = 0;
+            self.mapping
+                .block_handlers
+                .iter()
+                .for_each(|block_handler| {
+                    if block_handler.filter.is_none() {
+                        non_filtered_block_handler_count += 1
+                    } else {
+                        call_filtered_block_handler_count += 1
+                    }
+                });
+            non_filtered_block_handler_count > 1 || call_filtered_block_handler_count > 1
+        };
+        if has_too_many_block_handlers {
+            errors.push(IndexerManifestValidationError::DataSourceBlockHandlerLimitExceeded);
+        }
+
+        errors
     }
 }
 
@@ -310,12 +348,12 @@ impl DataSource {
             .events()
             .find(|event| event_signature(event) == signature)
             .or_else(|| {
-                // Fallback for subgraphs that don't use `indexed` in event signatures yet:
+                // Fallback for indexers that don't use `indexed` in event signatures yet:
                 //
                 // If there is only one event variant with this name and if its signature
                 // without `indexed` matches the event signature from the manifest, we
                 // can safely assume that the event is a match, we don't need to force
-                // the subgraph to add `indexed`.
+                // the indexer to add `indexed`.
 
                 // Extract the event name; if there is no '(' in the signature,
                 // `event_name` will be empty and not match any events, so that's ok
@@ -394,6 +432,7 @@ impl DataSource {
         &self,
         trigger: &EthereumTrigger,
         block: Arc<LightEthereumBlock>,
+        logger: &Logger,
     ) -> Result<Option<MappingTrigger>, Error> {
         if !self.matches_trigger_address(&trigger) {
             return Ok(None);
@@ -449,7 +488,18 @@ impl DataSource {
                                 data: log.data.clone().0,
                             })
                             .map(|log| log.params)
-                            .map_err(|e| {})
+                            .map_err(|e| {
+                                trace!(
+                                    logger,
+                                    "Skipping handler because the event parameters do not \
+                                    match the event signature. This is typically the case \
+                                    when parameters are indexed in the event but not in the \
+                                    signature or the other way around";
+                                    "handler" => &event_handler.handler,
+                                    "event" => &event_handler.event,
+                                    "error" => format!("{}", e),
+                                );
+                            })
                             .ok()
                             .map(|params| (event_handler, params))
                     })
@@ -608,7 +658,11 @@ pub struct UnresolvedDataSource {
 
 #[async_trait]
 impl blockchain::UnresolvedDataSource<Chain> for UnresolvedDataSource {
-    async fn resolve(self, resolver: &impl LinkResolver) -> Result<DataSource, anyhow::Error> {
+    async fn resolve(
+        self,
+        resolver: &impl LinkResolver,
+        logger: &Logger,
+    ) -> Result<DataSource, anyhow::Error> {
         let UnresolvedDataSource {
             kind,
             network,
@@ -618,9 +672,9 @@ impl blockchain::UnresolvedDataSource<Chain> for UnresolvedDataSource {
             context,
         } = self;
 
-        // info!(logger, "Resolve data source"; "name" => &name, "source" => &source.start_block);
+        info!(logger, "Resolve data source"; "name" => &name, "source" => &source.start_block);
 
-        let mapping = mapping.resolve(&*resolver).await?;
+        let mapping = mapping.resolve(&*resolver, logger).await?;
 
         DataSource::from_manifest(kind, network, name, source, mapping, context)
     }
@@ -694,6 +748,7 @@ impl blockchain::UnresolvedDataSourceTemplate<Chain> for UnresolvedDataSourceTem
     async fn resolve(
         self,
         resolver: &impl LinkResolver,
+        logger: &Logger,
     ) -> Result<DataSourceTemplate, anyhow::Error> {
         let UnresolvedDataSourceTemplate {
             kind,
@@ -703,14 +758,14 @@ impl blockchain::UnresolvedDataSourceTemplate<Chain> for UnresolvedDataSourceTem
             mapping,
         } = self;
 
-        // info!(logger, "Resolve data source template"; "name" => &name);
+        info!(logger, "Resolve data source template"; "name" => &name);
 
         Ok(DataSourceTemplate {
             kind,
             network,
             name,
             source,
-            mapping: mapping.resolve(resolver).await?,
+            mapping: mapping.resolve(resolver, logger).await?,
         })
     }
 }
@@ -786,7 +841,11 @@ impl Mapping {
 }
 
 impl UnresolvedMapping {
-    pub async fn resolve(self, resolver: &impl LinkResolver) -> Result<Mapping, anyhow::Error> {
+    pub async fn resolve(
+        self,
+        resolver: &impl LinkResolver,
+        logger: &Logger,
+    ) -> Result<Mapping, anyhow::Error> {
         let UnresolvedMapping {
             kind,
             api_version,
@@ -799,7 +858,7 @@ impl UnresolvedMapping {
             file: link,
         } = self;
 
-        // info!(logger, "Resolve mapping"; "link" => &link.link);
+        info!(logger, "Resolve mapping"; "link" => &link.link);
 
         let api_version = semver::Version::parse(&api_version)?;
 
@@ -807,12 +866,14 @@ impl UnresolvedMapping {
             // resolve each abi
             abis.into_iter()
                 .map(|unresolved_abi| async {
-                    Result::<_, Error>::Ok(Arc::new(unresolved_abi.resolve(resolver).await?))
+                    Result::<_, Error>::Ok(Arc::new(
+                        unresolved_abi.resolve(resolver, logger).await?,
+                    ))
                 })
                 .collect::<FuturesOrdered<_>>()
                 .try_collect::<Vec<_>>(),
             async {
-                let module_bytes = resolver.cat(&link).await?;
+                let module_bytes = resolver.cat(&logger, &link).await?;
                 Ok(Arc::new(module_bytes))
             },
         )
@@ -846,15 +907,19 @@ pub struct MappingABI {
 }
 
 impl UnresolvedMappingABI {
-    pub async fn resolve(self, resolver: &impl LinkResolver) -> Result<MappingABI, anyhow::Error> {
-        // info!(
-        //     logger,
-        //     "Resolve ABI";
-        //     "name" => &self.name,
-        //     "link" => &self.file.link
-        // );
+    pub async fn resolve(
+        self,
+        resolver: &impl LinkResolver,
+        logger: &Logger,
+    ) -> Result<MappingABI, anyhow::Error> {
+        info!(
+            logger,
+            "Resolve ABI";
+            "name" => &self.name,
+            "link" => &self.file.link
+        );
 
-        let contract_bytes = resolver.cat(&self.file).await?;
+        let contract_bytes = resolver.cat(logger, &self.file).await?;
         let contract = Contract::load(&*contract_bytes)?;
         Ok(MappingABI {
             name: self.name,
