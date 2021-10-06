@@ -1,8 +1,8 @@
+#[path = "stream.rs"]
+mod pbstream;
+
 pub mod endpoints;
 
-#[path = "chaindata.rs"]
-mod pbdstream;
-
 pub mod dstream {
-    pub use super::pbdstream::*;
+    pub use super::pbstream::*;
 }

@@ -1,34 +1,20 @@
 use diesel::r2d2::Builder;
+use diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
 use diesel::{connection::SimpleConnection, pg::PgConnection};
-use diesel::{
-    r2d2::{self, event as e, ConnectionManager, HandleEvent, Pool, PooledConnection},
-    Connection,
-};
 use diesel::{sql_query, RunQueryDsl};
-use postgres::config::{Config, Host};
-use std::fmt::{self, Write};
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
-use std::{collections::HashMap, sync::RwLock};
 
-use massbit::cheap_clone::CheapClone;
-use massbit::constraint_violation;
-use massbit::prelude::tokio::time::Instant;
-use massbit::prelude::{tokio, Logger};
-use massbit::util::timed_rw_lock::TimedMutex;
-use massbit::{
-    prelude::{
-        anyhow::{self, anyhow, bail},
-        crit, debug, error, info, o,
-        tokio::sync::Semaphore,
-        CancelGuard, CancelHandle, CancelToken as _, CancelableError, StoreError,
-    },
-    util::security::SafeDisplay,
+use massbit::prelude::Logger;
+use massbit::prelude::{
+    crit, debug, error, info, o, CancelGuard, CancelHandle, CancelToken as _, CancelableError,
+    StoreError,
 };
+use massbit::util::timed_rw_lock::TimedMutex;
 
-use crate::{advisory_lock, catalog};
-use crate::{Shard, PRIMARY_SHARD};
+use crate::advisory_lock;
+use crate::Shard;
 
 lazy_static::lazy_static! {
     // These environment variables should really be set through the
@@ -82,13 +68,6 @@ pub enum PoolName {
 }
 
 impl PoolName {
-    fn as_str(&self) -> &str {
-        match self {
-            PoolName::Main => "main",
-            PoolName::Replica(name) => name,
-        }
-    }
-
     fn is_replica(&self) -> bool {
         match self {
             PoolName::Main => false,
@@ -105,13 +84,7 @@ impl ConnectionPool {
         pool_size: u32,
         logger: &Logger,
     ) -> ConnectionPool {
-        let pool = PoolInner::create(
-            shard_name,
-            pool_name.as_str(),
-            postgres_url,
-            pool_size,
-            logger,
-        );
+        let pool = PoolInner::create(shard_name, postgres_url, pool_size, logger);
         let pool_state = if pool_name.is_replica() {
             PoolState::Ready(Arc::new(pool))
         } else {
@@ -232,7 +205,6 @@ pub struct PoolInner {
 impl PoolInner {
     pub fn create(
         shard_name: &str,
-        pool_name: &str,
         postgres_url: String,
         pool_size: u32,
         logger: &Logger,

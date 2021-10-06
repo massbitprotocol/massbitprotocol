@@ -1,10 +1,8 @@
-use diesel::r2d2::{ConnectionManager, PooledConnection};
 use diesel::{
     pg::Pg,
     serialize::Output,
     sql_types::Text,
     types::{FromSql, ToSql},
-    PgConnection,
 };
 use std::{collections::BTreeMap, collections::HashMap, sync::Arc};
 use std::{fmt, io::Write};
@@ -15,7 +13,6 @@ use massbit::data::indexer::schema::IndexerDeploymentEntity;
 use massbit::data::query::QueryExecutionError;
 use massbit::{
     components::store::{self, DeploymentLocator, EntityType, WritableStore as WritableStoreTrait},
-    constraint_violation,
     prelude::{IndexerStore as IndexerStoreTrait, *},
     util::timed_cache::TimedCache,
 };

@@ -75,16 +75,12 @@ pub trait Blockchain: Debug + Sized + Send + Sync + Unpin + 'static {
 
     type RuntimeAdapter: RuntimeAdapter<Self>;
 
-    fn triggers_adapter(
-        &self,
-        loc: &DeploymentLocator,
-    ) -> Result<Arc<Self::TriggersAdapter>, Error>;
+    fn triggers_adapter(&self) -> Result<Arc<Self::TriggersAdapter>, Error>;
 
     fn runtime_adapter(&self) -> Arc<Self::RuntimeAdapter>;
 
     async fn new_block_stream(
         &self,
-        deployment: DeploymentLocator,
         start_block: BlockNumber,
         filter: Arc<Self::TriggerFilter>,
     ) -> Result<Box<dyn BlockStream<Self>>, Error>;

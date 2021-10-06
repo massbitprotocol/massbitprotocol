@@ -3,10 +3,10 @@ use crate::solana_chain;
 use crate::substrate_chain;
 use crate::CONFIG;
 use chain_ethereum::network::{EthereumNetworkAdapter, EthereumNetworkAdapters, EthereumNetworks};
-use chain_ethereum::{manifest, Chain, EthereumAdapter, Transport};
+use chain_ethereum::{Chain, EthereumAdapter, Transport};
 use graph::semver::Op;
 use log::error;
-use massbit::firehose::dstream::{streamout_server::StreamoutServer, ChainType, GenericDataProto};
+use massbit::firehose::dstream::{stream_server::StreamServer, BlockResponse, ChainType};
 use massbit::log::logger;
 use massbit::prelude::LoggerFactory;
 use massbit_common::NetworkType;
@@ -48,7 +48,7 @@ pub struct ChainConfig {
     pub supports_eip_1898: bool,
 }
 
-pub fn fix_one_thread_not_receive(chan: &broadcast::Sender<GenericDataProto>) {
+pub fn fix_one_thread_not_receive(chan: &broadcast::Sender<BlockResponse>) {
     // Todo: More clean solution for broadcast channel
     let mut rx = chan.subscribe();
     tokio::spawn(async move {
@@ -83,7 +83,7 @@ async fn create_adaptor(chain_type: &ChainType, network: &NetworkType) -> Ethere
 pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     let logger = logger(true);
     // Broadcast Channel
-    let mut chans: HashMap<(ChainType, NetworkType), broadcast::Sender<GenericDataProto>> =
+    let mut chans: HashMap<(ChainType, NetworkType), broadcast::Sender<BlockResponse>> =
         HashMap::new();
     let mut chains: HashMap<(ChainType, NetworkType), Arc<Chain>> = HashMap::new();
     // Spawm thread get_data
@@ -179,7 +179,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
 
     let addr = CONFIG.url.parse()?;
     Server::builder()
-        .add_service(StreamoutServer::new(stream_service))
+        .add_service(StreamServer::new(stream_service))
         .serve(addr)
         .await?;
 

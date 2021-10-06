@@ -11,10 +11,7 @@ use massbit::blockchain::block_stream::BlockStreamEvent;
 use massbit::blockchain::{Block, Blockchain, TriggerFilter};
 use massbit::components::store::{DeploymentId, DeploymentLocator};
 use massbit::log::logger;
-use massbit::prelude::anyhow;
-use massbit::prelude::DeploymentHash;
 use massbit::prelude::*;
-use tokio::task;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -36,18 +33,16 @@ async fn main() -> Result<(), Error> {
             let filter = <chain_ethereum::Chain as Blockchain>::TriggerFilter::from_data_sources(
                 manifest.data_sources.iter(),
             );
-            // let filter = <chain_ethereum::Chain as Blockchain>::TriggerFilter::from_data_sources(
-            //     Vec::new().iter(),
-            // );
 
             let filter_json = serde_json::to_string(&filter).unwrap();
             let filter = serde_json::from_str(filter_json.as_str()).unwrap();
-            //let start_blocks = manifest.start_blocks();
+
             let start_blocks = vec![1];
             let deployment = DeploymentLocator {
                 id: DeploymentId(1),
                 hash: DeploymentHash::new("HASH".to_string()).unwrap(),
             };
+
             let mut block_stream = chain
                 .new_block_stream(deployment, start_blocks[0], Arc::new(filter))
                 .await

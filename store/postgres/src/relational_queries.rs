@@ -9,9 +9,8 @@ use diesel::pg::{Pg, PgConnection};
 use diesel::query_builder::{AstPass, QueryFragment, QueryId};
 use diesel::query_dsl::{LoadQuery, RunQueryDsl};
 use diesel::result::{Error as DieselError, QueryResult};
-use diesel::sql_types::{Array, BigInt, Binary, Bool, Integer, Jsonb, Range, Text};
-use diesel::{Connection, ExpressionMethods};
-use lazy_static::lazy_static;
+use diesel::sql_types::{Array, Binary, Bool, Integer, Jsonb, Range, Text};
+use diesel::Connection;
 use std::collections::{BTreeMap, HashMap};
 use std::str::FromStr;
 
@@ -23,9 +22,7 @@ use crate::block_range::{
     BlockRange, BlockRangeContainsClause, BLOCK_RANGE_COLUMN, BLOCK_RANGE_CURRENT,
 };
 use crate::primary::Namespace;
-use crate::relational::{
-    Column, ColumnType, IdType, Layout, SqlName, Table, PRIMARY_KEY_COLUMN, STRING_PREFIX_SIZE,
-};
+use crate::relational::{Column, ColumnType, IdType, Layout, SqlName, Table, PRIMARY_KEY_COLUMN};
 use crate::sql_value::SqlValue;
 
 /// A string where we have checked that it is safe to embed it literally

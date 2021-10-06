@@ -1,9 +1,9 @@
 use crate::Transport;
 use crate::CONFIG;
-use massbit::firehose::dstream::{ChainType, DataType, GenericDataProto};
+use massbit::firehose::dstream::{BlockResponse, ChainType};
 
 use anyhow::Error;
-use chain_ethereum::{manifest, Chain, EthereumAdapter, TriggerFilter};
+use chain_ethereum::{Chain, EthereumAdapter, TriggerFilter};
 use futures::stream;
 use futures::{Future, Stream};
 use futures03::compat::Future01CompatExt;
@@ -78,7 +78,7 @@ pub enum IngestorError {
 }
 
 pub async fn loop_get_block(
-    chan: mpsc::Sender<Result<GenericDataProto, Status>>,
+    chan: mpsc::Sender<Result<BlockResponse, Status>>,
     start_block: &Option<u64>,
     network: &NetworkType,
     chain: Arc<Chain>,
@@ -99,12 +99,8 @@ pub async fn loop_get_block(
     // let filter_json = serde_json::to_string(&filter)?;
     // let filter = serde_json::from_str(filter_json.as_str())?;
     let start_blocks = vec![start_block.unwrap() as i32];
-    let deployment = DeploymentLocator {
-        id: DeploymentId(1),
-        hash: DeploymentHash::new("HASH".to_string()).unwrap(),
-    };
     let mut block_stream = chain
-        .new_block_stream(deployment, start_blocks[0], Arc::new(filter))
+        .new_block_stream(start_blocks[0], Arc::new(filter))
         .await?;
     loop {
         let block = match block_stream.next().await {
@@ -122,7 +118,7 @@ pub async fn loop_get_block(
             _create_generic_block_with_trigger(block_hash, block_number, &block, version.clone());
         // Send data to GRPC stream
         if !chan.is_closed() {
-            let send_res = chan.send(Ok(generic_block as GenericDataProto)).await;
+            let send_res = chan.send(Ok(generic_block as BlockResponse)).await;
             if send_res.is_ok() {
                 info!("gRPC successfully sending block {}", &block_number);
             } else {
@@ -139,11 +135,10 @@ fn _create_generic_block_with_trigger(
     block_number: u64,
     block: &BlockWithTriggers<Chain>,
     version: String,
-) -> GenericDataProto {
-    let generic_data = GenericDataProto {
+) -> BlockResponse {
+    let generic_data = BlockResponse {
         chain_type: CHAIN_TYPE as i32,
         version,
-        data_type: DataType::BlockWithTriggers as i32,
         block_hash,
         block_number,
         payload: serde_json::to_vec(block).unwrap(),

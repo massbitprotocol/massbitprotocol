@@ -49,33 +49,25 @@ pub struct HostExports<C: Blockchain> {
     data_source_address: Vec<u8>,
     data_source_network: String,
     data_source_context: Arc<Option<DataSourceContext>>,
-    /// Some data sources have indeterminism or different notions of time. These
-    /// need to be each be stored separately to separate causality between them,
-    /// and merge the results later. Right now, this is just the ethereum
-    /// networks but will be expanded for ipfs and the availability chain.
-    causality_region: String,
     templates: Arc<Vec<C::DataSourceTemplate>>,
     pub(crate) link_resolver: Arc<dyn LinkResolver>,
 }
 
 impl<C: Blockchain> HostExports<C> {
     pub fn new(
-        subgraph_id: DeploymentHash,
+        indexer_id: DeploymentHash,
         data_source: &impl DataSource<C>,
         data_source_network: String,
         templates: Arc<Vec<C::DataSourceTemplate>>,
         link_resolver: Arc<dyn LinkResolver>,
     ) -> Self {
-        let causality_region = format!("ethereum/{}", data_source_network);
-
         Self {
-            indexer_id: subgraph_id,
+            indexer_id,
             api_version: data_source.api_version(),
             data_source_name: data_source.name().to_owned(),
             data_source_address: data_source.address().unwrap_or_default().to_owned(),
             data_source_network,
             data_source_context: data_source.context().cheap_clone(),
-            causality_region,
             templates,
             link_resolver,
         }
@@ -143,7 +135,7 @@ impl<C: Blockchain> HostExports<C> {
         // let schema = self.store.input_schema(&self.indexer_id)?;
         // let is_valid = validate_entity(&schema.document, &key, &entity).is_ok();
 
-        // Validate the changes against the subgraph schema.
+        // Validate the changes against the indexer schema.
         // If the set of fields we have is already valid, avoid hitting the DB.
         // if !is_valid {
         //     let entity = state

@@ -1,17 +1,13 @@
-use diesel::sql_types::Integer;
-use diesel::{connection::SimpleConnection, prelude::RunQueryDsl, select};
-use diesel::{insert_into, OptionalExtension};
-use diesel::{pg::PgConnection, sql_query};
+use diesel::pg::PgConnection;
+use diesel::prelude::RunQueryDsl;
+use diesel::OptionalExtension;
 use diesel::{
-    sql_types::{Array, Nullable, Text},
+    sql_types::{Nullable, Text},
     ExpressionMethods, QueryDsl,
 };
 use std::collections::{HashMap, HashSet};
-use std::fmt::Write;
-use std::iter::FromIterator;
 use std::sync::Arc;
 
-use massbit::prelude::anyhow::anyhow;
 use massbit::prelude::StoreError;
 
 use crate::{
@@ -46,16 +42,6 @@ impl Catalog {
     pub fn new(conn: &PgConnection, site: Arc<Site>) -> Result<Self, StoreError> {
         let text_columns = get_text_columns(conn, &site.namespace)?;
         Ok(Catalog { site, text_columns })
-    }
-
-    /// Make a catalog as if the given `schema` did not exist in the database
-    /// yet. This function should only be used in situations where a database
-    /// connection is definitely not available, such as in unit tests
-    pub fn make_empty(site: Arc<Site>) -> Result<Self, StoreError> {
-        Ok(Catalog {
-            site,
-            text_columns: HashMap::default(),
-        })
     }
 
     /// Return `true` if `table` exists and contains the given `column` and
@@ -96,65 +82,6 @@ fn get_text_columns(
             map
         });
     Ok(map)
-}
-
-pub fn current_servers(conn: &PgConnection) -> Result<Vec<String>, StoreError> {
-    #[derive(QueryableByName)]
-    struct Srv {
-        #[sql_type = "Text"]
-        srvname: String,
-    }
-    Ok(sql_query("select srvname from pg_foreign_server")
-        .get_results::<Srv>(conn)?
-        .into_iter()
-        .map(|srv| srv.srvname)
-        .collect())
-}
-
-/// Return the options for the foreign server `name` as a map of option
-/// names to values
-pub fn server_options(
-    conn: &PgConnection,
-    name: &str,
-) -> Result<HashMap<String, Option<String>>, StoreError> {
-    #[derive(QueryableByName)]
-    struct Srv {
-        #[sql_type = "Array<Text>"]
-        srvoptions: Vec<String>,
-    }
-    let entries = sql_query("select srvoptions from pg_foreign_server where srvname = $1")
-        .bind::<Text, _>(name)
-        .get_result::<Srv>(conn)?
-        .srvoptions
-        .into_iter()
-        .filter_map(|opt| {
-            let mut parts = opt.splitn(2, '=');
-            let key = parts.next();
-            let value = parts.next().map(|value| value.to_string());
-
-            key.map(|key| (key.to_string(), value))
-        });
-    Ok(HashMap::from_iter(entries))
-}
-
-pub fn has_namespace(conn: &PgConnection, namespace: &Namespace) -> Result<bool, StoreError> {
-    use pg_namespace as nsp;
-
-    Ok(select(diesel::dsl::exists(
-        nsp::table.filter(nsp::nspname.eq(namespace.as_str())),
-    ))
-    .get_result::<bool>(conn)?)
-}
-
-/// Drop the schema `nsp` and all its contents if it exists, and create it
-/// again so that `nsp` is an empty schema
-pub fn recreate_schema(conn: &PgConnection, nsp: &str) -> Result<(), StoreError> {
-    let query = format!(
-        "drop schema if exists {nsp} cascade;\
-         create schema {nsp};",
-        nsp = nsp
-    );
-    Ok(conn.batch_execute(&query)?)
 }
 
 pub(crate) mod table_schema {
@@ -199,79 +126,6 @@ pub(crate) mod table_schema {
             }
         }
     }
-
-    pub fn columns(
-        conn: &PgConnection,
-        nsp: &str,
-        table_name: &str,
-    ) -> Result<Vec<Column>, StoreError> {
-        const QUERY: &str = " \
-    select c.column_name::text, c.data_type::text,
-           c.udt_name::text, c.udt_schema::text, e.data_type::text as elem_type
-      from information_schema.columns c
-      left join information_schema.element_types e
-           on ((c.table_catalog, c.table_schema, c.table_name, 'TABLE', c.dtd_identifier)
-            = (e.object_catalog, e.object_schema, e.object_name, e.object_type, e.collection_type_identifier))
-     where c.table_schema = $1
-       and c.table_name = $2
-     order by c.ordinal_position";
-
-        Ok(sql_query(QUERY)
-            .bind::<Text, _>(nsp)
-            .bind::<Text, _>(table_name)
-            .get_results::<ColumnInfo>(conn)?
-            .into_iter()
-            .map(|ci| ci.into())
-            .collect())
-    }
-}
-
-/// Return a SQL statement to create the foreign table
-/// `{dst_nsp}.{table_name}` for the server `server` which has the same
-/// schema as the (local) table `{src_nsp}.{table_name}`
-pub fn create_foreign_table(
-    conn: &PgConnection,
-    src_nsp: &str,
-    table_name: &str,
-    dst_nsp: &str,
-    server: &str,
-) -> Result<String, StoreError> {
-    fn build_query(
-        columns: Vec<table_schema::Column>,
-        src_nsp: &str,
-        table_name: &str,
-        dst_nsp: &str,
-        server: &str,
-    ) -> Result<String, std::fmt::Error> {
-        let mut query = String::new();
-        write!(
-            query,
-            "create foreign table \"{}\".\"{}\" (",
-            dst_nsp, table_name
-        )?;
-        for (idx, column) in columns.into_iter().enumerate() {
-            if idx > 0 {
-                write!(query, ", ")?;
-            }
-            write!(query, "\"{}\" {}", column.column_name, column.data_type)?;
-        }
-        writeln!(
-            query,
-            ") server \"{}\" options(schema_name '{}');",
-            server, src_nsp
-        )?;
-        Ok(query)
-    }
-
-    let columns = table_schema::columns(conn, src_nsp, table_name)?;
-    let query = build_query(columns, src_nsp, table_name, dst_nsp, server).map_err(|_| {
-        anyhow!(
-            "failed to generate 'create foreign table' query for {}.{}",
-            dst_nsp,
-            table_name
-        )
-    })?;
-    Ok(query)
 }
 
 pub fn account_like(conn: &PgConnection, site: &Site) -> Result<HashSet<String>, StoreError> {

@@ -5,6 +5,7 @@ use massbit::blockchain::{
     block_stream::BlockWithTriggers, Block, BlockStream, Blockchain, BlockchainKind,
     PollingBlockStream, TriggersAdapter as TriggersAdapterTrait,
 };
+use massbit::prelude::serde::Serialize;
 use massbit::prelude::*;
 
 use crate::data_source::{
@@ -14,8 +15,6 @@ use crate::ethereum_adapter::blocks_with_triggers;
 use crate::network::EthereumNetworkAdapters;
 use crate::TriggerFilter;
 use crate::{EthereumAdapter, RuntimeAdapter};
-use massbit::components::store::DeploymentLocator;
-use massbit::prelude::serde::Serialize;
 
 lazy_static! {
     /// Maximum number of blocks to request in each chunk.
@@ -81,20 +80,14 @@ impl Blockchain for Chain {
 
     type RuntimeAdapter = RuntimeAdapter;
 
-    fn triggers_adapter(
-        &self,
-        loc: &DeploymentLocator,
-    ) -> Result<Arc<Self::TriggersAdapter>, Error> {
+    fn triggers_adapter(&self) -> Result<Arc<Self::TriggersAdapter>, Error> {
         let eth_adapter = self
             .eth_adapters
             .cheapest()
             .with_context(|| "no adapter for chain")?
             .clone();
 
-        let logger = self
-            .logger_factory
-            .indexer_logger(&loc)
-            .new(o!("component" => "BlockStream"));
+        let logger = self.logger_factory.component_logger("TriggersAdapter");
 
         let adapter = TriggersAdapter {
             eth_adapter,
@@ -111,17 +104,11 @@ impl Blockchain for Chain {
 
     async fn new_block_stream(
         &self,
-        deployment: DeploymentLocator,
         start_block: BlockNumber,
         filter: Arc<Self::TriggerFilter>,
     ) -> Result<Box<dyn BlockStream<Self>>, Error> {
-        let logger = self
-            .logger_factory
-            .indexer_logger(&deployment)
-            .new(o!("component" => "BlockStream"));
-
-        let triggers_adapter = self.triggers_adapter(&deployment)?;
-
+        let logger = self.logger_factory.component_logger("BlockStream");
+        let triggers_adapter = self.triggers_adapter()?;
         Ok(Box::new(PollingBlockStream::new(
             logger,
             triggers_adapter,

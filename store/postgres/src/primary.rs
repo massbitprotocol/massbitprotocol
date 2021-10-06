@@ -3,22 +3,19 @@
 //! for the primary shard.
 use diesel::{
     data_types::PgTimestamp,
-    dsl::{any, exists, not, select},
+    dsl::exists,
     pg::Pg,
     serialize::Output,
-    sql_types::{Array, Integer, Text},
+    sql_types::{Integer, Text},
     types::{FromSql, ToSql},
 };
 use diesel::{
-    dsl::{delete, insert_into, sql, update},
+    dsl::{insert_into, sql},
     r2d2::PooledConnection,
 };
 use diesel::{pg::PgConnection, r2d2::ConnectionManager};
 use diesel::{
-    prelude::{
-        BoolExpressionMethods, ExpressionMethods, GroupByDsl, JoinOnDsl, NullableExpressionMethods,
-        OptionalExtension, QueryDsl, RunQueryDsl,
-    },
+    prelude::{ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl},
     Connection as _,
 };
 use massbit::components::store::{DeploymentId as IndexerDeploymentId, DeploymentLocator};
@@ -26,7 +23,6 @@ use massbit::constraint_violation;
 use massbit::prelude::*;
 use maybe_owned::MaybeOwned;
 use std::{
-    collections::HashMap,
     convert::TryFrom,
     convert::TryInto,
     fmt,
