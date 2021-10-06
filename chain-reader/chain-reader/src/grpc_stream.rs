@@ -6,7 +6,7 @@ use crate::ethereum_chain;
 use chain_ethereum::network::{EthereumNetworkAdapter, EthereumNetworkAdapters};
 use chain_ethereum::{Chain, EthereumAdapter, Transport, TriggerFilter};
 use log::{error, info};
-use massbit::firehose::stream::{stream_server::Stream, BlockResponse, BlocksRequest, ChainType};
+use massbit::firehose::bstream::{stream_server::Stream, BlockResponse, BlocksRequest, ChainType};
 use massbit_common::NetworkType;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -81,7 +81,7 @@ impl Stream for StreamService {
                     massbit::block_on(task::unconstrained(async {
                         let start_block = match start_block {
                             0 => None,
-                            _ => Some(start_block),
+                            _ => Some(start_block as u64),
                         };
 
                         let filter: TriggerFilter =

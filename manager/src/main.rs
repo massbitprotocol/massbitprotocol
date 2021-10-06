@@ -6,6 +6,7 @@ use chain_ethereum::adapter::EthereumAdapter;
 use chain_ethereum::network::EthereumNetworks;
 use chain_ethereum::Transport;
 use massbit::blockchain::BlockchainMap;
+use massbit::firehose::endpoints::{FirehoseEndpoint, FirehoseNetworkEndpoints, FirehoseNetworks};
 use massbit::ipfs_client::IpfsClient;
 use massbit::log::logger;
 use massbit::prelude::tokio::sync::mpsc;
@@ -58,9 +59,13 @@ async fn main() {
     // possible temporary DNS failures, make the resolver retry
     let link_resolver = Arc::new(LinkResolver::from(ipfs_clients));
 
-    let eth_networks = create_ethereum_networks(logger.clone(), config)
+    let eth_networks = create_ethereum_networks(logger.clone(), config.clone())
         .await
         .expect("Failed to parse Ethereum networks");
+
+    let firehose_networks = create_firehose_networks(logger.clone(), &config)
+        .await
+        .expect("Failed to parse Firehose networks");
 
     // Obtain JSON-RPC server port
     let json_rpc_port = opt.json_rpc_port;
@@ -69,7 +74,12 @@ async fn main() {
         let (eth_networks, _) = connect_networks(&logger, eth_networks).await;
 
         let mut blockchain_map = BlockchainMap::new();
-        networks_as_chains(&mut blockchain_map, &eth_networks, &logger_factory);
+        ethereum_networks_as_chains(
+            &mut blockchain_map,
+            &eth_networks,
+            &firehose_networks,
+            &logger_factory,
+        );
         let blockchain_map = Arc::new(blockchain_map);
 
         let indexer_instance_manager = IndexerInstanceManager::new(
@@ -252,20 +262,56 @@ async fn create_ethereum_networks(
     Ok(parsed_networks)
 }
 
+async fn create_firehose_networks(
+    logger: Logger,
+    config: &Config,
+) -> Result<FirehoseNetworks, anyhow::Error> {
+    debug!(
+        logger,
+        "Creating firehose networks [{} chains]",
+        config.chains.chains.len(),
+    );
+
+    let mut parsed_networks = FirehoseNetworks::new();
+    for (name, chain) in &config.chains.chains {
+        for provider in &chain.providers {
+            if let ProviderDetails::Firehose(ref firehose) = provider.details {
+                let logger = logger.new(o!("provider" => provider.label.clone()));
+                info!(
+                    logger,
+                    "Creating firehose endpoint";
+                    "url" => &firehose.url,
+                );
+
+                let endpoint =
+                    FirehoseEndpoint::new(&provider.label, &firehose.url, firehose.token.clone())
+                        .await?;
+
+                parsed_networks.insert(name.to_string(), Arc::new(endpoint));
+            }
+        }
+    }
+
+    Ok(parsed_networks)
+}
+
 /// Return the hashmap of ethereum chains and also add them to `blockchain_map`.
-fn networks_as_chains(
+fn ethereum_networks_as_chains(
     blockchain_map: &mut BlockchainMap,
     eth_networks: &EthereumNetworks,
+    firehose_networks: &FirehoseNetworks,
     logger_factory: &LoggerFactory,
 ) {
     let chains: Vec<_> = eth_networks
         .networks
         .iter()
         .map(|(network_name, eth_adapters)| {
+            let firehose_endpoints = firehose_networks.networks.get(network_name);
             let chain = chain_ethereum::Chain::new(
                 logger_factory.clone(),
                 network_name.clone(),
                 eth_adapters.clone(),
+                firehose_endpoints.map_or_else(|| FirehoseNetworkEndpoints::new(), |v| v.clone()),
             );
             (network_name.clone(), Arc::new(chain))
         })

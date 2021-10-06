@@ -1,8 +1,8 @@
-#[path = "stream.rs"]
-mod pbstream;
+#[path = "bstream.rs"]
+mod pbbstream;
 
 pub mod endpoints;
 
-pub mod stream {
-    pub use super::pbstream::*;
+pub mod bstream {
+    pub use super::pbbstream::*;
 }
