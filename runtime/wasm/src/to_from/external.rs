@@ -331,6 +331,19 @@ impl ToAscObj<AscEnum<JsonValueKind>> for serde_json::Value {
     }
 }
 
+impl From<u32> for LogLevel {
+    fn from(i: u32) -> Self {
+        match i {
+            0 => LogLevel::Critical,
+            1 => LogLevel::Error,
+            2 => LogLevel::Warning,
+            3 => LogLevel::Info,
+            4 => LogLevel::Debug,
+            _ => LogLevel::Debug,
+        }
+    }
+}
+
 impl<T: AscValue> ToAscObj<AscWrapped<T>> for AscWrapped<T> {
     fn to_asc_obj<H: AscHeap + ?Sized>(
         &self,

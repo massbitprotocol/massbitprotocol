@@ -10,7 +10,7 @@ use crate::components::store::BlockNumber;
 use crate::prelude::*;
 
 /// A simple marker for byte arrays that are really block hashes
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct BlockHash(pub Box<[u8]>);
 
 impl BlockHash {
@@ -40,7 +40,7 @@ impl From<Vec<u8>> for BlockHash {
 /// A block hash and block number from a specific block.
 ///
 /// Block numbers are signed 32 bit integers
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct BlockPtr {
     pub hash: BlockHash,
     pub number: BlockNumber,

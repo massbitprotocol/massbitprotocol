@@ -7,7 +7,6 @@ use std::sync::Arc;
 use std::thread;
 
 use massbit::components::indexer::{BlockState, MappingError};
-use massbit::prelude::*;
 
 use crate::module::{ExperimentalFeatures, WasmInstance};
 
@@ -32,6 +31,7 @@ pub fn spawn_module<C: Blockchain>(
     runtime: tokio::runtime::Handle,
     timeout: Option<Duration>,
     experimental_features: ExperimentalFeatures,
+    logger: Logger,
 ) -> Result<mpsc::Sender<MappingRequest<C>>, anyhow::Error> {
     let valid_module = Arc::new(ValidModule::new(&raw_module)?);
 
@@ -43,7 +43,7 @@ pub fn spawn_module<C: Blockchain>(
     //
     // In case of failure, this thread may panic or simply terminate,
     // dropping the `mapping_request_receiver` which ultimately causes the
-    // subgraph to fail the next time it tries to handle an event.
+    // indexer to fail the next time it tries to handle an event.
     let conf =
         thread::Builder::new().name(format!("mapping-{}-{}", &indexer_id, uuid::Uuid::new_v4()));
     conf.spawn(move || {
@@ -59,6 +59,7 @@ pub fn spawn_module<C: Blockchain>(
                     trigger,
                     result_sender,
                 } = request;
+                let logger = ctx.logger.cheap_clone();
 
                 // Start the WASM module runtime.
                 let module = WasmInstance::from_valid_module_with_ctx(
@@ -69,7 +70,7 @@ pub fn spawn_module<C: Blockchain>(
                 )?;
 
                 if *LOG_TRIGGER_DATA {
-                    debug!("trigger data: {:?}", trigger);
+                    debug!(logger, "trigger data: {:?}", trigger);
                 }
                 let result = module.handle_trigger(trigger);
 
@@ -79,8 +80,9 @@ pub fn spawn_module<C: Blockchain>(
             })
             .wait()
         {
-            Ok(()) => debug!("Subgraph stopped, WASM runtime thread terminated"),
-            Err(e) => {}
+            Ok(()) => debug!(logger, "Indexer stopped, WASM runtime thread terminated"),
+            Err(e) => debug!(logger, "WASM runtime thread terminated abnormally";
+                                    "error" => e.to_string()),
         }
     })
     .map(|_| ())
@@ -96,6 +98,7 @@ pub struct MappingRequest<C: Blockchain> {
 }
 
 pub struct MappingContext<C: Blockchain> {
+    pub logger: Logger,
     pub host_exports: Arc<crate::host_exports::HostExports<C>>,
     pub block_ptr: BlockPtr,
     pub state: BlockState<C>,
@@ -105,6 +108,7 @@ pub struct MappingContext<C: Blockchain> {
 impl<C: Blockchain> MappingContext<C> {
     pub fn derive_with_empty_block_state(&self) -> Self {
         MappingContext {
+            logger: self.logger.cheap_clone(),
             host_exports: self.host_exports.cheap_clone(),
             block_ptr: self.block_ptr.cheap_clone(),
             state: BlockState::new(self.state.entity_cache.store.clone(), Default::default()),

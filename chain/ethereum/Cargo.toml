@@ -28,3 +28,4 @@ web3 = { git = "https://github.com/graphprotocol/rust-web3", branch = "master" }
 
 runtime-wasm = { path = "../../runtime/wasm" }
 runtime-derive = { path = "../../runtime/derive" }
+

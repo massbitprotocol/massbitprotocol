@@ -2,7 +2,6 @@
 name = "chain-reader"
 version = "0.1.0"
 edition = "2018"
-authors = ["huy <anhhuy0501@gmail.com>"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -24,8 +23,7 @@ serde           = { version = "1.0", optional = false }
 serde_json      = { version = "1.0", optional = false }
 thiserror       = { version = "1.0", optional =false }
 primitive-types = { version = "0.6.1", optional = true, features = ["codec"] }
-tonic = "0.4"
-prost = "0.7"
+prost = "0.8"
 futures-core = "0.3"
 futures-util = "0.3"
 tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "sync", "time"] }
@@ -43,8 +41,13 @@ massbit-chain-substrate = { path = "../../core/chain/substrate" }
 massbit-chain-solana = { path = "../../core/chain/solana" }
 massbit-chain-ethereum = { path = "../../core/chain/ethereum" }
 massbit-common = {path = "../../core/common" }
+chain-ethereum = {path = "../../chain/ethereum" }
 ipfs-client = { path = "../../core/ipfs-client" }
+massbit = { path = "../../massbit" }
 logger = { path = "../../core/logger" }
+
+tonic = "0.5"
+prost-types = "0.8.0"
 
 [dependencies.substrate-api-client]
 git = "https://github.com/scs/substrate-api-client.git"
@@ -107,7 +110,7 @@ std = [
 full_crypto = []
 
 [build-dependencies]
-tonic-build = "0.4"
+tonic-build = "0.5"
 
 [[bin]] # Bin to run gRPC server
 name = "chain-reader"

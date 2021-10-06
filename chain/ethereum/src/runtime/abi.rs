@@ -8,10 +8,11 @@ use runtime_wasm::asc_abi::class::{
 use semver::Version;
 use std::mem::size_of;
 
-use super::runtime_adapter::UnresolvedContractCall;
 use crate::trigger::{
     EthereumBlockData, EthereumCallData, EthereumEventData, EthereumTransactionData,
 };
+
+use super::runtime_adapter::UnresolvedContractCall;
 
 type AscH256 = Uint8Array;
 
@@ -23,7 +24,7 @@ impl AscType for AscLogParamArray {
     }
     fn from_asc_bytes(
         asc_obj: &[u8],
-        api_version: &Version,
+        api_version: Version,
     ) -> Result<Self, DeterministicHostError> {
         Ok(Self(Array::from_asc_bytes(asc_obj, api_version)?))
     }

@@ -9,3 +9,6 @@ pub mod graphql;
 
 /// Data types for dealing with GraphQL queries.
 pub mod query;
+
+/// Data types for dealing with GraphQL schemas.
+pub mod schema;

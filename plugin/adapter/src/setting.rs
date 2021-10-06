@@ -5,8 +5,8 @@
 // Generic dependencies
 use serde_yaml::Value;
 // Massbit dependencies
-use crate::stream_mod::ChainType;
 use graph_chain_ethereum::DataSource;
+use massbit::firehose::dstream::ChainType;
 
 //use massbit_runtime_wasm::chain::ethereum::data_source::DataSource;
 /*

@@ -11,6 +11,7 @@ pub trait BlockStream<C: Blockchain>:
 {
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BlockWithTriggers<C: Blockchain> {
     pub block: C::Block,
     pub trigger_data: Vec<C::TriggerData>,
@@ -52,6 +53,7 @@ pub trait TriggersAdapter<C: Blockchain>: Send + Sync {
     // Used for reprocessing blocks when creating a data source.
     async fn triggers_in_block(
         &self,
+        logger: &Logger,
         block: C::Block,
         filter: &C::TriggerFilter,
     ) -> Result<BlockWithTriggers<C>, Error>;

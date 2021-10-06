@@ -1,7 +1,7 @@
 use crate::core::{AdapterError, MessageHandler};
-pub use crate::stream_mod::{DataType, GenericDataProto};
 use index_store::Store;
 use libloading::Library;
+pub use massbit::firehose::dstream::{DataType, GenericDataProto};
 use massbit_chain_solana::data_type::{
     convert_solana_encoded_block_to_solana_block, decode, SolanaBlock, SolanaEncodedBlock,
     SolanaLogMessages, SolanaTransaction,

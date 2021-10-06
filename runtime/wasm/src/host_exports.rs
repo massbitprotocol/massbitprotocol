@@ -6,7 +6,6 @@ pub use massbit::runtime::{DeterministicHostError, HostExportError};
 use never::Never;
 use semver::Version;
 use std::collections::HashMap;
-use std::ops::Deref;
 use std::str::FromStr;
 use std::time::{Duration, Instant};
 use wasmtime::Trap;
@@ -18,13 +17,13 @@ use massbit::blockchain::DataSource;
 use massbit::blockchain::{Blockchain, DataSourceTemplate as _};
 use massbit::components::indexer::{BlockState, DataSourceTemplateInfo};
 use massbit::components::link_resolver::{JsonValueStream, LinkResolver};
+use massbit::components::store::EntityKey;
 use massbit::components::store::EntityType;
-use massbit::components::store::{EntityKey, IndexerStore};
 use massbit::data::indexer::{DataSourceContext, Link};
 use massbit::data::store;
 use massbit::data::store::Entity;
 use massbit::prelude::serde_json;
-use massbit::prelude::*;
+use massbit::prelude::{slog::b, slog::record_static, *};
 
 impl IntoTrap for HostExportError {
     fn determinism_level(&self) -> DeterminismLevel {
@@ -50,38 +49,27 @@ pub struct HostExports<C: Blockchain> {
     data_source_address: Vec<u8>,
     data_source_network: String,
     data_source_context: Arc<Option<DataSourceContext>>,
-    /// Some data sources have indeterminism or different notions of time. These
-    /// need to be each be stored separately to separate causality between them,
-    /// and merge the results later. Right now, this is just the ethereum
-    /// networks but will be expanded for ipfs and the availability chain.
-    causality_region: String,
     templates: Arc<Vec<C::DataSourceTemplate>>,
     pub(crate) link_resolver: Arc<dyn LinkResolver>,
-    store: Arc<dyn IndexerStore>,
 }
 
 impl<C: Blockchain> HostExports<C> {
     pub fn new(
-        subgraph_id: DeploymentHash,
+        indexer_id: DeploymentHash,
         data_source: &impl DataSource<C>,
         data_source_network: String,
         templates: Arc<Vec<C::DataSourceTemplate>>,
         link_resolver: Arc<dyn LinkResolver>,
-        store: Arc<dyn IndexerStore>,
     ) -> Self {
-        let causality_region = format!("ethereum/{}", data_source_network);
-
         Self {
-            indexer_id: subgraph_id,
+            indexer_id,
             api_version: data_source.api_version(),
             data_source_name: data_source.name().to_owned(),
             data_source_address: data_source.address().unwrap_or_default().to_owned(),
             data_source_network,
             data_source_context: data_source.context().cheap_clone(),
-            causality_region,
             templates,
             link_resolver,
-            store,
         }
     }
 
@@ -147,7 +135,7 @@ impl<C: Blockchain> HostExports<C> {
         // let schema = self.store.input_schema(&self.indexer_id)?;
         // let is_valid = validate_entity(&schema.document, &key, &entity).is_ok();
 
-        // Validate the changes against the subgraph schema.
+        // Validate the changes against the indexer schema.
         // If the set of fields we have is already valid, avoid hitting the DB.
         // if !is_valid {
         //     let entity = state
@@ -208,8 +196,8 @@ impl<C: Blockchain> HostExports<C> {
         ))
     }
 
-    pub(crate) fn ipfs_cat(&self, link: String) -> Result<Vec<u8>, anyhow::Error> {
-        block_on03(self.link_resolver.cat(&Link { link }))
+    pub(crate) fn ipfs_cat(&self, logger: &Logger, link: String) -> Result<Vec<u8>, anyhow::Error> {
+        block_on03(self.link_resolver.cat(logger, &Link { link }))
     }
 
     // Read the IPFS file `link`, split it into JSON objects, and invoke the
@@ -244,10 +232,11 @@ impl<C: Blockchain> HostExports<C> {
 
         let start = Instant::now();
         let mut last_log = start;
+        let logger = ctx.logger.new(o!("ipfs_map" => link.clone()));
 
         let result = {
             let mut stream: JsonValueStream =
-                block_on03(link_resolver.json_stream(&Link { link }))?;
+                block_on03(link_resolver.json_stream(&logger, &Link { link }))?;
             let mut v = Vec::new();
             while let Some(sv) = block_on03(stream.next()) {
                 let sv = sv?;
@@ -474,6 +463,7 @@ impl<C: Blockchain> HostExports<C> {
 
     pub(crate) fn data_source_create(
         &self,
+        logger: &Logger,
         state: &mut BlockState<C>,
         name: String,
         params: Vec<String>,
@@ -481,9 +471,10 @@ impl<C: Blockchain> HostExports<C> {
         creation_block: BlockNumber,
     ) -> Result<(), HostExportError> {
         info!(
-            "Create data source, name: {}, params: {}",
-            &name,
-            format!("{}", params.join(","))
+            logger,
+            "Create data source";
+            "name" => &name,
+            "params" => format!("{}", params.join(","))
         );
 
         // Resolve the name into the right template
@@ -519,10 +510,8 @@ impl<C: Blockchain> HostExports<C> {
         Ok(())
     }
 
-    pub(crate) fn ens_name_by_hash(&self, hash: &str) -> Result<Option<String>, anyhow::Error> {
-        // Ok(self.store.find_ens_name(hash)?)
-        // TODO: Implement this for store
-        Ok(Some("".to_string()))
+    pub(crate) fn ens_name_by_hash(&self, _: &str) -> Result<Option<String>, anyhow::Error> {
+        unimplemented!()
     }
 
     pub(crate) fn data_source_address(&self) -> Vec<u8> {
@@ -538,6 +527,28 @@ impl<C: Blockchain> HostExports<C> {
             .as_ref()
             .clone()
             .unwrap_or_default()
+    }
+
+    pub(crate) fn log_log(
+        &self,
+        logger: &Logger,
+        level: slog::Level,
+        msg: String,
+    ) -> Result<(), DeterministicHostError> {
+        let rs = record_static!(level, self.data_source_name.as_str());
+
+        logger.log(&slog::Record::new(
+            &rs,
+            &format_args!("{}", msg),
+            b!("data_source" => &self.data_source_name),
+        ));
+
+        if level == slog::Level::Critical {
+            return Err(DeterministicHostError(anyhow!(
+                "Critical error logged in mapping"
+            )));
+        }
+        Ok(())
     }
 }
 

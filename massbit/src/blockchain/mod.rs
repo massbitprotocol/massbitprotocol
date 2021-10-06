@@ -10,6 +10,7 @@ mod types;
 use anyhow::{anyhow, Context, Error};
 use async_trait::async_trait;
 use serde::de::DeserializeOwned;
+use slog::{self, SendSyncRefUnwindSafeKV};
 use std::any::Any;
 use std::collections::{BTreeMap, HashMap};
 use std::convert::TryFrom;
@@ -21,9 +22,10 @@ use std::{
 
 use crate::components::indexer::DataSourceTemplateInfo;
 use crate::components::link_resolver::LinkResolver;
-use crate::components::store::{BlockNumber, DeploymentLocator, StoredDynamicDataSource};
-use crate::data::indexer::DataSourceContext;
-use crate::prelude::CheapClone;
+use crate::components::store::{BlockNumber, StoredDynamicDataSource};
+use crate::data::indexer::{DataSourceContext, IndexerManifestValidationError};
+use crate::prelude::serde::Serialize;
+use crate::prelude::{CheapClone, Logger};
 use crate::runtime::{AscHeap, AscPtr, DeterministicHostError, HostExportError};
 
 pub use block_stream::{BlockStream, TriggersAdapter};
@@ -52,7 +54,7 @@ pub trait Block: Send + Sync {
 pub trait Blockchain: Debug + Sized + Send + Sync + Unpin + 'static {
     const KIND: BlockchainKind;
 
-    type Block: Block + Clone;
+    type Block: Block + Clone + Serialize + DeserializeOwned;
 
     type DataSource: DataSource<Self>;
     type UnresolvedDataSource: UnresolvedDataSource<Self>;
@@ -63,7 +65,7 @@ pub trait Blockchain: Debug + Sized + Send + Sync + Unpin + 'static {
     type TriggersAdapter: TriggersAdapter<Self>;
 
     /// Trigger data as parsed from the triggers adapter.
-    type TriggerData: TriggerData + Ord;
+    type TriggerData: TriggerData + Ord + Serialize + DeserializeOwned;
 
     /// Decoded trigger ready to be processed by the mapping.
     type MappingTrigger: MappingTrigger + Debug;
@@ -79,10 +81,15 @@ pub trait Blockchain: Debug + Sized + Send + Sync + Unpin + 'static {
 
     async fn new_block_stream(
         &self,
-        deployment: DeploymentLocator,
         start_block: BlockNumber,
         filter: Arc<Self::TriggerFilter>,
     ) -> Result<Box<dyn BlockStream<Self>>, Error>;
+
+    async fn block_pointer_from_number(
+        &self,
+        logger: &Logger,
+        number: BlockNumber,
+    ) -> Result<BlockPtr, Error>;
 }
 
 pub trait TriggerFilter<C: Blockchain>: Default + Clone + Send + Sync {
@@ -114,6 +121,7 @@ pub trait DataSource<C: Blockchain>:
     /// A return of `Ok(None)` mean the trigger does not match.
     fn match_and_decode(
         &self,
+        logger: &Logger,
         trigger: &C::TriggerData,
         block: Arc<C::Block>,
     ) -> Result<Option<C::MappingTrigger>, Error>;
@@ -126,13 +134,20 @@ pub trait DataSource<C: Blockchain>:
         templates: &BTreeMap<&str, &C::DataSourceTemplate>,
         stored: StoredDynamicDataSource,
     ) -> Result<Self, Error>;
+
+    /// Used as part of manifest validation. If there are no errors, return an empty vector.
+    fn validate(&self) -> Vec<IndexerManifestValidationError>;
 }
 
 #[async_trait]
 pub trait UnresolvedDataSource<C: Blockchain>:
     'static + Sized + Send + Sync + DeserializeOwned
 {
-    async fn resolve(self, resolver: &impl LinkResolver) -> Result<C::DataSource, anyhow::Error>;
+    async fn resolve(
+        self,
+        resolver: &impl LinkResolver,
+        logger: &Logger,
+    ) -> Result<C::DataSource, anyhow::Error>;
 }
 
 #[async_trait]
@@ -142,6 +157,7 @@ pub trait UnresolvedDataSourceTemplate<C: Blockchain>:
     async fn resolve(
         self,
         resolver: &impl LinkResolver,
+        logger: &Logger,
     ) -> Result<C::DataSourceTemplate, anyhow::Error>;
 }
 
@@ -163,9 +179,15 @@ pub trait MappingTrigger: Send + Sync {
     /// A flexible interface for writing a type to AS memory, any pointer can be returned.
     /// Use `AscPtr::erased` to convert `AscPtr<T>` into `AscPtr<()>`.
     fn to_asc_ptr<H: AscHeap>(self, heap: &mut H) -> Result<AscPtr<()>, DeterministicHostError>;
+
+    /// Additional key-value pairs to be logged with the "Done processing trigger" message.
+    fn logging_extras(&self) -> Box<dyn SendSyncRefUnwindSafeKV> {
+        Box::new(slog::o! {})
+    }
 }
 
 pub struct HostFnCtx<'a> {
+    pub logger: Logger,
     pub block_ptr: BlockPtr,
     pub heap: &'a mut dyn AscHeap,
 }

@@ -1,11 +1,12 @@
-use crate::adapter::EthereumAdapter as _;
-use crate::EthereumAdapter;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crate::adapter::EthereumAdapter as _;
+use crate::EthereumAdapter;
+
 #[derive(Clone)]
 pub struct EthereumNetworkAdapter {
-    adapter: Arc<EthereumAdapter>,
+    pub adapter: Arc<EthereumAdapter>,
 }
 
 #[derive(Clone)]

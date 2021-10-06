@@ -1,52 +1,43 @@
 use tokio::sync::{broadcast, mpsc};
+use tokio::task;
 use tokio_stream::wrappers::ReceiverStream;
 
 use crate::ethereum_chain;
+use chain_ethereum::network::{EthereumNetworkAdapter, EthereumNetworkAdapters};
+use chain_ethereum::{Chain, EthereumAdapter, Transport, TriggerFilter};
 use log::{error, info};
+use massbit::firehose::stream::{stream_server::Stream, BlockResponse, BlocksRequest, ChainType};
 use massbit_common::NetworkType;
 use std::collections::HashMap;
-use stream_mod::{
-    streamout_server::Streamout, ChainType, GenericDataProto, GetBlocksRequest, HelloReply,
-    HelloRequest,
-};
+use std::sync::Arc;
 use tonic::{Request, Response, Status};
 
 const QUEUE_BUFFER: usize = 1024;
 
-pub mod stream_mod {
-    tonic::include_proto!("chaindata");
-}
+// pub mod stream_mod {
+//     tonic::include_proto!("chaindata");
+// }
 
 #[derive(Debug)]
 pub struct StreamService {
-    pub chans: HashMap<(ChainType, NetworkType), broadcast::Sender<GenericDataProto>>,
+    pub chans: HashMap<(ChainType, NetworkType), broadcast::Sender<BlockResponse>>,
+    pub chains: HashMap<(ChainType, NetworkType), Arc<Chain>>,
 }
 
 #[tonic::async_trait]
-impl Streamout for StreamService {
-    async fn say_hello(
+impl Stream for StreamService {
+    type BlocksStream = ReceiverStream<Result<BlockResponse, Status>>;
+
+    async fn blocks(
         &self,
-        request: Request<HelloRequest>,
-    ) -> Result<Response<HelloReply>, Status> {
-        info!("Got a request: {:?}", request);
-
-        let reply = HelloReply {
-            message: format!("Hello {}!", request.into_inner().name).into(),
-        };
-
-        Ok(Response::new(reply))
-    }
-
-    type ListBlocksStream = ReceiverStream<Result<GenericDataProto, Status>>;
-
-    async fn list_blocks(
-        &self,
-        request: Request<GetBlocksRequest>,
-    ) -> Result<Response<Self::ListBlocksStream>, Status> {
+        request: Request<BlocksRequest>,
+    ) -> Result<Response<Self::BlocksStream>, Status> {
         info!("Request = {:?}", request);
         let chain_type: ChainType = ChainType::from_i32(request.get_ref().chain_type).unwrap();
         let network: NetworkType = request.get_ref().network.clone();
+        let start_block = request.get_ref().start_block_number;
         let (tx, rx) = mpsc::channel(QUEUE_BUFFER);
+        let encoded_filter: Vec<u8> = request.get_ref().filter.clone();
         match chain_type {
             ChainType::Substrate | ChainType::Solana => {
                 // tx, rx for out stream gRPC
@@ -57,8 +48,14 @@ impl Streamout for StreamService {
                     "chains: {:?}, chain_type: {:?}, network: {}",
                     &self.chans, chain_type, network
                 );
+                let sender = self.chans.get(&(chain_type, network));
+                assert!(
+                    sender.is_some(),
+                    "Error: No channel for {:?}, check config value",
+                    chain_type
+                );
 
-                let mut rx_chan = self.chans.get(&(chain_type, network)).unwrap().subscribe();
+                let mut rx_chan = sender.unwrap().subscribe();
 
                 tokio::spawn(async move {
                     loop {
@@ -73,16 +70,33 @@ impl Streamout for StreamService {
                 });
             }
             ChainType::Ethereum => {
-                let start_block = request.get_ref().start_block_number;
-                tokio::spawn(async move {
-                    let start_block = match start_block {
-                        0 => None,
-                        _ => Some(start_block),
-                    };
-                    let resp =
-                        ethereum_chain::loop_get_block(tx.clone(), &start_block, &network).await;
+                let name = "deployment".to_string();
+                let chain = self
+                    .chains
+                    .get(&(chain_type, network.clone()))
+                    .unwrap()
+                    .clone();
 
-                    error!("Stop loop_get_block, error: {:?}", resp);
+                massbit::spawn_thread(name, move || {
+                    massbit::block_on(task::unconstrained(async {
+                        let start_block = match start_block {
+                            0 => None,
+                            _ => Some(start_block),
+                        };
+
+                        let filter: TriggerFilter =
+                            serde_json::from_slice(&encoded_filter).unwrap();
+                        let resp = ethereum_chain::loop_get_block(
+                            tx.clone(),
+                            &start_block,
+                            &network,
+                            chain,
+                            filter,
+                        )
+                        .await;
+
+                        error!("Stop loop_get_block, error: {:?}", resp);
+                    }))
                 });
             }
         }

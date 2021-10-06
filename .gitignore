@@ -31,15 +31,16 @@ chain-reader/data/
 /code-compiler/generated
 *.zip
 
+# ignore node_modules of npm
+node_modules/
+
 # ignore all but .gitkeep
 index-manager/generated/*
 !index-manager/generated/.gitkeep
 
-migrations/
 log.html
 output.xml
 report.html
 e2e-test/robot*
 e2e-test/bin*
-log/
 *.log

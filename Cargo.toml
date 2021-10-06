@@ -1,25 +1,21 @@
 [workspace]
 members = [
-    "analytics",
     "chain-reader/chain-reader",
     "core/chain/substrate",
     "core/chain/solana",
     "core/chain/ethereum",
     "core/drive",
     "core/index-store",
-    "index-manager/main",
-    "plugin/adapter",
-    "plugin/runtime/wasm",
     "cli",
     "utils",
     "chain/ethereum",
     "massbit",
-    "indexer",
     "runtime/wasm",
     "runtime/derive",
-    "store/postgres"
+    "store/postgres",
+    "manager",
 ]
-exclude = ["code-compiler/generated"]
+exclude = ["analytics","code-compiler/generated"]
 
 [patch.crates-io]
 # Include protection against stack overflow when parsing from this PR: https://github.com/graphql-rust/graphql-parser/commit/45167b53e9533c331298683577ba8df7e43480ac
