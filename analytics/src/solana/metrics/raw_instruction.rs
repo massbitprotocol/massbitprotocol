@@ -4,12 +4,10 @@ use crate::storage_adapter::StorageAdapter;
 use crate::{create_columns, create_entity};
 use graph::data::store::scalar::Bytes;
 use graph::prelude::{Attribute, Entity, Value};
-use massbit_chain_solana::data_type::{Pubkey, SolanaBlock};
+use massbit_chain_solana::data_type::SolanaBlock;
 use massbit_common::prelude::bs58;
 use massbit_common::NetworkType;
-use solana_transaction_status::{
-    ConfirmedBlock, Reward, RewardType, TransactionWithStatusMeta, UiPartiallyDecodedInstruction,
-};
+use solana_transaction_status::{ConfirmedBlock, TransactionWithStatusMeta};
 use std::collections::HashMap;
 use std::sync::Arc;
 pub struct SolanaInstructionHandler {
@@ -32,15 +30,16 @@ impl SolanaHandler for SolanaInstructionHandler {
         let columns = create_columns();
         let mut entities = Vec::default();
         for tran in &block.block.transactions {
-            let mut instruction_entities = create_instructions(&block.block, tran);
+            let instruction_entities = create_instructions(&block.block, tran);
             entities.extend(instruction_entities);
             //create_inner_instructions(&block.block, tran);
         }
         if entities.len() > 0 {
             self.storage_adapter
-                .upsert(&table, &columns, &entities, &None);
+                .upsert(&table, &columns, &entities, &None)
+        } else {
+            Ok(())
         }
-        Ok(())
     }
 }
 fn create_columns() -> Vec<Column> {
@@ -88,7 +87,7 @@ fn create_instructions(block: &ConfirmedBlock, tran: &TransactionWithStatusMeta)
     entities
 }
 fn create_inner_instructions(
-    block: &ConfirmedBlock,
+    _block: &ConfirmedBlock,
     tran: &TransactionWithStatusMeta,
 ) -> Vec<Entity> {
     tran.meta

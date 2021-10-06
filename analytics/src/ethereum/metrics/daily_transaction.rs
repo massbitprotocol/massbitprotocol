@@ -3,21 +3,17 @@ use crate::storage_adapter::StorageAdapter;
 use graph::prelude::bigdecimal::{BigDecimal, FromPrimitive};
 use graph::prelude::chrono;
 use graph::prelude::chrono::Utc;
-use graph::prelude::web3::types::{Transaction, TransactionReceipt, U256};
 use graph::prelude::{Attribute, BigDecimal as BigDecimalValue, BigInt, Value};
-use massbit_chain_ethereum::data_type::{ExtBlock, LightEthereumBlock};
 use massbit_common::NetworkType;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::UNIX_EPOCH;
 //use schema::ethereum_daily_transaction;
+use crate::create_columns;
 use crate::postgres_queries::UpsertConflictFragment;
 use crate::relational::{Column, ColumnType, Table};
-use crate::util::timestamp_round_to_date;
-use crate::{create_columns, create_entity};
 use graph::data::store::Entity;
-use massbit_common::prelude::diesel::result::Error;
-use massbit_common::prelude::diesel::RunQueryDsl;
+use massbit::prelude::LightEthereumBlock;
 use std::collections::HashMap;
 
 pub struct EthereumDailyTransactionHandler {
@@ -33,7 +29,7 @@ impl EthereumDailyTransactionHandler {
     }
 }
 impl EthereumHandler for EthereumDailyTransactionHandler {
-    fn handle_block(&self, block: &ExtBlock) -> Result<(), anyhow::Error> {
+    fn handle_block(&self, block: Arc<LightEthereumBlock>) -> Result<(), anyhow::Error> {
         let table = Table::new("ethereum_daily_transaction", Some("t"));
         let columns = create_columns();
         let entity = create_entity(self.network.clone(), block);
@@ -46,8 +42,7 @@ impl EthereumHandler for EthereumDailyTransactionHandler {
             .add_expression("average_gas_price","(t.average_gas_price * t.transaction_count + EXCLUDED.average_gas_price * EXCLUDED.transaction_count)\
                     /(t.transaction_count + EXCLUDED.transaction_count)");
         self.storage_adapter
-            .upsert(&table, &columns, &vec![entity], &Some(conflict_frag));
-        Ok(())
+            .upsert(&table, &columns, &vec![entity], &Some(conflict_frag))
     }
 }
 
@@ -61,18 +56,16 @@ fn create_columns() -> Vec<Column> {
         "average_gas_price" => ColumnType::BigDecimal
     )
 }
-fn create_entity(network_name: Option<NetworkType>, ext_block: &ExtBlock) -> Entity {
-    //let timestamp: u64 = block.timestamp.as_u64();
-    let block = &ext_block.block;
-    let timestamp = timestamp_round_to_date(block.timestamp.as_u64());
+fn create_entity(network_name: Option<NetworkType>, block: Arc<LightEthereumBlock>) -> Entity {
+    let _timestamp = block.timestamp.as_u64() / 86400 * 86400;
     let time = UNIX_EPOCH + Duration::from_secs(block.timestamp.as_u64());
     // Create DateTime from SystemTime
     let datetime = chrono::DateTime::<Utc>::from(time);
     let date = datetime.format("%Y-%m-%d").to_string();
 
-    let gas_used = BigDecimal::from_u128(block.gas_used.as_u128());
-    let gas_limit = BigDecimal::from_u128(block.gas_limit.as_u128());
-    let size = match block.size {
+    let _gas_used = BigDecimal::from_u128(block.gas_used.as_u128());
+    let _gas_limit = BigDecimal::from_u128(block.gas_limit.as_u128());
+    let _size = match block.size {
         None => None,
         Some(val) => BigDecimal::from_u128(val.as_u128()),
     };

@@ -1,10 +1,7 @@
-use graph::components::store::EntityType;
 use graph::data::schema::FulltextConfig;
 use graph::prelude::s::EnumType;
-use graph::prelude::{q, StoreError};
-use graph_store_postgres::command_support::Catalog;
+use graph::prelude::StoreError;
 use inflector::Inflector;
-use massbit_common::prelude::log::kv::Source;
 use std::fmt;
 
 /// A string we use as a SQL name for a table or column. The important thing

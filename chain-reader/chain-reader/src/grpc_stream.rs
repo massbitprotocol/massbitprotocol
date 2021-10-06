@@ -85,7 +85,7 @@ impl Stream for StreamService {
                         };
 
                         let filter: TriggerFilter =
-                            serde_json::from_slice(&encoded_filter).unwrap();
+                            serde_json::from_slice(&encoded_filter).unwrap_or_default();
                         let resp = ethereum_chain::loop_get_block(
                             tx.clone(),
                             &start_block,

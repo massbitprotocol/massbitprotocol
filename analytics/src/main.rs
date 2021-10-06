@@ -4,16 +4,15 @@ use analytics::ethereum::process_ethereum_stream;
 use analytics::solana::process_solana_stream;
 use clap::{App, Arg};
 use diesel_migrations::embed_migrations;
-//use analytics::substrate::process_substrate_block;
 use lazy_static::lazy_static;
 use log::{error, info};
 use std::env;
 use std::time::Duration;
 
-use analytics::stream_mod::streamout_client::StreamoutClient;
 use analytics::{
     create_postgres_storage, establish_connection, GET_BLOCK_TIMEOUT_SEC, GET_STREAM_TIMEOUT_SEC,
 };
+use massbit::firehose::stream::stream_client::StreamClient;
 use std::sync::Arc;
 use std::thread::sleep;
 #[allow(unused_imports)]
@@ -88,20 +87,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
             Ok(channel) => {
                 let timeout_channel =
                     Timeout::new(channel, Duration::from_secs(GET_BLOCK_TIMEOUT_SEC));
-                let mut client = StreamoutClient::new(timeout_channel);
+                let mut client = StreamClient::new(timeout_channel);
                 let network = match matches.value_of("network") {
                     None => None,
                     Some(val) => Some(String::from(val)),
                 };
                 match chain_type {
                     "solana" => {
-                        process_solana_stream(
+                        match process_solana_stream(
                             &mut client,
                             storage_adapter.clone(),
                             network,
                             start_block.clone(),
                         )
-                        .await;
+                        .await
+                        {
+                            Err(err) => log::error!("{:?}", &err),
+                            Ok(_) => {}
+                        }
                     }
                     "substrate" => {
                         //process_substrate_stream(&mut client).await;

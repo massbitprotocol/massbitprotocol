@@ -4,7 +4,6 @@ use crate::storage_adapter::StorageAdapter;
 use massbit_chain_solana::data_type::SolanaBlock;
 use massbit_common::prelude::anyhow;
 use massbit_common::NetworkType;
-use std::collections::HashMap;
 use std::sync::Arc;
 
 pub trait SolanaHandler: Sync + Send {
@@ -28,12 +27,15 @@ impl SolanaHandlerManager {
         self.handlers.push(handler);
         self
     }
-    pub fn handle_ext_block(&self, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
+    pub fn handle_block(&self, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
         self.handlers.iter().for_each(|handler| {
             let clone_handler = handler.clone();
             let clone_block = Arc::clone(&block);
             tokio::spawn(async move {
-                clone_handler.handle_block(clone_block);
+                match clone_handler.handle_block(clone_block) {
+                    Ok(_) => {}
+                    Err(err) => log::error!("{:?}", &err),
+                }
             });
         });
         Ok(())
@@ -44,7 +46,7 @@ pub fn create_solana_handler_manager(
     network: &Option<NetworkType>,
     storate_adapter: Arc<dyn StorageAdapter>,
 ) -> SolanaHandlerManager {
-    let mut handler_manager = SolanaHandlerManager::new();
+    let handler_manager = SolanaHandlerManager::new();
     handler_manager
         .add_handler(Arc::new(SolanaRawBlockHandler::new(
             network,

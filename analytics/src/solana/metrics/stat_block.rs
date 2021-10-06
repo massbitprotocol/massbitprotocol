@@ -3,14 +3,10 @@ use crate::relational::{Column, ColumnType, Table};
 use crate::solana::handler::SolanaHandler;
 use crate::storage_adapter::StorageAdapter;
 use crate::{create_columns, create_entity};
-use graph::data::schema::{FulltextAlgorithm, FulltextConfig, FulltextLanguage};
-use graph::data::store::ValueType::BigInt;
 use graph::prelude::{Attribute, Entity, Value};
 use massbit_chain_solana::data_type::SolanaBlock;
 use massbit_common::NetworkType;
-use solana_transaction_status::{
-    ConfirmedBlock, Reward, RewardType, TransactionStatusMeta, TransactionWithStatusMeta,
-};
+use solana_transaction_status::RewardType;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -52,8 +48,7 @@ impl SolanaHandler for SolanaStatBlockHandler {
             .add_expression("average_block_time","(GREATEST(t.last_block_time, EXCLUDED.last_block_time) - LEAST(t.fist_block_time, EXCLUDED.fist_block_time))\
                     * 1000 /(GREATEST(t.max_block_height, EXCLUDED.max_block_height) - LEAST(t.min_block_height, EXCLUDED.min_block_height))");
         self.storage_adapter
-            .upsert(&table, &columns, &vec![entity], &Some(conflict_frag));
-        Ok(())
+            .upsert(&table, &columns, &vec![entity], &Some(conflict_frag))
     }
 }
 
@@ -98,7 +93,7 @@ fn create_stat_block_entity(network: &str, block: Arc<SolanaBlock>) -> Entity {
                 Err(_) => None,
             })
         })
-        .reduce(|mut a, mut b| (a.0 + b.0, a.1 + b.1));
+        .reduce(|a, b| (a.0 + b.0, a.1 + b.1));
     let mut total_fee = 0_u64;
     let mut counter = 0_u64;
     if let Some(val) = success_trans {

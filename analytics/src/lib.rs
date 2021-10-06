@@ -15,10 +15,7 @@ pub mod postgres_queries;
 pub mod relational;
 pub mod sql_value;
 pub mod storage_adapter;
-pub mod util;
-pub mod stream_mod {
-    tonic::include_proto!("chaindata");
-}
+
 use crate::models::NetworkState;
 #[allow(unused_imports)]
 use tonic::{
@@ -28,9 +25,8 @@ use tonic::{
 use tower::timeout::Timeout;
 
 use crate::postgres_adapter::{PostgresAdapter, PostgresAdapterBuilder};
-use crate::storage_adapter::StorageAdapter;
-use crate::stream_mod::{
-    streamout_client::StreamoutClient, ChainType, GenericDataProto, GetBlocksRequest,
+use massbit::firehose::stream::{
+    stream_client::StreamClient, BlockResponse, BlocksRequest, ChainType,
 };
 use massbit_common::NetworkType;
 
@@ -51,20 +47,22 @@ pub fn establish_connection() -> PgConnection {
 }
 
 pub async fn try_create_stream(
-    client: &mut StreamoutClient<Timeout<Channel>>,
+    client: &mut StreamClient<Timeout<Channel>>,
     chain_type: ChainType,
     start_block: u64,
     network: &Option<NetworkType>,
-) -> Option<Streaming<GenericDataProto>> {
+) -> Option<Streaming<BlockResponse>> {
     log::info!("Create new stream from block {}", start_block);
-    let get_blocks_request = GetBlocksRequest {
+    let filter = vec![];
+    let get_blocks_request = BlocksRequest {
         start_block_number: start_block,
         end_block_number: 0,
         chain_type: chain_type as i32,
-        network: network.clone().unwrap_or(Default::default()),
+        network: network.clone().unwrap_or_default(),
+        filter,
     };
     match client
-        .list_blocks(Request::new(get_blocks_request.clone()))
+        .blocks(Request::new(get_blocks_request.clone()))
         .await
     {
         Ok(res) => {

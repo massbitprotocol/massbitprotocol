@@ -2,14 +2,11 @@ use crate::relational::{Column, ColumnType, Table};
 use crate::solana::handler::SolanaHandler;
 use crate::storage_adapter::StorageAdapter;
 use crate::{create_columns, create_entity};
-use graph::data::schema::{FulltextAlgorithm, FulltextConfig, FulltextLanguage};
 use graph::data::store::scalar::BigInt;
 use graph::prelude::{Attribute, Entity, Value};
 use massbit_chain_solana::data_type::SolanaBlock;
 use massbit_common::NetworkType;
-use solana_transaction_status::{
-    ConfirmedBlock, Reward, RewardType, TransactionStatusMeta, TransactionWithStatusMeta,
-};
+use solana_transaction_status::{TransactionStatusMeta, TransactionWithStatusMeta};
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -42,7 +39,7 @@ impl SolanaHandler for SolanaTokenBalanceHandler {
                     .and_then(|meta| Some(create_token_balances(tran, meta)))
             })
             .reduce(|mut a, mut b| {
-                a.extend(b);
+                a.append(&mut b);
                 a
             });
         if let Some(values) = entities {

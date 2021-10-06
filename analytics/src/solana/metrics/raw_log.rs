@@ -2,14 +2,10 @@ use crate::relational::{Column, ColumnType, Table};
 use crate::solana::handler::SolanaHandler;
 use crate::storage_adapter::StorageAdapter;
 use crate::{create_columns, create_entity};
-use graph::data::schema::{FulltextAlgorithm, FulltextConfig, FulltextLanguage};
-use graph::data::store::ValueType::BigInt;
 use graph::prelude::{Attribute, Entity, Value};
 use massbit_chain_solana::data_type::SolanaBlock;
 use massbit_common::NetworkType;
-use solana_transaction_status::{
-    ConfirmedBlock, Reward, RewardType, TransactionStatusMeta, TransactionWithStatusMeta,
-};
+use solana_transaction_status::{ConfirmedBlock, TransactionWithStatusMeta};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -44,9 +40,10 @@ impl SolanaHandler for SolanaRawLogHandler {
             .collect::<Vec<Entity>>();
         if entities.len() > 0 {
             self.storage_adapter
-                .upsert(&table, &columns, &entities, &None);
+                .upsert(&table, &columns, &entities, &None)
+        } else {
+            Ok(())
         }
-        Ok(())
     }
 }
 

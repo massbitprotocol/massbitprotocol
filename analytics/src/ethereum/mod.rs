@@ -4,13 +4,8 @@ pub mod models;
 use diesel::{self, RunQueryDsl};
 pub use handler::EthereumHandlerManager;
 use lazy_static::lazy_static;
-use log::{info, warn};
-use massbit_chain_ethereum::data_type::{
-    decode as ethereum_decode, EthereumBlock as EthereumChainBlock,
-};
 use massbit_common::prelude::tokio::time::{sleep, timeout, Duration};
 use massbit_common::NetworkType;
-use models::{EthereumBlock, EthereumTransaction};
 use std::time::Instant;
 #[allow(unused_imports)]
 use tonic::{
@@ -18,19 +13,19 @@ use tonic::{
     Request, Response, Status, Streaming,
 };
 
-use crate::stream_mod::{streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto};
 use crate::{
     establish_connection, get_block_number, try_create_stream, GET_BLOCK_TIMEOUT_SEC,
     GET_STREAM_TIMEOUT_SEC,
 };
+use massbit::firehose::stream::{stream_client::StreamClient, BlockResponse, ChainType};
 
-use crate::ethereum::handler::{create_ethereum_handler_manager, EthereumHandler};
+use crate::ethereum::handler::create_ethereum_handler_manager;
 use crate::postgres_adapter::PostgresAdapter;
 use crate::schema::*;
-use crate::storage_adapter::StorageAdapter;
-use graph::prelude::Value;
+use chain_ethereum::chain::BlockFinality;
+use chain_ethereum::Chain;
+use massbit::blockchain::block_stream::BlockWithTriggers;
 use massbit_common::prelude::diesel::pg::upsert::excluded;
-use massbit_common::prelude::diesel::result::Error;
 use massbit_common::prelude::diesel::ExpressionMethods;
 use std::sync::Arc;
 use tower::timeout::Timeout;
@@ -42,7 +37,7 @@ const START_ETHEREUM_BLOCK: u64 = 15_000_000_u64;
 const DEFAULT_NETWORK: &str = "matic";
 
 pub async fn process_ethereum_stream(
-    client: &mut StreamoutClient<Timeout<Channel>>,
+    client: &mut StreamClient<Timeout<Channel>>,
     storage_adapter: Arc<PostgresAdapter>,
     network: Option<NetworkType>,
     block: u64,
@@ -65,7 +60,7 @@ pub async fn process_ethereum_stream(
         }
         Some(state) => state.got_block as u64 + 1,
     };
-    let mut opt_stream: Option<Streaming<GenericDataProto>> = None;
+    let mut opt_stream: Option<Streaming<BlockResponse>> = None;
     loop {
         match opt_stream {
             None => {
@@ -82,43 +77,40 @@ pub async fn process_ethereum_stream(
                     timeout(Duration::from_secs(GET_BLOCK_TIMEOUT_SEC), stream.message()).await;
                 match response {
                     Ok(Ok(res)) => {
-                        if let Some(mut data) = res {
-                            match DataType::from_i32(data.data_type) {
-                                Some(DataType::Block) => {
-                                    let start = Instant::now();
-                                    let block: EthereumChainBlock =
-                                        ethereum_decode(&mut data.payload).unwrap();
-                                    let block_number = match block.block.number {
-                                        None => 0_i64,
-                                        Some(val) => val.as_u64() as i64,
-                                    };
-                                    handler_manager.handle_ext_block(&block);
-                                    match diesel::insert_into(network_state::table)
-                                        .values((
-                                            network_state::chain.eq(CHAIN.clone()),
-                                            network_state::network.eq(network
-                                                .clone()
-                                                .unwrap_or(DEFAULT_NETWORK.to_string())),
-                                            network_state::got_block.eq(block_number.clone()),
-                                        ))
-                                        .on_conflict((network_state::chain, network_state::network))
-                                        .do_update()
-                                        .set(
-                                            network_state::got_block
-                                                .eq(excluded(network_state::got_block)),
-                                        )
-                                        .execute(&conn)
-                                    {
-                                        Ok(_) => {}
-                                        Err(err) => log::error!("{:?}", &err),
-                                    };
-                                    log::info!("Block {} with {} receipts and {} transactions is processed in {:?}",
-                                        block_number, block.receipts.len(), block.block.transactions.len(), start.elapsed());
-                                }
-                                _ => {
-                                    warn!("Not support this type in Ethereum");
-                                }
+                        if let Some(data) = res {
+                            let start = Instant::now();
+                            let block: BlockWithTriggers<Chain> =
+                                serde_json::from_slice(&data.payload).unwrap();
+                            let block_number = data.block_number as i64;
+                            let BlockFinality::Final(light_block) = block.block;
+                            let transaction_count = light_block.transactions.len();
+                            match handler_manager.handle_block(light_block) {
+                                Ok(_) => {}
+                                Err(err) => log::error!("{:?}", &err),
                             };
+                            match diesel::insert_into(network_state::table)
+                                .values((
+                                    network_state::chain.eq(CHAIN.clone()),
+                                    network_state::network
+                                        .eq(network.clone().unwrap_or(DEFAULT_NETWORK.to_string())),
+                                    network_state::got_block.eq(block_number.clone()),
+                                ))
+                                .on_conflict((network_state::chain, network_state::network))
+                                .do_update()
+                                .set(
+                                    network_state::got_block.eq(excluded(network_state::got_block)),
+                                )
+                                .execute(&conn)
+                            {
+                                Ok(_) => {}
+                                Err(err) => log::error!("{:?}", &err),
+                            };
+                            log::info!(
+                                "Block {} with {} transactions is processed in {:?}",
+                                block_number,
+                                transaction_count,
+                                start.elapsed()
+                            );
                         }
                     }
                     _ => {
@@ -132,7 +124,6 @@ pub async fn process_ethereum_stream(
             }
         };
     }
-    Ok(())
 }
 
 // pub async fn _process_ethereum_stream(client: &mut StreamoutClient<Timeout<Channel>>,

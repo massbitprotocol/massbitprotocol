@@ -2,17 +2,11 @@ use crate::ethereum::handler::EthereumHandler;
 use crate::postgres_queries::UpsertConflictFragment;
 use crate::relational::{Column, ColumnType, Table};
 use crate::storage_adapter::StorageAdapter;
-use crate::util::timestamp_round_to_date;
 use crate::{create_columns, create_entity};
-use bigdecimal::BigDecimal;
-use core::iter::FromIterator;
 use core::ops::Add;
 use graph::prelude::chrono::Utc;
-use graph::prelude::web3::types::{Transaction, TransactionReceipt};
-use graph::prelude::{chrono, Attribute, BigDecimal as BigDecimalValue, BigInt, Entity, Value};
-use massbit_chain_ethereum::data_type::ExtBlock;
+use graph::prelude::{chrono, Attribute, BigInt, Entity, Value};
 use massbit_chain_ethereum::types::LightEthereumBlock;
-use massbit_common::prelude::bigdecimal::FromPrimitive;
 use massbit_common::NetworkType;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
@@ -33,8 +27,8 @@ impl EthereumDailyAddressTransactionHandler {
 }
 
 impl EthereumHandler for EthereumDailyAddressTransactionHandler {
-    fn handle_block(&self, block: &ExtBlock) -> Result<(), anyhow::Error> {
-        let values = create_entities(&block.block);
+    fn handle_block(&self, block: Arc<LightEthereumBlock>) -> Result<(), anyhow::Error> {
+        let values = create_entities(block.as_ref());
         let table = Table::new("ethereum_daily_address_transaction", Some("t"));
         let columns = create_columns();
         let mut conflict_frag =
@@ -50,8 +44,7 @@ impl EthereumHandler for EthereumDailyAddressTransactionHandler {
             )
             .add_expression("gas", "t.gas + EXCLUDED.gas");
         self.storage_adapter
-            .upsert(&table, &columns, &values, &Some(conflict_frag));
-        Ok(())
+            .upsert(&table, &columns, &values, &Some(conflict_frag))
     }
 }
 fn create_columns() -> Vec<Column> {
@@ -74,13 +67,6 @@ fn create_entities(block: &LightEthereumBlock) -> Vec<Entity> {
         let address = format!("{:x}", &transaction.from);
         match map.get_mut(address.as_str()) {
             None => {
-                let entity = create_entity!(
-                    "address" => transaction.from,
-                    "transaction_date" => datetime.clone(),
-                    "transaction_count" => 1_u64,
-                    "transaction_volume" => transaction.value,
-                    "gas" => transaction.gas
-                );
                 map.insert(
                     address,
                     (

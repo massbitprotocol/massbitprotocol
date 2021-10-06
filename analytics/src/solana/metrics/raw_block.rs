@@ -2,11 +2,10 @@ use crate::relational::{Column, ColumnType, Table};
 use crate::solana::handler::SolanaHandler;
 use crate::storage_adapter::StorageAdapter;
 use crate::{create_columns, create_entity};
-use graph::data::store::ValueType::BigInt;
 use graph::prelude::{Attribute, Entity, Value};
 use massbit_chain_solana::data_type::SolanaBlock;
 use massbit_common::NetworkType;
-use solana_transaction_status::{ConfirmedBlock, Reward, RewardType};
+use solana_transaction_status::{ConfirmedBlock, RewardType};
 use std::collections::HashMap;
 use std::sync::Arc;
 pub struct SolanaRawBlockHandler {
@@ -30,8 +29,7 @@ impl SolanaHandler for SolanaRawBlockHandler {
         let entity = create_entity(&block.block);
         //println!("Block {:?} has reward {:?}", &block.block.block_height, &block.block.rewards);
         self.storage_adapter
-            .upsert(&table, &columns, &vec![entity], &None);
-        Ok(())
+            .upsert(&table, &columns, &vec![entity], &None)
     }
 }
 fn create_columns() -> Vec<Column> {

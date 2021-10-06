@@ -1,22 +1,14 @@
 use crate::storage_adapter::StorageAdapter;
 use diesel::PgConnection;
-use diesel_dynamic_schema::table;
-use massbit_common::prelude::diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
-use massbit_common::prelude::diesel::result::{Error as DieselError, Error};
-use massbit_common::prelude::diesel::{
-    insert_into, r2d2, sql_query, Connection, QueryResult, RunQueryDsl,
-};
+use massbit_common::prelude::diesel::r2d2::{ConnectionManager, Pool};
+use massbit_common::prelude::diesel::{r2d2, Connection, RunQueryDsl};
 use std::cmp;
 
 use crate::models::CommandData;
 use crate::postgres_queries::{UpsertConflictFragment, UpsertQuery};
 use crate::relational::{Column, Table};
 use core::ops::Deref;
-use graph::prelude::{Entity, StoreError, Value};
-use massbit_common::prelude::diesel::pg::types::sql_types::Jsonb;
-use massbit_common::prelude::diesel::pg::Pg;
-use massbit_common::prelude::diesel::query_builder::{AstPass, QueryFragment, QueryId};
-use std::collections::HashMap;
+use graph::prelude::Entity;
 use std::time::Instant;
 
 const MAX_POOL_SIZE: u32 = 10;
@@ -40,7 +32,7 @@ impl StorageAdapter for PostgresAdapter {
                     let upsert_query =
                         UpsertQuery::new(table, columns, entities, conflict_fragment)?;
                     match upsert_query.execute(conn.deref()) {
-                        Ok(val) => {
+                        Ok(_val) => {
                             log::info!(
                                 "Upsert {} entities into table {} in {:?}",
                                 entities.len(),
@@ -76,7 +68,7 @@ impl StorageAdapter for PostgresAdapter {
                 commands.iter().for_each(|cmd| {
                     let upsert_query = UpsertQuery::from(cmd);
                     match upsert_query.execute(conn.deref()) {
-                        Ok(val) => {
+                        Ok(_val) => {
                             log::info!(
                                 "Upsert {} entities into table {} in {:?}",
                                 cmd.values.len(),

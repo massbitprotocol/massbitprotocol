@@ -1,5 +1,5 @@
 use crate::models::CommandData;
-use crate::relational::{Column, ColumnType, SqlName, Table};
+use crate::relational::{Column, ColumnType, Table};
 use crate::sql_value::SqlValue;
 use core::str::FromStr;
 use graph::components::store::StoreError;
@@ -9,11 +9,8 @@ use massbit_common::prelude::diesel::pg::Pg;
 use massbit_common::prelude::diesel::query_builder::{AstPass, QueryFragment, QueryId};
 use massbit_common::prelude::diesel::result::Error as DieselError;
 use massbit_common::prelude::diesel::sql_types::{Array, Binary, Bool, Integer, Text, Varchar};
-use massbit_common::prelude::diesel::{
-    insert_into, r2d2, sql_query, Connection, IntoSql, QueryResult, RunQueryDsl,
-};
+use massbit_common::prelude::diesel::{QueryResult, RunQueryDsl};
 
-const PRIMARY_KEY_COLUMN: &str = "id";
 #[derive(Debug)]
 pub struct UpsertQuery<'a> {
     table: &'a Table<'a>,

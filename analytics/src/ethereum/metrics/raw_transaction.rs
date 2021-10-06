@@ -3,15 +3,13 @@ use crate::relational::{Column, ColumnType, Table};
 use crate::storage_adapter::StorageAdapter;
 use graph::prelude::web3::types::Transaction;
 use graph::prelude::{Attribute, Entity, Value};
-use massbit_common::prelude::bigdecimal::{BigDecimal, FromPrimitive};
 use massbit_common::NetworkType;
 use std::collections::HashMap;
 use std::sync::Arc;
 // use index_store::{EntityValue, FromEntity, FromValueTrait, ToMap, ValueFrom};
 // use massbit_drive::{FromEntity, ToMap};
 use crate::{create_columns, create_entity};
-use massbit_chain_ethereum::data_type::ExtBlock;
-use massbit_chain_ethereum::types::LightEthereumBlock;
+use massbit::prelude::LightEthereumBlock;
 
 pub struct EthereumRawTransactionHandler {
     pub network: Option<NetworkType>,
@@ -28,18 +26,16 @@ impl EthereumRawTransactionHandler {
 }
 
 impl EthereumHandler for EthereumRawTransactionHandler {
-    fn handle_block(&self, block: &ExtBlock) -> Result<(), anyhow::Error> {
+    fn handle_block(&self, block: Arc<LightEthereumBlock>) -> Result<(), anyhow::Error> {
         let values = block
-            .block
             .transactions
             .iter()
-            .map(|tran| create_entity(block, tran))
+            .map(|tran| create_entity(block.clone(), tran))
             .collect::<Vec<Entity>>();
         let table = Table::new("ethereum_transaction", Some("t"));
         let columns = create_columns();
         self.storage_adapter
-            .upsert(&table, &columns, &values, &None);
-        Ok(())
+            .upsert(&table, &columns, &values, &None)
     }
 }
 
@@ -57,8 +53,8 @@ fn create_columns() -> Vec<Column> {
         "timestamp" => ColumnType::BigInt
     )
 }
-fn create_entity(block: &ExtBlock, trans: &Transaction) -> Entity {
-    let tran_receipt = block.receipts.get(&trans.hash);
+fn create_entity(block: Arc<LightEthereumBlock>, trans: &Transaction) -> Entity {
+    //let _tran_receipt = block.receipts.get(&trans.hash);
     //tran_receipt.and_then(|r|r.status).
     create_entity!(
         "transaction_hash" => trans.hash,

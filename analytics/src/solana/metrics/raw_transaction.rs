@@ -2,11 +2,8 @@
 use crate::models::CommandData;
 use crate::relational::{Column, ColumnType, Table};
 use crate::solana::handler::SolanaHandler;
-use crate::solana::model::AccountTrans;
 use crate::storage_adapter::StorageAdapter;
 use crate::{create_columns, create_entity};
-use core::fmt::Display;
-use graph::data::store::ValueType::BigInt;
 use graph::prelude::{Attribute, Entity, Value};
 use massbit_chain_solana::data_type::SolanaBlock;
 use massbit_common::NetworkType;
@@ -46,7 +43,7 @@ impl SolanaHandler for SolanaRawTransactionHandler {
                 .signatures
                 .get(0)
                 .and_then(|sig| Some(sig.to_string()));
-            let mut entities = create_transaction_account(&tx_hash, tran);
+            let entities = create_transaction_account(&tx_hash, tran);
             if entities.len() > 0 {
                 match vec_entities.last_mut() {
                     None => vec_entities.push(entities),
@@ -69,9 +66,10 @@ impl SolanaHandler for SolanaRawTransactionHandler {
             vec_commands.push(trans_data);
         }
         if vec_commands.len() > 0 {
-            self.storage_adapter.transact_upserts(vec_commands);
+            self.storage_adapter.transact_upserts(vec_commands)
+        } else {
+            Ok(())
         }
-        Ok(())
     }
 }
 fn create_trans_columns() -> Vec<Column> {
