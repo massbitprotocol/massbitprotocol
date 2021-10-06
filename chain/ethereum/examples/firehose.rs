@@ -10,6 +10,7 @@ use chain_ethereum::{manifest, Chain, EthereumAdapter};
 use massbit::blockchain::block_stream::BlockStreamEvent;
 use massbit::blockchain::{Block, Blockchain, TriggerFilter};
 use massbit::components::store::{DeploymentId, DeploymentLocator};
+use massbit::log::logger;
 use massbit::prelude::anyhow;
 use massbit::prelude::DeploymentHash;
 use massbit::prelude::*;
@@ -17,16 +18,21 @@ use tokio::task;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    graph::spawn_thread("deployment".to_string(), move || {
-        graph::block_on(task::unconstrained(async {
+    let logger = logger(true);
+    let network = "matic".to_string();
+    massbit::spawn_thread("deployment".to_string(), move || {
+        massbit::block_on(task::unconstrained(async {
+            let logger_factory = LoggerFactory::new(logger.clone());
             let mut manifest = manifest::resolve_manifest_from_text(YAML).await;
-            let chain = Chain {
-                eth_adapters: Arc::new(EthereumNetworkAdapters {
+            let chain = Chain::new(
+                logger_factory,
+                network.clone(),
+                EthereumNetworkAdapters {
                     adapters: vec![EthereumNetworkAdapter {
                         adapter: Arc::new(create_ethereum_adapter().await),
                     }],
-                }),
-            };
+                },
+            );
             let filter = <chain_ethereum::Chain as Blockchain>::TriggerFilter::from_data_sources(
                 manifest.data_sources.iter(),
             );
