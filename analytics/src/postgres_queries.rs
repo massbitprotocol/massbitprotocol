@@ -46,6 +46,7 @@ impl<'a> From<&CommandData<'a>> for UpsertQuery<'a> {
         }
     }
 }
+
 impl<'a> QueryFragment<Pg> for UpsertQuery<'a> {
     fn walk_ast(&self, mut out: AstPass<Pg>) -> QueryResult<()> {
         out.unsafe_to_cache_prepared();

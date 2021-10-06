@@ -53,11 +53,11 @@ fn create_entity(block: &ConfirmedBlock) -> Entity {
     };
     //Calculate leader and reward of the block ad reward with tye Fee
     let mut validator = String::from("");
-    let mut fee_reward = 0_u64;
+    let mut reward_val = 0_u64;
     for reward in &block.rewards {
         if Some(RewardType::Fee) == reward.reward_type {
             validator = reward.pubkey.clone();
-            fee_reward = reward.lamports as u64;
+            reward_val = reward.lamports as u64;
             break;
         }
     }
@@ -69,6 +69,6 @@ fn create_entity(block: &ConfirmedBlock) -> Entity {
         "transaction_number" => block.transactions.len() as u64,
         "timestamp" => timestamp,
         "leader" => validator,
-        "reward" => fee_reward
+        "reward" => reward_val
     )
 }

@@ -32,8 +32,14 @@ impl SolanaHandler for SolanaRawTransactionHandler {
     fn handle_block(&self, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
         let tran_table = Table::new("solana_transactions", Some("t"));
         let trans_columns = create_trans_columns();
+        let acc_tran_table = Table::new("solana_account_transactions", Some("t"));
+        let acc_trans_columns = create_acc_trans_columns();
+        //maximum rows allowed in a query.
+        let max_rows = 65535 / acc_trans_columns.len();
         let mut tran_entities = Vec::default();
-        let mut acc_tran_entities = Vec::default();
+        let mut vec_entities = Vec::default();
+        //let mut vec_commands = Vec::default();
+
         for tran in &block.block.transactions {
             tran_entities.push(create_entity(&block.block, tran));
             //Create account trans list
@@ -42,24 +48,25 @@ impl SolanaHandler for SolanaRawTransactionHandler {
                 .signatures
                 .get(0)
                 .and_then(|sig| Some(sig.to_string()));
-            let mut tx_accounts = create_transaction_account(&tx_hash, tran);
-            acc_tran_entities.extend(tx_accounts);
+            let mut entities = create_transaction_account(&tx_hash, tran);
+            match vec_entities.last_mut() {
+                None => vec_entities.push(entities),
+                Some(last) => {
+                    if last.len() + entities.len() <= max_rows {
+                        last.extend(entities);
+                    } else {
+                        vec_entities.push(entities);
+                    }
+                }
+            };
         }
-        let acc_tran_table = Table::new("solana_account_transactions", Some("t"));
-        let acc_trans_columns = create_acc_trans_columns();
+        let mut vec_commands = vec_entities
+            .iter()
+            .map(|entities| CommandData::new(&acc_tran_table, &acc_trans_columns, entities, &None))
+            .collect::<Vec<CommandData>>();
         let trans_data = CommandData::new(&tran_table, &trans_columns, &tran_entities, &None);
-        let acc_trans_data = CommandData::new(
-            &acc_tran_table,
-            &acc_trans_columns,
-            &acc_tran_entities,
-            &None,
-        );
-        self.storage_adapter
-            .transact_upserts(vec![trans_data, acc_trans_data]);
-        // self.storage_adapter.upsert(&tran_table,
-        //                             &tran_columns,
-        //                             &tran_entities,
-        //                             None);
+        vec_commands.push(trans_data);
+        self.storage_adapter.transact_upserts(vec_commands);
         Ok(())
     }
 }

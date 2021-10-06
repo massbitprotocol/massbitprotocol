@@ -66,6 +66,10 @@ pub fn create_solana_handler_manager(
             network,
             storate_adapter.clone(),
         )))
+        .add_handler(Arc::new(SolanaStatBlockHandler::new(
+            network,
+            storate_adapter.clone(),
+        )))
     //.add_handler(Box::new(SolanaDailyTransactionHandler::new(network, storate_adapter.clone())))
     //.add_handler(Box::new(SolanaDailyAddressTransactionHandler::new(network, storate_adapter.clone())))
 }

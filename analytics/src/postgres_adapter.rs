@@ -48,7 +48,7 @@ impl StorageAdapter for PostgresAdapter {
                         Ok(())
                     }
                     Err(err) => {
-                        log::error!("{:?}", &err);
+                        log::error!("Error while insert into table {:?} {:?}", &table.name, &err);
                         Err(err.into())
                     }
                 }
@@ -75,7 +75,11 @@ impl StorageAdapter for PostgresAdapter {
                             );
                         }
                         Err(err) => {
-                            log::error!("{:?}", &err);
+                            log::error!(
+                                "Error while insert into table {:?} {:?}",
+                                &cmd.table.name,
+                                &err
+                            );
                         }
                     }
                 });
