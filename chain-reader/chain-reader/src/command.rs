@@ -6,7 +6,7 @@ use chain_ethereum::network::{EthereumNetworkAdapter, EthereumNetworkAdapters, E
 use chain_ethereum::{Chain, EthereumAdapter, Transport};
 use graph::semver::Op;
 use log::error;
-use massbit::firehose::dstream::{stream_server::StreamServer, BlockResponse, ChainType};
+use massbit::firehose::stream::{stream_server::StreamServer, BlockResponse, ChainType};
 use massbit::log::logger;
 use massbit::prelude::LoggerFactory;
 use massbit_common::NetworkType;

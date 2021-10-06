@@ -3,6 +3,6 @@ mod pbstream;
 
 pub mod endpoints;
 
-pub mod dstream {
+pub mod stream {
     pub use super::pbstream::*;
 }
