@@ -3,6 +3,7 @@
 //! trait which is the centerpiece of this module.
 
 pub mod block_stream;
+pub mod firehose_block_stream;
 pub mod polling_block_stream;
 
 mod types;
@@ -71,7 +72,7 @@ pub trait Blockchain: Debug + Sized + Send + Sync + Unpin + 'static {
     type MappingTrigger: MappingTrigger + Debug;
 
     /// Trigger filter used as input to the triggers adapter.
-    type TriggerFilter: TriggerFilter<Self>;
+    type TriggerFilter: TriggerFilter<Self> + Serialize + DeserializeOwned;
 
     type RuntimeAdapter: RuntimeAdapter<Self>;
 

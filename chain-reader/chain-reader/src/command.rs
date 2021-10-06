@@ -6,7 +6,8 @@ use chain_ethereum::network::{EthereumNetworkAdapter, EthereumNetworkAdapters, E
 use chain_ethereum::{Chain, EthereumAdapter, Transport};
 use graph::semver::Op;
 use log::error;
-use massbit::firehose::stream::{stream_server::StreamServer, BlockResponse, ChainType};
+use massbit::firehose::bstream::{stream_server::StreamServer, BlockResponse, ChainType};
+use massbit::firehose::endpoints::FirehoseNetworkEndpoints;
 use massbit::log::logger;
 use massbit::prelude::LoggerFactory;
 use massbit_common::NetworkType;
@@ -163,6 +164,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
                             adapter: Arc::new(create_adaptor(&chain_type, &network).await),
                         }],
                     },
+                    FirehoseNetworkEndpoints { endpoints: vec![] },
                 );
                 chains.insert(
                     (ChainType::Ethereum, network_clone.clone()),

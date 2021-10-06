@@ -9,7 +9,7 @@ use tonic::{
     Request,
 };
 
-use super::stream;
+use super::bstream;
 
 #[derive(Clone)]
 pub struct FirehoseEndpoint {
@@ -55,16 +55,16 @@ impl FirehoseEndpoint {
         })
     }
 
-    pub async fn stream_data(
+    pub async fn stream_blocks(
         self: Arc<Self>,
-        request: stream::BlocksRequest,
-    ) -> Result<tonic::Streaming<stream::BlockResponse>, anyhow::Error> {
+        request: bstream::BlocksRequest,
+    ) -> Result<tonic::Streaming<bstream::BlockResponse>, anyhow::Error> {
         let token_metadata_opt = match self.token.clone() {
             Some(token) => Some(MetadataValue::from_str(token.as_str())?),
             None => None,
         };
 
-        let mut client = stream::stream_client::StreamClient::with_interceptor(
+        let mut client = bstream::stream_client::StreamClient::with_interceptor(
             self.channel.cheap_clone(),
             move |mut r: Request<()>| match token_metadata_opt.clone() {
                 Some(t) => {
@@ -79,9 +79,9 @@ impl FirehoseEndpoint {
             .blocks(request)
             .await
             .context("unable to fetch blocks from server")?;
-        let data_stream = response_stream.into_inner();
+        let block_stream = response_stream.into_inner();
 
-        Ok(data_stream)
+        Ok(block_stream)
     }
 }
 
