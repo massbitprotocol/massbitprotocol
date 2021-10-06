@@ -6,8 +6,8 @@
 //!
 //! The pivotal struct in this module is the `Layout` which handles all the
 //! information about mapping a GraphQL schema to database tables
-use diesel::{connection::SimpleConnection, Connection};
-use diesel::{debug_query, OptionalExtension, PgConnection, RunQueryDsl};
+use diesel::connection::SimpleConnection;
+use diesel::{OptionalExtension, PgConnection, RunQueryDsl};
 use inflector::Inflector;
 use lazy_static::lazy_static;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
@@ -21,20 +21,15 @@ use std::time::{Duration, Instant};
 use massbit::components::store::{EntityType, BLOCK_NUMBER_MAX};
 use massbit::data::graphql::ext::{DirectiveFinder, DocumentExt, ObjectTypeExt};
 use massbit::data::schema::{Schema, SCHEMA_TYPE_NAME};
-use massbit::prelude::{
-    anyhow, info, BlockNumber, DeploymentHash, Entity, EntityKey, StoreError, *,
-};
+use massbit::prelude::{anyhow, BlockNumber, DeploymentHash, Entity, EntityKey, StoreError, *};
 
 use crate::block_range::BLOCK_RANGE_COLUMN;
 pub use crate::catalog::Catalog;
+use crate::deployment;
 use crate::primary::{Namespace, Site};
-use crate::relational_queries::{
-    ClampRangeQuery, EntityData, FindManyQuery, FindQuery, InsertQuery,
-};
-use crate::{catalog, deployment};
+use crate::relational_queries::{EntityData, FindManyQuery, FindQuery, InsertQuery};
 
 const POSTGRES_MAX_PARAMETERS: usize = u16::MAX as usize; // 65535
-const DELETE_OPERATION_CHUNK_SIZE: usize = 1_000;
 
 /// The size of string prefixes that we index. This is chosen so that we
 /// will index strings that people will do string comparisons like
@@ -287,7 +282,7 @@ impl Layout {
             .collect::<Result<IdTypeMap, _>>()?;
 
         // Construct a Table struct for each ObjectType
-        let mut tables = object_types
+        let tables = object_types
             .iter()
             .enumerate()
             .map(|(i, obj_type)| Table::new(obj_type, &catalog, &enums, &id_types, i as u32))
@@ -337,23 +332,6 @@ impl Layout {
         Ok(layout)
     }
 
-    /// Determine if it is possible to copy the data of `source` into `self`
-    /// by checking that our schema is compatible with `source`.
-    /// Returns a list of errors if copying is not possible. An empty
-    /// vector indicates that copying is possible
-    pub fn can_copy_from(&self, base: &Layout) -> Vec<String> {
-        // We allow both not copying tables at all from the source, as well
-        // as adding new tables in `self`; we only need to check that tables
-        // that actually need to be copied from the source are compatible
-        // with the corresponding tables in `self`
-        self.tables
-            .values()
-            .filter_map(|dst| base.table(&dst.name).map(|src| (dst, src)))
-            .map(|(dst, src)| dst.can_copy_from(src))
-            .flatten()
-            .collect()
-    }
-
     fn write_enum_ddl(&self, out: &mut dyn Write) -> Result<(), fmt::Error> {
         for (name, values) in &self.enums {
             let mut sep = "";
@@ -394,15 +372,6 @@ impl Layout {
         }
 
         Ok(out)
-    }
-
-    /// Find the table with the provided `name`. The name must exactly match
-    /// the name of an existing table. No conversions of the name are done
-    pub fn table(&self, name: &SqlName) -> Option<&Table> {
-        self.tables
-            .values()
-            .find(|table| &table.name == name)
-            .map(|rc| rc.as_ref())
     }
 
     pub fn table_for_entity(&self, entity: &EntityType) -> Result<&Arc<Table>, StoreError> {
@@ -510,49 +479,6 @@ impl Layout {
             count += InsertQuery::new(table, chunk, block)?
                 .get_results(conn)
                 .map(|ids| ids.len())?
-        }
-        Ok(count)
-    }
-
-    pub fn update(
-        &self,
-        conn: &PgConnection,
-        entity_type: &EntityType,
-        entities: &mut [(EntityKey, Entity)],
-        block: BlockNumber,
-    ) -> Result<usize, StoreError> {
-        let table = self.table_for_entity(&entity_type)?;
-        let entity_keys: Vec<&str> = entities
-            .iter()
-            .map(|(key, _)| key.entity_id.as_str())
-            .collect();
-
-        ClampRangeQuery::new(table, &entity_type, &entity_keys, block).execute(conn)?;
-
-        let mut count = 0;
-
-        // Each operation must respect the maximum number of bindings allowed in PostgreSQL queries,
-        // so we need to act in chunks whose size is defined by the number of entities times the
-        // number of attributes each entity type has.
-        // We add 1 to account for the `block_range` bind parameter
-        let chunk_size = POSTGRES_MAX_PARAMETERS / (table.columns.len() + 1);
-        for chunk in entities.chunks_mut(chunk_size) {
-            count += InsertQuery::new(table, chunk, block)?.execute(conn)?;
-        }
-        Ok(count)
-    }
-
-    pub fn delete(
-        &self,
-        conn: &PgConnection,
-        entity_type: &EntityType,
-        entity_ids: &[String],
-        block: BlockNumber,
-    ) -> Result<usize, StoreError> {
-        let table = self.table_for_entity(&entity_type)?;
-        let mut count = 0;
-        for chunk in entity_ids.chunks(DELETE_OPERATION_CHUNK_SIZE) {
-            count += ClampRangeQuery::new(table, &entity_type, chunk, block).execute(conn)?
         }
         Ok(count)
     }
@@ -723,19 +649,6 @@ pub struct EnumType {
     pub name: SqlName,
     /// The possible values the enum can take
     values: Arc<BTreeSet<String>>,
-}
-
-impl EnumType {
-    fn is_assignable_from(&self, source: &Self) -> Option<String> {
-        if source.values.is_subset(self.values.as_ref()) {
-            None
-        } else {
-            Some(format!(
-                "the enum type {} contains values not present in {}",
-                source.name, self.name
-            ))
-        }
-    }
 }
 
 /// This is almost the same as massbit::data::store::ValueType, but without
@@ -921,34 +834,6 @@ impl Column {
         named_type(&self.field_type) == "String" && !self.is_list()
     }
 
-    pub fn is_assignable_from(&self, source: &Self, object: &EntityType) -> Option<String> {
-        if !self.is_nullable() && source.is_nullable() {
-            Some(format!(
-                "The attribute {}.{} is non-nullable, \
-                             but the corresponding attribute in the source is nullable",
-                object, self.field
-            ))
-        } else if let ColumnType::Enum(self_enum_type) = &self.column_type {
-            if let ColumnType::Enum(source_enum_type) = &source.column_type {
-                self_enum_type.is_assignable_from(source_enum_type)
-            } else {
-                Some(format!(
-                    "The attribute {}.{} is an enum {}, \
-                                 but its type in the source is {}",
-                    object, self.field, self.field_type, source.field_type
-                ))
-            }
-        } else if self.column_type != source.column_type || self.is_list() != source.is_list() {
-            Some(format!(
-                "The attribute {}.{} has type {}, \
-                             but its type in the source is {}",
-                object, self.field, self.field_type, source.field_type
-            ))
-        } else {
-            None
-        }
-    }
-
     /// Generate the DDL for one column, i.e. the part of a `create table`
     /// statement for this column.
     ///
@@ -1033,35 +918,6 @@ impl Table {
     /// i.e., use SQL conventions
     pub fn column(&self, name: &SqlName) -> Option<&Column> {
         self.columns.iter().find(|column| &column.name == name)
-    }
-
-    /// Find the column for `field` in this table. The name must be the
-    /// GraphQL name of an entity field
-    pub fn column_for_field(&self, field: &str) -> Result<&Column, StoreError> {
-        self.columns
-            .iter()
-            .find(|column| &column.field == field)
-            .ok_or_else(|| StoreError::UnknownField(field.to_string()))
-    }
-
-    fn can_copy_from(&self, source: &Self) -> Vec<String> {
-        self.columns
-            .iter()
-            .filter_map(|dcol| match source.column(&dcol.name) {
-                Some(scol) => dcol.is_assignable_from(scol, &self.object),
-                None => {
-                    if !dcol.is_nullable() {
-                        Some(format!(
-                            "The attribute {}.{} is non-nullable, \
-                         but there is no such attribute in the source",
-                            self.object, dcol.field
-                        ))
-                    } else {
-                        None
-                    }
-                }
-            })
-            .collect()
     }
 
     pub fn primary_key(&self) -> &Column {
@@ -1280,7 +1136,7 @@ impl LayoutCache {
                         return Ok(value.clone());
                     }
                     match value.cheap_clone().refresh(conn) {
-                        Err(e) => {
+                        Err(_) => {
                             // Update the timestamp so we don't retry
                             // refreshing too often
                             self.cache(value.cheap_clone());
@@ -1299,11 +1155,5 @@ impl LayoutCache {
                 Ok(layout)
             }
         }
-    }
-
-    // Only needed for tests
-    #[cfg(debug_assertions)]
-    pub(crate) fn clear(&self) {
-        self.entries.lock().unwrap().clear()
     }
 }

@@ -1,18 +1,15 @@
-use diesel::r2d2::Builder;
 use diesel::{connection::SimpleConnection, pg::PgConnection};
 use diesel::{
-    r2d2::{self, event as e, ConnectionManager, HandleEvent, Pool, PooledConnection},
+    r2d2::{ConnectionManager, PooledConnection},
     Connection,
 };
-use diesel::{sql_query, RunQueryDsl};
-use lru_time_cache::LruCache;
 use rand::{seq::SliceRandom, thread_rng};
 use std::collections::{BTreeMap, HashMap};
 use std::env;
 use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::atomic::AtomicUsize;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use massbit::components::store::{EntityType, StoredDynamicDataSource, BLOCK_NUMBER_MAX};
 use massbit::data::indexer::schema::IndexerDeploymentEntity;
@@ -296,9 +293,7 @@ impl DeploymentStore {
         conn.transaction(|| -> Result<_, StoreError> {
             // Make the changes
             let layout = self.layout(&conn, site.clone())?;
-            let count =
-                self.apply_entity_modifications(&conn, layout.as_ref(), mods, &block_ptr_to)?;
-
+            let _ = self.apply_entity_modifications(&conn, layout.as_ref(), mods, &block_ptr_to)?;
             dynds::insert(&conn, &site.deployment, data_sources, &block_ptr_to)?;
             deployment::forward_block_ptr(&conn, &site.deployment, block_ptr_to)?;
             Ok(())

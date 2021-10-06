@@ -58,14 +58,14 @@ impl FirehoseEndpoint {
 
     pub async fn stream_data(
         self: Arc<Self>,
-        request: dstream::GetBlocksRequest,
-    ) -> Result<tonic::Streaming<dstream::GenericDataProto>, anyhow::Error> {
+        request: dstream::BlocksRequest,
+    ) -> Result<tonic::Streaming<dstream::BlockResponse>, anyhow::Error> {
         let token_metadata_opt = match self.token.clone() {
             Some(token) => Some(MetadataValue::from_str(token.as_str())?),
             None => None,
         };
 
-        let mut client = dstream::streamout_client::StreamoutClient::with_interceptor(
+        let mut client = dstream::stream_client::StreamClient::with_interceptor(
             self.channel.cheap_clone(),
             move |mut r: Request<()>| match token_metadata_opt.clone() {
                 Some(t) => {
@@ -77,7 +77,7 @@ impl FirehoseEndpoint {
         );
 
         let response_stream = client
-            .list_blocks(request)
+            .blocks(request)
             .await
             .context("unable to fetch blocks from server")?;
         let data_stream = response_stream.into_inner();

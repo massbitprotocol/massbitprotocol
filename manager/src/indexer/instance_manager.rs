@@ -180,7 +180,7 @@ where
         let templates = Arc::new(manifest.templates.clone());
 
         let triggers_adapter = chain
-            .triggers_adapter(&deployment)
+            .triggers_adapter()
             .map_err(|e| {
                 anyhow!(
                     "expected triggers adapter that matches deployment {}: {}",
@@ -261,11 +261,7 @@ where
         let mut block_stream = ctx
             .inputs
             .chain
-            .new_block_stream(
-                ctx.inputs.deployment.clone(),
-                indexer_ptr,
-                Arc::new(ctx.state.filter.clone()),
-            )
+            .new_block_stream(indexer_ptr, Arc::new(ctx.state.filter.clone()))
             .await?
             .map_err(CancelableError::Error)
             .cancelable(&block_stream_canceler, || Err(CancelableError::Cancel));

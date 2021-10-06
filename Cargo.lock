@@ -13,39 +13,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "adapter"
-version = "0.1.0"
-dependencies = [
- "chain-ethereum",
- "ethabi 12.0.0-graph",
- "futures 0.1.31",
- "graph 0.24.0",
- "graph-chain-ethereum",
- "graph-core",
- "graph-mock",
- "graph-runtime-wasm",
- "index-store",
- "lazy_static",
- "libloading",
- "log 0.4.14",
- "massbit",
- "massbit-chain-ethereum",
- "massbit-chain-solana",
- "massbit-chain-substrate",
- "massbit-common",
- "massbit-runtime-wasm",
- "paste 1.0.5",
- "prost 0.7.0",
- "quote 1.0.9",
- "serde_regex",
- "serde_yaml",
- "structmap",
- "tonic",
- "tonic-build",
- "tower",
-]
-
-[[package]]
 name = "addr2line"
 version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1190,7 +1157,7 @@ dependencies = [
  "serde",
  "smallvec 1.6.1",
  "thiserror",
- "wasmparser 0.78.2",
+ "wasmparser",
 ]
 
 [[package]]
@@ -2632,7 +2599,7 @@ dependencies = [
  "tokio-retry 0.2.0",
  "tokio-stream",
  "url 2.2.2",
- "wasmparser 0.78.2",
+ "wasmparser",
  "web3",
 ]
 
@@ -2689,7 +2656,7 @@ dependencies = [
  "tokio-retry 0.3.0",
  "tokio-stream",
  "url 2.2.2",
- "wasmparser 0.78.2",
+ "wasmparser",
  "web3",
 ]
 
@@ -3534,58 +3501,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "index-manager-lib"
-version = "0.1.0"
-dependencies = [
- "adapter",
- "anyhow",
- "async-std",
- "diesel",
- "diesel_migrations",
- "env_logger 0.8.4",
- "futures 0.3.17",
- "graph 0.24.0",
- "graph-chain-ethereum",
- "graph-core",
- "index-store",
- "ipfs-client",
- "jsonrpc-http-server",
- "lazy_static",
- "log 0.4.14",
- "massbit",
- "massbit-chain-solana",
- "massbit-chain-substrate",
- "node-template-runtime",
- "postgres",
- "prost 0.8.0",
- "rand 0.8.4",
- "reqwest 0.10.10",
- "serde",
- "serde_json",
- "serde_yaml",
- "strum 0.21.0",
- "strum_macros 0.21.1",
- "tokio 1.11.0",
- "tokio-compat-02",
- "tokio02-spawn",
- "tonic",
- "tonic-build",
-]
-
-[[package]]
-name = "index-manager-main"
-version = "0.1.0"
-dependencies = [
- "env_logger 0.8.4",
- "index-manager-lib",
- "lazy_static",
- "log 0.4.14",
- "logger",
- "tokio 1.11.0",
- "tonic-build",
-]
-
-[[package]]
 name = "index-store"
 version = "0.1.0"
 dependencies = [
@@ -4277,7 +4192,7 @@ dependencies = [
  "tonic",
  "tonic-build",
  "url 2.2.2",
- "wasmparser 0.78.2",
+ "wasmparser",
  "web3",
 ]
 
@@ -4374,64 +4289,6 @@ dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.9",
  "syn 1.0.64",
-]
-
-[[package]]
-name = "massbit-runtime-wasm"
-version = "0.1.0"
-dependencies = [
- "Inflector",
- "anyhow",
- "atomic_refcell",
- "backtrace",
- "bigdecimal",
- "chrono",
- "defer",
- "diesel",
- "diesel_derives",
- "futures 0.1.31",
- "futures 0.3.17",
- "graph 0.24.0",
- "graph-chain-ethereum",
- "graph-mock",
- "graph-node",
- "graph-runtime-derive",
- "graph-runtime-wasm",
- "graph-store-postgres",
- "hex",
- "http 0.1.21",
- "index-store",
- "isatty",
- "itertools 0.10.1",
- "jsonrpc-core 14.2.0",
- "massbit-chain-ethereum",
- "massbit-common",
- "mockall 0.9.1",
- "never",
- "num-bigint",
- "num-traits",
- "priority-queue",
- "prometheus 0.12.0",
- "rand 0.8.4",
- "reqwest 0.10.10",
- "semver 1.0.4",
- "serde",
- "slog",
- "slog-async",
- "slog-envlogger",
- "slog-term",
- "stable-hash",
- "strum 0.21.0",
- "strum_macros 0.21.1",
- "thiserror",
- "tiny-keccak 1.5.0",
- "tokio 1.11.0",
- "tokio-retry 0.3.0",
- "url 2.2.2",
- "uuid 0.8.2",
- "wasmparser 0.80.1",
- "wasmtime",
- "web3",
 ]
 
 [[package]]
@@ -9734,13 +9591,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tokio02-spawn"
-version = "0.1.0"
-dependencies = [
- "futures 0.3.17",
-]
-
-[[package]]
 name = "toml"
 version = "0.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10575,12 +10425,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "52144d4c78e5cf8b055ceab8e5fa22814ce4315d6002ad32cfd914f37c12fd65"
 
 [[package]]
-name = "wasmparser"
-version = "0.80.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be92b6dcaa5af4b2a176b29be3bf1402fab9e69d313141185099c7d1684f2dca"
-
-[[package]]
 name = "wasmtime"
 version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10602,7 +10446,7 @@ dependencies = [
  "serde",
  "smallvec 1.6.1",
  "target-lexicon",
- "wasmparser 0.78.2",
+ "wasmparser",
  "wasmtime-cache",
  "wasmtime-environ",
  "wasmtime-fiber",
@@ -10645,7 +10489,7 @@ dependencies = [
  "cranelift-frontend",
  "cranelift-wasm",
  "target-lexicon",
- "wasmparser 0.78.2",
+ "wasmparser",
  "wasmtime-environ",
 ]
 
@@ -10661,7 +10505,7 @@ dependencies = [
  "object 0.24.0",
  "target-lexicon",
  "thiserror",
- "wasmparser 0.78.2",
+ "wasmparser",
  "wasmtime-environ",
 ]
 
@@ -10681,7 +10525,7 @@ dependencies = [
  "more-asserts",
  "serde",
  "thiserror",
- "wasmparser 0.78.2",
+ "wasmparser",
 ]
 
 [[package]]
@@ -10718,7 +10562,7 @@ dependencies = [
  "serde",
  "target-lexicon",
  "thiserror",
- "wasmparser 0.78.2",
+ "wasmparser",
  "wasmtime-cranelift",
  "wasmtime-debug",
  "wasmtime-environ",

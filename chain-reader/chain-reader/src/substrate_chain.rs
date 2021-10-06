@@ -1,5 +1,5 @@
 use clap::App;
-use massbit::firehose::dstream::{ChainType, DataType, GenericDataProto};
+use massbit::firehose::dstream::{BlockResponse, ChainType};
 use massbit_chain_substrate::data_type::{
     SubstrateBlock as Block, SubstrateEventRecord as EventRecord, SubstrateHeader as Header,
 };
@@ -52,13 +52,12 @@ fn get_block_and_hash_from_header(
     Ok((ext_block, hash))
 }
 
-fn _create_generic_block(block_hash: String, block: &Block) -> GenericDataProto {
+fn _create_generic_block(block_hash: String, block: &Block) -> BlockResponse {
     let block = (*block).clone();
 
-    let generic_data = GenericDataProto {
+    let generic_data = BlockResponse {
         chain_type: CHAIN_TYPE as i32,
         version: VERSION.to_string(),
-        data_type: DataType::Block as i32,
         block_hash: block_hash,
         block_number: block.block.header.number as u64,
         payload: block.encode(),
@@ -66,11 +65,10 @@ fn _create_generic_block(block_hash: String, block: &Block) -> GenericDataProto 
     generic_data
 }
 
-fn _create_generic_event(event: &EventRecord) -> GenericDataProto {
-    let generic_data = GenericDataProto {
+fn _create_generic_event(event: &EventRecord) -> BlockResponse {
+    let generic_data = BlockResponse {
         chain_type: CHAIN_TYPE as i32,
         version: VERSION.to_string(),
-        data_type: DataType::Event as i32,
         block_hash: "unknown".to_string(),
         block_number: 0 as u64,
         payload: event.encode(),
@@ -78,9 +76,7 @@ fn _create_generic_event(event: &EventRecord) -> GenericDataProto {
     generic_data
 }
 
-pub async fn loop_get_event(
-    chan: broadcast::Sender<GenericDataProto>,
-) -> Result<(), Box<dyn Error>> {
+pub async fn loop_get_event(chan: broadcast::Sender<BlockResponse>) -> Result<(), Box<dyn Error>> {
     let url = get_node_url_from_cli();
     let signer = AccountKeyring::Alice.pair();
     let client = WsRpcClient::new(&url);
@@ -129,7 +125,7 @@ pub async fn loop_get_event(
 }
 
 pub async fn loop_get_block_and_extrinsic(
-    chan: broadcast::Sender<GenericDataProto>,
+    chan: broadcast::Sender<BlockResponse>,
 ) -> Result<(), Box<dyn Error>> {
     info!("Start get block and extrinsic Substrate");
     let url = get_node_url_from_cli();

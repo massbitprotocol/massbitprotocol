@@ -63,7 +63,7 @@ impl<C: Blockchain> RuntimeHostBuilderTrait<C> for RuntimeHostBuilder<C> {
 
     fn spawn_mapping(
         raw_module: Vec<u8>,
-        subgraph_id: DeploymentHash,
+        indexer_id: DeploymentHash,
         logger: Logger,
     ) -> Result<Sender<Self::Req>, Error> {
         let experimental_features = ExperimentalFeatures {
@@ -71,7 +71,7 @@ impl<C: Blockchain> RuntimeHostBuilderTrait<C> for RuntimeHostBuilder<C> {
         };
         crate::mapping::spawn_module(
             raw_module,
-            subgraph_id,
+            indexer_id,
             tokio::runtime::Handle::current(),
             *TIMEOUT,
             experimental_features,
@@ -82,7 +82,7 @@ impl<C: Blockchain> RuntimeHostBuilderTrait<C> for RuntimeHostBuilder<C> {
     fn build(
         &self,
         network_name: String,
-        subgraph_id: DeploymentHash,
+        indexer_id: DeploymentHash,
         data_source: C::DataSource,
         templates: Arc<Vec<C::DataSourceTemplate>>,
         mapping_request_sender: Sender<MappingRequest<C>>,
@@ -91,7 +91,7 @@ impl<C: Blockchain> RuntimeHostBuilderTrait<C> for RuntimeHostBuilder<C> {
             self.runtime_adapter.cheap_clone(),
             self.link_resolver.clone(),
             network_name,
-            subgraph_id,
+            indexer_id,
             data_source,
             templates,
             mapping_request_sender,
@@ -114,7 +114,7 @@ where
         runtime_adapter: Arc<C::RuntimeAdapter>,
         link_resolver: Arc<dyn LinkResolver>,
         network_name: String,
-        subgraph_id: DeploymentHash,
+        indexer_id: DeploymentHash,
         data_source: C::DataSource,
         templates: Arc<Vec<C::DataSourceTemplate>>,
         mapping_request_sender: Sender<MappingRequest<C>>,
@@ -122,7 +122,7 @@ where
         // Create new instance of externally hosted functions invoker. The `Arc` is simply to avoid
         // implementing `Clone` for `HostExports`.
         let host_exports = Arc::new(HostExports::new(
-            subgraph_id,
+            indexer_id,
             &data_source,
             network_name,
             templates,

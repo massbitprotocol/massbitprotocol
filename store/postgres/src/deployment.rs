@@ -1,16 +1,10 @@
-use diesel::{
-    connection::SimpleConnection,
-    dsl::{count, delete, insert_into, select, sql, update},
-    sql_types::Integer,
-};
+use diesel::dsl::{insert_into, sql, update};
 use diesel::{expression::SqlLiteral, pg::PgConnection, sql_types::Numeric};
 use diesel::{
-    prelude::{ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl},
-    sql_query,
-    sql_types::{Nullable, Text},
+    prelude::{ExpressionMethods, QueryDsl, RunQueryDsl},
+    sql_types::Nullable,
 };
 
-use massbit::constraint_violation;
 use massbit::data::indexer::schema::{IndexerDeploymentEntity, IndexerManifestEntity};
 use massbit::prelude::*;
 use massbit::prelude::{BlockPtr, DeploymentHash, Schema, StoreError};

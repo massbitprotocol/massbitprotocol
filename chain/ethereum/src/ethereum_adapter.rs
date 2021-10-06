@@ -580,7 +580,7 @@ impl EthereumAdapter {
                 .filter_map(|trace| EthereumCall::try_from_trace(&trace))
                 .filter(move |call| {
                     // `trace_filter` can only filter by calls `to` an address and
-                    // a block range. Since subgraphs are subscribing to calls
+                    // a block range. Since indexers are subscribing to calls
                     // for a specific contract function an additional filter needs
                     // to be applied
                     call_filter.matches(&call)

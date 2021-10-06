@@ -4,12 +4,9 @@ use tokio_stream::wrappers::ReceiverStream;
 
 use crate::ethereum_chain;
 use chain_ethereum::network::{EthereumNetworkAdapter, EthereumNetworkAdapters};
-use chain_ethereum::{manifest, Chain, EthereumAdapter, Transport, TriggerFilter};
+use chain_ethereum::{Chain, EthereumAdapter, Transport, TriggerFilter};
 use log::{error, info};
-use massbit::firehose::dstream::{
-    streamout_server::Streamout, ChainType, GenericDataProto, GetBlocksRequest, HelloReply,
-    HelloRequest,
-};
+use massbit::firehose::dstream::{stream_server::Stream, BlockResponse, BlocksRequest, ChainType};
 use massbit_common::NetworkType;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -23,31 +20,18 @@ const QUEUE_BUFFER: usize = 1024;
 
 #[derive(Debug)]
 pub struct StreamService {
-    pub chans: HashMap<(ChainType, NetworkType), broadcast::Sender<GenericDataProto>>,
+    pub chans: HashMap<(ChainType, NetworkType), broadcast::Sender<BlockResponse>>,
     pub chains: HashMap<(ChainType, NetworkType), Arc<Chain>>,
 }
 
 #[tonic::async_trait]
-impl Streamout for StreamService {
-    async fn say_hello(
+impl Stream for StreamService {
+    type BlocksStream = ReceiverStream<Result<BlockResponse, Status>>;
+
+    async fn blocks(
         &self,
-        request: Request<HelloRequest>,
-    ) -> Result<Response<HelloReply>, Status> {
-        info!("Got a request: {:?}", request);
-
-        let reply = HelloReply {
-            message: format!("Hello {}!", request.into_inner().name).into(),
-        };
-
-        Ok(Response::new(reply))
-    }
-
-    type ListBlocksStream = ReceiverStream<Result<GenericDataProto, Status>>;
-
-    async fn list_blocks(
-        &self,
-        request: Request<GetBlocksRequest>,
-    ) -> Result<Response<Self::ListBlocksStream>, Status> {
+        request: Request<BlocksRequest>,
+    ) -> Result<Response<Self::BlocksStream>, Status> {
         info!("Request = {:?}", request);
         let chain_type: ChainType = ChainType::from_i32(request.get_ref().chain_type).unwrap();
         let network: NetworkType = request.get_ref().network.clone();

@@ -1,27 +1,5 @@
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GenericDataProto {
-    #[prost(enumeration = "ChainType", tag = "1")]
-    pub chain_type: i32,
-    #[prost(string, tag = "2")]
-    pub version: ::prost::alloc::string::String,
-    #[prost(enumeration = "DataType", tag = "3")]
-    pub data_type: i32,
-    #[prost(string, tag = "4")]
-    pub block_hash: ::prost::alloc::string::String,
-    #[prost(uint64, tag = "5")]
-    pub block_number: u64,
-    #[prost(bytes = "vec", tag = "6")]
-    pub payload: ::prost::alloc::vec::Vec<u8>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct HelloRequest {
-    /// Request message contains the name to be greeted
-    #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetBlocksRequest {
-    /// Request message contains the name to be greeted
+pub struct BlocksRequest {
     #[prost(uint64, tag = "1")]
     pub start_block_number: u64,
     #[prost(uint64, tag = "2")]
@@ -34,10 +12,17 @@ pub struct GetBlocksRequest {
     pub filter: ::prost::alloc::vec::Vec<u8>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct HelloReply {
-    /// Reply contains the greeting message
-    #[prost(string, tag = "1")]
-    pub message: ::prost::alloc::string::String,
+pub struct BlockResponse {
+    #[prost(enumeration = "ChainType", tag = "1")]
+    pub chain_type: i32,
+    #[prost(string, tag = "2")]
+    pub version: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub block_hash: ::prost::alloc::string::String,
+    #[prost(uint64, tag = "4")]
+    pub block_number: u64,
+    #[prost(bytes = "vec", tag = "5")]
+    pub payload: ::prost::alloc::vec::Vec<u8>,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -46,25 +31,15 @@ pub enum ChainType {
     Ethereum = 1,
     Solana = 2,
 }
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-#[repr(i32)]
-pub enum DataType {
-    Block = 0,
-    Event = 1,
-    /// Alias name of Extrinsic in Substrate
-    Transaction = 2,
-    BlockWithTriggers = 3,
-}
 #[doc = r" Generated client implementations."]
-pub mod streamout_client {
+pub mod stream_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
     use tonic::codegen::*;
-    #[doc = " Interface exported by the server."]
     #[derive(Debug, Clone)]
-    pub struct StreamoutClient<T> {
+    pub struct StreamClient<T> {
         inner: tonic::client::Grpc<T>,
     }
-    impl StreamoutClient<tonic::transport::Channel> {
+    impl StreamClient<tonic::transport::Channel> {
         #[doc = r" Attempt to create a new client by connecting to a given endpoint."]
         pub async fn connect<D>(dst: D) -> Result<Self, tonic::transport::Error>
         where
@@ -75,7 +50,7 @@ pub mod streamout_client {
             Ok(Self::new(conn))
         }
     }
-    impl<T> StreamoutClient<T>
+    impl<T> StreamClient<T>
     where
         T: tonic::client::GrpcService<tonic::body::BoxBody>,
         T::ResponseBody: Body + Send + Sync + 'static,
@@ -89,7 +64,7 @@ pub mod streamout_client {
         pub fn with_interceptor<F>(
             inner: T,
             interceptor: F,
-        ) -> StreamoutClient<InterceptedService<T, F>>
+        ) -> StreamClient<InterceptedService<T, F>>
         where
             F: tonic::service::Interceptor,
             T: tonic::codegen::Service<
@@ -101,7 +76,7 @@ pub mod streamout_client {
             <T as tonic::codegen::Service<http::Request<tonic::body::BoxBody>>>::Error:
                 Into<StdError> + Send + Sync,
         {
-            StreamoutClient::new(InterceptedService::new(inner, interceptor))
+            StreamClient::new(InterceptedService::new(inner, interceptor))
         }
         #[doc = r" Compress requests with `gzip`."]
         #[doc = r""]
@@ -116,26 +91,10 @@ pub mod streamout_client {
             self.inner = self.inner.accept_gzip();
             self
         }
-        #[doc = " A simple RPC."]
-        pub async fn say_hello(
+        pub async fn blocks(
             &mut self,
-            request: impl tonic::IntoRequest<super::HelloRequest>,
-        ) -> Result<tonic::Response<super::HelloReply>, tonic::Status> {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/chaindata.Streamout/SayHello");
-            self.inner.unary(request.into_request(), path, codec).await
-        }
-        #[doc = " A server-to-client streaming RPC."]
-        pub async fn list_blocks(
-            &mut self,
-            request: impl tonic::IntoRequest<super::GetBlocksRequest>,
-        ) -> Result<tonic::Response<tonic::codec::Streaming<super::GenericDataProto>>, tonic::Status>
+            request: impl tonic::IntoRequest<super::BlocksRequest>,
+        ) -> Result<tonic::Response<tonic::codec::Streaming<super::BlockResponse>>, tonic::Status>
         {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::new(
@@ -144,7 +103,7 @@ pub mod streamout_client {
                 )
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/chaindata.Streamout/ListBlocks");
+            let path = http::uri::PathAndQuery::from_static("/stream.Stream/Blocks");
             self.inner
                 .server_streaming(request.into_request(), path, codec)
                 .await
@@ -152,37 +111,30 @@ pub mod streamout_client {
     }
 }
 #[doc = r" Generated server implementations."]
-pub mod streamout_server {
+pub mod stream_server {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
     use tonic::codegen::*;
-    #[doc = "Generated trait containing gRPC methods that should be implemented for use with StreamoutServer."]
+    #[doc = "Generated trait containing gRPC methods that should be implemented for use with StreamServer."]
     #[async_trait]
-    pub trait Streamout: Send + Sync + 'static {
-        #[doc = " A simple RPC."]
-        async fn say_hello(
-            &self,
-            request: tonic::Request<super::HelloRequest>,
-        ) -> Result<tonic::Response<super::HelloReply>, tonic::Status>;
-        #[doc = "Server streaming response type for the ListBlocks method."]
-        type ListBlocksStream: futures_core::Stream<Item = Result<super::GenericDataProto, tonic::Status>>
+    pub trait Stream: Send + Sync + 'static {
+        #[doc = "Server streaming response type for the Blocks method."]
+        type BlocksStream: futures_core::Stream<Item = Result<super::BlockResponse, tonic::Status>>
             + Send
             + Sync
             + 'static;
-        #[doc = " A server-to-client streaming RPC."]
-        async fn list_blocks(
+        async fn blocks(
             &self,
-            request: tonic::Request<super::GetBlocksRequest>,
-        ) -> Result<tonic::Response<Self::ListBlocksStream>, tonic::Status>;
+            request: tonic::Request<super::BlocksRequest>,
+        ) -> Result<tonic::Response<Self::BlocksStream>, tonic::Status>;
     }
-    #[doc = " Interface exported by the server."]
     #[derive(Debug)]
-    pub struct StreamoutServer<T: Streamout> {
+    pub struct StreamServer<T: Stream> {
         inner: _Inner<T>,
         accept_compression_encodings: (),
         send_compression_encodings: (),
     }
     struct _Inner<T>(Arc<T>);
-    impl<T: Streamout> StreamoutServer<T> {
+    impl<T: Stream> StreamServer<T> {
         pub fn new(inner: T) -> Self {
             let inner = Arc::new(inner);
             let inner = _Inner(inner);
@@ -199,9 +151,9 @@ pub mod streamout_server {
             InterceptedService::new(Self::new(inner), interceptor)
         }
     }
-    impl<T, B> tonic::codegen::Service<http::Request<B>> for StreamoutServer<T>
+    impl<T, B> tonic::codegen::Service<http::Request<B>> for StreamServer<T>
     where
-        T: Streamout,
+        T: Stream,
         B: Body + Send + Sync + 'static,
         B::Error: Into<StdError> + Send + 'static,
     {
@@ -214,54 +166,20 @@ pub mod streamout_server {
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
-                "/chaindata.Streamout/SayHello" => {
+                "/stream.Stream/Blocks" => {
                     #[allow(non_camel_case_types)]
-                    struct SayHelloSvc<T: Streamout>(pub Arc<T>);
-                    impl<T: Streamout> tonic::server::UnaryService<super::HelloRequest> for SayHelloSvc<T> {
-                        type Response = super::HelloReply;
-                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::HelloRequest>,
-                        ) -> Self::Future {
-                            let inner = self.0.clone();
-                            let fut = async move { (*inner).say_hello(request).await };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let inner = inner.0;
-                        let method = SayHelloSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec).apply_compression_config(
-                            accept_compression_encodings,
-                            send_compression_encodings,
-                        );
-                        let res = grpc.unary(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/chaindata.Streamout/ListBlocks" => {
-                    #[allow(non_camel_case_types)]
-                    struct ListBlocksSvc<T: Streamout>(pub Arc<T>);
-                    impl<T: Streamout>
-                        tonic::server::ServerStreamingService<super::GetBlocksRequest>
-                        for ListBlocksSvc<T>
-                    {
-                        type Response = super::GenericDataProto;
-                        type ResponseStream = T::ListBlocksStream;
+                    struct BlocksSvc<T: Stream>(pub Arc<T>);
+                    impl<T: Stream> tonic::server::ServerStreamingService<super::BlocksRequest> for BlocksSvc<T> {
+                        type Response = super::BlockResponse;
+                        type ResponseStream = T::BlocksStream;
                         type Future =
                             BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::GetBlocksRequest>,
+                            request: tonic::Request<super::BlocksRequest>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
-                            let fut = async move { (*inner).list_blocks(request).await };
+                            let fut = async move { (*inner).blocks(request).await };
                             Box::pin(fut)
                         }
                     }
@@ -270,7 +188,7 @@ pub mod streamout_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = ListBlocksSvc(inner);
+                        let method = BlocksSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec).apply_compression_config(
                             accept_compression_encodings,
@@ -292,7 +210,7 @@ pub mod streamout_server {
             }
         }
     }
-    impl<T: Streamout> Clone for StreamoutServer<T> {
+    impl<T: Stream> Clone for StreamServer<T> {
         fn clone(&self) -> Self {
             let inner = self.inner.clone();
             Self {
@@ -302,7 +220,7 @@ pub mod streamout_server {
             }
         }
     }
-    impl<T: Streamout> Clone for _Inner<T> {
+    impl<T: Stream> Clone for _Inner<T> {
         fn clone(&self) -> Self {
             Self(self.0.clone())
         }
@@ -312,7 +230,7 @@ pub mod streamout_server {
             write!(f, "{:?}", self.0)
         }
     }
-    impl<T: Streamout> tonic::transport::NamedService for StreamoutServer<T> {
-        const NAME: &'static str = "chaindata.Streamout";
+    impl<T: Stream> tonic::transport::NamedService for StreamServer<T> {
+        const NAME: &'static str = "stream.Stream";
     }
 }

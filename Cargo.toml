@@ -6,9 +6,6 @@ members = [
     "core/chain/ethereum",
     "core/drive",
     "core/index-store",
-    "index-manager/main",
-    "plugin/adapter",
-    "plugin/runtime/wasm",
     "cli",
     "utils",
     "chain/ethereum",
@@ -16,7 +13,7 @@ members = [
     "runtime/wasm",
     "runtime/derive",
     "store/postgres",
-    "manager"
+    "manager",
 ]
 exclude = ["analytics","code-compiler/generated"]
 

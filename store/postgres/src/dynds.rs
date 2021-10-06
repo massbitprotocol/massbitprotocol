@@ -1,9 +1,6 @@
 use diesel::{
-    delete,
-    dsl::{count, sql},
+    dsl::sql,
     prelude::{ExpressionMethods, QueryDsl, RunQueryDsl},
-    sql_query,
-    sql_types::{Integer, Text},
 };
 use diesel::{insert_into, pg::PgConnection};
 
@@ -16,8 +13,6 @@ use massbit::{
         DeploymentHash, StoreError,
     },
 };
-
-use crate::primary::Site;
 
 table! {
     dynamic_ethereum_contract_data_source (vid) {
