@@ -34,29 +34,39 @@ impl StorageAdapter for PostgresAdapter {
         conflict_fragment: &Option<UpsertConflictFragment>,
     ) -> Result<(), anyhow::Error> {
         let start = Instant::now();
-        match self.pool.get() {
-            Ok(conn) => {
-                let upsert_query = UpsertQuery::new(table, columns, entities, conflict_fragment)?;
-                match upsert_query.execute(conn.deref()) {
-                    Ok(val) => {
-                        log::info!(
-                            "Upsert {} entities into table {} in {:?}",
-                            entities.len(),
-                            table.name,
-                            start.elapsed()
-                        );
-                        Ok(())
-                    }
-                    Err(err) => {
-                        log::error!("Error while insert into table {:?} {:?}", &table.name, &err);
-                        Err(err.into())
+        if entities.len() > 0 {
+            match self.pool.get() {
+                Ok(conn) => {
+                    let upsert_query =
+                        UpsertQuery::new(table, columns, entities, conflict_fragment)?;
+                    match upsert_query.execute(conn.deref()) {
+                        Ok(val) => {
+                            log::info!(
+                                "Upsert {} entities into table {} in {:?}",
+                                entities.len(),
+                                table.name,
+                                start.elapsed()
+                            );
+                            Ok(())
+                        }
+                        Err(err) => {
+                            log::error!(
+                                "Error while insert into table {:?} {:?}",
+                                &table.name,
+                                &err
+                            );
+                            log::error!("{:?}", entities);
+                            Err(err.into())
+                        }
                     }
                 }
+                Err(err) => {
+                    log::error!("{:?}", &err);
+                    Err(err.into())
+                }
             }
-            Err(err) => {
-                log::error!("{:?}", &err);
-                Err(err.into())
-            }
+        } else {
+            Ok(())
         }
     }
     fn transact_upserts(&self, commands: Vec<CommandData>) -> Result<(), anyhow::Error> {

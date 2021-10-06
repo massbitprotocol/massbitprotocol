@@ -40,9 +40,10 @@ impl SolanaHandler for SolanaStatBlockHandler {
         let mut conflict_frag = UpsertConflictFragment::new("solana_daily_stat_block_date_uindex");
         conflict_frag.add_expression("min_block_height", "LEAST(t.min_block_height, EXCLUDED.min_block_height)")
             .add_expression("max_block_height", "GREATEST(t.max_block_height, EXCLUDED.max_block_height)")
-            .add_expression("transaction_counter","t.transaction_counter + EXCLUDED.transaction_counter")
-            .add_expression("average_reward","(t.average_reward * t.transaction_counter + EXCLUDED.average_reward * EXCLUDED.transaction_counter)\
-                    /(t.transaction_counter + EXCLUDED.transaction_counter)")
+            .add_expression("total_tx","t.total_tx + EXCLUDED.total_tx")
+            .add_expression("success_tx","t.success_tx + EXCLUDED.success_tx")
+            .add_expression("total_fee","t.total_fee + EXCLUDED.total_fee")
+            .add_expression("total_reward","t.total_reward + EXCLUDED.total_reward")
             //First block in current day
             .add_expression("fist_block_time","LEAST(t.fist_block_time, EXCLUDED.fist_block_time)")
             //latest incoming block
@@ -62,8 +63,10 @@ fn create_columns() -> Vec<Column> {
         "date" => ColumnType::BigInt,
         "min_block_height" => ColumnType::BigInt,
         "max_block_height" => ColumnType::BigInt,
-        "transaction_counter" => ColumnType::BigInt,
-        "average_reward" => ColumnType::BigInt,
+        "total_tx" => ColumnType::BigInt,
+        "success_tx" => ColumnType::BigInt,
+        "total_reward" => ColumnType::BigInt,
+        "total_fee" => ColumnType::BigInt,
         "fist_block_time" => ColumnType::BigInt,
         "last_block_time" => ColumnType::BigInt
     )
@@ -83,13 +86,35 @@ fn create_stat_block_entity(network: &str, block: Arc<SolanaBlock>) -> Entity {
             break;
         }
     }
+    //Sum success transactions' fee and count success transaction
+
+    let success_trans = block
+        .block
+        .transactions
+        .iter()
+        .filter_map(|tran| {
+            tran.meta.as_ref().and_then(|meta| match meta.status {
+                Ok(_) => Some((meta.fee, 1_u64)),
+                Err(_) => None,
+            })
+        })
+        .reduce(|mut a, mut b| (a.0 + b.0, a.1 + b.1));
+    let mut total_fee = 0_u64;
+    let mut counter = 0_u64;
+    if let Some(val) = success_trans {
+        total_fee = val.0;
+        counter = val.1;
+    }
+
     create_entity!(
         "network" => network.to_string(),
         "date" => date,
         "min_block_height" => block_height,
         "max_block_height" => block_height,
-        "transaction_counter" => block.block.transactions.len() as u64,
-        "average_reward" => reward_val,
+        "total_tx" => block.block.transactions.len() as u64,
+        "success_tx" => counter,
+        "total_reward" => reward_val,
+        "total_fee" => total_fee,
         "fist_block_time" => block_time,
         "last_block_time" => block_time
     )

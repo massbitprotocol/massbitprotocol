@@ -42,8 +42,10 @@ impl SolanaHandler for SolanaRawLogHandler {
                     .and_then(|logs| Some(create_entity(&block.block, tran, logs)))
             })
             .collect::<Vec<Entity>>();
-        self.storage_adapter
-            .upsert(&table, &columns, &entities, &None);
+        if entities.len() > 0 {
+            self.storage_adapter
+                .upsert(&table, &columns, &entities, &None);
+        }
         Ok(())
     }
 }

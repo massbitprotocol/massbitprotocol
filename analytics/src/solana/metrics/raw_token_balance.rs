@@ -46,8 +46,10 @@ impl SolanaHandler for SolanaTokenBalanceHandler {
                 a
             });
         if let Some(values) = entities {
-            self.storage_adapter
-                .upsert(&table, &columns, &values, &None);
+            if values.len() > 0 {
+                self.storage_adapter
+                    .upsert(&table, &columns, &values, &None);
+            }
         }
         Ok(())
     }

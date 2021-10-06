@@ -34,10 +34,12 @@ impl SolanaHandler for SolanaInstructionHandler {
         for tran in &block.block.transactions {
             let mut instruction_entities = create_instructions(&block.block, tran);
             entities.extend(instruction_entities);
-            create_inner_instructions(&block.block, tran);
+            //create_inner_instructions(&block.block, tran);
         }
-        self.storage_adapter
-            .upsert(&table, &columns, &entities, &None);
+        if entities.len() > 0 {
+            self.storage_adapter
+                .upsert(&table, &columns, &entities, &None);
+        }
         Ok(())
     }
 }

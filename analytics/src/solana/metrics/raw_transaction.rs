@@ -38,8 +38,6 @@ impl SolanaHandler for SolanaRawTransactionHandler {
         let max_rows = 65535 / acc_trans_columns.len();
         let mut tran_entities = Vec::default();
         let mut vec_entities = Vec::default();
-        //let mut vec_commands = Vec::default();
-
         for tran in &block.block.transactions {
             tran_entities.push(create_entity(&block.block, tran));
             //Create account trans list
@@ -49,24 +47,30 @@ impl SolanaHandler for SolanaRawTransactionHandler {
                 .get(0)
                 .and_then(|sig| Some(sig.to_string()));
             let mut entities = create_transaction_account(&tx_hash, tran);
-            match vec_entities.last_mut() {
-                None => vec_entities.push(entities),
-                Some(last) => {
-                    if last.len() + entities.len() <= max_rows {
-                        last.extend(entities);
-                    } else {
-                        vec_entities.push(entities);
+            if entities.len() > 0 {
+                match vec_entities.last_mut() {
+                    None => vec_entities.push(entities),
+                    Some(last) => {
+                        if last.len() + entities.len() <= max_rows {
+                            last.extend(entities);
+                        } else {
+                            vec_entities.push(entities);
+                        }
                     }
-                }
-            };
+                };
+            }
         }
         let mut vec_commands = vec_entities
             .iter()
             .map(|entities| CommandData::new(&acc_tran_table, &acc_trans_columns, entities, &None))
             .collect::<Vec<CommandData>>();
-        let trans_data = CommandData::new(&tran_table, &trans_columns, &tran_entities, &None);
-        vec_commands.push(trans_data);
-        self.storage_adapter.transact_upserts(vec_commands);
+        if tran_entities.len() > 0 {
+            let trans_data = CommandData::new(&tran_table, &trans_columns, &tran_entities, &None);
+            vec_commands.push(trans_data);
+        }
+        if vec_commands.len() > 0 {
+            self.storage_adapter.transact_upserts(vec_commands);
+        }
         Ok(())
     }
 }
