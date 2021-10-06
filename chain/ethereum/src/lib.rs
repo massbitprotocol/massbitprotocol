@@ -5,6 +5,8 @@ pub mod transport;
 pub mod trigger;
 
 pub mod chain;
+#[path = "test/manifest.rs"]
+pub mod manifest;
 pub mod network;
 pub mod runtime;
 

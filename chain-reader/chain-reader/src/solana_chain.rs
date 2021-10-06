@@ -1,8 +1,6 @@
-use crate::{
-    grpc_stream::stream_mod::{ChainType, DataType, GenericDataProto},
-    CONFIG,
-};
+use crate::CONFIG;
 use log::{debug, info};
+use massbit::firehose::dstream::{ChainType, DataType, GenericDataProto};
 use massbit_chain_solana::data_type::{
     get_list_log_messages_from_encoded_block, SolanaEncodedBlock as Block,
 };

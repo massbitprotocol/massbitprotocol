@@ -7,12 +7,12 @@ use std::path::PathBuf;
 use strum_macros::AsStaticStr;
 
 // Massbit dependencies
-pub use stream_mod::{
-    streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
-};
-pub mod stream_mod {
-    tonic::include_proto!("chaindata");
-}
+// pub use stream_mod::{
+//     streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
+// };
+// pub mod stream_mod {
+//     tonic::include_proto!("chaindata");
+// }
 
 // Indexer details that are extract right from the Database
 #[derive(Deserialize, Serialize, Debug)]

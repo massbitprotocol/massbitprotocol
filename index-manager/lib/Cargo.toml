@@ -11,8 +11,8 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.40"
 log = "0.4.0"
 env_logger = "0.8.4"
-tonic = "0.4" # Chain Reader Client
-prost = "0.7" # Chain Reader Client
+tonic = { version = "0.5"} # Chain Reader Client
+prost = "0.8" # Chain Reader Client
 async-std = "1.9.0"
 tokio = {version = "1.2.0", features = ["full"]} # Required by Tonic
 futures = { version = "0.3.13", features = ["compat"] }
@@ -32,12 +32,13 @@ ipfs-client = { path = "../../core/ipfs-client" }
 tokio02-spawn = { path = "../../core/tokio02-spawn" }
 massbit-chain-substrate = { path = "../../core/chain/substrate"}
 massbit-chain-solana = { path = "../../core/chain/solana" }
+massbit = { path = "../../massbit" }
 index-store = { path = "../../core/index-store" }
 adapter = { path = "../../plugin/adapter" }
 postgres = "0.19.1"
 
 [build-dependencies]
-tonic-build = "0.4" # Chain Reader Client
+tonic-build = "0.5" # Chain Reader Client
 
 [dependencies.node-template-runtime]
 git = "https://github.com/scs/substrate-api-client-test-node"

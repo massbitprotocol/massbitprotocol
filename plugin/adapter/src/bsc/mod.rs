@@ -1,7 +1,7 @@
 use crate::core::MessageHandler;
-pub use crate::stream_mod::{DataType, GenericDataProto};
 use index_store::Store;
 use libloading::Library;
+pub use massbit::firehose::dstream::{DataType, GenericDataProto};
 use std::{error::Error, sync::Arc};
 crate::prepare_adapter!(Bsc, {});
 

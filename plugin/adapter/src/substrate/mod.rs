@@ -1,7 +1,7 @@
 use crate::core::{AdapterError, MessageHandler};
-pub use crate::stream_mod::{DataType, GenericDataProto};
 use index_store::Store;
 use libloading::Library;
+pub use massbit::firehose::dstream::{DataType, GenericDataProto};
 use massbit_chain_substrate::data_type::{
     decode, get_extrinsics_from_block, SubstrateBlock, SubstrateEventRecord,
     SubstrateUncheckedExtrinsic,

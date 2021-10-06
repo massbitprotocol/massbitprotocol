@@ -11,6 +11,7 @@ pub trait BlockStream<C: Blockchain>:
 {
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BlockWithTriggers<C: Blockchain> {
     pub block: C::Block,
     pub trigger_data: Vec<C::TriggerData>,

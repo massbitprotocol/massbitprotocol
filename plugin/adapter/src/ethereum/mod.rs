@@ -1,5 +1,4 @@
 use crate::core::{AdapterError, MessageHandler};
-pub use crate::stream_mod::{DataType, GenericDataProto};
 use crate::EthereumWasmHandlerProxy;
 use graph::blockchain::types::{BlockHash, BlockPtr};
 use graph::blockchain::{Blockchain, DataSource as DataSourceTrait, HostFn};
@@ -11,13 +10,14 @@ use graph::data::subgraph::DeploymentHash;
 use graph::log::logger;
 use graph_chain_ethereum::trigger::EthereumBlockTriggerType;
 use graph_chain_ethereum::{
-    chain::BlockFinality, trigger::EthereumTrigger, Chain, DataSource, DataSourceTemplate
+    chain::BlockFinality, trigger::EthereumTrigger, Chain, DataSource, DataSourceTemplate,
 };
 use graph_mock::MockMetricsRegistry;
 use graph_runtime_wasm::ValidModule;
 use index_store::postgres::store_builder::*;
 use index_store::Store;
 use libloading::Library;
+pub use massbit::firehose::dstream::{DataType, GenericDataProto};
 use massbit_chain_ethereum::data_type::{
     decode, EthereumBlock, EthereumEvent, EthereumTransaction,
 };

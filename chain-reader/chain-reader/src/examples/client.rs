@@ -1,12 +1,12 @@
 use clap::{App, Arg};
 
-use crate::stream_mod::{
-    streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
-};
 use graph::data::subgraph::UnresolvedSubgraphManifest;
 use graph::ipfs_client::IpfsClient;
 use graph_core::LinkResolver;
 use log::{debug, info, warn};
+use massbit::firehose::dstream::{
+    streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
+};
 use massbit_chain_ethereum::data_type::{decode as ethereum_decode, get_events, EthereumBlock};
 use massbit_chain_solana::data_type::{
     convert_solana_encoded_block_to_solana_block, decode as solana_decode, SolanaEncodedBlock,
@@ -26,15 +26,17 @@ use tokio_compat_02::FutureExt;
 
 use serde_yaml::Value;
 
+use massbit::blockchain::{Blockchain, TriggerFilter};
+use massbit_common::NetworkType;
 #[allow(unused_imports)]
 use tonic::{
     transport::{Channel, Server},
     Request, Response, Status,
 };
 
-pub mod stream_mod {
-    tonic::include_proto!("chaindata");
-}
+// pub mod stream_mod {
+//     tonic::include_proto!("chaindata");
+// }
 
 const URL: &str = "http://127.0.0.1:50051";
 const MAX_COUNT: i32 = 3;
@@ -42,16 +44,20 @@ const MAX_COUNT: i32 = 3;
 pub async fn print_blocks(
     mut client: StreamoutClient<Channel>,
     chain_type: ChainType,
+    network: NetworkType,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     // Debug
     let mut count = 0;
-
+    let filter =
+        <chain_ethereum::Chain as Blockchain>::TriggerFilter::from_data_sources(vec![].iter());
+    let encoded_filter = serde_json::to_vec(&filter).unwrap();
     // Not use start_block_number start_block_number yet
     let get_blocks_request = GetBlocksRequest {
         start_block_number: 1,
         end_block_number: 1,
         chain_type: chain_type as i32,
         network,
+        filter: encoded_filter,
     };
     println!("Creating Stream ...");
     let mut stream = Some(
@@ -230,55 +236,55 @@ pub async fn create_ipfs_clients(ipfs_addresses: &Vec<String>) -> Vec<IpfsClient
         .collect()
 }
 
-async fn get_data_source(
-    file_hash: &String,
-) -> Result<Vec<DataSource>, SubgraphAssignmentProviderError> {
-    let logger = logger(false);
-    let ipfs_addresses = vec![String::from("0.0.0.0:5001")];
-    let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await;
-
-    // let mut resolver = TextResolver::default();
-    let file_bytes = ipfs_clients[0]
-        .cat_all(file_hash.to_string(), Duration::from_secs(10))
-        .compat()
-        .await
-        .unwrap()
-        .to_vec();
-
-    // Get raw manifest
-    let file = String::from_utf8(file_bytes).unwrap();
-    println!("File: {}", file);
-
-    let raw: serde_yaml::Value = serde_yaml::from_str(&file).unwrap();
-
-    let mut raw_manifest = match raw {
-        serde_yaml::Value::Mapping(m) => m,
-        _ => panic!("Wrong type raw_manifest"),
-    };
-
-    // Inject the IPFS hash as the ID of the subgraph into the definition.
-    let id = "deployment_hash";
-    raw_manifest.insert(
-        serde_yaml::Value::from("id"),
-        serde_yaml::Value::from(id.to_string()),
-    );
-
-    // Parse the YAML data into an UnresolvedSubgraphManifest
-    let value: Value = raw_manifest.into();
-    let unresolved: UnresolvedSubgraphManifest<Chain> = serde_yaml::from_value(value).unwrap();
-    let resolver = Arc::new(LinkResolver::from(ipfs_clients));
-
-    //debug!("Features {:?}", unresolved.features);
-    let manifest = unresolved
-        .resolve(&*resolver, &logger)
-        .compat()
-        .await
-        .map_err(SubgraphAssignmentProviderError::ResolveError)?;
-
-    println!("data_sources: {:#?}", &manifest.data_sources);
-
-    Ok(manifest.data_sources)
-}
+// async fn get_data_source(
+//     file_hash: &String,
+// ) -> Result<Vec<DataSource>, SubgraphAssignmentProviderError> {
+//     let logger = logger(false);
+//     let ipfs_addresses = vec![String::from("0.0.0.0:5001")];
+//     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await;
+//
+//     // let mut resolver = TextResolver::default();
+//     let file_bytes = ipfs_clients[0]
+//         .cat_all(file_hash.to_string(), Duration::from_secs(10))
+//         .compat()
+//         .await
+//         .unwrap()
+//         .to_vec();
+//
+//     // Get raw manifest
+//     let file = String::from_utf8(file_bytes).unwrap();
+//     println!("File: {}", file);
+//
+//     let raw: serde_yaml::Value = serde_yaml::from_str(&file).unwrap();
+//
+//     let mut raw_manifest = match raw {
+//         serde_yaml::Value::Mapping(m) => m,
+//         _ => panic!("Wrong type raw_manifest"),
+//     };
+//
+//     // Inject the IPFS hash as the ID of the subgraph into the definition.
+//     let id = "deployment_hash";
+//     raw_manifest.insert(
+//         serde_yaml::Value::from("id"),
+//         serde_yaml::Value::from(id.to_string()),
+//     );
+//
+//     // Parse the YAML data into an UnresolvedSubgraphManifest
+//     let value: Value = raw_manifest.into();
+//     let unresolved: UnresolvedSubgraphManifest<Chain> = serde_yaml::from_value(value).unwrap();
+//     let resolver = Arc::new(LinkResolver::from(ipfs_clients));
+//
+//     //debug!("Features {:?}", unresolved.features);
+//     let manifest = unresolved
+//         .resolve(&*resolver, &logger)
+//         .compat()
+//         .await
+//         .map_err(SubgraphAssignmentProviderError::ResolveError)?;
+//
+//     println!("data_sources: {:#?}", &manifest.data_sources);
+//
+//     Ok(manifest.data_sources)
+// }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
@@ -304,15 +310,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     match chain_type {
         "substrate" => {
             info!("Run client: {}", chain_type);
-            print_blocks(client, ChainType::Substrate).await?;
+            print_blocks(client, ChainType::Substrate, "mainnet".to_string()).await?;
         }
         "solana" => {
             info!("Run client: {}", chain_type);
-            print_blocks(client, ChainType::Solana).await?;
+            print_blocks(client, ChainType::Solana, "mainnet".to_string()).await?;
         }
         _ => {
             info!("Run client: {}", chain_type);
-            print_blocks(client, ChainType::Ethereum).await?;
+            print_blocks(client, ChainType::Ethereum, "matic".to_string()).await?;
         }
     };
 

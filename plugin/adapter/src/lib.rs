@@ -3,9 +3,9 @@ extern crate paste;
 
 pub mod core;
 pub mod macros;
-pub mod stream_mod {
-    tonic::include_proto!("chaindata");
-}
+// pub mod stream_mod {
+//     tonic::include_proto!("chaindata");
+// }
 pub mod setting;
 use crate::core::{AdapterHandler, MessageHandler};
 use quote::quote;

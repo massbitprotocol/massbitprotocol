@@ -1,5 +1,5 @@
-use crate::grpc_stream::stream_mod::{ChainType, DataType, GenericDataProto};
 use clap::App;
+use massbit::firehose::dstream::{ChainType, DataType, GenericDataProto};
 use massbit_chain_substrate::data_type::{
     SubstrateBlock as Block, SubstrateEventRecord as EventRecord, SubstrateHeader as Header,
 };
@@ -93,7 +93,7 @@ pub async fn loop_get_event(
     let (events_in, events_out) = channel();
     api.subscribe_events(events_in).unwrap();
 
-    //fix_one_thread_not_receive(&chan);
+    fix_one_thread_not_receive(&chan);
     loop {
         let event_str = events_out.recv().unwrap();
 
@@ -144,7 +144,7 @@ pub async fn loop_get_block_and_extrinsic(
     let (send, recv) = channel();
     api.subscribe_finalized_heads(send).unwrap();
 
-    //fix_one_thread_not_receive(&chan);
+    fix_one_thread_not_receive(&chan);
 
     loop {
         // Get new header

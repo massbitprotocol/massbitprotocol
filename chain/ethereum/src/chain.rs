@@ -5,7 +5,6 @@ use massbit::blockchain::{
     block_stream::BlockWithTriggers, Block, BlockStream, Blockchain, BlockchainKind,
     PollingBlockStream, TriggersAdapter as TriggersAdapterTrait,
 };
-use massbit::components::store::DeploymentLocator;
 use massbit::prelude::*;
 
 use crate::data_source::{
@@ -15,6 +14,8 @@ use crate::ethereum_adapter::blocks_with_triggers;
 use crate::network::EthereumNetworkAdapters;
 use crate::TriggerFilter;
 use crate::{EthereumAdapter, RuntimeAdapter};
+use massbit::components::store::DeploymentLocator;
+use massbit::prelude::serde::Serialize;
 
 lazy_static! {
     /// Maximum number of blocks to request in each chunk.
@@ -33,7 +34,7 @@ lazy_static! {
 pub struct Chain {
     logger_factory: LoggerFactory,
     name: String,
-    eth_adapters: Arc<EthereumNetworkAdapters>,
+    pub eth_adapters: Arc<EthereumNetworkAdapters>,
 }
 
 impl std::fmt::Debug for Chain {
@@ -151,7 +152,7 @@ impl Blockchain for Chain {
 /// This is used in `EthereumAdapter::triggers_in_block`, called when re-processing a block for
 /// newly created data sources. This allows the re-processing to be reorg safe without having to
 /// always fetch the full block data.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum BlockFinality {
     /// If a block is final, we only need the header and the triggers.
     Final(Arc<LightEthereumBlock>),

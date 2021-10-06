@@ -26,7 +26,7 @@ hex = "0.4.3"
 tiny-keccak = "1.5.0"
 futures03 = { version = "0.3.1", package = "futures", features = ["compat"] }
 utils = { path = "../../../utils" }
-
+massbit = { path = "../../../massbit" }
 [dependencies.web3]
 package = "web3"
 git = "https://github.com/graphprotocol/rust-web3"

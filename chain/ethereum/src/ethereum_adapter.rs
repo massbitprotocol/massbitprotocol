@@ -104,7 +104,7 @@ const GETH_ETH_CALL_ERRORS: &[&str] = &[
 pub struct EthereumAdapter {
     logger: Logger,
     url_hostname: Arc<String>,
-    web3: Arc<Web3<Transport>>,
+    pub web3: Arc<Web3<Transport>>,
     provider: String,
     supports_eip_1898: bool,
 }

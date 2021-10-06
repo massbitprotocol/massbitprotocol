@@ -27,6 +27,7 @@ use crate::data::indexer::{DataSourceContext, IndexerManifestValidationError};
 use crate::prelude::{CheapClone, Logger};
 use crate::runtime::{AscHeap, AscPtr, DeterministicHostError, HostExportError};
 
+use crate::prelude::serde::{Deserialize, Serialize};
 pub use block_stream::{BlockStream, TriggersAdapter};
 pub use polling_block_stream::PollingBlockStream;
 pub use types::{BlockHash, BlockPtr};
@@ -53,7 +54,7 @@ pub trait Block: Send + Sync {
 pub trait Blockchain: Debug + Sized + Send + Sync + Unpin + 'static {
     const KIND: BlockchainKind;
 
-    type Block: Block + Clone;
+    type Block: Block + Clone + Serialize + DeserializeOwned;
 
     type DataSource: DataSource<Self>;
     type UnresolvedDataSource: UnresolvedDataSource<Self>;
@@ -64,7 +65,7 @@ pub trait Blockchain: Debug + Sized + Send + Sync + Unpin + 'static {
     type TriggersAdapter: TriggersAdapter<Self>;
 
     /// Trigger data as parsed from the triggers adapter.
-    type TriggerData: TriggerData + Ord;
+    type TriggerData: TriggerData + Ord + Serialize + DeserializeOwned;
 
     /// Decoded trigger ready to be processed by the mapping.
     type MappingTrigger: MappingTrigger + Debug;
