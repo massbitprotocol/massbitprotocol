@@ -2,7 +2,6 @@ use crate::cheap_clone::CheapClone;
 use anyhow::Context;
 use http::uri::Uri;
 use rand::prelude::IteratorRandom;
-use slog::Logger;
 use std::{collections::HashMap, fmt::Display, sync::Arc};
 use tonic::{
     metadata::MetadataValue,
@@ -10,7 +9,7 @@ use tonic::{
     Request,
 };
 
-use super::dstream;
+use super::stream;
 
 #[derive(Clone)]
 pub struct FirehoseEndpoint {
@@ -58,14 +57,14 @@ impl FirehoseEndpoint {
 
     pub async fn stream_data(
         self: Arc<Self>,
-        request: dstream::BlocksRequest,
-    ) -> Result<tonic::Streaming<dstream::BlockResponse>, anyhow::Error> {
+        request: stream::BlocksRequest,
+    ) -> Result<tonic::Streaming<stream::BlockResponse>, anyhow::Error> {
         let token_metadata_opt = match self.token.clone() {
             Some(token) => Some(MetadataValue::from_str(token.as_str())?),
             None => None,
         };
 
-        let mut client = dstream::stream_client::StreamClient::with_interceptor(
+        let mut client = stream::stream_client::StreamClient::with_interceptor(
             self.channel.cheap_clone(),
             move |mut r: Request<()>| match token_metadata_opt.clone() {
                 Some(t) => {

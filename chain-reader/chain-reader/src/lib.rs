@@ -11,7 +11,7 @@ pub use self::transport::Transport;
 
 use command::{ChainConfig, Config};
 use lazy_static::lazy_static;
-use massbit::firehose::dstream::ChainType;
+use massbit::firehose::stream::ChainType;
 use std::env;
 
 lazy_static! {

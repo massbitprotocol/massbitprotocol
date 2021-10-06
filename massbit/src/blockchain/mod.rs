@@ -22,12 +22,12 @@ use std::{
 
 use crate::components::indexer::DataSourceTemplateInfo;
 use crate::components::link_resolver::LinkResolver;
-use crate::components::store::{BlockNumber, DeploymentLocator, StoredDynamicDataSource};
+use crate::components::store::{BlockNumber, StoredDynamicDataSource};
 use crate::data::indexer::{DataSourceContext, IndexerManifestValidationError};
+use crate::prelude::serde::Serialize;
 use crate::prelude::{CheapClone, Logger};
 use crate::runtime::{AscHeap, AscPtr, DeterministicHostError, HostExportError};
 
-use crate::prelude::serde::{Deserialize, Serialize};
 pub use block_stream::{BlockStream, TriggersAdapter};
 pub use polling_block_stream::PollingBlockStream;
 pub use types::{BlockHash, BlockPtr};

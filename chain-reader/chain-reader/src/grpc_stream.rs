@@ -6,7 +6,7 @@ use crate::ethereum_chain;
 use chain_ethereum::network::{EthereumNetworkAdapter, EthereumNetworkAdapters};
 use chain_ethereum::{Chain, EthereumAdapter, Transport, TriggerFilter};
 use log::{error, info};
-use massbit::firehose::dstream::{stream_server::Stream, BlockResponse, BlocksRequest, ChainType};
+use massbit::firehose::stream::{stream_server::Stream, BlockResponse, BlocksRequest, ChainType};
 use massbit_common::NetworkType;
 use std::collections::HashMap;
 use std::sync::Arc;

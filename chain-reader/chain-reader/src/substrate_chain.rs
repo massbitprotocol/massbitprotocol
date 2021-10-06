@@ -1,5 +1,5 @@
 use clap::App;
-use massbit::firehose::dstream::{BlockResponse, ChainType};
+use massbit::firehose::stream::{BlockResponse, ChainType};
 use massbit_chain_substrate::data_type::{
     SubstrateBlock as Block, SubstrateEventRecord as EventRecord, SubstrateHeader as Header,
 };
