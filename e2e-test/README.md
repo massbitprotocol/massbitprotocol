@@ -1,5 +1,25 @@
 # E2E Test for Substrate and Solana template
 
+## Long tests
+### analytics tests:
+- start ingestor
+- start chain-reader
+- start analytics server
+  ```shell
+  cargo run --bin analytics -- -c ethereum -n matic -b 15000000
+  cargo run --bin analytics -- -c solana -n mainnet -b 85000000
+  ```
+
+
+### indexer tests
+- Harmony
+  - start docker-compose.min.yml
+  - start code-compiler
+  - start chain-reader
+  - start indexer
+  - run harmony e2e test 
+
+
 ## Testing coverage
 Core tests:
 - BSC has 1 contract test (quickswap)
