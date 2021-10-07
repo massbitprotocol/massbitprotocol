@@ -10,7 +10,7 @@ use crate::{
     GET_STREAM_TIMEOUT_SEC,
 };
 use lazy_static::lazy_static;
-use massbit::firehose::stream::{stream_client::StreamClient, BlockResponse, ChainType};
+use massbit::firehose::bstream::{stream_client::StreamClient, BlockResponse, ChainType};
 use massbit_chain_solana::data_type::{
     convert_solana_encoded_block_to_solana_block, decode as solana_decode, SolanaEncodedBlock,
 };
@@ -30,14 +30,14 @@ use tower::timeout::Timeout;
 lazy_static! {
     pub static ref CHAIN: String = String::from("solana");
 }
-const START_SOLANA_BLOCK: u64 = 80_000_000_u64;
+const START_SOLANA_BLOCK: i64 = 80_000_000_i64;
 const DEFAULT_NETWORK: &str = "mainnet";
 
 pub async fn process_solana_stream(
     client: &mut StreamClient<Timeout<Channel>>,
     storage_adapter: Arc<PostgresAdapter>,
     network_name: Option<NetworkType>,
-    block: u64,
+    block: i64,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     let network = match network_name {
         None => Some(String::from(DEFAULT_NETWORK)),
@@ -59,7 +59,7 @@ pub async fn process_solana_stream(
                 START_SOLANA_BLOCK
             }
         }
-        Some(state) => state.got_block as u64 + 1,
+        Some(state) => state.got_block + 1,
     };
     let mut opt_stream: Option<Streaming<BlockResponse>> = None;
     loop {

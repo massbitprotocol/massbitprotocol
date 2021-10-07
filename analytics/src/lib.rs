@@ -25,7 +25,7 @@ use tonic::{
 use tower::timeout::Timeout;
 
 use crate::postgres_adapter::{PostgresAdapter, PostgresAdapterBuilder};
-use massbit::firehose::stream::{
+use massbit::firehose::bstream::{
     stream_client::StreamClient, BlockResponse, BlocksRequest, ChainType,
 };
 use massbit_common::NetworkType;
@@ -49,14 +49,13 @@ pub fn establish_connection() -> PgConnection {
 pub async fn try_create_stream(
     client: &mut StreamClient<Timeout<Channel>>,
     chain_type: ChainType,
-    start_block: u64,
+    start_block: i64,
     network: &Option<NetworkType>,
 ) -> Option<Streaming<BlockResponse>> {
     log::info!("Create new stream from block {}", start_block);
     let filter = vec![];
     let get_blocks_request = BlocksRequest {
         start_block_number: start_block,
-        end_block_number: 0,
         chain_type: chain_type as i32,
         network: network.clone().unwrap_or_default(),
         filter,

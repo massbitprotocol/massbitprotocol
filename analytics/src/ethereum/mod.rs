@@ -17,7 +17,7 @@ use crate::{
     establish_connection, get_block_number, try_create_stream, GET_BLOCK_TIMEOUT_SEC,
     GET_STREAM_TIMEOUT_SEC,
 };
-use massbit::firehose::stream::{stream_client::StreamClient, BlockResponse, ChainType};
+use massbit::firehose::bstream::{stream_client::StreamClient, BlockResponse, ChainType};
 
 use crate::ethereum::handler::create_ethereum_handler_manager;
 use crate::postgres_adapter::PostgresAdapter;
@@ -33,14 +33,14 @@ use tower::timeout::Timeout;
 lazy_static! {
     pub static ref CHAIN: String = String::from("ethereum");
 }
-const START_ETHEREUM_BLOCK: u64 = 15_000_000_u64;
+const START_ETHEREUM_BLOCK: i64 = 15_000_000_i64;
 const DEFAULT_NETWORK: &str = "matic";
 
 pub async fn process_ethereum_stream(
     client: &mut StreamClient<Timeout<Channel>>,
     storage_adapter: Arc<PostgresAdapter>,
     network: Option<NetworkType>,
-    block: u64,
+    block: i64,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     let handler_manager = Arc::new(create_ethereum_handler_manager(&network, storage_adapter));
     //Todo: remove this simple connection
@@ -58,7 +58,7 @@ pub async fn process_ethereum_stream(
                 START_ETHEREUM_BLOCK
             }
         }
-        Some(state) => state.got_block as u64 + 1,
+        Some(state) => state.got_block + 1,
     };
     let mut opt_stream: Option<Streaming<BlockResponse>> = None;
     loop {

@@ -12,7 +12,7 @@ use std::time::Duration;
 use analytics::{
     create_postgres_storage, establish_connection, GET_BLOCK_TIMEOUT_SEC, GET_STREAM_TIMEOUT_SEC,
 };
-use massbit::firehose::stream::stream_client::StreamClient;
+use massbit::firehose::bstream::stream_client::StreamClient;
 use std::sync::Arc;
 use std::thread::sleep;
 #[allow(unused_imports)]
@@ -73,7 +73,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     let chain_type = matches.value_of("chain").unwrap_or("ethereum");
     let network = matches.value_of("network").unwrap_or("matic");
     let block = matches.value_of("block").unwrap_or("0");
-    let start_block: u64 = block.parse().unwrap_or_default();
+    let start_block: i64 = block.parse().unwrap_or_default();
     info!(
         "Start client for chain {} and network {}",
         chain_type, network
