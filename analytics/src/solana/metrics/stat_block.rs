@@ -36,6 +36,7 @@ impl SolanaHandler for SolanaStatBlockHandler {
         let mut conflict_frag = UpsertConflictFragment::new("solana_daily_stat_block_date_uindex");
         conflict_frag.add_expression("min_block_height", "LEAST(t.min_block_height, EXCLUDED.min_block_height)")
             .add_expression("max_block_height", "GREATEST(t.max_block_height, EXCLUDED.max_block_height)")
+            .add_expression("block_counter","t.block_counter + EXCLUDED.block_counter")
             .add_expression("total_tx","t.total_tx + EXCLUDED.total_tx")
             .add_expression("success_tx","t.success_tx + EXCLUDED.success_tx")
             .add_expression("total_fee","t.total_fee + EXCLUDED.total_fee")
@@ -46,7 +47,7 @@ impl SolanaHandler for SolanaStatBlockHandler {
             .add_expression("last_block_time","GREATEST(t.last_block_time, EXCLUDED.last_block_time)")
             //Average block time in ms
             .add_expression("average_block_time","(GREATEST(t.last_block_time, EXCLUDED.last_block_time) - LEAST(t.fist_block_time, EXCLUDED.fist_block_time))\
-                    * 1000 /(GREATEST(t.max_block_height, EXCLUDED.max_block_height) - LEAST(t.min_block_height, EXCLUDED.min_block_height))");
+                    * 1000 /(GREATEST(t.max_block_height, EXCLUDED.max_block_height) - LEAST(t.min_block_height, EXCLUDED.min_block_height) + 1)");
         self.storage_adapter
             .upsert(&table, &columns, &vec![entity], &Some(conflict_frag))
     }
@@ -58,6 +59,7 @@ fn create_columns() -> Vec<Column> {
         "date" => ColumnType::BigInt,
         "min_block_height" => ColumnType::BigInt,
         "max_block_height" => ColumnType::BigInt,
+        "block_counter" => ColumnType::BigInt,
         "total_tx" => ColumnType::BigInt,
         "success_tx" => ColumnType::BigInt,
         "total_reward" => ColumnType::BigInt,
@@ -106,6 +108,7 @@ fn create_stat_block_entity(network: &str, block: Arc<SolanaBlock>) -> Entity {
         "date" => date,
         "min_block_height" => block_height,
         "max_block_height" => block_height,
+        "block_counter" => 1_u64,
         "total_tx" => block.block.transactions.len() as u64,
         "success_tx" => counter,
         "total_reward" => reward_val,

@@ -5,6 +5,7 @@ create table solana_daily_stat_block
     date                    bigint,
     min_block_height        bigint,
     max_block_height        bigint,
+    block_counter           bigint,     -- Number of indexed blocks
     total_tx                bigint,
     success_tx              bigint,
     total_reward            bigint,
