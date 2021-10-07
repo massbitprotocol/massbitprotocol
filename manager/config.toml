@@ -1,0 +1,10 @@
+[store]
+[store.primary]
+connection = "postgresql://postgres:postgres@localhost:5432/massbit"
+pool_size = 10
+
+[chains.matic]
+provider = [
+    { label = "matic-0", url = "https://polygon-rpc.com", features = [] },
+    { label = "firehose", details = { type = "firehose", url = "http://localhost:50051" } }
+]

@@ -1,14 +1,12 @@
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BlocksRequest {
-    #[prost(uint64, tag = "1")]
-    pub start_block_number: u64,
-    #[prost(uint64, tag = "2")]
-    pub end_block_number: u64,
-    #[prost(enumeration = "ChainType", tag = "3")]
+    #[prost(int64, tag = "1")]
+    pub start_block_number: i64,
+    #[prost(enumeration = "ChainType", tag = "2")]
     pub chain_type: i32,
-    #[prost(string, tag = "4")]
+    #[prost(string, tag = "3")]
     pub network: ::prost::alloc::string::String,
-    #[prost(bytes = "vec", tag = "5")]
+    #[prost(bytes = "vec", tag = "4")]
     pub filter: ::prost::alloc::vec::Vec<u8>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -103,7 +101,7 @@ pub mod stream_client {
                 )
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/stream.Stream/Blocks");
+            let path = http::uri::PathAndQuery::from_static("/bstream.Stream/Blocks");
             self.inner
                 .server_streaming(request.into_request(), path, codec)
                 .await
@@ -166,7 +164,7 @@ pub mod stream_server {
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
-                "/stream.Stream/Blocks" => {
+                "/bstream.Stream/Blocks" => {
                     #[allow(non_camel_case_types)]
                     struct BlocksSvc<T: Stream>(pub Arc<T>);
                     impl<T: Stream> tonic::server::ServerStreamingService<super::BlocksRequest> for BlocksSvc<T> {
@@ -231,6 +229,6 @@ pub mod stream_server {
         }
     }
     impl<T: Stream> tonic::transport::NamedService for StreamServer<T> {
-        const NAME: &'static str = "stream.Stream";
+        const NAME: &'static str = "bstream.Stream";
     }
 }

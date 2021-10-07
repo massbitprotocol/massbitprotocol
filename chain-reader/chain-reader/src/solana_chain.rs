@@ -1,6 +1,6 @@
 use crate::CONFIG;
 use log::{debug, info};
-use massbit::firehose::stream::{BlockResponse, ChainType};
+use massbit::firehose::bstream::{BlockResponse, ChainType};
 use massbit_chain_solana::data_type::{
     get_list_log_messages_from_encoded_block, SolanaEncodedBlock as Block,
 };

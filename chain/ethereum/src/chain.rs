@@ -1,10 +1,13 @@
 use anyhow::Context;
 use std::sync::Arc;
 
+use massbit::blockchain::firehose_block_stream::FirehoseBlockStream;
 use massbit::blockchain::{
-    block_stream::BlockWithTriggers, Block, BlockStream, Blockchain, BlockchainKind,
-    PollingBlockStream, TriggersAdapter as TriggersAdapterTrait,
+    block_stream::{BlockWithTriggers, FirehoseMapper as FirehoseMapperTrait},
+    Block, BlockStream, Blockchain, BlockchainKind, PollingBlockStream,
+    TriggersAdapter as TriggersAdapterTrait,
 };
+use massbit::firehose::endpoints::FirehoseNetworkEndpoints;
 use massbit::prelude::serde::Serialize;
 use massbit::prelude::*;
 
@@ -15,6 +18,8 @@ use crate::ethereum_adapter::blocks_with_triggers;
 use crate::network::EthereumNetworkAdapters;
 use crate::TriggerFilter;
 use crate::{EthereumAdapter, RuntimeAdapter};
+use massbit::blockchain::block_stream::BlockStreamEvent;
+use massbit::firehose::bstream::BlockResponse;
 
 lazy_static! {
     /// Maximum number of blocks to request in each chunk.
@@ -34,6 +39,7 @@ pub struct Chain {
     logger_factory: LoggerFactory,
     name: String,
     pub eth_adapters: Arc<EthereumNetworkAdapters>,
+    firehose_endpoints: Arc<FirehoseNetworkEndpoints>,
 }
 
 impl std::fmt::Debug for Chain {
@@ -47,12 +53,53 @@ impl Chain {
         logger_factory: LoggerFactory,
         name: String,
         eth_adapters: EthereumNetworkAdapters,
+        firehose_endpoints: FirehoseNetworkEndpoints,
     ) -> Self {
         Chain {
             logger_factory,
             name,
             eth_adapters: Arc::new(eth_adapters),
+            firehose_endpoints: Arc::new(firehose_endpoints),
         }
+    }
+
+    async fn new_polling_block_stream(
+        &self,
+        start_block: BlockNumber,
+        triggers_adapter: Arc<TriggersAdapter>,
+        filter: Arc<TriggerFilter>,
+    ) -> Result<Box<dyn BlockStream<Self>>, Error> {
+        let logger = self.logger_factory.component_logger("BlockStream");
+        Ok(Box::new(PollingBlockStream::new(
+            logger,
+            triggers_adapter,
+            filter,
+            start_block,
+            *MAX_BLOCK_RANGE_SIZE,
+            *TARGET_TRIGGERS_PER_BLOCK_RANGE,
+        )))
+    }
+
+    async fn new_firehose_block_stream(
+        &self,
+        start_block: BlockNumber,
+        filter: Arc<TriggerFilter>,
+    ) -> Result<Box<dyn BlockStream<Self>>, Error> {
+        let firehose_endpoint = match self.firehose_endpoints.random() {
+            Some(e) => e.clone(),
+            None => return Err(anyhow::format_err!("no firehose endpoint available",)),
+        };
+
+        let logger = self.logger_factory.component_logger("FirehoseBlockStream");
+        let firehose_mapper = Arc::new(FirehoseMapper {});
+        Ok(Box::new(FirehoseBlockStream::new(
+            firehose_endpoint,
+            firehose_mapper,
+            self.name.clone(),
+            filter,
+            start_block,
+            logger,
+        )))
     }
 }
 
@@ -107,16 +154,13 @@ impl Blockchain for Chain {
         start_block: BlockNumber,
         filter: Arc<Self::TriggerFilter>,
     ) -> Result<Box<dyn BlockStream<Self>>, Error> {
-        let logger = self.logger_factory.component_logger("BlockStream");
-        let triggers_adapter = self.triggers_adapter()?;
-        Ok(Box::new(PollingBlockStream::new(
-            logger,
-            triggers_adapter,
-            filter,
-            start_block,
-            *MAX_BLOCK_RANGE_SIZE,
-            *TARGET_TRIGGERS_PER_BLOCK_RANGE,
-        )))
+        if self.firehose_endpoints.len() > 0 {
+            self.new_firehose_block_stream(start_block, filter).await
+        } else {
+            let adapter = self.triggers_adapter()?;
+            self.new_polling_block_stream(start_block, adapter, filter)
+                .await
+        }
     }
 
     async fn block_pointer_from_number(
@@ -219,5 +263,18 @@ impl TriggersAdapterTrait<Chain> for TriggersAdapter {
                 Ok(blocks.into_iter().next().unwrap())
             }
         }
+    }
+}
+
+pub struct FirehoseMapper {}
+
+impl FirehoseMapperTrait<Chain> for FirehoseMapper {
+    fn to_block_stream_event(
+        &self,
+        logger: &Logger,
+        response: &BlockResponse,
+    ) -> Result<BlockStreamEvent<Chain>, Error> {
+        let block: BlockWithTriggers<Chain> = serde_json::from_slice(&response.payload)?;
+        Ok(BlockStreamEvent::ProcessBlock(block))
     }
 }

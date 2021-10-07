@@ -1,6 +1,6 @@
 use crate::Transport;
 use crate::CONFIG;
-use massbit::firehose::stream::{BlockResponse, ChainType};
+use massbit::firehose::bstream::{BlockResponse, ChainType};
 
 use anyhow::Error;
 use chain_ethereum::{Chain, EthereumAdapter, TriggerFilter};
