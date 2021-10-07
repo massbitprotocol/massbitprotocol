@@ -58,6 +58,60 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "250f629c0161ad8107cf89319e990051fae62832fd343083bea452d93e2205fd"
 
 [[package]]
+name = "analytics"
+version = "0.1.0"
+dependencies = [
+ "Inflector",
+ "anyhow",
+ "async-stream 0.2.1",
+ "bigdecimal",
+ "broadcaster",
+ "chain-ethereum",
+ "clap",
+ "diesel",
+ "diesel-derive-enum",
+ "diesel-dynamic-schema",
+ "diesel_migrations",
+ "dotenv",
+ "env_logger 0.9.0",
+ "frame-system",
+ "futures 0.1.31",
+ "futures-core",
+ "futures-util",
+ "graph 0.24.0",
+ "graph-store-postgres",
+ "hex",
+ "hex-literal",
+ "http 0.1.21",
+ "ipfs-client",
+ "jsonrpc-core 14.2.0",
+ "lazy_static",
+ "log 0.4.14",
+ "logger",
+ "massbit",
+ "massbit-chain-ethereum",
+ "massbit-chain-solana",
+ "massbit-chain-substrate",
+ "massbit-common",
+ "multiqueue",
+ "primitive-types 0.6.2",
+ "prost 0.7.0",
+ "rand 0.7.3",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "solana-transaction-status",
+ "sp-core",
+ "sp-keyring",
+ "thiserror",
+ "tokio 1.11.0",
+ "tokio-stream",
+ "tonic",
+ "tonic-build",
+ "tower",
+]
+
+[[package]]
 name = "ansi_term"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4263,6 +4317,8 @@ dependencies = [
  "ethabi 12.0.0-graph",
  "lazy_static",
  "log 0.4.14",
+ "r2d2",
+ "r2d2-diesel",
  "regex",
  "reqwest 0.10.10",
  "serde",
@@ -6112,6 +6168,16 @@ dependencies = [
  "log 0.4.14",
  "parking_lot 0.11.2",
  "scheduled-thread-pool",
+]
+
+[[package]]
+name = "r2d2-diesel"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eb9c29bad92da76d02bc2c020452ebc3a3fe6fa74cfab91e711c43116e4fb1a3"
+dependencies = [
+ "diesel",
+ "r2d2",
 ]
 
 [[package]]

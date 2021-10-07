@@ -1,10 +1,13 @@
 use crate::CONFIG;
-use log::{debug, info};
+use log::{debug, info, warn};
 use massbit::firehose::bstream::{BlockResponse, ChainType};
+use massbit::prelude::tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use massbit_chain_solana::data_type::{
     get_list_log_messages_from_encoded_block, SolanaEncodedBlock as Block,
 };
+use massbit_common::prelude::tokio::time::{sleep, timeout, Duration};
 use massbit_common::NetworkType;
+use solana_client::rpc_response::SlotInfo;
 use solana_client::{pubsub_client::PubsubClient, rpc_client::RpcClient};
 use solana_transaction_status::UiTransactionEncoding;
 use std::error::Error;
@@ -15,38 +18,31 @@ use std::{
     },
     time::Instant,
 };
-use tokio::sync::broadcast;
+use tokio::sync::mpsc;
+use tonic::Status;
 
 // Check https://github.com/tokio-rs/prost for enum converting in rust protobuf
 const CHAIN_TYPE: ChainType = ChainType::Solana;
 const VERSION: &str = "1.6.16";
 const BLOCK_AVAILABLE_MARGIN: u64 = 100;
 const RPC_BLOCK_ENCODING: UiTransactionEncoding = UiTransactionEncoding::Base64;
+const GET_BLOCK_TIMEOUT_SEC: u64 = 60;
+const BLOCK_BATCH_SIZE: u64 = 10;
 
 pub async fn loop_get_block(
-    chan: broadcast::Sender<BlockResponse>,
+    chan: mpsc::Sender<Result<BlockResponse, Status>>,
+    start_block: &Option<u64>,
     network: &NetworkType,
+    client: &Arc<RpcClient>,
 ) -> Result<(), Box<dyn Error>> {
-    info!("Start get block Solana");
+    info!("Start get block Solana from: {:?}", start_block);
     let config = CONFIG.get_chain_config(&CHAIN_TYPE, &network).unwrap();
-    let json_rpc_url = config.url.clone();
     let websocket_url = config.ws.clone();
-    info!("Init Solana client, url: {}", json_rpc_url);
-    //let (mut subscription_client, receiver) = PubsubClient::slot_subscribe(&websocket_url).unwrap();
     let (mut subscription_client, receiver) = PubsubClient::slot_subscribe(&websocket_url).unwrap();
-    info!("Finished init Solana client");
-    let exit = Arc::new(AtomicBool::new(false));
-    let client = Arc::new(RpcClient::new(json_rpc_url.clone()));
-
-    let mut last_indexed_slot: Option<u64> = None;
+    let mut last_indexed_slot: Option<u64> = start_block.map(|start_block| start_block + 1);
     //fix_one_thread_not_receive(&chan);
+    let sem = Arc::new(Semaphore::new(2 * BLOCK_BATCH_SIZE as usize));
     loop {
-        if exit.load(Ordering::Relaxed) {
-            eprintln!("{}", "exit".to_string());
-            subscription_client.shutdown().unwrap();
-            break;
-        }
-
         match receiver.recv() {
             Ok(new_info) => {
                 // Root is finalized block in Solana
@@ -62,25 +58,60 @@ pub async fn loop_get_block(
                             current_root,
                             current_root - value_last_indexed_slot
                         );
-                        for block_height in value_last_indexed_slot..current_root {
+                        let mut tasks = vec![];
+                        let number_get_slot =
+                            (current_root - value_last_indexed_slot).min(BLOCK_BATCH_SIZE);
+                        let block_range =
+                            value_last_indexed_slot..(value_last_indexed_slot + number_get_slot);
+                        for block_slot in block_range {
                             let new_client = client.clone();
-                            let chan_clone = chan.clone();
-                            tokio::spawn(async move {
-                                if let Ok(block) = get_block(new_client, block_height) {
-                                    let generic_data_proto = _create_generic_block(
-                                        block.block.blockhash.clone(),
-                                        block_height,
-                                        &block,
-                                    );
-                                    debug!(
-                                        "Sending SOLANA as generic data: {:?}",
-                                        &generic_data_proto.block_number
-                                    );
-                                    chan_clone.send(generic_data_proto).unwrap();
-                                }
-                            });
+                            let permit = Arc::clone(&sem).acquire_owned().await.unwrap();
+                            tasks.push(tokio::spawn(async move {
+                                let res = timeout(
+                                    Duration::from_secs(GET_BLOCK_TIMEOUT_SEC),
+                                    get_block(new_client, permit, block_slot),
+                                )
+                                .await;
+                                if res.is_err() {
+                                    warn!("get_block timed out at block height {}", &block_slot);
+                                };
+                                info!(
+                                    "Finish tokio::spawn for getting block height: {:?}",
+                                    &block_slot
+                                );
+                                res.unwrap()
+                            }));
                         }
-                        last_indexed_slot = Some(current_root);
+                        let blocks: Vec<Result<_, _>> = futures03::future::join_all(tasks).await;
+                        let mut blocks: Vec<BlockResponse> = blocks
+                            .into_iter()
+                            .filter_map(|res_block| {
+                                if let Ok(Ok(block)) = res_block {
+                                    info!("Got SOLANA block : {:?}", &block.block_number);
+                                    Some(block)
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect();
+                        blocks.sort_by(|a, b| a.block_number.cmp(&b.block_number));
+                        info!("Finished get blocks");
+                        for block in blocks.into_iter() {
+                            let block_number = block.block_number;
+                            debug!("gRPC sending block {}", &block_number);
+                            if !chan.is_closed() {
+                                let send_res = chan.send(Ok(block as BlockResponse)).await;
+                                if send_res.is_ok() {
+                                    info!("gRPC successfully sending block {}", &block_number);
+                                } else {
+                                    warn!("gRPC unsuccessfully sending block {}", &block_number);
+                                }
+                            } else {
+                                return Err("Stream is closed!".into());
+                            }
+                        }
+                        last_indexed_slot = last_indexed_slot
+                            .map(|last_indexed_slot| last_indexed_slot + number_get_slot);
                     }
                     _ => last_indexed_slot = Some(current_root),
                 };
@@ -105,14 +136,19 @@ fn _create_generic_block(block_hash: String, block_number: u64, block: &Block) -
     generic_data
 }
 
-fn get_block(client: Arc<RpcClient>, block_height: u64) -> Result<Block, Box<dyn Error>> {
-    debug!("Starting RPC get Block {}", block_height);
+async fn get_block(
+    client: Arc<RpcClient>,
+    permit: OwnedSemaphorePermit,
+    block_height: u64,
+) -> Result<BlockResponse, Box<dyn Error + Send + Sync + 'static>> {
+    let _permit = permit;
+    info!("Starting RPC get Block {}", block_height);
     let now = Instant::now();
     let block = client.get_block_with_encoding(block_height, RPC_BLOCK_ENCODING);
     let elapsed = now.elapsed();
     match block {
         Ok(block) => {
-            debug!(
+            info!(
                 "Finished RPC get Block: {:?}, time: {:?}, hash: {}",
                 block_height, elapsed, &block.blockhash
             );
@@ -124,10 +160,12 @@ fn get_block(client: Arc<RpcClient>, block_height: u64) -> Result<Block, Box<dyn
                 timestamp,
                 list_log_messages,
             };
-            Ok(ext_block)
+            let generic_data_proto =
+                _create_generic_block(ext_block.block.blockhash.clone(), block_height, &ext_block);
+            Ok(generic_data_proto)
         }
         _ => {
-            debug!(
+            info!(
                 "Cannot get RPC get Block: {:?}, Error:{:?}, time: {:?}",
                 block_height, block, elapsed
             );

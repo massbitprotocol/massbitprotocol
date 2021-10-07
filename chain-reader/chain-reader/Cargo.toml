@@ -115,3 +115,7 @@ tonic-build = "0.5"
 [[bin]] # Bin to run gRPC server
 name = "chain-reader"
 path = "src/chain-reader.rs"
+
+[[bin]] # Bin to run gRPC server
+name = "client"
+path = "example/client.rs"

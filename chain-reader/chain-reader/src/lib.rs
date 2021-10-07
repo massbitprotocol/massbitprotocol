@@ -18,6 +18,7 @@ lazy_static! {
     // Load default config
     static ref SOLANA_WS: String = env::var("SOLANA_WS").unwrap_or(String::from("ws://api.mainnet-beta.solana.com"));
     static ref SOLANA_URL: String = env::var("SOLANA_URL").unwrap_or(String::from("https://solana-api.projectserum.com"));
+    //static ref SOLANA_URL: String = env::var("SOLANA_URL").unwrap_or(String::from("http://194.163.156.242:8899"));
     static ref POLYGON_WS: String = env::var("POLYGON_WS").unwrap_or(String::from("wss://rpc-mainnet.matic.network"));
     static ref POLYGON_URL: String = env::var("POLYGON_URL").unwrap_or(String::from("https://polygon-rpc.com"));
     static ref BSC_WS: String = env::var("BSC_WS").unwrap_or(String::from("wss://bsc-ws-node.nariox.org:443"));
@@ -28,14 +29,14 @@ lazy_static! {
     static ref HAMONY_URL: String = env::var("HAMONY_WS").unwrap_or(String::from("https://a.api.s0.t.hmny.io/"));
     pub static ref CONFIG: Config = Config{
         chains: [
-             ChainConfig{
-                url: "".to_string(),
-                ws: "".to_string(),
-                start_block: None,
-                chain_type: ChainType::Substrate,
-                network: "mainnet".to_string(),
-                supports_eip_1898: true,
-            },
+            //  ChainConfig{
+            //     url: "".to_string(),
+            //     ws: "".to_string(),
+            //     start_block: None,
+            //     chain_type: ChainType::Substrate,
+            //     network: "mainnet".to_string(),
+            //     supports_eip_1898: true,
+            // },
             ChainConfig{
                 ws: SOLANA_WS.to_string(),
                 url: SOLANA_URL.to_string(),

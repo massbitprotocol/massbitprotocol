@@ -1,7 +1,7 @@
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BlocksRequest {
-    #[prost(int64, tag = "1")]
-    pub start_block_number: i64,
+    #[prost(uint64, optional, tag = "1")]
+    pub start_block_number: ::core::option::Option<u64>,
     #[prost(enumeration = "ChainType", tag = "2")]
     pub chain_type: i32,
     #[prost(string, tag = "3")]

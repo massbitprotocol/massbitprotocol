@@ -5,13 +5,17 @@ use crate::CONFIG;
 use chain_ethereum::network::{EthereumNetworkAdapter, EthereumNetworkAdapters, EthereumNetworks};
 use chain_ethereum::{Chain, EthereumAdapter, Transport};
 use graph::semver::Op;
-use log::error;
+use log::{error, info};
 use massbit::firehose::bstream::{stream_server::StreamServer, BlockResponse, ChainType};
 use massbit::firehose::endpoints::FirehoseNetworkEndpoints;
 use massbit::log::logger;
 use massbit::prelude::LoggerFactory;
 use massbit_common::NetworkType;
+use solana_client::pubsub_client::PubsubClient;
+use solana_client::rpc_client::RpcClient;
+use solana_client::rpc_response::SlotInfo;
 use std::collections::HashMap;
+use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 use std::thread::sleep;
 use std::time::Duration;
@@ -86,7 +90,8 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
     // Broadcast Channel
     let mut chans: HashMap<(ChainType, NetworkType), broadcast::Sender<BlockResponse>> =
         HashMap::new();
-    let mut chains: HashMap<(ChainType, NetworkType), Arc<Chain>> = HashMap::new();
+    let mut ethereum_chains: HashMap<(ChainType, NetworkType), Arc<Chain>> = HashMap::new();
+    let mut solana_adaptors: HashMap<NetworkType, Arc<RpcClient>> = HashMap::new();
     // Spawm thread get_data
     for config in CONFIG.chains.clone().into_iter() {
         let chain_type = config.chain_type;
@@ -136,22 +141,30 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
                 //chans.insert((ChainType::Substrate,), chan);
             }
             ChainType::Solana => {
+                // Get Solana adapter
+                let config = CONFIG.get_chain_config(&chain_type, &network).unwrap();
+                let json_rpc_url = config.url.clone();
+                info!("Init Solana client, url: {}", json_rpc_url);
+                info!("Finished init Solana client");
+                let client = Arc::new(RpcClient::new(json_rpc_url.clone()));
+
+                solana_adaptors.insert(network_clone, (client));
+
                 // Spawn task
-                //fix_one_thread_not_receive(&chan_sender);
-                tokio::spawn(async move {
-                    // Todo: add start at save block after restart
-                    let mut count = 1;
-                    loop {
-                        let resp =
-                            solana_chain::loop_get_block(chan_sender.clone(), &network_clone).await;
-                        error!(
-                            "Restart {:?} response {:?}, {} time",
-                            &chain_type, resp, count
-                        );
-                        sleep(Duration::from_secs(1));
-                        count = count + 1;
-                    }
-                });
+                // tokio::spawn(async move {
+                //     // Todo: add start at save block after restart
+                //     let mut count = 1;
+                //     loop {
+                //         let resp =
+                //             solana_chain::loop_get_block(chan_sender.clone(), &network_clone).await;
+                //         error!(
+                //             "Restart {:?} response {:?}, {} time",
+                //             &chain_type, resp, count
+                //         );
+                //         sleep(Duration::from_secs(1));
+                //         count = count + 1;
+                //     }
+                // });
                 // add chan to chans
                 //chans.insert(ChainType::Solana, chan);
             }
@@ -166,7 +179,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
                     },
                     FirehoseNetworkEndpoints { endpoints: vec![] },
                 );
-                chains.insert(
+                ethereum_chains.insert(
                     (ChainType::Ethereum, network_clone.clone()),
                     Arc::new(chain),
                 );
@@ -177,7 +190,11 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
     }
 
     // Run StreamoutServer
-    let stream_service = StreamService { chans, chains };
+    let stream_service = StreamService {
+        chans,
+        ethereum_chains,
+        solana_adaptors,
+    };
 
     let addr = CONFIG.url.parse()?;
     Server::builder()
