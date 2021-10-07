@@ -42,7 +42,7 @@ pub async fn process_ethereum_stream(
     network: Option<NetworkType>,
     block: u64,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
-    let handler_manager = create_ethereum_handler_manager(&network, storage_adapter);
+    let handler_manager = Arc::new(create_ethereum_handler_manager(&network, storage_adapter));
     //Todo: remove this simple connection
     let conn = establish_connection();
     let current_state = get_block_number(
@@ -84,10 +84,14 @@ pub async fn process_ethereum_stream(
                             let block_number = data.block_number as i64;
                             let BlockFinality::Final(light_block) = block.block;
                             let transaction_count = light_block.transactions.len();
-                            match handler_manager.handle_block(light_block) {
-                                Ok(_) => {}
-                                Err(err) => log::error!("{:?}", &err),
-                            };
+                            let handler = handler_manager.clone();
+                            tokio::spawn(async move {
+                                match handler.handle_block(light_block) {
+                                    Ok(_) => {}
+                                    Err(err) => log::error!("{:?}", &err),
+                                };
+                            });
+
                             match diesel::insert_into(network_state::table)
                                 .values((
                                     network_state::chain.eq(CHAIN.clone()),

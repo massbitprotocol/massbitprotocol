@@ -43,7 +43,7 @@ pub async fn process_solana_stream(
         None => Some(String::from(DEFAULT_NETWORK)),
         n @ Some(..) => n,
     };
-    let handler_manager = create_solana_handler_manager(&network, storage_adapter);
+    let handler_manager = Arc::new(create_solana_handler_manager(&network, storage_adapter));
     //Todo: remove this simple connection
     let conn = establish_connection();
     let current_state = get_block_number(
@@ -93,10 +93,13 @@ pub async fn process_solana_stream(
                                 start.elapsed()
                             );
                             let start = Instant::now();
-                            match handler_manager.handle_block(Arc::new(block)) {
-                                Ok(_) => {}
-                                Err(err) => log::error!("{:?}", &err),
-                            };
+                            let handler = handler_manager.clone();
+                            tokio::spawn(async move {
+                                match handler.handle_block(Arc::new(block)) {
+                                    Ok(_) => {}
+                                    Err(err) => log::error!("{:?}", &err),
+                                };
+                            });
                             match diesel::insert_into(network_state::table)
                                 .values((
                                     network_state::chain.eq(CHAIN.clone()),
