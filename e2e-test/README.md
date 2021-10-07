@@ -1,23 +1,44 @@
 # E2E Test for Substrate and Solana template
 
 ## Long tests
-### analytics tests:
-- start ingestor
-- start chain-reader
-- start analytics server
+### Prerequisites
+- start docker-compose.min.yml
   ```shell
-  cargo run --bin analytics -- -c ethereum -n matic -b 15000000
-  cargo run --bin analytics -- -c solana -n mainnet -b 85000000
+  docker-compose -f docker-compose.min.yml up -d
+  ```
+- start chain-reader
+   ```shell
+  tmux new -s chain-reader 
+  RUST_LOG_TYPE=file cargo run --bin chain-reader
   ```
 
+### analytics tests:
+- start analytics server
+  ```shell
+  tmux new -s ethereum-analytics 
+  RUST_LOG=info cargo run --bin analytics -- -c ethereum -n matic -b 15000000
+  tmux new -s solana-analytics 
+  RUST_LOG=info cargo run --bin analytics -- -c solana -n mainnet -b 85000000
+  ```
 
 ### indexer tests
 - Harmony
-  - start docker-compose.min.yml
   - start code-compiler
-  - start chain-reader
-  - start indexer
-  - run harmony e2e test 
+  ```shell
+  cd code-compiler
+  tmux new -s code-compiler
+  python3 app.py
+   ```
+  - start indexer-v2
+  ```
+  tmux new -s indexer-v2
+  cargo run --package manager --bin manager  -- --postgres-url postgresql://graph-node:let-me-in@localhost:5432/graph-node --ethereum-rpc mainnet:no_eip1898,archive,traces:https://a.api.s0.t.hmny.io --ipfs 127.0.0.1:5001 
+  ```
+  - run harmony e2e test
+  ```
+  cd e2e-test/ethereum
+  robot -t "Compile and Deploy WASM Test Harmony" contract.robot
+  ```
 
 
 ## Testing coverage

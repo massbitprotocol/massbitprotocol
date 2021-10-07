@@ -1,7 +1,7 @@
 #################### Init commands #######################
 init-code-compiler:
 	@echo "Installing all the dependencies for Code compiler ..."
-	pip install ipfshttpclient flask flask_cors
+	pip install ipfshttpclient flask flask_cors psycopg2
 
 init-docker:
 	@echo "Installing docker"
