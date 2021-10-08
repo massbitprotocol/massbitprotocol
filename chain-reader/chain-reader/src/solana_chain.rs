@@ -3,13 +3,14 @@ use log::{debug, info, warn};
 use massbit::firehose::bstream::{BlockResponse, ChainType};
 use massbit::prelude::tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use massbit_chain_solana::data_type::{
-    get_list_log_messages_from_encoded_block, SolanaEncodedBlock as Block,
+    decode_encoded_block, get_list_log_messages_from_encoded_block, SolanaBlock as Block,
+    SolanaFilter,
 };
 use massbit_common::prelude::tokio::time::{sleep, timeout, Duration};
 use massbit_common::NetworkType;
 use solana_client::rpc_response::SlotInfo;
 use solana_client::{pubsub_client::PubsubClient, rpc_client::RpcClient};
-use solana_transaction_status::UiTransactionEncoding;
+use solana_transaction_status::{EncodedConfirmedBlock, UiTransactionEncoding};
 use std::error::Error;
 use std::{
     sync::{
@@ -34,6 +35,7 @@ pub async fn loop_get_block(
     start_block: &Option<u64>,
     network: &NetworkType,
     client: &Arc<RpcClient>,
+    filter: &SolanaFilter,
 ) -> Result<(), Box<dyn Error>> {
     info!("Start get block Solana from: {:?}", start_block);
     let config = CONFIG.get_chain_config(&CHAIN_TYPE, &network).unwrap();
@@ -43,6 +45,9 @@ pub async fn loop_get_block(
     //fix_one_thread_not_receive(&chan);
     let sem = Arc::new(Semaphore::new(2 * BLOCK_BATCH_SIZE as usize));
     loop {
+        if chan.is_closed() {
+            return Err("Stream is closed!".into());
+        }
         match receiver.recv() {
             Ok(new_info) => {
                 // Root is finalized block in Solana
@@ -87,8 +92,21 @@ pub async fn loop_get_block(
                             .into_iter()
                             .filter_map(|res_block| {
                                 if let Ok(Ok(block)) = res_block {
-                                    info!("Got SOLANA block : {:?}", &block.block_number);
-                                    Some(block)
+                                    info!(
+                                        "Got SOLANA block at slot : {:?}",
+                                        &block.parent_slot + 1
+                                    );
+                                    let decode_block = decode_encoded_block(block);
+                                    let filtered_block = filter.filter_block(decode_block);
+                                    if filtered_block.transactions.is_empty() {
+                                        println!(
+                                            "Block slot {} has no match Transaction",
+                                            filtered_block.parent_slot + 1
+                                        );
+                                        None
+                                    } else {
+                                        Some(_to_generic_block(filtered_block))
+                                    }
                                 } else {
                                     None
                                 }
@@ -136,11 +154,28 @@ fn _create_generic_block(block_hash: String, block_number: u64, block: &Block) -
     generic_data
 }
 
+fn _to_generic_block(block: solana_transaction_status::ConfirmedBlock) -> BlockResponse {
+    let timestamp = (&block).block_time.unwrap();
+    let list_log_messages = get_list_log_messages_from_encoded_block(&block);
+    let ext_block = Block {
+        version: VERSION.to_string(),
+        block,
+        timestamp,
+        list_log_messages,
+    };
+    let generic_data_proto = _create_generic_block(
+        ext_block.block.blockhash.clone(),
+        &ext_block.block.parent_slot + 1,
+        &ext_block,
+    );
+    generic_data_proto
+}
+
 async fn get_block(
     client: Arc<RpcClient>,
     permit: OwnedSemaphorePermit,
     block_height: u64,
-) -> Result<BlockResponse, Box<dyn Error + Send + Sync + 'static>> {
+) -> Result<EncodedConfirmedBlock, Box<dyn Error + Send + Sync + 'static>> {
     let _permit = permit;
     info!("Starting RPC get Block {}", block_height);
     let now = Instant::now();
@@ -152,17 +187,7 @@ async fn get_block(
                 "Finished RPC get Block: {:?}, time: {:?}, hash: {}",
                 block_height, elapsed, &block.blockhash
             );
-            let timestamp = (&block).block_time.unwrap();
-            let list_log_messages = get_list_log_messages_from_encoded_block(&block);
-            let ext_block = Block {
-                version: VERSION.to_string(),
-                block,
-                timestamp,
-                list_log_messages,
-            };
-            let generic_data_proto =
-                _create_generic_block(ext_block.block.blockhash.clone(), block_height, &ext_block);
-            Ok(generic_data_proto)
+            Ok(block)
         }
         _ => {
             info!(

@@ -9,8 +9,8 @@ use massbit::firehose::bstream::{
 };
 use massbit_chain_ethereum::data_type::{decode as ethereum_decode, get_events, EthereumBlock};
 use massbit_chain_solana::data_type::{
-    convert_solana_encoded_block_to_solana_block, decode as solana_decode, SolanaEncodedBlock,
-    SolanaLogMessages, SolanaTransaction,
+    convert_solana_encoded_block_to_solana_block, decode as solana_decode, Pubkey, SolanaBlock,
+    SolanaEncodedBlock, SolanaFilter, SolanaLogMessages, SolanaTransaction,
 };
 use massbit_chain_substrate::data_type::{SubstrateBlock, SubstrateEventRecord};
 
@@ -40,6 +40,8 @@ use tonic::{
 
 const URL: &str = "http://127.0.0.1:50051";
 const MAX_COUNT: i32 = 3;
+const SABER_STABLE_SWAP_PROGRAM: &str = "SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ";
+const SABER_ROUTER_PROGRAM: &str = "Crt7UoUR6QgrFrN7j8rmSQpUTNWNSitSwWvsWGf1qZ5t";
 
 pub async fn print_blocks(
     mut client: StreamClient<Channel>,
@@ -49,8 +51,10 @@ pub async fn print_blocks(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     // Debug
     let mut count = 0;
-    let filter =
-        <chain_ethereum::Chain as Blockchain>::TriggerFilter::from_data_sources(vec![].iter());
+    let filter = SolanaFilter::new(vec![
+        SABER_STABLE_SWAP_PROGRAM,
+        // SABER_ROUTER_PROGRAM,
+    ]);
     let encoded_filter = serde_json::to_vec(&filter).unwrap();
     // Not use start_block_number start_block_number yet
     let get_blocks_request = BlocksRequest {
@@ -101,42 +105,47 @@ pub async fn print_blocks(
             }
             ChainType::Solana => {
                 let now = Instant::now();
-                let encoded_block: SolanaEncodedBlock = solana_decode(&mut data.payload).unwrap();
+                let block: SolanaBlock = solana_decode(&mut data.payload).unwrap();
                 // Decode
-                let block = convert_solana_encoded_block_to_solana_block(encoded_block);
+                //let block = convert_solana_encoded_block_to_solana_block(encoded_block);
                 let mut print_flag = true;
                 info!(
                     "Recieved SOLANA {} TRANSACTIONS in Block height: {:?}",
                     &block.block.transactions.len(),
                     block.block.block_height
                 );
-                for origin_transaction in block.clone().block.transactions {
-                    let log_messages = origin_transaction
-                        .clone()
-                        .meta
-                        .unwrap()
-                        .log_messages
-                        .clone();
-                    let transaction = SolanaTransaction {
-                        block_number: ((&block).block.block_height.unwrap() as u32),
-                        transaction: origin_transaction.clone(),
-                        log_messages: log_messages.clone(),
-                        success: false,
-                    };
-                    let log_messages = SolanaLogMessages {
-                        block_number: ((&block).block.block_height.unwrap() as u32),
-                        log_messages: log_messages.clone(),
-                        transaction: origin_transaction.clone(),
-                    };
+                info!(
+                    "Recieved SOLANA TRANSACTIONS details: {:#?}",
+                    &block.block.transactions,
+                );
 
-                    // Print first data only bc it too many.
-                    if print_flag {
-                        debug!("Recieved SOLANA TRANSACTION with Block number: {:?}, trainsation: {:?}", &transaction.block_number, &transaction.transaction.transaction.signatures);
-                        debug!("Recieved SOLANA {} LOG_MESSAGES in first transaction with Block number: {:?}, log_message: {:?}", &log_messages.log_messages.clone().unwrap_or(vec![]).len(), &log_messages.block_number, &log_messages.log_messages.unwrap().get(0));
-
-                        print_flag = false;
-                    }
-                }
+                // for origin_transaction in block.clone().block.transactions {
+                //     let log_messages = origin_transaction
+                //         .clone()
+                //         .meta
+                //         .unwrap()
+                //         .log_messages
+                //         .clone();
+                //     let transaction = SolanaTransaction {
+                //         block_number: ((&block).block.block_height.unwrap() as u32),
+                //         transaction: origin_transaction.clone(),
+                //         log_messages: log_messages.clone(),
+                //         success: false,
+                //     };
+                //     let log_messages = SolanaLogMessages {
+                //         block_number: ((&block).block.block_height.unwrap() as u32),
+                //         log_messages: log_messages.clone(),
+                //         transaction: origin_transaction.clone(),
+                //     };
+                //
+                //     // Print first data only bc it too many.
+                //     if print_flag {
+                //         debug!("Recieved SOLANA TRANSACTION with Block number: {:?}, trainsation: {:?}", &transaction.block_number, &transaction.transaction.transaction.signatures);
+                //         debug!("Recieved SOLANA {} LOG_MESSAGES in first transaction with Block number: {:?}, log_message: {:?}", &log_messages.log_messages.clone().unwrap_or(vec![]).len(), &log_messages.block_number, &log_messages.log_messages.unwrap().get(0));
+                //
+                //         print_flag = false;
+                //     }
+                // }
                 let elapsed = now.elapsed();
                 debug!("Elapsed processing solana block: {:.2?}", elapsed);
             }

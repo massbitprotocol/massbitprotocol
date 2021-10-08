@@ -4,6 +4,7 @@ use chain_ethereum::{Chain, EthereumAdapter, Transport, TriggerFilter};
 use log::{error, info};
 use massbit::firehose::bstream::{stream_server::Stream, BlockResponse, BlocksRequest, ChainType};
 use massbit::prelude::Debug;
+use massbit_chain_solana::data_type::SolanaFilter;
 use massbit_common::NetworkType;
 use solana_client::rpc_response::SlotInfo;
 use solana_client::{pubsub_client::PubsubClient, rpc_client::RpcClient};
@@ -73,10 +74,14 @@ impl Stream for StreamService {
                 });
             }
             ChainType::Solana => {
-                // Spawn task
+                // Decode filter
+                let filter: SolanaFilter =
+                    serde_json::from_slice(&encoded_filter).unwrap_or_default();
+
                 let client = self.solana_adaptors.get(&network).unwrap().clone();
                 let name = "deployment_solana".to_string();
 
+                // Spawn task
                 massbit::spawn_thread(name, move || {
                     massbit::block_on(task::unconstrained(async {
                         // Todo: add start at save block after restart
@@ -85,6 +90,7 @@ impl Stream for StreamService {
                             &start_block,
                             &network,
                             &client,
+                            &filter,
                         )
                         .await;
                         error!("Restart {:?} response {:?}", &chain_type, resp);
