@@ -74,6 +74,16 @@ package = "solana-program"
 git = "https://github.com/massbitprotocol/solana.git"
 branch = "main"
 
+[dependencies.solana-sdk]
+package = "solana-sdk"
+git = "https://github.com/massbitprotocol/solana.git"
+branch = "main"
+
+[dependencies.solana_account_decoder]
+package = "solana-account-decoder"
+git = "https://github.com/massbitprotocol/solana.git"
+branch = "main"
+
 [build-dependencies]
 tonic-build = "0.5"
 

@@ -4,15 +4,61 @@ use crate::storage_adapter::StorageAdapter;
 use crate::{create_columns, create_entity};
 use graph::data::store::scalar::Bytes;
 use graph::prelude::{Attribute, Entity, Value};
-use massbit_chain_solana::data_type::SolanaBlock;
+use inflector::Inflector;
+use massbit::prelude::lazy_static;
+use massbit_chain_solana::data_type::{Pubkey, SolanaBlock};
 use massbit_common::prelude::bs58;
 use massbit_common::NetworkType;
+use solana_account_decoder::parse_token::spl_token_id_v2_0;
 use solana_program::instruction::CompiledInstruction;
-use solana_transaction_status::parse_instruction::ParsedInstruction;
-use solana_transaction_status::{parse_instruction, ConfirmedBlock, TransactionWithStatusMeta};
-use std::collections::HashMap;
-use std::sync::Arc;
+use solana_sdk::{stake, system_program};
+use solana_transaction_status::{
+    extract_memos::{spl_memo_id_v1, spl_memo_id_v3},
+    parse_associated_token::{parse_associated_token, spl_associated_token_id_v1_0},
+    parse_bpf_loader::{parse_bpf_loader, parse_bpf_upgradeable_loader},
+    parse_instruction::{self, ParseInstructionError, ParsedInstruction},
+    parse_stake::parse_stake,
+    parse_system::parse_system,
+    parse_token::parse_token,
+    parse_vote::parse_vote,
+    ConfirmedBlock, TransactionWithStatusMeta,
+};
+use std::{
+    collections::HashMap,
+    str::{from_utf8, Utf8Error},
+    sync::Arc,
+};
 
+lazy_static! {
+    static ref ASSOCIATED_TOKEN_PROGRAM_ID: Pubkey = spl_associated_token_id_v1_0();
+    static ref BPF_LOADER_PROGRAM_ID: Pubkey = solana_sdk::bpf_loader::id();
+    static ref BPF_UPGRADEABLE_LOADER_PROGRAM_ID: Pubkey = solana_sdk::bpf_loader_upgradeable::id();
+    static ref MEMO_V1_PROGRAM_ID: Pubkey = spl_memo_id_v1();
+    static ref MEMO_V3_PROGRAM_ID: Pubkey = spl_memo_id_v3();
+    static ref STAKE_PROGRAM_ID: Pubkey = stake::program::id();
+    static ref SYSTEM_PROGRAM_ID: Pubkey = system_program::id();
+    static ref TOKEN_PROGRAM_ID: Pubkey = spl_token_id_v2_0();
+    static ref VOTE_PROGRAM_ID: Pubkey = solana_vote_program::id();
+    static ref PARSABLE_PROGRAM_IDS: HashMap<Pubkey, ParsableProgram> = {
+        let mut m = HashMap::new();
+        m.insert(
+            *ASSOCIATED_TOKEN_PROGRAM_ID,
+            ParsableProgram::SplAssociatedTokenAccount,
+        );
+        m.insert(*MEMO_V1_PROGRAM_ID, ParsableProgram::SplMemo);
+        m.insert(*MEMO_V3_PROGRAM_ID, ParsableProgram::SplMemo);
+        m.insert(*TOKEN_PROGRAM_ID, ParsableProgram::SplToken);
+        m.insert(*BPF_LOADER_PROGRAM_ID, ParsableProgram::BpfLoader);
+        m.insert(
+            *BPF_UPGRADEABLE_LOADER_PROGRAM_ID,
+            ParsableProgram::BpfUpgradeableLoader,
+        );
+        m.insert(*STAKE_PROGRAM_ID, ParsableProgram::Stake);
+        m.insert(*SYSTEM_PROGRAM_ID, ParsableProgram::System);
+        m.insert(*VOTE_PROGRAM_ID, ParsableProgram::Vote);
+        m
+    };
+}
 pub struct SolanaInstructionHandler {
     pub network: Option<NetworkType>,
     pub storage_adapter: Arc<dyn StorageAdapter>,
@@ -30,7 +76,7 @@ impl SolanaInstructionHandler {
 impl SolanaHandler for SolanaInstructionHandler {
     fn handle_block(&self, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
         let table = Table::new("solana_instructions", Some("t"));
-        let columns = create_columns();
+        let columns = create_unparsed_instruction_columns();
         let mut parsed_entities: HashMap<InstructionKey, Vec<Entity>> = HashMap::default();
         let mut unparsed_entities = Vec::default();
         for tran in &block.block.transactions {
@@ -40,6 +86,14 @@ impl SolanaHandler for SolanaInstructionHandler {
             //create_inner_instructions(&block.block, tran);
         }
         println!("{:?}", &parsed_entities);
+        for (key, entities) in parsed_entities.iter() {
+            let adapter = self.storage_adapter.clone();
+            tokio::spawn(async move {
+                let table = key.create_table();
+                let columns = key.create_columns();
+                adapter.upsert(&table, &columns, entities, &None);
+            });
+        }
         if unparsed_entities.len() > 0 {
             self.storage_adapter
                 .upsert(&table, &columns, &unparsed_entities, &None)
@@ -63,7 +117,15 @@ impl From<&ParsedInstruction> for InstructionKey {
         }
     }
 }
-fn create_columns() -> Vec<Column> {
+impl InstructionKey {
+    pub fn create_table(&self) -> Table {
+        todo!()
+    }
+    pub fn create_column(&self) -> Vec<Column> {
+        todo!()
+    }
+}
+fn create_unparsed_instruction_columns() -> Vec<Column> {
     create_columns!(
         "block_hash" => ColumnType::String,
         "tx_hash" => ColumnType::String,
@@ -104,7 +166,7 @@ fn create_instructions(
             Ok(parsed_inst) => {
                 let key = InstructionKey::from(&parsed_inst);
                 if let Some(entity) = create_parsed_entity(
-                    block.blockhash.clone(),
+                    program_key,
                     tx_hash.clone(),
                     timestamp,
                     ind as i32,
@@ -136,20 +198,22 @@ fn create_instructions(
     (parsed_instrucions, unparsed_instruactions)
 }
 fn create_parsed_entity(
-    block_hash: String,
+    program_id: &Pubkey,
     tx_hash: String,
     block_time: u64,
     inst_order: i32,
     inst: &ParsedInstruction,
-) -> Option<Entity> {
-    match inst.program.as_str() {
-        "system" => create_system_entity(block_hash, tx_hash, block_time, inst_order, inst),
-        "vote" => create_vote_entity(block_hash, tx_hash, block_time, inst_order, inst),
+) -> Result<Option<Entity>, ParseInstructionError> {
+    let program_name = PARSABLE_PROGRAM_IDS
+        .get(program_id)
+        .ok_or(ParseInstructionError::ProgramNotParsable)?;
+    match program_name {
+        "system" => Ok(create_system_entity(tx_hash, block_time, inst_order, inst)),
+        "vote" => Ok(create_vote_entity(tx_hash, block_time, inst_order, inst)),
         _ => None,
     }
 }
 fn create_system_entity(
-    block_hash: String,
     tx_hash: String,
     block_time: u64,
     inst_order: i32,
@@ -161,20 +225,20 @@ fn create_system_entity(
                 "tx_hash" => tx_hash,
                 "block_time" => block_time,
                 "inst_order" => inst_order,
-                "source" => inst.parsed["source"].as_str().unwrap_or(""),
-                "new_account" => inst.parsed["newAccount"].as_str().unwrap_or(""),
-                "lamports" => inst.parsed["lamports"].as_u64().unwrap_or_default(),
-                "space" => inst.parsed["space"].as_u64().unwrap_or_default(),
-                "owner" => inst.parsed["owner"].as_str().unwrap_or("")
+                "source" => inst.parsed["info"]["source"].as_str().unwrap_or(""),
+                "new_account" => inst.parsed["info"]["newAccount"].as_str().unwrap_or(""),
+                "lamports" => inst.parsed["info"]["lamports"].as_u64().unwrap_or_default(),
+                "space" => inst.parsed["info"]["space"].as_u64().unwrap_or_default(),
+                "owner" => inst.parsed["info"]["owner"].as_str().unwrap_or("")
             );
             if Some("createAccountWithSeed") == a {
                 entity.insert(
                     Attribute::from("base"),
-                    Value::from(inst.parsed["base"].as_str().unwrap_or_default()),
+                    Value::from(inst.parsed["info"]["base"].as_str().unwrap_or_default()),
                 );
                 entity.insert(
                     Attribute::from("seed"),
-                    Value::from(inst.parsed["seed"].as_str().unwrap_or_default()),
+                    Value::from(inst.parsed["info"]["seed"].as_str().unwrap_or_default()),
                 );
             }
             Some(entity)
@@ -184,17 +248,17 @@ fn create_system_entity(
                 "tx_hash" => tx_hash,
                 "block_time" => block_time,
                 "inst_order" => inst_order,
-                "account" => inst.parsed["account"].as_str().unwrap_or(""),
-                "owner" => inst.parsed["owner"].as_str().unwrap_or("")
+                "account" => inst.parsed["info"]["account"].as_str().unwrap_or(""),
+                "owner" => inst.parsed["info"]["owner"].as_str().unwrap_or("")
             );
             if Some("assignWithSeed") == a {
                 entity.insert(
                     Attribute::from("base"),
-                    Value::from(inst.parsed["base"].as_str().unwrap_or_default()),
+                    Value::from(inst.parsed["info"]["base"].as_str().unwrap_or_default()),
                 );
                 entity.insert(
                     Attribute::from("seed"),
-                    Value::from(inst.parsed["seed"].as_str().unwrap_or_default()),
+                    Value::from(inst.parsed["info"]["seed"].as_str().unwrap_or_default()),
                 );
             }
             Some(entity)
@@ -204,22 +268,34 @@ fn create_system_entity(
                 "tx_hash" => tx_hash,
                 "block_time" => block_time,
                 "inst_order" => inst_order,
-                "source" => inst.parsed["source"].as_str().unwrap_or(""),
-                "destination" => inst.parsed["destination"].as_str().unwrap_or(""),
-                "lamports" => inst.parsed["lamports"].as_u64().unwrap_or_default()
+                "source" => inst.parsed["info"]["source"].as_str().unwrap_or(""),
+                "destination" => inst.parsed["info"]["destination"].as_str().unwrap_or(""),
+                "lamports" => inst.parsed["info"]["lamports"].as_u64().unwrap_or_default()
             );
             if Some("transferWithSeed") == a {
                 entity.insert(
                     Attribute::from("source_base"),
-                    Value::from(inst.parsed["sourceBase"].as_str().unwrap_or_default()),
+                    Value::from(
+                        inst.parsed["info"]["sourceBase"]
+                            .as_str()
+                            .unwrap_or_default(),
+                    ),
                 );
                 entity.insert(
                     Attribute::from("source_seed"),
-                    Value::from(inst.parsed["sourceSeed"].as_str().unwrap_or_default()),
+                    Value::from(
+                        inst.parsed["info"]["sourceSeed"]
+                            .as_str()
+                            .unwrap_or_default(),
+                    ),
                 );
                 entity.insert(
                     Attribute::from("source_owner"),
-                    Value::from(inst.parsed["sourceOwner"].as_str().unwrap_or_default()),
+                    Value::from(
+                        inst.parsed["info"]["sourceOwner"]
+                            .as_str()
+                            .unwrap_or_default(),
+                    ),
                 );
             }
             Some(entity)
@@ -229,21 +305,21 @@ fn create_system_entity(
                 "tx_hash" => tx_hash,
                 "block_time" => block_time,
                 "inst_order" => inst_order,
-                "account" => inst.parsed["account"].as_str().unwrap_or(""),
-                "space" => inst.parsed["space"].as_u64().unwrap_or_default()
+                "account" => inst.parsed["info"]["account"].as_str().unwrap_or(""),
+                "space" => inst.parsed["info"]["space"].as_u64().unwrap_or_default()
             );
             if Some("allocateWithSeed") == a {
                 entity.insert(
                     Attribute::from("base"),
-                    Value::from(inst.parsed["base"].as_str().unwrap_or_default()),
+                    Value::from(inst.parsed["info"]["base"].as_str().unwrap_or_default()),
                 );
                 entity.insert(
                     Attribute::from("seed"),
-                    Value::from(inst.parsed["seed"].as_str().unwrap_or_default()),
+                    Value::from(inst.parsed["info"]["seed"].as_str().unwrap_or_default()),
                 );
                 entity.insert(
                     Attribute::from("owner"),
-                    Value::from(inst.parsed["owner"].as_str().unwrap_or_default()),
+                    Value::from(inst.parsed["info"]["owner"].as_str().unwrap_or_default()),
                 );
             }
             Some(entity)
@@ -252,43 +328,42 @@ fn create_system_entity(
             "tx_hash" => tx_hash,
             "block_time" => block_time,
             "inst_order" => inst_order,
-            "nonce_account" => inst.parsed["nonceAccount"].as_str().unwrap_or(""),
-            "recent_block_hashes_sysvar" => inst.parsed["recentBlockhashesSysvar"].as_str().unwrap_or(""),
-            "nonce_authority" => inst.parsed["nonceAuthority"].as_str().unwrap_or("")
+            "nonce_account" => inst.parsed["info"]["nonceAccount"].as_str().unwrap_or(""),
+            "recent_block_hashes_sysvar" => inst.parsed["info"]["recentBlockhashesSysvar"].as_str().unwrap_or(""),
+            "nonce_authority" => inst.parsed["info"]["nonceAuthority"].as_str().unwrap_or("")
         )),
         Some("withdrawFromNonce") => Some(create_entity!(
             "tx_hash" => tx_hash,
             "block_time" => block_time,
             "inst_order" => inst_order,
-            "nonce_account" => inst.parsed["nonceAccount"].as_str().unwrap_or(""),
-            "destination" => inst.parsed["destination"].as_str().unwrap_or(""),
-            "recent_block_hashes_sysvar" => inst.parsed["recentBlockhashesSysvar"].as_str().unwrap_or(""),
-            "rent_sysvar" => inst.parsed["rentSysvar"].as_str().unwrap_or(""),
-            "nonce_authority" => inst.parsed["nonceAuthority"].as_str().unwrap_or(""),
-            "lamports" => inst.parsed["lamports"].as_u64().unwrap_or_default()
+            "nonce_account" => inst.parsed["info"]["nonceAccount"].as_str().unwrap_or(""),
+            "destination" => inst.parsed["info"]["destination"].as_str().unwrap_or(""),
+            "recent_block_hashes_sysvar" => inst.parsed["info"]["recentBlockhashesSysvar"].as_str().unwrap_or(""),
+            "rent_sysvar" => inst.parsed["info"]["rentSysvar"].as_str().unwrap_or(""),
+            "nonce_authority" => inst.parsed["info"]["nonceAuthority"].as_str().unwrap_or(""),
+            "lamports" => inst.parsed["info"]["lamports"].as_u64().unwrap_or_default()
         )),
         Some("initializeNonce") => Some(create_entity!(
             "tx_hash" => tx_hash,
             "block_time" => block_time,
             "inst_order" => inst_order,
-            "nonce_account" => inst.parsed["nonceAccount"].as_str().unwrap_or(""),
-            "recent_block_hashes_sysvar" => inst.parsed["recentBlockhashesSysvar"].as_str().unwrap_or(""),
-            "rent_sysvar" => inst.parsed["rentSysvar"].as_str().unwrap_or(""),
-            "nonce_authority" => inst.parsed["nonceAuthority"].as_str().unwrap_or("")
+            "nonce_account" => inst.parsed["info"]["nonceAccount"].as_str().unwrap_or(""),
+            "recent_block_hashes_sysvar" => inst.parsed["info"]["recentBlockhashesSysvar"].as_str().unwrap_or(""),
+            "rent_sysvar" => inst.parsed["info"]["rentSysvar"].as_str().unwrap_or(""),
+            "nonce_authority" => inst.parsed["info"]["nonceAuthority"].as_str().unwrap_or("")
         )),
         Some("authorizeNonce") => Some(create_entity!(
             "tx_hash" => tx_hash,
             "block_time" => block_time,
             "inst_order" => inst_order,
-            "nonce_account" => inst.parsed["nonceAccount"].as_str().unwrap_or(""),
-            "nonce_authority" => inst.parsed["nonceAuthority"].as_str().unwrap_or(""),
-            "new_authorized" => inst.parsed["newAuthorized"].as_str().unwrap_or("")
+            "nonce_account" => inst.parsed["info"]["nonceAccount"].as_str().unwrap_or(""),
+            "nonce_authority" => inst.parsed["info"]["nonceAuthority"].as_str().unwrap_or(""),
+            "new_authorized" => inst.parsed["info"]["newAuthorized"].as_str().unwrap_or("")
         )),
         _ => None,
     }
 }
 fn create_vote_entity(
-    block_hash: String,
     tx_hash: String,
     block_time: u64,
     inst_order: i32,
