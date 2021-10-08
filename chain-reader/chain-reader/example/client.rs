@@ -105,6 +105,11 @@ pub async fn print_blocks(
                 // Decode
                 let block = convert_solana_encoded_block_to_solana_block(encoded_block);
                 let mut print_flag = true;
+                info!(
+                    "Recieved SOLANA {} TRANSACTIONS in Block height: {:?}",
+                    &block.block.transactions.len(),
+                    block.block.block_height
+                );
                 for origin_transaction in block.clone().block.transactions {
                     let log_messages = origin_transaction
                         .clone()
@@ -126,8 +131,8 @@ pub async fn print_blocks(
 
                     // Print first data only bc it too many.
                     if print_flag {
-                        info!("Recieved SOLANA TRANSACTION with Block number: {:?}, trainsation: {:?}", &transaction.block_number, &transaction.transaction.transaction.signatures);
-                        info!("Recieved SOLANA LOG_MESSAGES with Block number: {:?}, log_messages: {:?}", &log_messages.block_number, &log_messages.log_messages.unwrap().get(0));
+                        debug!("Recieved SOLANA TRANSACTION with Block number: {:?}, trainsation: {:?}", &transaction.block_number, &transaction.transaction.transaction.signatures);
+                        debug!("Recieved SOLANA {} LOG_MESSAGES in first transaction with Block number: {:?}, log_message: {:?}", &log_messages.log_messages.clone().unwrap_or(vec![]).len(), &log_messages.block_number, &log_messages.log_messages.unwrap().get(0));
 
                         print_flag = false;
                     }
