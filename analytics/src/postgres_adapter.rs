@@ -8,7 +8,7 @@ use crate::models::CommandData;
 use crate::postgres_queries::{UpsertConflictFragment, UpsertQuery};
 use crate::relational::Table;
 use core::ops::Deref;
-use graph::prelude::Entity;
+use massbit::prelude::Entity;
 use std::time::Instant;
 
 const MAX_POOL_SIZE: u32 = 10;

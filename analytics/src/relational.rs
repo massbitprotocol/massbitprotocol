@@ -1,7 +1,6 @@
-use graph::data::schema::FulltextConfig;
-use graph::prelude::s::EnumType;
-use graph::prelude::StoreError;
 use inflector::Inflector;
+use massbit::prelude::s::EnumType;
+use massbit::prelude::StoreError;
 use std::fmt;
 
 /// A string we use as a SQL name for a table or column. The important thing
@@ -101,7 +100,7 @@ pub enum ColumnType {
     String,
     Varchar,
     TextArray,
-    TSVector(FulltextConfig),
+    //TSVector(FulltextConfig),
     Enum(EnumType),
     /// A `bytea` in SQL, represented as a ValueType::String; this is
     /// used for `id` columns of type `Bytes`
@@ -119,7 +118,7 @@ impl ColumnType {
             ColumnType::String => "text",
             ColumnType::Varchar => "varchar",
             ColumnType::TextArray => "text[]",
-            ColumnType::TSVector(_) => "tsvector",
+            //ColumnType::TSVector(_) => "tsvector",
             ColumnType::Enum(enum_type) => enum_type.name.as_str(),
             ColumnType::BytesId => "bytea",
         }

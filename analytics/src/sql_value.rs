@@ -1,11 +1,11 @@
 use diesel::pg::Pg;
 use diesel::serialize::{self, Output, ToSql};
 use diesel::sql_types::{Binary, Bool, Integer, Text};
-use graph::prelude::anyhow::anyhow;
+use massbit::prelude::anyhow::anyhow;
 use std::io::Write;
 use std::str::FromStr;
 
-use graph::data::store::{scalar, Value};
+use massbit::data::store::{scalar, Value};
 
 #[derive(Clone, Debug, PartialEq, AsExpression)]
 pub struct SqlValue(Value);

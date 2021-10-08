@@ -1,9 +1,8 @@
 use crate::ethereum::handler::EthereumHandler;
 use crate::storage_adapter::StorageAdapter;
-use graph::prelude::bigdecimal::{BigDecimal, FromPrimitive};
-use graph::prelude::chrono;
-use graph::prelude::chrono::Utc;
-use graph::prelude::{Attribute, BigDecimal as BigDecimalValue, BigInt, Entity, Value};
+use chrono::Utc;
+use massbit::prelude::bigdecimal::{BigDecimal, FromPrimitive};
+use massbit::prelude::{Attribute, BigDecimal as BigDecimalValue, BigInt, Entity, Value};
 use massbit_common::NetworkType;
 use std::sync::Arc;
 use std::time::Duration;

@@ -1,7 +1,7 @@
 use crate::models::CommandData;
 use crate::postgres_queries::UpsertConflictFragment;
 use crate::relational::Table;
-use graph::prelude::{Entity, Value};
+use massbit::prelude::{Entity, Value};
 use std::collections::HashMap;
 
 pub trait StorageAdapter: Sync + Send {

@@ -2,7 +2,7 @@ use crate::relational::{Column, ColumnType, Table};
 use crate::solana::handler::SolanaHandler;
 use crate::storage_adapter::StorageAdapter;
 use crate::{create_columns, create_entity};
-use graph::prelude::{Attribute, Entity, Value};
+use massbit::prelude::{Attribute, Entity, Value};
 use massbit_chain_solana::data_type::SolanaBlock;
 use massbit_common::NetworkType;
 use solana_transaction_status::{ConfirmedBlock, RewardType};

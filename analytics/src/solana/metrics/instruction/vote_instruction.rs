@@ -1,4 +1,4 @@
-use graph::prelude::Entity;
+use massbit::prelude::Entity;
 use solana_transaction_status::parse_instruction::ParsedInstruction;
 
 //[WIP]

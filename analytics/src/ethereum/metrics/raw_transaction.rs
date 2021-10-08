@@ -1,8 +1,8 @@
 use crate::ethereum::handler::EthereumHandler;
 use crate::relational::{Column, ColumnType, Table};
 use crate::storage_adapter::StorageAdapter;
-use graph::prelude::web3::types::Transaction;
-use graph::prelude::{Attribute, Entity, Value};
+use massbit::prelude::web3::types::Transaction;
+use massbit::prelude::{Attribute, Entity, Value};
 use massbit_common::NetworkType;
 use std::collections::HashMap;
 use std::sync::Arc;

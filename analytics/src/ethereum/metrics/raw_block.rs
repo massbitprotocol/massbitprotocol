@@ -2,7 +2,7 @@ use crate::ethereum::handler::EthereumHandler;
 use crate::relational::{Column, ColumnType, Table};
 use crate::storage_adapter::StorageAdapter;
 use crate::{create_columns, create_entity};
-use graph::prelude::{Attribute, Entity, Value};
+use massbit::prelude::{Attribute, Entity, Value};
 use massbit_chain_ethereum::data_type::LightEthereumBlock;
 use massbit_common::NetworkType;
 use std::collections::HashMap;

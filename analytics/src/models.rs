@@ -1,7 +1,7 @@
 use crate::postgres_queries::UpsertConflictFragment;
 use crate::relational::Table;
 use crate::schema::*;
-use graph::prelude::Entity;
+use massbit::prelude::Entity;
 
 #[derive(Debug, Clone, Insertable, Queryable)]
 #[table_name = "network_state"]

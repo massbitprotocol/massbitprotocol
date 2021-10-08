@@ -2,9 +2,9 @@ use crate::models::CommandData;
 use crate::relational::{ColumnType, Table};
 use crate::sql_value::SqlValue;
 use core::str::FromStr;
-use graph::components::store::StoreError;
-use graph::data::store::scalar;
-use graph::prelude::{Entity, Value};
+use massbit::components::store::StoreError;
+use massbit::data::store::scalar;
+use massbit::prelude::{Entity, Value};
 use massbit_common::prelude::diesel::pg::Pg;
 use massbit_common::prelude::diesel::query_builder::{AstPass, QueryFragment, QueryId};
 use massbit_common::prelude::diesel::result::Error as DieselError;
@@ -197,12 +197,12 @@ impl<'a> QueryFragment<Pg> for QueryValue<'a> {
                     out.push_sql(enum_type.name.as_str());
                     Ok(())
                 }
-                ColumnType::TSVector(_) => {
-                    out.push_sql("to_tsquery(");
-                    out.push_bind_param::<Text, _>(s)?;
-                    out.push_sql(")");
-                    Ok(())
-                }
+                // ColumnType::TSVector(_) => {
+                //     out.push_sql("to_tsquery(");
+                //     out.push_bind_param::<Text, _>(s)?;
+                //     out.push_sql(")");
+                //     Ok(())
+                // }
                 ColumnType::Bytes | ColumnType::BytesId => {
                     let bytes = scalar::Bytes::from_str(&s)
                         .map_err(|e| DieselError::SerializationError(Box::new(e)))?;
@@ -242,27 +242,27 @@ impl<'a> QueryFragment<Pg> for QueryValue<'a> {
                         Ok(())
                     }
                     // TSVector will only be in a Value::List() for inserts so "to_tsvector" can always be used here
-                    ColumnType::TSVector(config) => {
-                        if sql_values.is_empty() {
-                            out.push_sql("''::tsvector");
-                        } else {
-                            out.push_sql("(");
-                            for (i, value) in sql_values.iter().enumerate() {
-                                if i > 0 {
-                                    out.push_sql(") || ");
-                                }
-                                out.push_sql("to_tsvector(");
-                                out.push_bind_param::<Text, _>(
-                                    &config.language.as_str().to_string(),
-                                )?;
-                                out.push_sql("::regconfig, ");
-                                out.push_bind_param::<Text, _>(&value)?;
-                            }
-                            out.push_sql("))");
-                        }
-
-                        Ok(())
-                    }
+                    // ColumnType::TSVector(config) => {
+                    //     if sql_values.is_empty() {
+                    //         out.push_sql("''::tsvector");
+                    //     } else {
+                    //         out.push_sql("(");
+                    //         for (i, value) in sql_values.iter().enumerate() {
+                    //             if i > 0 {
+                    //                 out.push_sql(") || ");
+                    //             }
+                    //             out.push_sql("to_tsvector(");
+                    //             out.push_bind_param::<Text, _>(
+                    //                 &config.language.as_str().to_string(),
+                    //             )?;
+                    //             out.push_sql("::regconfig, ");
+                    //             out.push_bind_param::<Text, _>(&value)?;
+                    //         }
+                    //         out.push_sql("))");
+                    //     }
+                    //
+                    //     Ok(())
+                    // }
                     ColumnType::BytesId => out.push_bind_param::<Array<Binary>, _>(&sql_values),
                 }
             }

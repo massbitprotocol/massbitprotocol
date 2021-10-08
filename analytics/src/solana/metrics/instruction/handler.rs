@@ -7,7 +7,7 @@ use crate::solana::metrics::instruction::raw_instruction::{
 use crate::solana::metrics::instruction::system_instruction::create_system_entity;
 use crate::solana::metrics::instruction::vote_instruction::create_vote_entity;
 use crate::storage_adapter::StorageAdapter;
-use graph::prelude::Entity;
+use massbit::prelude::Entity;
 use massbit_chain_solana::data_type::{Pubkey, SolanaBlock};
 use massbit_common::NetworkType;
 use solana_transaction_status::parse_instruction::{ParsableProgram, ParsedInstruction};

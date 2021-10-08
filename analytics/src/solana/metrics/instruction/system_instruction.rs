@@ -1,6 +1,6 @@
 use crate::relational::{Column, ColumnType, Table};
 use crate::{create_columns, create_entity};
-use graph::prelude::{Attribute, Entity, Value};
+use massbit::prelude::{Attribute, Entity, Value};
 use solana_transaction_status::parse_instruction::ParsedInstruction;
 use std::collections::HashMap;
 
