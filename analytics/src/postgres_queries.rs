@@ -1,5 +1,5 @@
 use crate::models::CommandData;
-use crate::relational::{Column, ColumnType, Table};
+use crate::relational::{ColumnType, Table};
 use crate::sql_value::SqlValue;
 use core::str::FromStr;
 use graph::components::store::StoreError;
@@ -15,20 +15,17 @@ use massbit_common::prelude::diesel::{QueryResult, RunQueryDsl};
 pub struct UpsertQuery<'a> {
     table: &'a Table<'a>,
     entities: &'a Vec<Entity>,
-    columns: &'a Vec<Column>,
     conflict_fragment: &'a Option<UpsertConflictFragment<'a>>,
 }
 impl<'a> UpsertQuery<'a> {
     pub fn new(
         table: &'a Table,
-        columns: &'a Vec<Column>,
         entities: &'a Vec<Entity>,
         conflict_fragment: &'a Option<UpsertConflictFragment<'a>>,
     ) -> Result<UpsertQuery<'a>, StoreError> {
         Ok(UpsertQuery {
             table,
             entities,
-            columns,
             conflict_fragment,
         })
     }
@@ -38,7 +35,6 @@ impl<'a> From<&CommandData<'a>> for UpsertQuery<'a> {
         UpsertQuery {
             table: cmd.table,
             entities: cmd.values,
-            columns: cmd.columns,
             conflict_fragment: cmd.conflict_fragment,
         }
     }
@@ -68,7 +64,7 @@ impl<'a> QueryFragment<Pg> for UpsertQuery<'a> {
         out.push_sql("(");
         // Use a `Peekable` iterator to help us decide how to finalize each line.
         //let mut col_iter = self.columns.iter().map(|col| col).peekable();
-        let mut col_iter = self.columns.iter().peekable();
+        let mut col_iter = self.table.columns.iter().peekable();
         while let Some(column) = col_iter.next() {
             out.push_identifier(column.name.as_str());
             //Still has column
@@ -87,7 +83,7 @@ impl<'a> QueryFragment<Pg> for UpsertQuery<'a> {
         while let Some(entity) = iter.next() {
             out.push_sql("(");
             //let mut col_iter = self.columns.iter().map(|col| col).peekable();
-            let mut col_iter = self.columns.iter().peekable();
+            let mut col_iter = self.table.columns.iter().peekable();
             while let Some(column) = col_iter.next() {
                 // If the column name is not within this entity's fields, we will issue the
                 // null value in its place

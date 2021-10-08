@@ -148,13 +148,15 @@ impl Column {
 #[derive(Clone, Debug)]
 pub struct Table<'a> {
     pub name: SqlName,
+    pub columns: Vec<Column>,
     pub alias: Option<&'a str>,
 }
 
 impl<'a> Table<'a> {
-    pub fn new(name: &'a str, alias: Option<&'a str>) -> Self {
+    pub fn new(name: &'a str, columns: Vec<Column>, alias: Option<&'a str>) -> Self {
         Table {
             name: SqlName::from(name),
+            columns,
             alias,
         }
     }

@@ -26,8 +26,7 @@ impl SolanaStatBlockHandler {
 
 impl SolanaHandler for SolanaStatBlockHandler {
     fn handle_block(&self, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
-        let table = Table::new("solana_daily_stat_block", Some("t"));
-        let columns = create_columns();
+        let table = create_table();
         let network = match &self.network {
             None => "",
             Some(val) => val.as_str(),
@@ -49,12 +48,12 @@ impl SolanaHandler for SolanaStatBlockHandler {
             .add_expression("average_block_time","(GREATEST(t.last_block_time, EXCLUDED.last_block_time) - LEAST(t.fist_block_time, EXCLUDED.fist_block_time))\
                     * 1000 /(GREATEST(t.max_block_height, EXCLUDED.max_block_height) - LEAST(t.min_block_height, EXCLUDED.min_block_height) + 1)");
         self.storage_adapter
-            .upsert(&table, &columns, &vec![entity], &Some(conflict_frag))
+            .upsert(&table, &vec![entity], &Some(conflict_frag))
     }
 }
 
-fn create_columns() -> Vec<Column> {
-    create_columns!(
+fn create_table<'a>() -> Table<'a> {
+    let columns = create_columns!(
         "network" => ColumnType::String,
         "date" => ColumnType::BigInt,
         "min_block_height" => ColumnType::BigInt,
@@ -66,7 +65,8 @@ fn create_columns() -> Vec<Column> {
         "total_fee" => ColumnType::BigInt,
         "fist_block_time" => ColumnType::BigInt,
         "last_block_time" => ColumnType::BigInt
-    )
+    );
+    Table::new("solana_daily_stat_block", columns, Some("t"))
 }
 fn create_stat_block_entity(network: &str, block: Arc<SolanaBlock>) -> Entity {
     //Make timestamp as multiple of a day's seconds

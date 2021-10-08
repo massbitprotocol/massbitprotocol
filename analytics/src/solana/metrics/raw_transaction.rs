@@ -27,12 +27,10 @@ impl SolanaRawTransactionHandler {
 
 impl SolanaHandler for SolanaRawTransactionHandler {
     fn handle_block(&self, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
-        let tran_table = Table::new("solana_transactions", Some("t"));
-        let trans_columns = create_trans_columns();
-        let acc_tran_table = Table::new("solana_account_transactions", Some("t"));
-        let acc_trans_columns = create_acc_trans_columns();
+        let tran_table = create_trans_table();
+        let acc_tran_table = create_acc_trans_table();
         //maximum rows allowed in a query.
-        let max_rows = 65535 / acc_trans_columns.len();
+        let max_rows = 65535 / acc_tran_table.columns.len();
         let mut tran_entities = Vec::default();
         let mut vec_entities = Vec::default();
         for tran in &block.block.transactions {
@@ -59,10 +57,10 @@ impl SolanaHandler for SolanaRawTransactionHandler {
         }
         let mut vec_commands = vec_entities
             .iter()
-            .map(|entities| CommandData::new(&acc_tran_table, &acc_trans_columns, entities, &None))
+            .map(|entities| CommandData::new(&acc_tran_table, entities, &None))
             .collect::<Vec<CommandData>>();
         if tran_entities.len() > 0 {
-            let trans_data = CommandData::new(&tran_table, &trans_columns, &tran_entities, &None);
+            let trans_data = CommandData::new(&tran_table, &tran_entities, &None);
             vec_commands.push(trans_data);
         }
         if vec_commands.len() > 0 {
@@ -72,8 +70,8 @@ impl SolanaHandler for SolanaRawTransactionHandler {
         }
     }
 }
-fn create_trans_columns() -> Vec<Column> {
-    create_columns!(
+fn create_trans_table<'a>() -> Table<'a> {
+    let columns = create_columns!(
         "signatures" => ColumnType::String,
         "block_number" => ColumnType::BigInt,
         "parent_slot" => ColumnType::BigInt,
@@ -83,15 +81,17 @@ fn create_trans_columns() -> Vec<Column> {
         "reward" => ColumnType::BigInt,
         "fee" => ColumnType::BigInt,
         "status" => ColumnType::String
-    )
+    );
+    Table::new("solana_transactions", columns, Some("t"))
 }
-fn create_acc_trans_columns() -> Vec<Column> {
-    create_columns!(
+fn create_acc_trans_table<'a>() -> Table<'a> {
+    let columns = create_columns!(
         "tx_hash" => ColumnType::String,
         "account" => ColumnType::String,
         "pre_balance" => ColumnType::BigInt,
         "post_balance" => ColumnType::BigInt
-    )
+    );
+    Table::new("solana_account_transactions", columns, Some("t"))
 }
 fn create_entity(block: &ConfirmedBlock, tran: &TransactionWithStatusMeta) -> Entity {
     let timestamp = match block.block_time {

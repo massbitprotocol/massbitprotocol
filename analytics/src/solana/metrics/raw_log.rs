@@ -25,8 +25,7 @@ impl SolanaRawLogHandler {
 
 impl SolanaHandler for SolanaRawLogHandler {
     fn handle_block(&self, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
-        let table = Table::new("solana_logs", Some("t"));
-        let columns = create_columns();
+        let table = create_table();
         let entities = block
             .block
             .transactions
@@ -39,20 +38,20 @@ impl SolanaHandler for SolanaRawLogHandler {
             })
             .collect::<Vec<Entity>>();
         if entities.len() > 0 {
-            self.storage_adapter
-                .upsert(&table, &columns, &entities, &None)
+            self.storage_adapter.upsert(&table, &entities, &None)
         } else {
             Ok(())
         }
     }
 }
 
-fn create_columns() -> Vec<Column> {
-    create_columns!(
+fn create_table<'a>() -> Table<'a> {
+    let columns = create_columns!(
         "tx_hash" => ColumnType::String,
         "log_messages" => ColumnType::TextArray,
         "block_time" => ColumnType::BigInt
-    )
+    );
+    Table::new("solana_logs", columns, Some("t"))
 }
 fn create_entity(
     block: &ConfirmedBlock,

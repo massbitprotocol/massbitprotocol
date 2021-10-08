@@ -4,8 +4,8 @@ use crate::relational::{Column, ColumnType, Table};
 use crate::storage_adapter::StorageAdapter;
 use crate::{create_columns, create_entity};
 use core::ops::Add;
-use graph::prelude::chrono::Utc;
-use graph::prelude::{chrono, Attribute, BigInt, Entity, Value};
+use graph::prelude::chrono::{self, Utc};
+use graph::prelude::{Attribute, BigInt, Entity, Value};
 use massbit_chain_ethereum::types::LightEthereumBlock;
 use massbit_common::NetworkType;
 use std::collections::{BTreeMap, HashMap};
@@ -29,8 +29,11 @@ impl EthereumDailyAddressTransactionHandler {
 impl EthereumHandler for EthereumDailyAddressTransactionHandler {
     fn handle_block(&self, block: Arc<LightEthereumBlock>) -> Result<(), anyhow::Error> {
         let values = create_entities(block.as_ref());
-        let table = Table::new("ethereum_daily_address_transaction", Some("t"));
-        let columns = create_columns();
+        let table = Table::new(
+            "ethereum_daily_address_transaction",
+            create_columns(),
+            Some("t"),
+        );
         let mut conflict_frag =
             UpsertConflictFragment::new("ethereum_daily_address_transaction_date_uindex");
         conflict_frag
@@ -44,7 +47,7 @@ impl EthereumHandler for EthereumDailyAddressTransactionHandler {
             )
             .add_expression("gas", "t.gas + EXCLUDED.gas");
         self.storage_adapter
-            .upsert(&table, &columns, &values, &Some(conflict_frag))
+            .upsert(&table, &values, &Some(conflict_frag))
     }
 }
 fn create_columns() -> Vec<Column> {
