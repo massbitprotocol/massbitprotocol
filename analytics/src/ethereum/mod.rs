@@ -40,7 +40,7 @@ pub async fn process_ethereum_stream(
     client: &mut StreamClient<Timeout<Channel>>,
     storage_adapter: Arc<PostgresAdapter>,
     network: Option<NetworkType>,
-    block: i64,
+    block: Option<u64>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     let handler_manager = Arc::new(create_ethereum_handler_manager(&network, storage_adapter));
     //Todo: remove this simple connection
@@ -50,16 +50,9 @@ pub async fn process_ethereum_stream(
         CHAIN.clone(),
         network.clone().unwrap_or(String::from(DEFAULT_NETWORK)),
     );
-    let start_block = match current_state {
-        None => {
-            if block > 0 {
-                block
-            } else {
-                START_ETHEREUM_BLOCK
-            }
-        }
-        Some(state) => state.got_block + 1,
-    };
+    let start_block = current_state
+        .and_then(|state| Some(state.got_block as u64 + 1))
+        .or(block);
     let mut opt_stream: Option<Streaming<BlockResponse>> = None;
     loop {
         match opt_stream {
