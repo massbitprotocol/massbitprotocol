@@ -6,7 +6,7 @@ services:
       - '5001:5001'
 
   postgres:
-    build: ./store
+    build: deployment/store
     ports:
       - '5432:5432'
     command: ["postgres", "-cshared_preload_libraries=pg_stat_statements"]
@@ -18,7 +18,7 @@ services:
       - ./data/postgres-massbit:/var/lib/postgresql/data
 
   metabase:
-    build: ./metabase
+    build: deployment/metabase
     restart: always
     # Account for login can be found in the folder /metabase/setup-mb-account.sh
     entrypoint: ["./init.sh"]
