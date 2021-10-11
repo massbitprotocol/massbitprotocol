@@ -10,29 +10,75 @@ type SaberInit @entity {
     trade_fee_denominator: BigInt!
     withdraw_fee_numerator: BigInt!
     withdraw_fee_denominator: BigInt!
+    block_height: BigInt!
+    parent_slot: BigInt!
 }
 
 type SaberSwap @entity {
     id: ID!
+    block_height: BigInt!
+    parent_slot: BigInt!
+    authority: String
+    source: String
+    base_into: String
+    base_from: String
+    destination: String
+    admin_fee_account: String
+    program_id: String
+    clock_sysvar: String
     amount_in: BigInt!
     minimum_amount_out: BigInt!
 }
 type SaberDeposit @entity {
     id: ID!
+    authority: String
+    token_a_authority: String
+    token_b_authority: String
+    token_a_base: String
+    token_b_base: String
+    mint_account: String
+    pool_account: String
+    program_id: String
+    clock_sysvar: String
     token_a_amount: BigInt!
     token_b_amount: BigInt!
     min_mint_amount: BigInt!
+    block_height: BigInt!
+    parent_slot: BigInt!
 }
 
 type SaberWithdraw @entity {
     id: ID!
+    authority: String,
+    mint_pool: String,
+    source_pool: String,
+    token_a_swap: String,
+    token_b_swap: String,
+    token_a_user: String,
+    token_b_user: String,
+    admin_fee_a_account: String,
+    admin_fee_b_account: String,
+    program_id: String,
     pool_token_amount: BigInt!
     minimum_token_a_amount: BigInt!
     minimum_token_b_amount: BigInt!
+    block_height: BigInt!
+    parent_slot: BigInt!
 }
 
 type SaberWithdrawOne @entity {
     id: ID!
+    authority: String,
+    mint_pool: String,
+    source_pool: String,
+    base_token_from: String,
+    quote_token: String,
+    base_token_to: String,
+    admin_fee_account: String
+    program_id: String,
+    clock_sysvar: String,
     pool_token_amount: BigInt!
     minimum_token_amount: BigInt!
+    block_height: BigInt!
+    parent_slot: BigInt!
 }
