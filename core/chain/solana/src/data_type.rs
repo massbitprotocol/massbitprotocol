@@ -5,10 +5,11 @@ use serde_json;
 use solana_transaction_status;
 use solana_transaction_status::UiInstruction::{Compiled, Parsed};
 use solana_transaction_status::{
-    InnerInstructions, TransactionStatusMeta, TransactionTokenBalance, UiInnerInstructions,
-    UiTransactionTokenBalance,
+    InnerInstructions, TransactionStatusMeta, TransactionTokenBalance, TransactionWithStatusMeta,
+    UiInnerInstructions, UiTransactionTokenBalance,
 };
 use std::error::Error;
+use std::str::FromStr;
 
 //***************** Solana data type *****************
 // EncodedConfirmedBlock is block with vec of EncodedTransactionWithStatusMeta.
@@ -27,12 +28,56 @@ type Transaction = solana_transaction_status::TransactionWithStatusMeta;
 type EncodedBlock = solana_transaction_status::EncodedConfirmedBlock;
 type Block = solana_transaction_status::ConfirmedBlock;
 
-pub fn decode(payload: &mut Vec<u8>) -> Result<SolanaEncodedBlock, Box<dyn Error>> {
-    let decode_block: SolanaEncodedBlock = serde_json::from_slice(&payload).unwrap();
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+pub struct SolanaFilter {
+    keys: Vec<Pubkey>,
+}
+impl SolanaFilter {
+    pub fn new(keys: Vec<&str>) -> Self {
+        SolanaFilter {
+            keys: keys
+                .iter()
+                .map(|key| Pubkey::from_str(key).unwrap_or_default())
+                .collect(),
+        }
+    }
+    fn is_match(&self, tran: &TransactionWithStatusMeta) -> bool {
+        self.keys.iter().any(|key| {
+            tran.transaction
+                .message
+                .account_keys
+                .iter()
+                .any(|account_key| key == account_key)
+        })
+    }
+
+    pub fn filter_block(&self, block: Block) -> Block {
+        // If there are no key, then accept all transactions
+        if self.keys.is_empty() {
+            return block;
+        }
+        let mut filtered_block = block.clone();
+        filtered_block.transactions = block
+            .transactions
+            .into_iter()
+            .filter_map(|tran| {
+                if self.is_match(&tran) {
+                    Some(tran)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        filtered_block
+    }
+}
+
+pub fn decode(payload: &mut Vec<u8>) -> Result<SolanaBlock, Box<dyn Error>> {
+    let decode_block: SolanaBlock = serde_json::from_slice(&payload).unwrap();
     Ok(decode_block)
 }
 
-pub fn get_list_log_messages_from_encoded_block(block: &EncodedBlock) -> Vec<LogMessages> {
+pub fn get_list_log_messages_from_encoded_block(block: &Block) -> Vec<LogMessages> {
     block
         .transactions
         .iter()

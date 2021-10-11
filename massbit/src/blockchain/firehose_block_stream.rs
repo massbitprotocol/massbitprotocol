@@ -99,7 +99,7 @@ impl<C: Blockchain, F: FirehoseMapper<C>> Stream for FirehoseBlockStream<C, F> {
 
                     let filter_bytes = serde_json::to_vec(&self.ctx.filter)?;
                     let future = self.endpoint.clone().stream_blocks(bstream::BlocksRequest {
-                        start_block_number: self.ctx.start_block as i64,
+                        start_block_number: Some(self.ctx.start_block as u64),
                         chain_type: bstream::ChainType::Ethereum as i32,
                         network: self.ctx.network.clone(),
                         filter: filter_bytes,

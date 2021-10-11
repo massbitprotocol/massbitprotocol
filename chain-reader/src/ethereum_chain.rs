@@ -3,48 +3,28 @@ use crate::CONFIG;
 use massbit::firehose::bstream::{BlockResponse, ChainType};
 
 use anyhow::Error;
-use chain_ethereum::{Chain, EthereumAdapter, TriggerFilter};
-use futures::stream;
-use futures::{Future, Stream};
-use futures03::compat::Future01CompatExt;
+use chain_ethereum::{Chain, TriggerFilter};
+use futures::Future;
 use lazy_static::lazy_static;
-use log::{debug, info, warn};
+use log::{info, warn};
 use massbit::blockchain::block_stream::{BlockStreamEvent, BlockWithTriggers};
-use massbit::blockchain::{Block, Blockchain, TriggerFilter as _};
-use massbit::components::store::{DeploymentId, DeploymentLocator};
-use massbit::prelude::DeploymentHash;
+use massbit::blockchain::{Block, Blockchain};
 use massbit::prelude::*;
 use massbit_common::NetworkType;
-use serde_json::json;
-use std::collections::HashMap;
 use std::error::Error as StdError;
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
-};
-use std::time::Instant;
+use std::sync::Arc;
 use thiserror::Error;
 use tokio::sync::mpsc;
-use tokio::sync::{OwnedSemaphorePermit, Semaphore};
-use tokio::time::{sleep, timeout, Duration};
 use tonic::Status;
-use web3;
-use web3::transports::Batch;
-use web3::{
-    types::{
-        Block as EthBlock, BlockId, BlockNumber as Web3BlockNumber, Filter, FilterBuilder, Log,
-        Transaction, TransactionReceipt, H256,
-    },
-    Web3,
-};
+use web3::{types::H256, Web3};
 
 // Check https://github.com/tokio-rs/prost for enum converting in rust protobuf
 const CHAIN_TYPE: ChainType = ChainType::Ethereum;
-const PULLING_INTERVAL: u64 = 200;
+// const PULLING_INTERVAL: u64 = 200;
 pub(crate) const USE_WEBSOCKET: bool = false;
-const BLOCK_BATCH_SIZE: u64 = 10;
-const RETRY_GET_BLOCK_LIMIT: u32 = 10;
-const GET_BLOCK_TIMEOUT_SEC: u64 = 60;
+// const BLOCK_BATCH_SIZE: u64 = 10;
+// const RETRY_GET_BLOCK_LIMIT: u32 = 10;
+// const GET_BLOCK_TIMEOUT_SEC: u64 = 60;
 
 fn get_web3(network: &NetworkType) -> Arc<Web3<Transport>> {
     let config = CONFIG.get_chain_config(&CHAIN_TYPE, network).unwrap();
@@ -80,7 +60,6 @@ pub enum IngestorError {
 pub async fn loop_get_block(
     chan: mpsc::Sender<Result<BlockResponse, Status>>,
     start_block: &Option<u64>,
-    network: &NetworkType,
     chain: Arc<Chain>,
     filter: TriggerFilter,
 ) -> Result<(), Box<dyn StdError>> {
@@ -105,7 +84,7 @@ pub async fn loop_get_block(
     loop {
         let block = match block_stream.next().await {
             Some(Ok(BlockStreamEvent::ProcessBlock(block))) => block,
-            Some(Err(e)) => {
+            Some(Err(_)) => {
                 continue;
             }
             None => unreachable!("The block stream stopped producing blocks"),
