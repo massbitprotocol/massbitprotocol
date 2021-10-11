@@ -6,12 +6,8 @@ use thiserror::Error;
 use tiny_keccak::keccak256;
 use web3::types::{Address, H256};
 
+use massbit::blockchain as bc;
 use massbit::prelude::*;
-use massbit::{
-    blockchain as bc,
-    petgraph::{self, graphmap::GraphMap},
-    prelude::*,
-};
 
 use crate::chain::Chain;
 use crate::data_source::{BlockHandlerFilter, DataSource};

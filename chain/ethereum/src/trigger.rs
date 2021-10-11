@@ -14,6 +14,7 @@ use massbit::prelude::*;
 use massbit::runtime::{asc_new, AscHeap, AscPtr, DeterministicHostError};
 use massbit::semver::Version;
 use massbit::slog::{o, SendSyncRefUnwindSafeKV};
+use serde::{Deserialize, Serialize};
 
 use crate::data_source::{MappingBlockHandler, MappingCallHandler, MappingEventHandler};
 use crate::runtime::abi::{
@@ -194,7 +195,7 @@ impl blockchain::MappingTrigger for MappingTrigger {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum EthereumTrigger {
     Block(BlockPtr, EthereumBlockTriggerType),
     Call(Arc<EthereumCall>),
@@ -221,7 +222,7 @@ impl PartialEq for EthereumTrigger {
 
 impl Eq for EthereumTrigger {}
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EthereumBlockTriggerType {
     Every,
     WithCallTo(Address),

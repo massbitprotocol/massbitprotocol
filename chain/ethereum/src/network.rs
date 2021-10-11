@@ -6,7 +6,7 @@ use crate::EthereumAdapter;
 
 #[derive(Clone)]
 pub struct EthereumNetworkAdapter {
-    adapter: Arc<EthereumAdapter>,
+    pub adapter: Arc<EthereumAdapter>,
 }
 
 #[derive(Clone)]

@@ -1,7 +1,6 @@
 use rand::rngs::OsRng;
 use rand::Rng;
 use stable_hash::{SequenceNumber, StableHash, StableHasher};
-use std::str::FromStr;
 use std::{fmt, fmt::Display};
 
 use crate::blockchain::Blockchain;
@@ -11,34 +10,19 @@ use crate::prelude::{BlockPtr, CheapClone, DeploymentHash};
 #[derive(Debug)]
 pub struct IndexerDeploymentEntity {
     pub manifest: IndexerManifestEntity,
-    pub failed: bool,
-    pub synced: bool,
-    pub fatal_error: Option<IndexerError>,
-    pub non_fatal_errors: Vec<IndexerError>,
     pub earliest_block: Option<BlockPtr>,
     pub latest_block: Option<BlockPtr>,
-    pub reorg_count: i32,
-    pub current_reorg_depth: i32,
-    pub max_reorg_depth: i32,
 }
 
 impl IndexerDeploymentEntity {
     pub fn new(
         source_manifest: &IndexerManifest<impl Blockchain>,
-        synced: bool,
         earliest_block: Option<BlockPtr>,
     ) -> Self {
         Self {
             manifest: IndexerManifestEntity::from(source_manifest),
-            failed: false,
-            synced,
-            fatal_error: None,
-            non_fatal_errors: vec![],
             earliest_block: earliest_block.cheap_clone(),
             latest_block: earliest_block,
-            reorg_count: 0,
-            current_reorg_depth: 0,
-            max_reorg_depth: 0,
         }
     }
 }

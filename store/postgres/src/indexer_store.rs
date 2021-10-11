@@ -1,10 +1,8 @@
-use diesel::r2d2::{ConnectionManager, PooledConnection};
 use diesel::{
     pg::Pg,
     serialize::Output,
     sql_types::Text,
     types::{FromSql, ToSql},
-    PgConnection,
 };
 use std::{collections::BTreeMap, collections::HashMap, sync::Arc};
 use std::{fmt, io::Write};
@@ -15,7 +13,6 @@ use massbit::data::indexer::schema::IndexerDeploymentEntity;
 use massbit::data::query::QueryExecutionError;
 use massbit::{
     components::store::{self, DeploymentLocator, EntityType, WritableStore as WritableStoreTrait},
-    constraint_violation,
     prelude::{IndexerStore as IndexerStoreTrait, *},
     util::timed_cache::TimedCache,
 };
@@ -171,7 +168,7 @@ impl IndexerStoreInner {
             .ok_or_else(|| StoreError::DeploymentNotFound(id.to_string()))?;
         let site = Arc::new(site);
 
-        self.cache_active(&site);
+        self.cache_site(&site);
         Ok(site)
     }
 
@@ -186,10 +183,8 @@ impl IndexerStoreInner {
         Ok(primary::Connection::new(conn))
     }
 
-    fn cache_active(&self, site: &Arc<Site>) {
-        if site.active {
-            self.sites.set(site.deployment.clone(), site.clone());
-        }
+    fn cache_site(&self, site: &Arc<Site>) {
+        self.sites.set(site.deployment.clone(), site.clone());
     }
 
     /// Return the active `Site` for this deployment hash
@@ -200,11 +195,11 @@ impl IndexerStoreInner {
 
         let conn = self.primary_conn()?;
         let site = conn
-            .find_active_site(id)?
+            .find_site(id)?
             .ok_or_else(|| StoreError::DeploymentNotFound(id.to_string()))?;
         let site = Arc::new(site);
 
-        self.cache_active(&site);
+        self.cache_site(&site);
         Ok(site)
     }
 
@@ -242,10 +237,8 @@ impl IndexerStoreInner {
     /// again.
     fn create_deployment_internal(
         &self,
-        name: IndexerName,
         schema: &Schema,
         deployment: IndexerDeploymentEntity,
-        node_id: NodeId,
         network_name: String,
         // replace == true is only used in tests; for non-test code, it must
         // be 'false'
@@ -254,11 +247,10 @@ impl IndexerStoreInner {
         #[cfg(not(debug_assertions))]
         assert!(!replace);
 
-        let (site, node_id) = {
-            let (shard, node_id) = (PRIMARY_SHARD.clone(), node_id);
+        let site = {
             let conn = self.primary_conn()?;
-            let site = conn.allocate_site(shard.clone(), &schema.id, network_name)?;
-            (site, node_id)
+            let site = conn.allocate_site(PRIMARY_SHARD.clone(), &schema.id, network_name)?;
+            site
         };
         let site = Arc::new(site);
 
@@ -280,10 +272,9 @@ impl IndexerStoreTrait for IndexerStore {
         name: IndexerName,
         schema: &Schema,
         deployment: IndexerDeploymentEntity,
-        node_id: NodeId,
         network: String,
     ) -> Result<DeploymentLocator, StoreError> {
-        self.create_deployment_internal(name, schema, deployment, node_id, network, false)
+        self.create_deployment_internal(schema, deployment, network, false)
     }
 
     fn writable(
@@ -312,7 +303,7 @@ impl IndexerStoreTrait for IndexerStore {
     fn locators(&self, hash: &str) -> Result<Vec<DeploymentLocator>, StoreError> {
         Ok(self
             .primary_conn()?
-            .find_sites(vec![hash.to_string()], false)?
+            .find_sites(vec![hash.to_string()])?
             .iter()
             .map(|site| site.into())
             .collect())

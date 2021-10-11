@@ -488,7 +488,18 @@ impl DataSource {
                                 data: log.data.clone().0,
                             })
                             .map(|log| log.params)
-                            .map_err(|e| {})
+                            .map_err(|e| {
+                                trace!(
+                                    logger,
+                                    "Skipping handler because the event parameters do not \
+                                    match the event signature. This is typically the case \
+                                    when parameters are indexed in the event but not in the \
+                                    signature or the other way around";
+                                    "handler" => &event_handler.handler,
+                                    "event" => &event_handler.event,
+                                    "error" => format!("{}", e),
+                                );
+                            })
                             .ok()
                             .map(|params| (event_handler, params))
                     })

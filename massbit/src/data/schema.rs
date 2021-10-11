@@ -1,31 +1,21 @@
 use anyhow::{Context, Error};
 use graphql_parser::{self, Pos};
-use inflector::Inflector;
-use rand::rngs::OsRng;
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet};
-use std::convert::TryFrom;
 use std::fmt;
-use std::fmt::Display;
 use std::hash::Hash;
 use std::iter::FromIterator;
-use std::str::FromStr;
 use std::sync::Arc;
 use thiserror::Error;
 
 use crate::components::store::{EntityType, IndexerStore};
-use crate::data::graphql::ext::{DirectiveExt, DirectiveFinder, DocumentExt, TypeExt, ValueExt};
+use crate::data::graphql::ext::{DirectiveExt, DirectiveFinder, DocumentExt, TypeExt};
 use crate::data::indexer::{DeploymentHash, IndexerName};
 use crate::data::store::ValueType;
 use crate::prelude::{
     q::Value,
     s::{self, Definition, InterfaceType, ObjectType, TypeDefinition, *},
-    BlockPtr,
 };
-
-use crate::blockchain::Blockchain;
-use crate::stable_hash::{SequenceNumber, StableHash, StableHasher};
 
 pub const SCHEMA_TYPE_NAME: &str = "_Schema_";
 

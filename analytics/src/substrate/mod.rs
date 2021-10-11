@@ -1,17 +1,21 @@
 //[WIP] not included in module tree
 use crate::stream_mod::{
-    streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
+    streamout_client::StreamoutClient, BlockResponse, ChainType, DataType, GetBlocksRequest,
 };
+use log::{debug, info, warn};
+use massbit_chain_substrate::data_type::{
+    decode, get_extrinsics_from_block, SubstrateBlock, SubstrateEventRecord,
+};
+use std::time::Instant;
 #[allow(unused_imports)]
 use tonic::{
     transport::{Channel, Server},
     Request, Response, Status,
 };
-use log::{debug, info, warn};
-use std::time::Instant;
-use massbit_chain_substrate::data_type::{SubstrateBlock, SubstrateEventRecord, decode, get_extrinsics_from_block};
 
-pub async fn process_substrate_block(mut client: StreamoutClient<Channel>) ->  Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+pub async fn process_substrate_block(
+    mut client: StreamoutClient<Channel>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     let get_blocks_request = GetBlocksRequest {
         start_block_number: 0,
         end_block_number: 1,
@@ -25,7 +29,7 @@ pub async fn process_substrate_block(mut client: StreamoutClient<Channel>) ->  R
 
     log::info!("Starting read blocks from stream...");
     while let Some(data) = stream.message().await? {
-        let mut data = data as GenericDataProto;
+        let mut data = data as BlockResponse;
         let now = Instant::now();
         match DataType::from_i32(data.data_type) {
             Some(DataType::Block) => {
@@ -49,6 +53,6 @@ pub async fn process_substrate_block(mut client: StreamoutClient<Channel>) ->  R
         }
         let elapsed = now.elapsed();
         debug!("Elapsed processing solana block: {:.2?}", elapsed);
-    };
+    }
     Ok(())
 }

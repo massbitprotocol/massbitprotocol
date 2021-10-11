@@ -4,15 +4,13 @@ use std::iter::FromIterator;
 use std::sync::Arc;
 
 use massbit::prelude::*;
-use massbit_store_postgres::connection_pool::{ConnectionPool, ForeignServer, PoolName};
+use massbit_store_postgres::connection_pool::{ConnectionPool, PoolName};
 use massbit_store_postgres::{IndexerStore, Shard as ShardName};
 
 use crate::config::{Config, Shard};
 
 pub struct StoreBuilder {
-    logger: Logger,
     indexer_store: Arc<IndexerStore>,
-    pools: HashMap<ShardName, ConnectionPool>,
 }
 
 impl StoreBuilder {
@@ -29,13 +27,11 @@ impl StoreBuilder {
         join_all(pools.iter().map(|(_, pool)| async move { pool.setup() })).await;
 
         Self {
-            logger: logger.cheap_clone(),
             indexer_store: store,
-            pools,
         }
     }
 
-    pub fn store(self) -> Arc<IndexerStore> {
+    pub fn indexer_store(self) -> Arc<IndexerStore> {
         self.indexer_store
     }
 
@@ -46,23 +42,13 @@ impl StoreBuilder {
         logger: &Logger,
         config: &Config,
     ) -> (Arc<IndexerStore>, HashMap<ShardName, ConnectionPool>) {
-        let servers = config
-            .stores
-            .iter()
-            .map(|(name, shard)| ForeignServer::new_from_raw(name.to_string(), &shard.connection))
-            .collect::<Result<Vec<_>, _>>()
-            .expect("connection url's contain enough detail");
-        let servers = Arc::new(servers);
-
         let shards: Vec<_> = config
             .stores
             .iter()
             .map(|(name, shard)| {
                 let logger = logger.new(o!("shard" => name.to_string()));
-                let conn_pool = Self::main_pool(&logger, name, shard, servers.clone());
-
-                let (read_only_conn_pools, weights) =
-                    Self::replica_pools(&logger, name, shard, servers.clone());
+                let conn_pool = Self::main_pool(&logger, name, shard);
+                let (read_only_conn_pools, weights) = Self::replica_pools(&logger, name, shard);
 
                 let name =
                     ShardName::new(name.to_string()).expect("shard names have been validated");
@@ -83,21 +69,18 @@ impl StoreBuilder {
 
     /// Create a connection pool for the main database of hte primary shard
     /// without connecting to all the other configured databases
-    pub fn main_pool(
-        logger: &Logger,
-        name: &str,
-        shard: &Shard,
-        servers: Arc<Vec<ForeignServer>>,
-    ) -> ConnectionPool {
+    pub fn main_pool(logger: &Logger, name: &str, shard: &Shard) -> ConnectionPool {
         let logger = logger.new(o!("pool" => "main"));
+        let pool_size = shard.pool_size.size().expect(&format!(
+            "we can determine the pool size for store {}",
+            name
+        ));
         info!(logger, "Connecting to Postgres");
         ConnectionPool::create(
             name,
             PoolName::Main,
             shard.connection.to_owned(),
-            10,
-            Some(10),
-            servers,
+            pool_size,
             &logger,
         )
     }
@@ -107,7 +90,6 @@ impl StoreBuilder {
         logger: &Logger,
         name: &str,
         shard: &Shard,
-        servers: Arc<Vec<ForeignServer>>,
     ) -> (Vec<ConnectionPool>, Vec<usize>) {
         let mut weights: Vec<_> = vec![shard.weight];
         (
@@ -119,13 +101,15 @@ impl StoreBuilder {
                     let pool = format!("replica{}", i + 1);
                     info!(&logger, "Connecting to Postgres (read replica {})", i + 1);
                     weights.push(replica.weight);
+                    let pool_size = replica.pool_size.size().expect(&format!(
+                        "we can determine the pool size for replica {}",
+                        name
+                    ));
                     ConnectionPool::create(
                         name,
                         PoolName::Replica(pool),
                         replica.connection.clone(),
-                        10,
-                        None,
-                        servers.clone(),
+                        pool_size,
                         &logger,
                     )
                 })

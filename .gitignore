@@ -31,6 +31,9 @@ chain-reader/data/
 /code-compiler/generated
 *.zip
 
+# ignore node_modules of npm
+node_modules/
+
 # ignore all but .gitkeep
 index-manager/generated/*
 !index-manager/generated/.gitkeep

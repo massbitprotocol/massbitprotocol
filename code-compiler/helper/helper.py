@@ -185,6 +185,12 @@ def get_index_manager_url():
         return 'http://0.0.0.0:3030'
 
 
+def get_index_manager_url_v2():
+    if os.environ.get('INDEX_MANAGER_URL_V2'):
+        return os.environ.get('INDEX_MANAGER_URL_V2')  # Connection to indexer
+    else:
+        return 'http://0.0.0.0:8020'
+
 def is_template_exist(subgraph_path):
     stream = open(subgraph_path, 'r')
     subgraph = yaml.safe_load(stream)

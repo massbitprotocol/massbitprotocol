@@ -1,8 +1,7 @@
 use crate::data::indexer::DeploymentHash;
-use crate::prelude::{q, s, CacheWeight, EntityKey};
+use crate::prelude::{q, CacheWeight, EntityKey};
 use anyhow::{anyhow, Error};
 use itertools::Itertools;
-use serde::de;
 use serde::{Deserialize, Serialize};
 use stable_hash::prelude::*;
 use std::collections::{BTreeMap, HashMap};
@@ -13,52 +12,9 @@ use std::str::FromStr;
 use strum::AsStaticRef as _;
 use strum_macros::AsStaticStr;
 
+pub mod ethereum;
 /// Custom scalars in GraphQL.
 pub mod scalar;
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct NodeId(String);
-
-impl NodeId {
-    pub fn new(s: impl Into<String>) -> Result<Self, ()> {
-        let s = s.into();
-
-        // Enforce length limit
-        if s.len() > 63 {
-            return Err(());
-        }
-
-        // Check that the ID contains only allowed characters.
-        // Note: these restrictions are relied upon to prevent SQL injection
-        if !s.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
-            return Err(());
-        }
-
-        Ok(NodeId(s))
-    }
-
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-impl fmt::Display for NodeId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl<'de> de::Deserialize<'de> for NodeId {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        let s: String = de::Deserialize::deserialize(deserializer)?;
-        NodeId::new(s.clone())
-            .map_err(|()| de::Error::invalid_value(de::Unexpected::Str(&s), &"valid node ID"))
-    }
-}
-
 /// An entity attribute name is represented as a string.
 pub type Attribute = String;
 

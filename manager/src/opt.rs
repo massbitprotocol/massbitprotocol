@@ -11,15 +11,15 @@ lazy_static! {
 
 #[derive(Clone, Debug, StructOpt)]
 #[structopt(
-name = "graph-node",
+name = "massbit",
 about = "Scalable queries for a decentralized future",
-author = "Graph Protocol, Inc.",
+author = "Codelight, Inc.",
 version = RENDERED_TESTAMENT.as_str()
 )]
 pub struct Opt {
     #[structopt(
     long,
-    env = "GRAPH_NODE_CONFIG",
+    env = "MASSBIT_CONFIG",
     conflicts_with_all = &["postgres-url", "postgres-secondary-hosts", "postgres-host-weights"],
     required_unless = "postgres-url",
     help = "the name of the configuration file",
@@ -27,13 +27,6 @@ pub struct Opt {
     pub config: Option<String>,
     #[structopt(long, help = "validate the configuration and exit")]
     pub check_config: bool,
-    #[structopt(
-        long,
-        value_name = "[NAME:]IPFS_HASH",
-        env = "SUBGRAPH",
-        help = "name and IPFS hash of the subgraph manifest"
-    )]
-    pub subgraph: Option<String>,
     #[structopt(
         long,
         value_name = "URL",
@@ -47,7 +40,7 @@ pub struct Opt {
         long,
         value_name = "URL,",
         use_delimiter = true,
-        env = "GRAPH_POSTGRES_SECONDARY_HOSTS",
+        env = "POSTGRES_SECONDARY_HOSTS",
         conflicts_with = "config",
         help = "Comma-separated list of host names/IP's for read-only Postgres replicas, \
            which will share the load with the primary server"
@@ -58,7 +51,7 @@ pub struct Opt {
         long,
         value_name = "WEIGHT,",
         use_delimiter = true,
-        env = "GRAPH_POSTGRES_HOST_WEIGHTS",
+        env = "POSTGRES_HOST_WEIGHTS",
         conflicts_with = "config",
         help = "Comma-separated list of relative weights for selecting the main database \
     and secondary databases. The list is in the order MAIN,REPLICA1,REPLICA2,...\
@@ -101,72 +94,13 @@ pub struct Opt {
     pub ipfs: Vec<String>,
     #[structopt(
         long,
-        default_value = "8000",
-        value_name = "PORT",
-        help = "Port for the GraphQL HTTP server"
-    )]
-    pub http_port: u16,
-    #[structopt(
-        long,
-        default_value = "8030",
-        value_name = "PORT",
-        help = "Port for the index node server"
-    )]
-    pub index_node_port: u16,
-    #[structopt(
-        long,
-        default_value = "8001",
-        value_name = "PORT",
-        help = "Port for the GraphQL WebSocket server"
-    )]
-    pub ws_port: u16,
-    #[structopt(
-        long,
         default_value = "8020",
         value_name = "PORT",
-        help = "Port for the JSON-RPC admin server"
+        help = "Port for the JSON-RPC indexer manager server"
     )]
-    pub admin_port: u16,
-    #[structopt(
-        long,
-        default_value = "8040",
-        value_name = "PORT",
-        help = "Port for the Prometheus metrics server"
-    )]
-    pub metrics_port: u16,
-    #[structopt(
-        long,
-        default_value = "default",
-        value_name = "NODE_ID",
-        env = "GRAPH_NODE_ID",
-        help = "a unique identifier for this node"
-    )]
-    pub node_id: String,
+    pub json_rpc_port: u16,
     #[structopt(long, help = "Enable debug logging")]
     pub debug: bool,
-
-    #[structopt(
-        long,
-        value_name = "URL",
-        env = "ELASTICSEARCH_URL",
-        help = "Elasticsearch service to write subgraph logs to"
-    )]
-    pub elasticsearch_url: Option<String>,
-    #[structopt(
-        long,
-        value_name = "USER",
-        env = "ELASTICSEARCH_USER",
-        help = "User to use for Elasticsearch logging"
-    )]
-    pub elasticsearch_user: Option<String>,
-    #[structopt(
-        long,
-        value_name = "PASSWORD",
-        env = "ELASTICSEARCH_PASSWORD",
-        hide_env_values = true,
-        help = "Password to use for Elasticsearch logging"
-    )]
-    pub elasticsearch_password: Option<String>,
     #[structopt(
         long,
         value_name = "MILLISECONDS",
@@ -177,27 +111,12 @@ pub struct Opt {
     pub ethereum_polling_interval: u64,
     #[structopt(
         long,
-        value_name = "DISABLE_BLOCK_INGESTOR",
-        env = "DISABLE_BLOCK_INGESTOR",
-        help = "Ensures that the block ingestor component does not execute"
-    )]
-    pub disable_block_ingestor: bool,
-    #[structopt(
-        long,
         value_name = "STORE_CONNECTION_POOL_SIZE",
         default_value = "10",
         env = "STORE_CONNECTION_POOL_SIZE",
         help = "Limits the number of connections in the store's connection pool"
     )]
     pub store_connection_pool_size: u32,
-    #[structopt(
-        long,
-        min_values = 1,
-        value_name = "NETWORK_NAME",
-        help = "One or more network names to index using built-in subgraphs \
-                (e.g. 'ethereum/mainnet')."
-    )]
-    pub network_subgraphs: Vec<String>,
 }
 
 impl From<Opt> for config::Opt {
@@ -208,8 +127,6 @@ impl From<Opt> for config::Opt {
             store_connection_pool_size,
             postgres_host_weights,
             postgres_secondary_hosts,
-            disable_block_ingestor,
-            node_id,
             ethereum_rpc,
             ethereum_ws,
             ethereum_ipc,
@@ -221,8 +138,6 @@ impl From<Opt> for config::Opt {
             store_connection_pool_size,
             postgres_host_weights,
             postgres_secondary_hosts,
-            disable_block_ingestor,
-            node_id,
             ethereum_rpc,
             ethereum_ws,
             ethereum_ipc,

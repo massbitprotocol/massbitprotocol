@@ -10,6 +10,5 @@ pub trait IndexerRegistrar: Send + Sync + 'static {
         &self,
         name: IndexerName,
         hash: DeploymentHash,
-        node_id: NodeId,
     ) -> Result<CreateIndexerResponse, IndexerRegistrarError>;
 }

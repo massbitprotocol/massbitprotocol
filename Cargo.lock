@@ -16,6 +16,7 @@ dependencies = [
 name = "adapter"
 version = "0.1.0"
 dependencies = [
+ "chain-ethereum",
  "ethabi 12.0.0-graph",
  "futures 0.1.31",
  "graph 0.24.0",
@@ -25,15 +26,14 @@ dependencies = [
  "graph-runtime-wasm",
  "index-store",
  "lazy_static",
- "libloading",
+ "libloading 0.7.0",
  "log 0.4.14",
- "massbit-chain-ethereum",
+ "massbit",
  "massbit-chain-solana",
  "massbit-chain-substrate",
  "massbit-common",
- "massbit-runtime-wasm",
  "paste 1.0.5",
- "prost",
+ "prost 0.7.0",
  "quote 1.0.9",
  "serde_regex",
  "serde_yaml",
@@ -92,10 +92,13 @@ checksum = "250f629c0161ad8107cf89319e990051fae62832fd343083bea452d93e2205fd"
 name = "analytics"
 version = "0.1.0"
 dependencies = [
+ "Inflector",
  "anyhow",
  "async-stream 0.2.1",
  "bigdecimal",
  "broadcaster",
+ "chain-ethereum",
+ "chrono",
  "clap",
  "diesel",
  "diesel-derive-enum",
@@ -107,7 +110,6 @@ dependencies = [
  "futures 0.1.31",
  "futures-core",
  "futures-util",
- "graph 0.24.0",
  "hex",
  "hex-literal",
  "http 0.1.21",
@@ -116,17 +118,22 @@ dependencies = [
  "lazy_static",
  "log 0.4.14",
  "logger",
- "massbit-chain-ethereum",
+ "massbit",
  "massbit-chain-solana",
  "massbit-chain-substrate",
  "massbit-common",
  "multiqueue",
  "primitive-types 0.6.2",
- "prost",
+ "prost 0.7.0",
  "rand 0.7.3",
  "serde",
  "serde_json",
  "serde_yaml",
+ "solana-account-decoder",
+ "solana-program 1.8.0",
+ "solana-sdk 1.8.0",
+ "solana-transaction-status",
+ "solana-vote-program",
  "sp-core",
  "sp-keyring",
  "thiserror",
@@ -934,6 +941,7 @@ dependencies = [
  "anyhow",
  "async-stream 0.2.1",
  "broadcaster",
+ "chain-ethereum",
  "clap",
  "dotenv",
  "env_logger 0.9.0",
@@ -954,7 +962,7 @@ dependencies = [
  "lazy_static",
  "log 0.4.14",
  "logger",
- "massbit-chain-ethereum",
+ "massbit",
  "massbit-chain-solana",
  "massbit-chain-substrate",
  "massbit-common",
@@ -962,7 +970,8 @@ dependencies = [
  "node-template-runtime",
  "parity-scale-codec 2.1.1",
  "primitive-types 0.6.2",
- "prost",
+ "prost 0.8.0",
+ "prost-types 0.8.0",
  "rand 0.7.3",
  "serde",
  "serde_json",
@@ -1234,7 +1243,7 @@ dependencies = [
  "serde",
  "smallvec 1.6.1",
  "thiserror",
- "wasmparser 0.78.2",
+ "wasmparser",
 ]
 
 [[package]]
@@ -2676,7 +2685,7 @@ dependencies = [
  "tokio-retry 0.2.0",
  "tokio-stream",
  "url 2.2.2",
- "wasmparser 0.78.2",
+ "wasmparser",
  "web3",
 ]
 
@@ -2733,7 +2742,7 @@ dependencies = [
  "tokio-retry 0.3.0",
  "tokio-stream",
  "url 2.2.2",
- "wasmparser 0.78.2",
+ "wasmparser",
  "web3",
 ]
 
@@ -3421,6 +3430,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "hyper-timeout"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbb958482e8c7be4bc3cf272a766a2b0bf1a6755e7a6ae777f017a31d11b13b1"
+dependencies = [
+ "hyper 0.14.9",
+ "pin-project-lite 0.2.6",
+ "tokio 1.11.0",
+ "tokio-io-timeout",
+]
+
+[[package]]
 name = "hyper-tls"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3584,11 +3605,11 @@ dependencies = [
  "jsonrpc-http-server",
  "lazy_static",
  "log 0.4.14",
+ "massbit",
  "massbit-chain-solana",
  "massbit-chain-substrate",
- "node-template-runtime",
  "postgres",
- "prost",
+ "prost 0.8.0",
  "rand 0.8.4",
  "reqwest 0.10.10",
  "serde",
@@ -3922,6 +3943,16 @@ checksum = "3cb00336871be5ed2c8ed44b60ae9959dc5b9f08539422ed43f09e34ecaeba21"
 
 [[package]]
 name = "libloading"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2b111a074963af1d37a139918ac6d49ad1d0d5e47f72fd55388619691a7d753"
+dependencies = [
+ "cc",
+ "winapi 0.3.9",
+]
+
+[[package]]
+name = "libloading"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6f84d96438c15fcd6c3f244c8fce01d1e2b9c6b5623e9c711dc9286d8fc92d6a"
@@ -3977,8 +4008,8 @@ dependencies = [
  "parity-multiaddr",
  "parking_lot 0.11.2",
  "pin-project 1.0.5",
- "prost",
- "prost-build",
+ "prost 0.7.0",
+ "prost-build 0.7.0",
  "rand 0.7.3",
  "ring",
  "rw-stream-sink",
@@ -4283,6 +4314,8 @@ dependencies = [
  "parking_lot 0.11.2",
  "petgraph 0.6.0",
  "priority-queue",
+ "prost 0.8.0",
+ "prost-types 0.8.0",
  "rand 0.6.5",
  "reqwest 0.11.4",
  "semver 1.0.4",
@@ -4303,32 +4336,10 @@ dependencies = [
  "tokio 1.11.0",
  "tokio-retry 0.3.0",
  "tokio-stream",
+ "tonic",
+ "tonic-build",
  "url 2.2.2",
- "wasmparser 0.78.2",
- "web3",
-]
-
-[[package]]
-name = "massbit-chain-ethereum"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bs58 0.4.0",
- "env_logger 0.9.0",
- "ethabi 12.0.0-graph",
- "futures 0.1.31",
- "futures 0.3.17",
- "graph 0.24.0",
- "graph-chain-ethereum",
- "graph-runtime-wasm",
- "hex",
- "log 0.4.14",
- "serde",
- "serde_json",
- "stable-hash",
- "tiny-keccak 1.5.0",
- "tokio-compat-02",
- "utils",
+ "wasmparser",
  "web3",
 ]
 
@@ -4374,6 +4385,8 @@ dependencies = [
  "ethabi 12.0.0-graph",
  "lazy_static",
  "log 0.4.14",
+ "r2d2",
+ "r2d2-diesel",
  "regex",
  "reqwest 0.10.10",
  "serde",
@@ -4400,64 +4413,6 @@ dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.9",
  "syn 1.0.64",
-]
-
-[[package]]
-name = "massbit-runtime-wasm"
-version = "0.1.0"
-dependencies = [
- "Inflector",
- "anyhow",
- "atomic_refcell",
- "backtrace",
- "bigdecimal",
- "chrono",
- "defer",
- "diesel",
- "diesel_derives",
- "futures 0.1.31",
- "futures 0.3.17",
- "graph 0.24.0",
- "graph-chain-ethereum",
- "graph-mock",
- "graph-node",
- "graph-runtime-derive",
- "graph-runtime-wasm",
- "graph-store-postgres",
- "hex",
- "http 0.1.21",
- "index-store",
- "isatty",
- "itertools 0.10.1",
- "jsonrpc-core 14.2.0",
- "massbit-chain-ethereum",
- "massbit-common",
- "mockall 0.9.1",
- "never",
- "num-bigint",
- "num-traits",
- "priority-queue",
- "prometheus 0.12.0",
- "rand 0.8.4",
- "reqwest 0.10.10",
- "semver 1.0.4",
- "serde",
- "slog",
- "slog-async",
- "slog-envlogger",
- "slog-term",
- "stable-hash",
- "strum 0.21.0",
- "strum_macros 0.21.1",
- "thiserror",
- "tiny-keccak 1.5.0",
- "tokio 1.11.0",
- "tokio-retry 0.3.0",
- "url 2.2.2",
- "uuid 0.8.2",
- "wasmparser 0.80.1",
- "wasmtime",
- "web3",
 ]
 
 [[package]]
@@ -5863,6 +5818,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3831453b3449ceb48b6d9c7ad7c96d5ea673e9b470a1dc578c2ce6521230884c"
 
 [[package]]
+name = "plugin"
+version = "0.1.0"
+dependencies = [
+ "index-store",
+ "libloading 0.5.2",
+ "massbit-chain-solana",
+ "structmap",
+]
+
+[[package]]
 name = "polling"
 version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6129,7 +6094,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e6984d2f1a23009bd270b8bb56d0926810a3d483f59c987d77969e9d8e840b2"
 dependencies = [
  "bytes 1.0.1",
- "prost-derive",
+ "prost-derive 0.7.0",
+]
+
+[[package]]
+name = "prost"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "de5e2533f59d08fcf364fd374ebda0692a70bd6d7e66ef97f306f45c6c5d8020"
+dependencies = [
+ "bytes 1.0.1",
+ "prost-derive 0.8.0",
 ]
 
 [[package]]
@@ -6144,8 +6119,26 @@ dependencies = [
  "log 0.4.14",
  "multimap",
  "petgraph 0.5.1",
- "prost",
- "prost-types",
+ "prost 0.7.0",
+ "prost-types 0.7.0",
+ "tempfile",
+ "which",
+]
+
+[[package]]
+name = "prost-build"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "355f634b43cdd80724ee7848f95770e7e70eefa6dcf14fea676216573b8fd603"
+dependencies = [
+ "bytes 1.0.1",
+ "heck",
+ "itertools 0.10.1",
+ "log 0.4.14",
+ "multimap",
+ "petgraph 0.5.1",
+ "prost 0.8.0",
+ "prost-types 0.8.0",
  "tempfile",
  "which",
 ]
@@ -6164,13 +6157,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "prost-derive"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "600d2f334aa05acb02a755e217ef1ab6dea4d51b58b7846588b747edec04efba"
+dependencies = [
+ "anyhow",
+ "itertools 0.10.1",
+ "proc-macro2 1.0.24",
+ "quote 1.0.9",
+ "syn 1.0.64",
+]
+
+[[package]]
 name = "prost-types"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b518d7cdd93dab1d1122cf07fa9a60771836c668dde9d9e2a139f957f0d9f1bb"
 dependencies = [
  "bytes 1.0.1",
- "prost",
+ "prost 0.7.0",
+]
+
+[[package]]
+name = "prost-types"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "603bbd6394701d13f3f25aada59c7de9d35a6a5887cfc156181234a44002771b"
+dependencies = [
+ "bytes 1.0.1",
+ "prost 0.8.0",
 ]
 
 [[package]]
@@ -6230,6 +6246,16 @@ dependencies = [
  "log 0.4.14",
  "parking_lot 0.11.2",
  "scheduled-thread-pool",
+]
+
+[[package]]
+name = "r2d2-diesel"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eb9c29bad92da76d02bc2c020452ebc3a3fe6fa74cfab91e711c43116e4fb1a3"
+dependencies = [
+ "diesel",
+ "r2d2",
 ]
 
 [[package]]
@@ -6843,6 +6869,18 @@ dependencies = [
  "ring",
  "sct",
  "webpki",
+]
+
+[[package]]
+name = "rustls-native-certs"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a07b7c1885bd8ed3831c289b7870b13ef46fe0e856d288c30d9cc17d75a2092"
+dependencies = [
+ "openssl-probe",
+ "rustls",
+ "schannel",
+ "security-framework",
 ]
 
 [[package]]
@@ -7823,7 +7861,7 @@ version = "1.8.0"
 source = "git+https://github.com/massbitprotocol/solana.git?branch=main#f829e3db64ac6ff48017624122bc1661c77f19d0"
 dependencies = [
  "libc",
- "libloading",
+ "libloading 0.7.0",
  "log 0.4.14",
  "num-derive",
  "num-traits",
@@ -9393,6 +9431,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokio-io-timeout"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "90c49f106be240de154571dd31fbe48acb10ba6c6dd6f6517ad603abffa42de9"
+dependencies = [
+ "pin-project-lite 0.2.6",
+ "tokio 1.11.0",
+]
+
+[[package]]
 name = "tokio-macros"
 version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9704,9 +9752,9 @@ dependencies = [
 
 [[package]]
 name = "tonic"
-version = "0.4.3"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ac42cd97ac6bd2339af5bcabf105540e21e45636ec6fa6aae5e85d44db31be0"
+checksum = "796c5e1cd49905e65dd8e700d4cb1dffcbfdb4fc9d017de08c1a537afd83627c"
 dependencies = [
  "async-stream 0.3.2",
  "async-trait",
@@ -9718,14 +9766,18 @@ dependencies = [
  "http 0.2.3",
  "http-body 0.4.2",
  "hyper 0.14.9",
+ "hyper-timeout",
  "percent-encoding 2.1.0",
  "pin-project 1.0.5",
- "prost",
- "prost-derive",
+ "prost 0.8.0",
+ "prost-derive 0.8.0",
+ "rustls-native-certs",
  "tokio 1.11.0",
+ "tokio-rustls",
  "tokio-stream",
  "tokio-util 0.6.7",
  "tower",
+ "tower-layer",
  "tower-service",
  "tracing",
  "tracing-futures",
@@ -9733,12 +9785,12 @@ dependencies = [
 
 [[package]]
 name = "tonic-build"
-version = "0.4.2"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c695de27302f4697191dda1c7178131a8cb805463dda02864acb80fe1322fdcf"
+checksum = "12b52d07035516c2b74337d2ac7746075e7dcae7643816c1b12c5ff8a7484c08"
 dependencies = [
  "proc-macro2 1.0.24",
- "prost-build",
+ "prost-build 0.8.0",
  "quote 1.0.9",
  "syn 1.0.64",
 ]
@@ -10273,20 +10325,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09cc8ee72d2a9becf2f2febe0205bbed8fc6615b7cb429ad062dc7b7ddd036a9"
 
 [[package]]
-name = "utils"
-version = "0.1.0"
-dependencies = [
- "futures 0.1.31",
- "futures 0.3.17",
- "log 0.4.14",
- "slog",
- "thiserror",
- "tokio 1.11.0",
- "tokio-retry 0.3.0",
- "tokio-stream",
-]
-
-[[package]]
 name = "uuid"
 version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10524,12 +10562,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "52144d4c78e5cf8b055ceab8e5fa22814ce4315d6002ad32cfd914f37c12fd65"
 
 [[package]]
-name = "wasmparser"
-version = "0.80.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be92b6dcaa5af4b2a176b29be3bf1402fab9e69d313141185099c7d1684f2dca"
-
-[[package]]
 name = "wasmtime"
 version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10551,7 +10583,7 @@ dependencies = [
  "serde",
  "smallvec 1.6.1",
  "target-lexicon",
- "wasmparser 0.78.2",
+ "wasmparser",
  "wasmtime-cache",
  "wasmtime-environ",
  "wasmtime-fiber",
@@ -10594,7 +10626,7 @@ dependencies = [
  "cranelift-frontend",
  "cranelift-wasm",
  "target-lexicon",
- "wasmparser 0.78.2",
+ "wasmparser",
  "wasmtime-environ",
 ]
 
@@ -10610,7 +10642,7 @@ dependencies = [
  "object 0.24.0",
  "target-lexicon",
  "thiserror",
- "wasmparser 0.78.2",
+ "wasmparser",
  "wasmtime-environ",
 ]
 
@@ -10630,7 +10662,7 @@ dependencies = [
  "more-asserts",
  "serde",
  "thiserror",
- "wasmparser 0.78.2",
+ "wasmparser",
 ]
 
 [[package]]
@@ -10667,7 +10699,7 @@ dependencies = [
  "serde",
  "target-lexicon",
  "thiserror",
- "wasmparser 0.78.2",
+ "wasmparser",
  "wasmtime-cranelift",
  "wasmtime-debug",
  "wasmtime-environ",

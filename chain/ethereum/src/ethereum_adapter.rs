@@ -104,7 +104,7 @@ const GETH_ETH_CALL_ERRORS: &[&str] = &[
 pub struct EthereumAdapter {
     logger: Logger,
     url_hostname: Arc<String>,
-    web3: Arc<Web3<Transport>>,
+    pub web3: Arc<Web3<Transport>>,
     provider: String,
     supports_eip_1898: bool,
 }
@@ -580,7 +580,7 @@ impl EthereumAdapter {
                 .filter_map(|trace| EthereumCall::try_from_trace(&trace))
                 .filter(move |call| {
                     // `trace_filter` can only filter by calls `to` an address and
-                    // a block range. Since subgraphs are subscribing to calls
+                    // a block range. Since indexers are subscribing to calls
                     // for a specific contract function an additional filter needs
                     // to be applied
                     call_filter.matches(&call)
@@ -959,7 +959,6 @@ pub(crate) async fn blocks_with_triggers(
     }
 
     let logger1 = logger.cheap_clone();
-    let eth_clone = eth.cheap_clone();
     let (triggers, to_hash) = trigger_futs
         .concat2()
         .join(

@@ -86,7 +86,7 @@ macro_rules! create_adapters {
                 ),*
             }
             impl MessageHandler for HandlerProxyType {
-                fn handle_rust_mapping(&self, message: &mut GenericDataProto, store: &mut dyn Store) -> Result<(), Box<dyn Error>> {
+                fn handle_rust_mapping(&self, message: &mut BlockResponse, store: &mut dyn Store) -> Result<(), Box<dyn Error>> {
                     match self {
                         $(
                         HandlerProxyType::$adapter(proxy) => {
@@ -114,7 +114,7 @@ macro_rules! create_adapters {
                 )*
             }
             /*
-            pub fn handle_rust_mapping(proxy_type: &HandlerProxyType, message : &mut GenericDataProto) -> Result<(), Box<dyn Error>> {
+            pub fn handle_rust_mapping(proxy_type: &HandlerProxyType, message : &mut BlockResponse) -> Result<(), Box<dyn Error>> {
                 match proxy_type {
                     $(
                     HandlerProxyType::$adapter(proxy) => {
@@ -222,7 +222,7 @@ macro_rules! create_wasm_adapters {
                     &mut self,
                     //wasm_instance: &mut WasmInstance<Chain>,
                     //datasource: &DataSource,
-                    message: &mut GenericDataProto
+                    message: &mut BlockResponse
                 ) -> Result<(), Box<dyn Error>> {
                     match self {
                         $(
@@ -239,7 +239,7 @@ macro_rules! create_wasm_adapters {
                     proxy_type: &WasmHandlerProxyType,
                     wasm_instance: &mut WasmInstance<Chain>,
                     mapping: &Mapping,
-                    message: &mut GenericDataProto
+                    message: &mut BlockResponse
             ) -> Result<(), Box<dyn Error>> {
                 match proxy_type {
                     $(

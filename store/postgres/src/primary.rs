@@ -3,22 +3,19 @@
 //! for the primary shard.
 use diesel::{
     data_types::PgTimestamp,
-    dsl::{any, exists, not, select},
+    dsl::exists,
     pg::Pg,
     serialize::Output,
-    sql_types::{Array, Integer, Text},
+    sql_types::{Integer, Text},
     types::{FromSql, ToSql},
 };
 use diesel::{
-    dsl::{delete, insert_into, sql, update},
+    dsl::{insert_into, sql},
     r2d2::PooledConnection,
 };
 use diesel::{pg::PgConnection, r2d2::ConnectionManager};
 use diesel::{
-    prelude::{
-        BoolExpressionMethods, ExpressionMethods, GroupByDsl, JoinOnDsl, NullableExpressionMethods,
-        OptionalExtension, QueryDsl, RunQueryDsl,
-    },
+    prelude::{ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl},
     Connection as _,
 };
 use massbit::components::store::{DeploymentId as IndexerDeploymentId, DeploymentLocator};
@@ -26,7 +23,6 @@ use massbit::constraint_violation;
 use massbit::prelude::*;
 use maybe_owned::MaybeOwned;
 use std::{
-    collections::HashMap,
     convert::TryFrom,
     convert::TryInto,
     fmt,
@@ -43,8 +39,6 @@ table! {
         vid -> BigInt,
         id -> Text,
         name -> Text,
-        current_version -> Nullable<Text>,
-        pending_version -> Nullable<Text>,
         created_at -> Numeric,
         block_range -> Range<Integer>,
     }
@@ -58,10 +52,6 @@ table! {
         name -> Text,
         shard -> Text,
         network -> Text,
-        /// If there are multiple entries for the same IPFS hash (`indexer`)
-        /// only one of them will be active. That's the one we use for
-        /// querying
-        active -> Bool,
     }
 }
 
@@ -78,7 +68,6 @@ struct Schema {
     pub name: String,
     pub shard: String,
     pub network: String,
-    pub(crate) active: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, AsExpression, FromSqlRow)]
@@ -178,10 +167,6 @@ pub struct Site {
     pub namespace: Namespace,
     /// The name of the network to which this deployment belongs
     pub network: String,
-    /// Whether this is the site that should be used for queries. There's
-    /// exactly one for each `deployment`, i.e., other entries for that
-    /// deployment have `active = false`
-    pub(crate) active: bool,
     /// Only the store and tests can create Sites
     _creation_disallowed: (),
 }
@@ -206,7 +191,6 @@ impl TryFrom<Schema> for Site {
             namespace,
             shard,
             network: schema.network,
-            active: schema.active,
             _creation_disallowed: (),
         })
     }
@@ -288,15 +272,6 @@ impl<'a> Connection<'a> {
         schema.map(|schema| schema.try_into()).transpose()
     }
 
-    pub fn find_active_site(&self, indexer: &DeploymentHash) -> Result<Option<Site>, StoreError> {
-        let schema = deployment_schemas::table
-            .filter(deployment_schemas::indexer.eq(indexer.to_string()))
-            .filter(deployment_schemas::active.eq(true))
-            .first::<Schema>(self.0.as_ref())
-            .optional()?;
-        schema.map(|schema| schema.try_into()).transpose()
-    }
-
     /// Create a new site and possibly set it to the active site. This
     /// function only performs the basic operations for creation, and the
     /// caller must check that other conditions (like whether there already
@@ -306,7 +281,6 @@ impl<'a> Connection<'a> {
         shard: Shard,
         deployment: DeploymentHash,
         network: String,
-        active: bool,
     ) -> Result<Site, StoreError> {
         use deployment_schemas as ds;
 
@@ -317,7 +291,6 @@ impl<'a> Connection<'a> {
                 ds::indexer.eq(deployment.as_str()),
                 ds::shard.eq(shard.as_str()),
                 ds::network.eq(network.as_str()),
-                ds::active.eq(active),
             ))
             .returning((ds::id, ds::name))
             .get_results(conn)?;
@@ -335,7 +308,6 @@ impl<'a> Connection<'a> {
             shard,
             namespace,
             network,
-            active: true,
             _creation_disallowed: (),
         })
     }
@@ -346,41 +318,36 @@ impl<'a> Connection<'a> {
         indexer: &DeploymentHash,
         network: String,
     ) -> Result<Site, StoreError> {
-        if let Some(site) = self.find_active_site(indexer)? {
+        if let Some(site) = self.find_site(indexer)? {
             return Ok(site);
         }
 
-        self.create_site(shard, indexer.clone(), network, true)
+        self.create_site(shard, indexer.clone(), network)
     }
 
-    /// Find sites by their subgraph deployment hashes. If `ids` is empty,
+    /// Find sites by their indexer deployment hashes. If `ids` is empty,
     /// return all sites
-    pub fn find_sites(&self, ids: Vec<String>, only_active: bool) -> Result<Vec<Site>, StoreError> {
+    pub fn find_sites(&self, ids: Vec<String>) -> Result<Vec<Site>, StoreError> {
         use deployment_schemas as ds;
 
         let schemas = if ids.is_empty() {
-            if only_active {
-                ds::table
-                    .filter(ds::active)
-                    .load::<Schema>(self.0.as_ref())?
-            } else {
-                ds::table.load::<Schema>(self.0.as_ref())?
-            }
+            ds::table.load::<Schema>(self.0.as_ref())?
         } else {
-            if only_active {
-                ds::table
-                    .filter(ds::active)
-                    .filter(ds::indexer.eq_any(ids))
-                    .load::<Schema>(self.0.as_ref())?
-            } else {
-                ds::table
-                    .filter(ds::indexer.eq_any(ids))
-                    .load::<Schema>(self.0.as_ref())?
-            }
+            ds::table
+                .filter(ds::indexer.eq_any(ids))
+                .load::<Schema>(self.0.as_ref())?
         };
         schemas
             .into_iter()
             .map(|schema| schema.try_into())
             .collect()
+    }
+
+    pub fn find_site(&self, indexer: &DeploymentHash) -> Result<Option<Site>, StoreError> {
+        let schema = deployment_schemas::table
+            .filter(deployment_schemas::indexer.eq(indexer.to_string()))
+            .first::<Schema>(self.0.as_ref())
+            .optional()?;
+        schema.map(|schema| schema.try_into()).transpose()
     }
 }

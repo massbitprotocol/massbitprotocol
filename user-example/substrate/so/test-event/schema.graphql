@@ -1,5 +1,0 @@
-type SubstrateEvent @entity {
-    id: ID!
-    event: String!
-    timestamp: String!
-}

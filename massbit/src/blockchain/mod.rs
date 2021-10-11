@@ -3,6 +3,7 @@
 //! trait which is the centerpiece of this module.
 
 pub mod block_stream;
+pub mod firehose_block_stream;
 pub mod polling_block_stream;
 
 mod types;
@@ -22,10 +23,9 @@ use std::{
 
 use crate::components::indexer::DataSourceTemplateInfo;
 use crate::components::link_resolver::LinkResolver;
-use crate::components::store::{
-    BlockNumber, DeploymentLocator, StoredDynamicDataSource, WritableStore,
-};
+use crate::components::store::{BlockNumber, StoredDynamicDataSource};
 use crate::data::indexer::{DataSourceContext, IndexerManifestValidationError};
+use crate::prelude::serde::Serialize;
 use crate::prelude::{CheapClone, Logger};
 use crate::runtime::{AscHeap, AscPtr, DeterministicHostError, HostExportError};
 
@@ -55,7 +55,7 @@ pub trait Block: Send + Sync {
 pub trait Blockchain: Debug + Sized + Send + Sync + Unpin + 'static {
     const KIND: BlockchainKind;
 
-    type Block: Block + Clone;
+    type Block: Block + Clone + Serialize + DeserializeOwned;
 
     type DataSource: DataSource<Self>;
     type UnresolvedDataSource: UnresolvedDataSource<Self>;
@@ -66,28 +66,23 @@ pub trait Blockchain: Debug + Sized + Send + Sync + Unpin + 'static {
     type TriggersAdapter: TriggersAdapter<Self>;
 
     /// Trigger data as parsed from the triggers adapter.
-    type TriggerData: TriggerData + Ord;
+    type TriggerData: TriggerData + Ord + Serialize + DeserializeOwned;
 
     /// Decoded trigger ready to be processed by the mapping.
     type MappingTrigger: MappingTrigger + Debug;
 
     /// Trigger filter used as input to the triggers adapter.
-    type TriggerFilter: TriggerFilter<Self>;
+    type TriggerFilter: TriggerFilter<Self> + Serialize + DeserializeOwned;
 
     type RuntimeAdapter: RuntimeAdapter<Self>;
 
-    fn triggers_adapter(
-        &self,
-        loc: &DeploymentLocator,
-    ) -> Result<Arc<Self::TriggersAdapter>, Error>;
+    fn triggers_adapter(&self) -> Result<Arc<Self::TriggersAdapter>, Error>;
 
     fn runtime_adapter(&self) -> Arc<Self::RuntimeAdapter>;
 
     async fn new_block_stream(
         &self,
-        store: Arc<dyn WritableStore>,
-        deployment: DeploymentLocator,
-        start_block: Vec<BlockNumber>,
+        start_block: BlockNumber,
         filter: Arc<Self::TriggerFilter>,
     ) -> Result<Box<dyn BlockStream<Self>>, Error>;
 

@@ -1,9 +1,7 @@
-use atomic_refcell::AtomicRefCell;
 use fail::fail_point;
 use lazy_static::lazy_static;
-use std::collections::{BTreeSet, HashMap};
+use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use std::time::Instant;
 use tokio::task;
 
 use massbit::blockchain::{
@@ -16,8 +14,7 @@ use massbit::components::store::{
     DeploymentId, DeploymentLocator, IndexerStore, ModificationsAndCache, WritableStore,
 };
 use massbit::data::indexer::MAX_SPEC_VERSION;
-use massbit::data::store::scalar::Bytes;
-use massbit::ext::futures::{CancelHandle, FutureExtension};
+use massbit::ext::futures::CancelHandle;
 use massbit::prelude::{IndexerInstanceManager as IndexerInstanceManagerTrait, TryStreamExt, *};
 use massbit::util::lfu_cache::LfuCache;
 
@@ -29,22 +26,16 @@ lazy_static! {
     /// Size limit of the entity LFU cache, in bytes.
     // Multiplied by 1000 because the env var is in KB.
     pub static ref ENTITY_CACHE_SIZE: usize = 1000
-        * std::env::var("GRAPH_ENTITY_CACHE_SIZE")
+        * std::env::var("ENTITY_CACHE_SIZE")
             .unwrap_or("10000".into())
             .parse::<usize>()
-            .expect("invalid GRAPH_ENTITY_CACHE_SIZE");
-
-    // Keep deterministic errors non-fatal even if the indexer is pending.
-    // Used for testing Graph Node itself.
-    pub static ref DISABLE_FAIL_FAST: bool =
-        std::env::var("GRAPH_DISABLE_FAIL_FAST").is_ok();
+            .expect("invalid ENTITY_CACHE_SIZE");
 }
 
 type SharedInstanceKeepAliveMap = Arc<RwLock<HashMap<DeploymentId, CancelGuard>>>;
 
 struct IndexingInputs<C: Blockchain> {
     deployment: DeploymentLocator,
-    start_blocks: Vec<BlockNumber>,
     store: Arc<dyn WritableStore>,
     triggers_adapter: Arc<C::TriggersAdapter>,
     chain: Arc<C>,
@@ -146,11 +137,11 @@ where
             info!(logger, "Resolve indexer files using IPFS");
 
             let mut manifest = IndexerManifest::resolve_from_raw(
+                &logger,
                 deployment.hash.cheap_clone(),
                 manifest,
                 // Allow for infinite retries for indexer definition files.
                 &self.link_resolver.as_ref().clone().with_retries(),
-                &logger,
                 MAX_SPEC_VERSION.clone(),
             )
             .await
@@ -185,13 +176,18 @@ where
 
         // Obtain filters from the manifest
         let filter = C::TriggerFilter::from_data_sources(manifest.data_sources.iter());
-        let start_blocks = manifest.start_blocks();
 
         let templates = Arc::new(manifest.templates.clone());
 
         let triggers_adapter = chain
-            .triggers_adapter(&deployment)
-            .map_err(|e| anyhow!("expected triggers adapter that matches deployment"))?
+            .triggers_adapter()
+            .map_err(|e| {
+                anyhow!(
+                    "expected triggers adapter that matches deployment {}: {}",
+                    &deployment,
+                    e
+                )
+            })?
             .clone();
 
         let host_builder = runtime_wasm::RuntimeHostBuilder::new(
@@ -206,7 +202,6 @@ where
         let ctx = IndexingContext {
             inputs: IndexingInputs {
                 deployment: deployment.clone(),
-                start_blocks,
                 store,
                 triggers_adapter,
                 chain,
@@ -255,8 +250,6 @@ where
 {
     // Clone a few things for different parts of the async processing
     let logger = ctx.state.logger.cheap_clone();
-    let store_for_err = ctx.inputs.store.cheap_clone();
-    let id_for_err = ctx.inputs.deployment.hash.clone();
     let mut first_run = true;
 
     loop {
@@ -264,20 +257,11 @@ where
 
         let block_stream_canceler = CancelGuard::new();
         let block_stream_cancel_handle = block_stream_canceler.handle();
-        let indexer_ptr = ctx
-            .inputs
-            .store
-            .block_ptr()?
-            .map_or(0, |ptr| ptr.number + 1);
+        let indexer_ptr = ctx.inputs.store.block_ptr()?.map_or(0, |ptr| ptr.number);
         let mut block_stream = ctx
             .inputs
             .chain
-            .new_block_stream(
-                ctx.inputs.store.clone(),
-                ctx.inputs.deployment.clone(),
-                ctx.inputs.start_blocks.clone(),
-                Arc::new(ctx.state.filter.clone()),
-            )
+            .new_block_stream(indexer_ptr, Arc::new(ctx.state.filter.clone()))
             .await?
             .map_err(CancelableError::Error)
             .cancelable(&block_stream_canceler, || Err(CancelableError::Cancel));
@@ -307,7 +291,6 @@ where
                 None => unreachable!("The block stream stopped producing blocks"),
             };
 
-            let block_ptr = block.ptr();
             let res = process_block(
                 &logger,
                 ctx.inputs.triggers_adapter.cheap_clone(),
@@ -347,13 +330,6 @@ where
                 Err(e) => {
                     let message = format!("{:#}", e).replace("\n", "\t");
                     let err = anyhow!("{}", message);
-                    let error = IndexerError {
-                        indexer_id: id_for_err.clone(),
-                        message,
-                        block_ptr: Some(block_ptr),
-                        handler: None,
-                        deterministic: e.is_deterministic(),
-                    };
                     return Err(err);
                 }
             }
@@ -373,12 +349,6 @@ enum BlockProcessingError {
 
     #[error("indexer stopped while processing triggers")]
     Canceled,
-}
-
-impl BlockProcessingError {
-    fn is_deterministic(&self) -> bool {
-        matches!(self, BlockProcessingError::Deterministic(_))
-    }
 }
 
 impl From<Error> for BlockProcessingError {
@@ -405,9 +375,7 @@ async fn process_block<T: RuntimeHostBuilder<C>, C: Blockchain>(
         "block_hash" => format!("{}", block_ptr.hash)
     ));
 
-    if triggers.len() == 1 {
-        info!(&logger, "1 trigger found in this block for this indexer");
-    } else if triggers.len() > 1 {
+    if triggers.len() >= 1 {
         info!(
             &logger,
             "{} triggers found in this block for this indexer",
@@ -429,10 +397,10 @@ async fn process_block<T: RuntimeHostBuilder<C>, C: Blockchain>(
     )
     .await
     {
-        // Triggers processed with no errors or with only determinstic errors.
+        // Triggers processed with no errors or with only deterministic errors.
         Ok(block_state) => block_state,
 
-        // Some form of unknown or non-deterministic error ocurred.
+        // Some form of unknown or non-deterministic error occurred.
         Err(MappingError::Unknown(e)) => return Err(BlockProcessingError::Unknown(e)),
         Err(MappingError::PossibleReorg(e)) => {
             info!(ctx.state.logger,
@@ -481,12 +449,7 @@ async fn process_block<T: RuntimeHostBuilder<C>, C: Blockchain>(
 
         let triggers = block_with_triggers.trigger_data;
 
-        if triggers.len() == 1 {
-            info!(
-                &logger,
-                "1 trigger found in this block for the new data sources"
-            );
-        } else if triggers.len() > 1 {
+        if triggers.len() >= 1 {
             info!(
                 &logger,
                 "{} triggers found in this block for the new data sources",
@@ -515,8 +478,8 @@ async fn process_block<T: RuntimeHostBuilder<C>, C: Blockchain>(
             )
             .await
             .map_err(|e| {
-                // This treats a `PossibleReorg` as an ordinary error which will fail the subgraph.
-                // This can cause an unnecessary subgraph failure, to fix it we need to figure out a
+                // This treats a `PossibleReorg` as an ordinary error which will fail the indexer.
+                // This can cause an unnecessary indexer failure, to fix it we need to figure out a
                 // way to revert the effect of `create_dynamic_data_sources` so we may return a
                 // clean context as in b21fa73b-6453-4340-99fb-1a78ec62efb1.
                 match e {
@@ -527,6 +490,18 @@ async fn process_block<T: RuntimeHostBuilder<C>, C: Blockchain>(
             })?;
         }
     }
+
+    // The triggers were processed but some were skipped due to deterministic errors, if the
+    // `nonFatalErrors` feature is not present, return early with an error.
+    let has_errors = block_state.has_errors();
+    if has_errors {
+        // Take just the first error to report.
+        return Err(BlockProcessingError::Deterministic(
+            block_state.deterministic_errors.into_iter().next().unwrap(),
+        ));
+    }
+
+    // Apply entity operations and advance the stream
 
     // Avoid writing to store if block stream has been canceled
     if block_stream_cancel_handle.is_canceled() {
@@ -555,7 +530,6 @@ async fn process_block<T: RuntimeHostBuilder<C>, C: Blockchain>(
     // Transact entity operations into the store and update the
     // indexer's block stream pointer
     let store = &ctx.inputs.store;
-
     match store.transact_block_operations(block_ptr, mods, data_sources) {
         Ok(_) => Ok((ctx, needs_restart)),
         Err(e) => Err(anyhow!("Error while processing block stream for a indexer: {}", e).into()),
@@ -569,8 +543,6 @@ async fn process_triggers<C: Blockchain>(
     block: &Arc<C::Block>,
     triggers: Vec<C::TriggerData>,
 ) -> Result<BlockState<C>, MappingError> {
-    use massbit::blockchain::TriggerData;
-
     for trigger in triggers.into_iter() {
         block_state = instance
             .process_trigger(&logger, block, &trigger, block_state)

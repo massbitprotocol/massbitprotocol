@@ -1,6 +1,6 @@
 use crate::ext::futures::FutureExtension;
 use futures03::{Future, FutureExt, TryFutureExt};
-use slog::{debug, trace, warn, Logger};
+use slog::{debug, warn, Logger};
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::sync::Arc;

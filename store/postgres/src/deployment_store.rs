@@ -1,18 +1,15 @@
-use diesel::r2d2::Builder;
 use diesel::{connection::SimpleConnection, pg::PgConnection};
 use diesel::{
-    r2d2::{self, event as e, ConnectionManager, HandleEvent, Pool, PooledConnection},
+    r2d2::{ConnectionManager, PooledConnection},
     Connection,
 };
-use diesel::{sql_query, RunQueryDsl};
-use lru_time_cache::LruCache;
 use rand::{seq::SliceRandom, thread_rng};
 use std::collections::{BTreeMap, HashMap};
 use std::env;
 use std::ops::Deref;
 use std::str::FromStr;
 use std::sync::atomic::AtomicUsize;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use massbit::components::store::{EntityType, StoredDynamicDataSource, BLOCK_NUMBER_MAX};
 use massbit::data::indexer::schema::IndexerDeploymentEntity;
@@ -26,22 +23,23 @@ use crate::deployment;
 use crate::dynds;
 use crate::primary::Site;
 use crate::relational::{Layout, LayoutCache};
-use massbit_common::consts::HASURA_URL;
 use massbit::prelude::reqwest::Client;
 lazy_static! {
-    /// `GRAPH_QUERY_STATS_REFRESH_INTERVAL` is how long statistics that
+    /// `QUERY_STATS_REFRESH_INTERVAL` is how long statistics that
     /// influence query execution are cached in memory (in seconds) before
     /// they are reloaded from the database. Defaults to 300s (5 minutes).
     static ref STATS_REFRESH_INTERVAL: Duration = {
-        env::var("GRAPH_QUERY_STATS_REFRESH_INTERVAL")
+        env::var("QUERY_STATS_REFRESH_INTERVAL")
         .ok()
         .map(|s| {
             let secs = u64::from_str(&s).unwrap_or_else(|_| {
-                panic!("GRAPH_QUERY_STATS_REFRESH_INTERVAL must be a number, but is `{}`", s)
+                panic!("QUERY_STATS_REFRESH_INTERVAL must be a number, but is `{}`", s)
             });
             Duration::from_secs(secs)
         }).unwrap_or(Duration::from_secs(300))
     };
+
+    static ref HASURA_URL: String = env::var("HASURA_URL").unwrap_or(String::from("http://localhost:8080/v1/query"));
 }
 
 /// When connected to read replicas, this allows choosing which DB server to use for an operation.
@@ -80,9 +78,6 @@ pub struct StoreInner {
     /// The current position in `replica_order` so we know which one to
     /// pick next
     conn_round_robin_counter: AtomicUsize,
-
-    /// A cache of commonly needed data about a indexer.
-    indexer_cache: Mutex<LruCache<DeploymentHash, IndexerInfo>>,
 
     /// A cache for the layout metadata for indexers. The Store just
     /// hosts this because it lives long enough, but it is managed from
@@ -138,53 +133,12 @@ impl DeploymentStore {
             read_only_pools,
             replica_order,
             conn_round_robin_counter: AtomicUsize::new(0),
-            indexer_cache: Mutex::new(LruCache::with_capacity(100)),
             layout_cache: LayoutCache::new(*STATS_REFRESH_INTERVAL),
         };
         let store = DeploymentStore(Arc::new(store));
         store
     }
 
-    /// Execute a closure with a connection to the database.
-    ///
-    /// # API
-    ///   The API of using a closure to bound the usage of the connection serves several
-    ///   purposes:
-    ///
-    ///   * Moves blocking database access out of the `Future::poll`. Within
-    ///     `Future::poll` (which includes all `async` methods) it is illegal to
-    ///     perform a blocking operation. This includes all accesses to the
-    ///     database, acquiring of locks, etc. Calling a blocking operation can
-    ///     cause problems with `Future` combinators (including but not limited
-    ///     to select, timeout, and FuturesUnordered) and problems with
-    ///     executors/runtimes. This method moves the database work onto another
-    ///     thread in a way which does not block `Future::poll`.
-    ///
-    ///   * Limit the total number of connections. Because the supplied closure
-    ///     takes a reference, we know the scope of the usage of all entity
-    ///     connections and can limit their use in a non-blocking way.
-    ///
-    /// # Cancellation
-    ///   The normal pattern for futures in Rust is drop to cancel. Once we
-    ///   spawn the database work in a thread though, this expectation no longer
-    ///   holds because the spawned task is the independent of this future. So,
-    ///   this method provides a cancel token which indicates that the `Future`
-    ///   has been dropped. This isn't *quite* as good as drop on cancel,
-    ///   because a drop on cancel can do things like cancel http requests that
-    ///   are in flight, but checking for cancel periodically is a significant
-    ///   improvement.
-    ///
-    ///   The implementation of the supplied closure should check for cancel
-    ///   between every operation that is potentially blocking. This includes
-    ///   any method which may interact with the database. The check can be
-    ///   conveniently written as `token.check_cancel()?;`. It is low overhead
-    ///   to check for cancel, so when in doubt it is better to have too many
-    ///   checks than too few.
-    ///
-    /// # Panics:
-    ///   * This task will panic if the supplied closure panics
-    ///   * This task will panic if the supplied closure returns Err(Cancelled)
-    ///     when the supplied cancel token is not cancelled.
     pub(crate) async fn with_conn<T: Send + 'static>(
         &self,
         f: impl 'static
@@ -204,7 +158,6 @@ impl DeploymentStore {
         site: Arc<Site>,
         replace: bool,
     ) -> Result<(), StoreError> {
-        println!("Deployment Indexer");
         let conn = self.get_conn()?;
         let result = conn.transaction(|| -> Result<_, StoreError> {
             let exists = deployment::exists(&conn, &site)?;
@@ -224,24 +177,15 @@ impl DeploymentStore {
                 Ok(None)
             }
         });
-        /// Call hasura to tracking tables and relationships
-        match result {
-            Ok(Some(layout)) => {
-                let payload = layout.create_hasura_tracking();
-                tokio::spawn(async move {
-                    let response = Client::new()
-                        .post(&*HASURA_URL)
-                        .json(&payload)
-                        .send()
-                        .await
-                        .unwrap();
-                    //log::info!("Hasura {:?}", response);
-                });
-                Ok(())
-            },
-            Err(err) => Err(err),
-            _ => Ok(())
+
+        if let Ok(Some(layout)) = result {
+            let payload = layout.create_hasura_tracking();
+            massbit::spawn(async move {
+                Client::new().post(&*HASURA_URL).json(&payload).send().await;
+            });
         }
+
+        Ok(())
     }
 
     /// Return the layout for a deployment. Since constructing a `Layout`
@@ -332,7 +276,7 @@ impl DeploymentStore {
         mods: Vec<EntityModification>,
         data_sources: Vec<StoredDynamicDataSource>,
     ) -> Result<(), StoreError> {
-        // All operations should apply only to data or metadata for this subgraph
+        // All operations should apply only to data or metadata for this indexer
         if mods
             .iter()
             .map(|modification| modification.entity_key())
@@ -340,7 +284,7 @@ impl DeploymentStore {
         {
             panic!(
                 "transact_block_operations must affect only entities \
-                 in the subgraph or in the subgraph of subgraphs"
+                 in the indexer or in the indexer of indexers"
             );
         }
 
@@ -349,9 +293,7 @@ impl DeploymentStore {
         conn.transaction(|| -> Result<_, StoreError> {
             // Make the changes
             let layout = self.layout(&conn, site.clone())?;
-            let count =
-                self.apply_entity_modifications(&conn, layout.as_ref(), mods, &block_ptr_to)?;
-
+            let _ = self.apply_entity_modifications(&conn, layout.as_ref(), mods, &block_ptr_to)?;
             dynds::insert(&conn, &site.deployment, data_sources, &block_ptr_to)?;
             deployment::forward_block_ptr(&conn, &site.deployment, block_ptr_to)?;
             Ok(())

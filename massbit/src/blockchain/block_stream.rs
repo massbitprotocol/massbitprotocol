@@ -4,6 +4,7 @@ use futures03::Stream;
 
 use super::{Block, BlockPtr, Blockchain};
 use crate::components::store::BlockNumber;
+use crate::firehose::bstream;
 use crate::prelude::*;
 
 pub trait BlockStream<C: Blockchain>:
@@ -11,6 +12,7 @@ pub trait BlockStream<C: Blockchain>:
 {
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BlockWithTriggers<C: Blockchain> {
     pub block: C::Block,
     pub trigger_data: Vec<C::TriggerData>,
@@ -56,6 +58,14 @@ pub trait TriggersAdapter<C: Blockchain>: Send + Sync {
         block: C::Block,
         filter: &C::TriggerFilter,
     ) -> Result<BlockWithTriggers<C>, Error>;
+}
+
+pub trait FirehoseMapper<C: Blockchain>: Send + Sync {
+    fn to_block_stream_event(
+        &self,
+        logger: &Logger,
+        response: &bstream::BlockResponse,
+    ) -> Result<BlockStreamEvent<C>, Error>;
 }
 
 pub enum BlockStreamEvent<C: Blockchain> {

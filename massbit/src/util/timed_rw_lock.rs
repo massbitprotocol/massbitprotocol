@@ -1,4 +1,5 @@
-use parking_lot::{Mutex, RwLock};
+use parking_lot::Mutex;
+use slog::{warn, Logger};
 use std::time::{Duration, Instant};
 
 lazy_static::lazy_static! {
@@ -12,39 +13,6 @@ lazy_static::lazy_static! {
                 .expect("Invalid value for LOCK_CONTENTION_LOG_THRESHOLD_MS environment variable")
        )
     };
-}
-
-/// Adds instrumentation for timing the performance of the lock.
-pub struct TimedRwLock<T> {
-    id: String,
-    lock: RwLock<T>,
-    log_threshold: Duration,
-}
-
-impl<T> TimedRwLock<T> {
-    pub fn new(x: T, id: impl Into<String>) -> Self {
-        TimedRwLock {
-            id: id.into(),
-            lock: RwLock::new(x),
-            log_threshold: *LOCK_CONTENTION_LOG_THRESHOLD,
-        }
-    }
-
-    pub fn write(&self) -> parking_lot::RwLockWriteGuard<T> {
-        let start = Instant::now();
-        let guard = self.lock.write();
-        let elapsed = start.elapsed();
-        if elapsed > self.log_threshold {}
-        guard
-    }
-
-    pub fn read(&self) -> parking_lot::RwLockReadGuard<T> {
-        let start = Instant::now();
-        let guard = self.lock.read();
-        let elapsed = start.elapsed();
-        if elapsed > self.log_threshold {}
-        guard
-    }
 }
 
 /// Adds instrumentation for timing the performance of the lock.
@@ -63,11 +31,16 @@ impl<T> TimedMutex<T> {
         }
     }
 
-    pub fn lock(&self) -> parking_lot::MutexGuard<T> {
+    pub fn lock(&self, logger: &Logger) -> parking_lot::MutexGuard<T> {
         let start = Instant::now();
         let guard = self.lock.lock();
         let elapsed = start.elapsed();
-        if elapsed > self.log_threshold {}
+        if elapsed > self.log_threshold {
+            warn!(logger, "Mutex lock took a long time to acquire";
+                          "id" => &self.id,
+                          "wait_ms" => elapsed.as_millis(),
+            );
+        }
         guard
     }
 }

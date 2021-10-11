@@ -2,7 +2,6 @@ use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::rc::Rc;
-use std::time::Instant;
 
 use massbit::blockchain::{Blockchain, HostFnCtx, MappingTrigger};
 use massbit::runtime::HostExportError;
@@ -29,6 +28,7 @@ pub mod stopwatch;
 
 pub use into_wasm_ret::IntoWasmRet;
 use massbit::components::indexer::BlockState;
+use massbit::data::indexer::schema::IndexerError;
 pub use stopwatch::TimeoutStopwatch;
 
 pub const TRAP_TIMEOUT: &str = "trap: interrupt";
@@ -183,6 +183,25 @@ impl<C: Blockchain> WasmInstance<C> {
         };
 
         if let Some(deterministic_error) = deterministic_error {
+            let message = format!("{:#}", deterministic_error).replace("\n", "\t");
+
+            // Log the error and restore the updates snapshot, effectively reverting the handler.
+            error!(&self.instance_ctx().ctx.logger,
+                "Handler skipped due to execution failure";
+                "handler" => handler,
+                "error" => &message,
+            );
+            let indexer_error = IndexerError {
+                indexer_id: self.instance_ctx().ctx.host_exports.indexer_id.clone(),
+                message,
+                block_ptr: Some(self.instance_ctx().ctx.block_ptr.cheap_clone()),
+                handler: Some(handler.to_string()),
+                deterministic: true,
+            };
+            self.instance_ctx_mut()
+                .ctx
+                .state
+                .exit_handler_and_discard_changes_due_to_error(indexer_error);
         } else {
             self.instance_ctx_mut().ctx.state.exit_handler();
         }
@@ -346,7 +365,6 @@ impl<C: Blockchain> WasmInstance<C> {
                 let func_shared_ctx = Rc::downgrade(&shared_ctx);
                 let host_fn = host_fn.cheap_clone();
                 linker.func(module, host_fn.name, move |call_ptr: u32| {
-                    let start = Instant::now();
                     let instance = func_shared_ctx.upgrade().unwrap();
                     let mut instance = instance.borrow_mut();
 
@@ -861,6 +879,13 @@ impl<C: Blockchain> WasmInstanceContext<C> {
     {
         let bytes: Vec<u8> = asc_get(self, bytes_ptr)?;
         let result = host_exports::json_from_bytes(&bytes).map_err(|e| {
+            warn!(
+                &self.ctx.logger,
+                "Failed to parse JSON from byte array";
+                "bytes" => format!("{:?}", bytes),
+                "error" => format!("{}", e)
+            );
+
             // Map JSON errors to boolean to match the `Result<JSONValue, boolean>`
             // result type expected by mappings
             true
@@ -885,7 +910,12 @@ impl<C: Blockchain> WasmInstanceContext<C> {
             Ok(bytes) => asc_new(self, &*bytes).map_err(Into::into),
 
             // Return null in case of error.
-            Err(e) => Ok(AscPtr::null()),
+            Err(e) => {
+                info!(&self.ctx.logger, "Failed ipfs.cat, returning `null`";
+                                    "link" => asc_get::<String, _, _>(self, link_ptr)?,
+                                    "error" => e.to_string());
+                Ok(AscPtr::null())
+            }
         }
     }
 
@@ -914,7 +944,6 @@ impl<C: Blockchain> WasmInstanceContext<C> {
         let defer_stopwatch = self.timeout_stopwatch.clone();
         let _stopwatch_guard = defer::defer(|| defer_stopwatch.lock().unwrap().start());
 
-        let start_time = Instant::now();
         let output_states = HostExports::ipfs_map(
             &self.ctx.host_exports.link_resolver.clone(),
             self,

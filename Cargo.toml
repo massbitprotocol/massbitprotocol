@@ -4,20 +4,18 @@ members = [
     "chain-reader/chain-reader",
     "core/chain/substrate",
     "core/chain/solana",
-    "core/chain/ethereum",
     "core/drive",
     "core/index-store",
-    "index-manager/main",
-    "plugin/adapter",
-    "plugin/runtime/wasm",
     "cli",
-    "utils",
     "chain/ethereum",
     "massbit",
     "runtime/wasm",
     "runtime/derive",
     "store/postgres",
-    "manager"
+    "manager",
+    "index-manager/main",
+    "plugin/adapter",
+    "plugin/plugin"
 ]
 exclude = ["code-compiler/generated"]
 

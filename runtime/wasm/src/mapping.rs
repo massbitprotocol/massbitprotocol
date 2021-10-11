@@ -7,7 +7,6 @@ use std::sync::Arc;
 use std::thread;
 
 use massbit::components::indexer::{BlockState, MappingError};
-use massbit::prelude::*;
 
 use crate::module::{ExperimentalFeatures, WasmInstance};
 
@@ -44,7 +43,7 @@ pub fn spawn_module<C: Blockchain>(
     //
     // In case of failure, this thread may panic or simply terminate,
     // dropping the `mapping_request_receiver` which ultimately causes the
-    // subgraph to fail the next time it tries to handle an event.
+    // indexer to fail the next time it tries to handle an event.
     let conf =
         thread::Builder::new().name(format!("mapping-{}-{}", &indexer_id, uuid::Uuid::new_v4()));
     conf.spawn(move || {
@@ -81,7 +80,7 @@ pub fn spawn_module<C: Blockchain>(
             })
             .wait()
         {
-            Ok(()) => debug!(logger, "Subgraph stopped, WASM runtime thread terminated"),
+            Ok(()) => debug!(logger, "Indexer stopped, WASM runtime thread terminated"),
             Err(e) => debug!(logger, "WASM runtime thread terminated abnormally";
                                     "error" => e.to_string()),
         }

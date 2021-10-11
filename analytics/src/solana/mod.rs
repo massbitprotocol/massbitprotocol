@@ -1,77 +1,139 @@
-//[WIP] not included in module tree
-use crate::stream_mod::{
-    streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
+pub mod handler;
+pub mod metrics;
+pub mod model;
+
+use crate::postgres_adapter::PostgresAdapter;
+use crate::schema::network_state;
+use crate::solana::handler::create_solana_handler_manager;
+use crate::{
+    establish_connection, get_block_number, try_create_stream, GET_BLOCK_TIMEOUT_SEC,
+    GET_STREAM_TIMEOUT_SEC,
 };
+use lazy_static::lazy_static;
+use massbit::firehose::bstream::{stream_client::StreamClient, BlockResponse, ChainType};
+use massbit_chain_solana::data_type::{
+    convert_solana_encoded_block_to_solana_block, decode as solana_decode, SolanaEncodedBlock,
+};
+use massbit_common::prelude::diesel::pg::upsert::excluded;
+use massbit_common::prelude::diesel::{ExpressionMethods, RunQueryDsl};
+use massbit_common::prelude::tokio::time::{sleep, timeout, Duration};
+use massbit_common::NetworkType;
+use std::sync::Arc;
+use std::time::Instant;
 #[allow(unused_imports)]
 use tonic::{
     transport::{Channel, Server},
-    Request, Response, Status,
+    Request, Response, Status, Streaming,
 };
-use log::{debug, info, warn};
-use std::time::Instant;
-use massbit_chain_solana::data_type::{
-    convert_solana_encoded_block_to_solana_block, decode as solana_decode, SolanaEncodedBlock,
-    SolanaLogMessages, SolanaTransaction,
-};
+use tower::timeout::Timeout;
 
-pub async fn process_solana_block(mut client: StreamoutClient<Channel>)
-    ->  Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
-    let get_blocks_request = GetBlocksRequest {
-        start_block_number: 0,
-        end_block_number: 1,
-        chain_type: ChainType::Solana as i32,
-        network: String::from(""),
+lazy_static! {
+    pub static ref CHAIN: String = String::from("solana");
+}
+const START_SOLANA_BLOCK: i64 = 80_000_000_i64;
+const DEFAULT_NETWORK: &str = "mainnet";
+
+pub async fn process_solana_stream(
+    client: &mut StreamClient<Timeout<Channel>>,
+    storage_adapter: Arc<PostgresAdapter>,
+    network_name: Option<NetworkType>,
+    block: i64,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+    let network = match network_name {
+        None => Some(String::from(DEFAULT_NETWORK)),
+        n @ Some(..) => n,
     };
-    let mut stream = client
-        .list_blocks(Request::new(get_blocks_request))
-        .await?
-        .into_inner();
-
-    log::info!("Starting read blocks from stream...");
-    while let Some(data) = stream.message().await? {
-        let mut data = data as GenericDataProto;
-        let now = Instant::now();
-        match DataType::from_i32(data.data_type) {
-            Some(DataType::Block) => {
-                let encoded_block: SolanaEncodedBlock =
-                    solana_decode(&mut data.payload).unwrap();
-                // Decode
-                let block = convert_solana_encoded_block_to_solana_block(encoded_block);
-                let mut print_flag = true;
-                for origin_transaction in block.clone().block.transactions {
-                    let log_messages = origin_transaction
-                        .clone()
-                        .meta
-                        .unwrap()
-                        .log_messages
-                        .clone();
-                    let transaction = SolanaTransaction {
-                        block_number: ((&block).block.block_height.unwrap() as u32),
-                        transaction: origin_transaction.clone(),
-                        log_messages: log_messages.clone(),
-                        success: false,
-                    };
-                    let log_messages = SolanaLogMessages {
-                        block_number: ((&block).block.block_height.unwrap() as u32),
-                        log_messages: log_messages.clone(),
-                        transaction: origin_transaction.clone(),
-                    };
-
-                    // Print first data only bc it too many.
-                    if print_flag {
-                        info!("Recieved SOLANA TRANSACTION with Block number: {:?}, trainsation: {:?}", &transaction.block_number, &transaction.transaction.transaction.signatures);
-                        info!("Recieved SOLANA LOG_MESSAGES with Block number: {:?}, log_messages: {:?}", &log_messages.block_number, &log_messages.log_messages.unwrap().get(0));
-
-                        print_flag = false;
+    let handler_manager = Arc::new(create_solana_handler_manager(&network, storage_adapter));
+    //Todo: remove this simple connection
+    let conn = establish_connection();
+    let current_state = get_block_number(
+        &conn,
+        CHAIN.clone(),
+        network.clone().unwrap_or(String::from(DEFAULT_NETWORK)),
+    );
+    let start_block = match current_state {
+        None => {
+            if block > 0 {
+                block
+            } else {
+                START_SOLANA_BLOCK
+            }
+        }
+        Some(state) => state.got_block + 1,
+    };
+    let mut opt_stream: Option<Streaming<BlockResponse>> = None;
+    loop {
+        match opt_stream {
+            None => {
+                opt_stream =
+                    try_create_stream(client, ChainType::Solana, start_block.clone(), &network)
+                        .await;
+                if opt_stream.is_none() {
+                    //Sleep for a while and reconnect
+                    sleep(Duration::from_secs(GET_STREAM_TIMEOUT_SEC)).await;
+                }
+            }
+            Some(ref mut stream) => {
+                let response =
+                    timeout(Duration::from_secs(GET_BLOCK_TIMEOUT_SEC), stream.message()).await;
+                match response {
+                    Ok(Ok(res)) => {
+                        if let Some(mut data) = res {
+                            let start = Instant::now();
+                            let encoded_block: SolanaEncodedBlock =
+                                solana_decode(&mut data.payload).unwrap();
+                            // Decode
+                            let block = convert_solana_encoded_block_to_solana_block(encoded_block);
+                            let block_number = block.block.block_height.unwrap() as i64;
+                            let transaction_counter = block.block.transactions.len();
+                            log::info!(
+                                "Decode block {} with {} transaction in {:?}",
+                                block_number,
+                                block.block.transactions.len(),
+                                start.elapsed()
+                            );
+                            let start = Instant::now();
+                            let handler = handler_manager.clone();
+                            tokio::spawn(async move {
+                                match handler.handle_block(Arc::new(block)) {
+                                    Ok(_) => {}
+                                    Err(err) => log::error!("{:?}", &err),
+                                };
+                            });
+                            match diesel::insert_into(network_state::table)
+                                .values((
+                                    network_state::chain.eq(CHAIN.clone()),
+                                    network_state::network
+                                        .eq(network.clone().unwrap_or(DEFAULT_NETWORK.to_string())),
+                                    network_state::got_block.eq(block_number),
+                                ))
+                                .on_conflict((network_state::chain, network_state::network))
+                                .do_update()
+                                .set(
+                                    network_state::got_block.eq(excluded(network_state::got_block)),
+                                )
+                                .execute(&conn)
+                            {
+                                Ok(_) => {}
+                                Err(err) => log::error!("{:?}", &err),
+                            };
+                            log::info!(
+                                "Block height {} with {} transactions is processed in {:?}",
+                                block_number,
+                                transaction_counter,
+                                start.elapsed()
+                            );
+                        }
+                    }
+                    _ => {
+                        log::info!(
+                            "Error while get message from reader stream {:?}. Recreate stream",
+                            &response
+                        );
+                        opt_stream = None;
                     }
                 }
             }
-            _ => {
-                warn!("Not support this type in Solana");
-            }
-        }
-        let elapsed = now.elapsed();
-        debug!("Elapsed processing solana block: {:.2?}", elapsed);
-    };
-    Ok(())
+        };
+    }
 }

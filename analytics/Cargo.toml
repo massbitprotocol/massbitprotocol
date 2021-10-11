@@ -6,11 +6,12 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-diesel          = { version = "1.4.7", features = ["postgres", "serde_json", "numeric", "r2d2"] }
+diesel          = { version = "1.4.7", features = ["postgres", "serde_json", "numeric", "r2d2", "chrono"] }
 diesel-dynamic-schema = { git = "https://github.com/diesel-rs/diesel-dynamic-schema", rev="a8ec4fb1" }
 diesel-derive-enum  = { version = "1.1", features = ["postgres"] }
 diesel_migrations   = "1.4.0"
 bigdecimal      = "0.1.2"
+chrono          = "0.4.19"
 #num-bigint      = "0.2.6"
 futures         = "0.1.31"
 http            = "0.1.21" # must be compatible with the version rust-web3 uses
@@ -29,7 +30,7 @@ serde           = { version = "1.0", optional = false }
 serde_json      = { version = "1.0", optional = false }
 thiserror       = { version = "1.0", optional =false }
 primitive-types = { version = "0.6.1", optional = true, features = ["codec"] }
-tonic = "0.4"
+tonic = { version = "0.5", features = ["tls-roots"] }
 prost = "0.7"
 tower           = { version = "0.4" }
 futures-core = "0.3"
@@ -44,21 +45,42 @@ sp-core = { default-features = false, version = "3.0.0", git = "https://github.c
 sp-keyring = { version = "3.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.2" }
 frame-system = { default-features = false,  version = "3.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.2" }
 clap = { version = "2.33.3", features = ["yaml"] }
-
+Inflector = "0.11.4"
+massbit                 = { path = "../massbit"}
 massbit-common          = { path = "../core/common"}
 massbit-chain-substrate = { path = "../core/chain/substrate" }
 massbit-chain-solana = { path = "../core/chain/solana" }
-massbit-chain-ethereum = { path = "../core/chain/ethereum" }
+chain-ethereum = { path = "../chain/ethereum" }
 ipfs-client = { path = "../core/ipfs-client" }
 logger = { path = "../core/logger" }
 
-[dependencies.graph]
-package = "graph"
-git = "https://github.com/massbitprotocol/massbit-graph-node"
+[dependencies.solana-transaction-status]
+package = "solana-transaction-status"
+git = "https://github.com/massbitprotocol/solana.git"
+branch = "main"
+
+[dependencies.solana-sdk]
+package = "solana-sdk"
+git = "https://github.com/massbitprotocol/solana.git"
+branch = "main"
+
+[dependencies.solana-program]
+package = "solana-program"
+git = "https://github.com/massbitprotocol/solana.git"
+branch = "main"
+
+[dependencies.solana-vote-program]
+package = "solana-vote-program"
+git = "https://github.com/massbitprotocol/solana.git"
+branch = "main"
+
+[dependencies.solana_account_decoder]
+package = "solana-account-decoder"
+git = "https://github.com/massbitprotocol/solana.git"
 branch = "main"
 
 [build-dependencies]
-tonic-build = "0.4"
+tonic-build = "0.5"
 
 [[bin]]
 name = "analytics"

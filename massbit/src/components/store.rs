@@ -1,20 +1,11 @@
-use futures::stream::poll_fn;
-use futures::{Async, Poll, Stream};
 use graphql_parser::schema as s;
-use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use stable_hash::prelude::*;
-use std::collections::btree_map::Entry;
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-use std::env;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::fmt::Display;
-use std::str::FromStr;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, RwLock};
-use std::time::Duration;
+use std::sync::Arc;
 use thiserror::Error;
-use web3::types::{Address, H256};
 
 use crate::blockchain::{Blockchain, DataSource};
 use crate::data::indexer::schema::IndexerDeploymentEntity;
@@ -648,7 +639,6 @@ pub trait IndexerStore: Send + Sync + 'static {
         name: IndexerName,
         schema: &Schema,
         deployment: IndexerDeploymentEntity,
-        node_id: NodeId,
         network: String,
     ) -> Result<DeploymentLocator, StoreError>;
 

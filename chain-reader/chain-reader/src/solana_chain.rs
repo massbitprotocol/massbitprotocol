@@ -1,8 +1,6 @@
-use crate::{
-    grpc_stream::stream_mod::{ChainType, DataType, GenericDataProto},
-    CONFIG,
-};
+use crate::CONFIG;
 use log::{debug, info};
+use massbit::firehose::bstream::{BlockResponse, ChainType};
 use massbit_chain_solana::data_type::{
     get_list_log_messages_from_encoded_block, SolanaEncodedBlock as Block,
 };
@@ -26,7 +24,7 @@ const BLOCK_AVAILABLE_MARGIN: u64 = 100;
 const RPC_BLOCK_ENCODING: UiTransactionEncoding = UiTransactionEncoding::Base64;
 
 pub async fn loop_get_block(
-    chan: broadcast::Sender<GenericDataProto>,
+    chan: broadcast::Sender<BlockResponse>,
     network: &NetworkType,
 ) -> Result<(), Box<dyn Error>> {
     info!("Start get block Solana");
@@ -96,11 +94,10 @@ pub async fn loop_get_block(
     Ok(())
 }
 
-fn _create_generic_block(block_hash: String, block_number: u64, block: &Block) -> GenericDataProto {
-    let generic_data = GenericDataProto {
+fn _create_generic_block(block_hash: String, block_number: u64, block: &Block) -> BlockResponse {
+    let generic_data = BlockResponse {
         chain_type: CHAIN_TYPE as i32,
         version: VERSION.to_string(),
-        data_type: DataType::Block as i32,
         block_hash,
         block_number,
         payload: serde_json::to_vec(block).unwrap(),

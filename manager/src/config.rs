@@ -1,11 +1,10 @@
 use massbit::prelude::{
     anyhow::{anyhow, bail, Context, Result},
-    info, serde_json, Logger, NodeId,
+    info, Logger,
 };
 use massbit_store_postgres::{Shard as ShardName, PRIMARY_SHARD};
 
 use http::{HeaderMap, Uri};
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fs::read_to_string;
 use std::{
@@ -14,21 +13,15 @@ use std::{
 };
 use url::Url;
 
-const ANY_NAME: &str = ".*";
-/// A regular expression that matches nothing
-const NO_NAME: &str = ".^";
-
 pub struct Opt {
     pub postgres_url: Option<String>,
     pub config: Option<String>,
-    // This is only used when we cosntruct a config purely from command
+    // This is only used when we construct a config purely from command
     // line options. When using a configuration file, pool sizes must be
     // set in the configuration file alone
     pub store_connection_pool_size: u32,
     pub postgres_secondary_hosts: Vec<String>,
     pub postgres_host_weights: Vec<usize>,
-    pub disable_block_ingestor: bool,
-    pub node_id: String,
     pub ethereum_rpc: Vec<String>,
     pub ethereum_ws: Vec<String>,
     pub ethereum_ipc: Vec<String>,
@@ -42,8 +35,6 @@ impl Default for Opt {
             store_connection_pool_size: 10,
             postgres_secondary_hosts: vec![],
             postgres_host_weights: vec![],
-            disable_block_ingestor: true,
-            node_id: "default".to_string(),
             ethereum_rpc: vec![],
             ethereum_ws: vec![],
             ethereum_ipc: vec![],
@@ -53,11 +44,9 @@ impl Default for Opt {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Config {
-    pub general: Option<GeneralSection>,
     #[serde(rename = "store")]
     pub stores: BTreeMap<String, Shard>,
     pub chains: ChainSection,
-    pub deployment: Deployment,
 }
 
 fn validate_name(s: &str) -> Result<()> {
@@ -94,36 +83,6 @@ impl Config {
         for (key, shard) in self.stores.iter_mut() {
             shard.validate(&key)?;
         }
-        self.deployment.validate()?;
-
-        // Check that deployment rules only reference existing stores and chains
-        for (i, rule) in self.deployment.rules.iter().enumerate() {
-            if !self.stores.contains_key(&rule.shard) {
-                return Err(anyhow!(
-                    "unknown shard {} in deployment rule {}",
-                    rule.shard,
-                    i
-                ));
-            }
-            if let Some(networks) = &rule.pred.network {
-                for network in networks.to_vec() {
-                    if !self.chains.chains.contains_key(&network) {
-                        return Err(anyhow!(
-                            "unknown network {} in deployment rule {}",
-                            network,
-                            i
-                        ));
-                    }
-                }
-            }
-        }
-
-        // Check that chains only reference existing stores
-        for (name, chain) in &self.chains.chains {
-            if !self.stores.contains_key(&chain.shard) {
-                return Err(anyhow!("unknown shard {} in chain {}", chain.shard, name));
-            }
-        }
 
         self.chains.validate()?;
 
@@ -149,49 +108,11 @@ impl Config {
     }
 
     fn from_opt(opt: &Opt) -> Result<Config> {
-        let deployment = Deployment::from_opt(opt);
         let mut stores = BTreeMap::new();
         let chains = ChainSection::from_opt(opt)?;
         stores.insert(PRIMARY_SHARD.to_string(), Shard::from_opt(opt)?);
-        Ok(Config {
-            general: None,
-            stores,
-            chains,
-            deployment,
-        })
+        Ok(Config { stores, chains })
     }
-
-    /// Genrate a JSON representation of the config.
-    pub fn to_json(&self) -> Result<String> {
-        // It would be nice to produce a TOML representation, but that runs
-        // into this error: https://github.com/alexcrichton/toml-rs/issues/142
-        // and fixing it as described in the issue didn't fix it. Since serializing
-        // this data isn't crucial and only needed for debugging, we'll
-        // just stick with JSON
-        Ok(serde_json::to_string_pretty(&self)?)
-    }
-
-    pub fn primary_store(&self) -> &Shard {
-        self.stores
-            .get(PRIMARY_SHARD.as_str())
-            .expect("a validated config has a primary store")
-    }
-
-    pub fn query_only(&self, node: &NodeId) -> bool {
-        self.general
-            .as_ref()
-            .map(|g| match g.query.find(node.as_str()) {
-                None => false,
-                Some(m) => m.as_str() == node.as_str(),
-            })
-            .unwrap_or(false)
-    }
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct GeneralSection {
-    #[serde(with = "serde_regex", default = "no_name")]
-    query: Regex,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -201,8 +122,6 @@ pub struct Shard {
     pub weight: usize,
     #[serde(default)]
     pub pool_size: PoolSize,
-    #[serde(default = "PoolSize::five")]
-    pub fdw_pool_size: PoolSize,
     #[serde(default)]
     pub replicas: BTreeMap<String, Replica>,
 }
@@ -255,7 +174,6 @@ impl Shard {
             connection: postgres_url.clone(),
             weight: opt.postgres_host_weights.get(0).cloned().unwrap_or(1),
             pool_size,
-            fdw_pool_size: PoolSize::five(),
             replicas,
         })
     }
@@ -266,7 +184,6 @@ impl Shard {
 pub enum PoolSize {
     None,
     Fixed(u32),
-    Rule(Vec<PoolSizeRule>),
 }
 
 impl Default for PoolSize {
@@ -276,17 +193,12 @@ impl Default for PoolSize {
 }
 
 impl PoolSize {
-    fn five() -> Self {
-        Self::Fixed(5)
-    }
-
     fn validate(&self, connection: &str) -> Result<()> {
         use PoolSize::*;
 
         let pool_size = match self {
             None => bail!("missing pool size for {}", connection),
             Fixed(s) => *s,
-            Rule(rules) => rules.iter().map(|rule| rule.size).min().unwrap_or(0u32),
         };
 
         if pool_size < 2 {
@@ -300,38 +212,11 @@ impl PoolSize {
         }
     }
 
-    pub fn size_for(&self, node: &NodeId, name: &str) -> Result<u32> {
+    pub fn size(&self) -> Result<u32> {
         use PoolSize::*;
         match self {
             None => unreachable!("validation ensures we have a pool size"),
             Fixed(s) => Ok(*s),
-            Rule(rules) => rules
-                .iter()
-                .find(|rule| rule.matches(node.as_str()))
-                .map(|rule| rule.size)
-                .ok_or_else(|| {
-                    anyhow!(
-                        "no rule matches `{}` for the pool of shard {}",
-                        node.as_str(),
-                        name
-                    )
-                }),
-        }
-    }
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct PoolSizeRule {
-    #[serde(with = "serde_regex", default = "any_name")]
-    node: Regex,
-    size: u32,
-}
-
-impl PoolSizeRule {
-    fn matches(&self, name: &str) -> bool {
-        match self.node.find(name) {
-            None => false,
-            Some(m) => m.as_str() == name,
         }
     }
 }
@@ -359,15 +244,12 @@ impl Replica {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ChainSection {
-    pub ingestor: String,
     #[serde(flatten)]
     pub chains: BTreeMap<String, Chain>,
 }
 
 impl ChainSection {
     fn validate(&mut self) -> Result<()> {
-        NodeId::new(&self.ingestor)
-            .map_err(|()| anyhow!("invalid node id for ingestor {}", &self.ingestor))?;
         for (_, chain) in self.chains.iter_mut() {
             chain.validate()?
         }
@@ -375,18 +257,11 @@ impl ChainSection {
     }
 
     fn from_opt(opt: &Opt) -> Result<Self> {
-        // If we are not the block ingestor, set the node name
-        // to something that is definitely not our node_id
-        let ingestor = if opt.disable_block_ingestor {
-            format!("{} is not ingesting", opt.node_id)
-        } else {
-            opt.node_id.clone()
-        };
         let mut chains = BTreeMap::new();
         Self::parse_networks(&mut chains, Transport::Rpc, &opt.ethereum_rpc)?;
         Self::parse_networks(&mut chains, Transport::Ws, &opt.ethereum_ws)?;
         Self::parse_networks(&mut chains, Transport::Ipc, &opt.ethereum_ipc)?;
-        Ok(Self { ingestor, chains })
+        Ok(Self { chains })
     }
 
     fn parse_networks(
@@ -445,10 +320,9 @@ impl ChainSection {
                         headers: Default::default(),
                     }),
                 };
-                let entry = chains.entry(name.to_string()).or_insert_with(|| Chain {
-                    shard: PRIMARY_SHARD.to_string(),
-                    providers: vec![],
-                });
+                let entry = chains
+                    .entry(name.to_string())
+                    .or_insert_with(|| Chain { providers: vec![] });
                 entry.providers.push(provider);
             }
         }
@@ -458,7 +332,6 @@ impl ChainSection {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Chain {
-    pub shard: String,
     #[serde(rename = "provider")]
     pub providers: Vec<Provider>,
 }
@@ -729,131 +602,6 @@ impl std::fmt::Display for Transport {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Deployment {
-    #[serde(rename = "rule")]
-    rules: Vec<Rule>,
-}
-
-impl Deployment {
-    fn validate(&self) -> Result<()> {
-        if self.rules.is_empty() {
-            return Err(anyhow!(
-                "there must be at least one deployment rule".to_string()
-            ));
-        }
-        let mut default_rule = false;
-        for rule in &self.rules {
-            rule.validate()?;
-            if default_rule {
-                return Err(anyhow!("rules after a default rule are useless"));
-            }
-            default_rule = rule.is_default();
-        }
-        if !default_rule {
-            return Err(anyhow!(
-                "the rules do not contain a default rule that matches everything"
-            ));
-        }
-        Ok(())
-    }
-
-    fn from_opt(_: &Opt) -> Self {
-        Self { rules: vec![] }
-    }
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-struct Rule {
-    #[serde(rename = "match", default)]
-    pred: Predicate,
-    #[serde(default = "primary_store")]
-    shard: String,
-    indexers: Vec<String>,
-}
-
-impl Rule {
-    fn is_default(&self) -> bool {
-        self.pred.matches_anything()
-    }
-
-    fn matches(&self, name: &str, network: &str) -> bool {
-        self.pred.matches(name, network)
-    }
-
-    fn validate(&self) -> Result<()> {
-        if self.indexers.is_empty() {
-            return Err(anyhow!("useless rule without indexers"));
-        }
-        for indexer in &self.indexers {
-            NodeId::new(indexer).map_err(|()| anyhow!("invalid node id {}", &indexer))?;
-        }
-        ShardName::new(self.shard.clone())
-            .map_err(|e| anyhow!("illegal name for store shard `{}`: {}", &self.shard, e))?;
-        Ok(())
-    }
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-struct Predicate {
-    #[serde(with = "serde_regex", default = "any_name")]
-    name: Regex,
-    network: Option<NetworkPredicate>,
-}
-
-impl Predicate {
-    fn matches_anything(&self) -> bool {
-        self.name.as_str() == ANY_NAME && self.network.is_none()
-    }
-
-    pub fn matches(&self, name: &str, network: &str) -> bool {
-        if let Some(n) = &self.network {
-            if !n.matches(network) {
-                return false;
-            }
-        }
-
-        match self.name.find(name) {
-            None => false,
-            Some(m) => m.as_str() == name,
-        }
-    }
-}
-
-impl Default for Predicate {
-    fn default() -> Self {
-        Predicate {
-            name: any_name(),
-            network: None,
-        }
-    }
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(untagged)]
-enum NetworkPredicate {
-    Single(String),
-    Many(Vec<String>),
-}
-
-impl NetworkPredicate {
-    fn matches(&self, network: &str) -> bool {
-        use NetworkPredicate::*;
-        match self {
-            Single(n) => n == network,
-            Many(ns) => ns.iter().any(|n| n == network),
-        }
-    }
-
-    fn to_vec(&self) -> Vec<String> {
-        use NetworkPredicate::*;
-        match self {
-            Single(n) => vec![n.clone()],
-            Many(ns) => ns.clone(),
-        }
-    }
-}
-
 /// Replace the host portion of `url` and return a new URL with `host`
 /// as the host portion
 ///
@@ -869,19 +617,6 @@ fn replace_host(url: &str, host: &str) -> String {
         panic!("Invalid Postgres url {}: {}", url, e.to_string());
     }
     String::from(url)
-}
-
-// Various default functions for deserialization
-fn any_name() -> Regex {
-    Regex::new(ANY_NAME).unwrap()
-}
-
-fn no_name() -> Regex {
-    Regex::new(NO_NAME).unwrap()
-}
-
-fn primary_store() -> String {
-    PRIMARY_SHARD.to_string()
 }
 
 fn one() -> usize {

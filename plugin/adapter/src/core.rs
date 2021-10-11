@@ -1,16 +1,20 @@
 use crate::setting::*;
-pub use crate::stream_mod::{
-    streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
+pub use crate::{HandlerProxyType, PluginRegistrar};
+pub use massbit::firehose::bstream::{
+    stream_client::StreamClient, BlockResponse, BlocksRequest, ChainType,
 };
-pub use crate::{HandlerProxyType, PluginRegistrar, WasmHandlerProxyType};
+//use graph::blockchain::Blockchain;
 use graph::data::subgraph::SubgraphManifest;
 use graph_chain_ethereum::Chain;
 use graph_chain_ethereum::{DataSource, DataSourceTemplate};
-use graph_runtime_wasm::ValidModule;
 use index_store::postgres::store_builder::*;
 use index_store::{IndexerState, Store};
 use lazy_static::lazy_static;
 use libloading::Library;
+use massbit::blockchain::Blockchain;
+use massbit::blockchain::TriggerFilter;
+use massbit::prelude::*;
+use massbit_common::prelude::serde_json;
 use massbit_common::prelude::tokio::time::{sleep, timeout, Duration};
 use massbit_common::NetworkType;
 use serde_yaml::Value;
@@ -56,22 +60,6 @@ impl AdapterHandler {
     }
 }
 
-pub struct WasmAdapter {
-    indexer_hash: String,
-    pub wasm: Arc<ValidModule>,
-    pub handler_proxies: HashMap<String, Arc<Option<WasmHandlerProxyType>>>,
-}
-
-impl WasmAdapter {
-    fn new(hash: String, wasm: Arc<ValidModule>) -> WasmAdapter {
-        WasmAdapter {
-            indexer_hash: hash,
-            wasm,
-            handler_proxies: HashMap::default(),
-        }
-    }
-}
-
 pub struct AdapterManager {
     //store: Option<dyn Store>,
     libs: HashMap<String, Arc<Library>>,
@@ -93,7 +81,7 @@ impl AdapterManager {
         mapping: &PathBuf,
         schema: &PathBuf,
         manifest: &Option<SubgraphManifest<Chain>>,
-        got_block: Option<i64>
+        got_block: Option<i64>,
     ) -> Result<(), Box<dyn Error>> {
         let mut data_sources: Vec<DataSource> = vec![];
         let mut templates: Vec<DataSourceTemplate> = vec![];
@@ -122,7 +110,7 @@ impl AdapterManager {
             Some(mut data_source) => {
                 let start_block = match got_block {
                     None => data_source.source.start_block as u64,
-                    Some(val) => val as u64 + 1
+                    Some(val) => val as u64 + 1,
                 };
                 log::info!(
                     "{} Init Streamout client for chain {} from block {} using language {}",
@@ -137,131 +125,24 @@ impl AdapterManager {
                     .await?;
                 let timeout_channel =
                     Timeout::new(channel, Duration::from_secs(GET_BLOCK_TIMEOUT_SEC));
-                let mut client = StreamoutClient::new(timeout_channel);
+                let mut client = StreamClient::new(timeout_channel);
                 match data_source.mapping.language.as_str() {
-                    "wasm/assemblyscript" => {
-                        self.handle_wasm_mapping(
+                    //Default use rust
+                    _ => {
+                        self.handle_rust_mapping(
                             hash,
                             data_source,
                             start_block,
-                            arc_templates.clone(),
+                            mapping,
                             schema,
                             &mut client,
                         )
                         .await
                     }
-                    //Default use rust
-                    _ => {
-                        self.handle_rust_mapping(hash, data_source, start_block, mapping, schema, &mut client)
-                            .await
-                    }
                 }
             }
             _ => Ok(()),
         }
-    }
-
-    async fn handle_wasm_mapping<P: AsRef<Path>>(
-        &mut self,
-        indexer_hash: &String,
-        data_source: &DataSource,
-        init_block: u64,
-        templates: Arc<Vec<DataSourceTemplate>>,
-        schema_path: P,
-        client: &mut StreamoutClient<Timeout<Channel>>,
-    ) -> Result<(), Box<dyn Error>> {
-        let store =
-            Arc::new(StoreBuilder::create_store(indexer_hash.as_str(), &schema_path).unwrap());
-        //let registry = Arc::new(MockMetricsRegistry::new());
-
-        log::info!("{} Start mapping using wasm binary", &*COMPONENT_NAME);
-        let adapter_name = data_source
-            .kind
-            .split("/")
-            .collect::<Vec<&str>>()
-            .get(0)
-            .unwrap()
-            .to_string();
-        //Todo: store indexer state including start_block in db
-        let mut start_block = init_block;
-        let chain_type = get_chain_type(data_source);
-        let mut opt_stream: Option<Streaming<GenericDataProto>> = None;
-        let mut handler_proxy = WasmHandlerProxyType::create_proxy(
-            &adapter_name,
-            indexer_hash,
-            store.clone(),
-            data_source.clone(), //Arc::clone(&valid_module),
-            templates,
-        );
-        if let Some(ref mut proxy) = handler_proxy {
-            loop {
-                match opt_stream {
-                    None => {
-                        log::info!(
-                            "Wasm mapping get new stream for chain {:?} from block {}.",
-                            &chain_type,
-                            start_block
-                        );
-                        opt_stream = try_create_stream(
-                            client,
-                            &chain_type,
-                            start_block,
-                            &data_source.network,
-                        )
-                        .await;
-                        if opt_stream.is_none() {
-                            //Sleep for a while and reconnect
-                            sleep(Duration::from_secs(GET_STREAM_TIMEOUT_SEC)).await;
-                        }
-                    }
-                    Some(ref mut stream) => {
-                        let response =
-                            timeout(Duration::from_secs(GET_BLOCK_TIMEOUT_SEC), stream.message())
-                                .await;
-                        match response {
-                            Ok(Ok(res)) => {
-                                if let Some(mut data) = res {
-                                    let data_type = DataType::from_i32(data.data_type).unwrap();
-                                    let data_chain_type =
-                                        ChainType::from_i32(data.chain_type).unwrap();
-                                    log::info!(
-                                        "{} Chain {:?} received data block = {:?}, hash = {:?}, data type = {:?}",
-                                        &*COMPONENT_NAME,
-                                        &data_chain_type,
-                                        data.block_number,
-                                        data.block_hash,
-                                        data_type
-                                    );
-                                    if data_chain_type == chain_type {
-                                        match proxy.handle_wasm_mapping(&mut data) {
-                                            Err(err) => {
-                                                log::error!(
-                                                    "{} Error while handle received message",
-                                                    err
-                                                );
-                                            }
-                                            Ok(_) => {
-                                                store.save_got_block(indexer_hash, data.block_number as i64);
-                                                start_block = data.block_number + 1;
-                                            }
-                                        }
-                                    } else {
-                                        log::error!("Chain type is not matched. Received {:?}, expected {:?}", data_chain_type, chain_type)
-                                    }
-                                } else {
-                                    log::warn!("Stream message response: {:?}", res)
-                                }
-                            }
-                            _ => {
-                                log::info!("Error while get message from reader stream {:?}. Destroy old stream", &response);
-                                opt_stream = None;
-                            }
-                        }
-                    }
-                }
-            }
-        };
-        Ok(())
     }
 
     async fn handle_rust_mapping<P: AsRef<Path>>(
@@ -271,7 +152,7 @@ impl AdapterManager {
         init_block: u64,
         mapping_path: P,
         schema_path: P,
-        client: &mut StreamoutClient<Timeout<Channel>>,
+        client: &mut StreamClient<Timeout<Channel>>,
     ) -> Result<(), Box<dyn Error>> {
         let store = StoreBuilder::create_store(indexer_hash.as_str(), &schema_path).unwrap();
         let mut indexer_state = IndexerState::new(Arc::new(store));
@@ -302,7 +183,7 @@ impl AdapterManager {
             if let Some(handler_proxy) = adapter_handler.handler_proxies.get(&adapter_name) {
                 let mut start_block = init_block;
                 let chain_type = get_chain_type(data_source);
-                let mut opt_stream: Option<Streaming<GenericDataProto>> = None;
+                let mut opt_stream: Option<Streaming<BlockResponse>> = None;
                 log::info!(
                     "Rust mapping get new stream for chain {:?} from block {}.",
                     &chain_type,
@@ -332,16 +213,14 @@ impl AdapterManager {
                             match response {
                                 Ok(Ok(res)) => {
                                     if let Some(mut data) = res {
-                                        let data_type = DataType::from_i32(data.data_type).unwrap();
                                         let data_chain_type =
                                             ChainType::from_i32(data.chain_type).unwrap();
                                         log::info!(
-                                            "{} Chain {:?} received data block = {:?}, hash = {:?}, data type = {:?}",
+                                            "{} Chain {:?} received data block = {:?}, hash = {:?}",
                                             &*COMPONENT_NAME,
                                             &data_chain_type,
                                             data.block_number,
                                             data.block_hash,
-                                            DataType::from_i32(data.data_type).unwrap()
                                         );
                                         if data_chain_type == chain_type {
                                             match handler_proxy
@@ -413,20 +292,24 @@ impl AdapterManager {
     }
 }
 async fn try_create_stream(
-    client: &mut StreamoutClient<Timeout<Channel>>,
+    client: &mut StreamClient<Timeout<Channel>>,
     chain_type: &ChainType,
     start_block: u64,
     network: &Option<NetworkType>,
-) -> Option<Streaming<GenericDataProto>> {
+) -> Option<Streaming<BlockResponse>> {
     log::info!("Create new stream from block {}", start_block);
-    let get_blocks_request = GetBlocksRequest {
-        start_block_number: start_block,
-        end_block_number: 0,
+    let filter =
+        <chain_ethereum::Chain as Blockchain>::TriggerFilter::from_data_sources(vec![].iter());
+    let encoded_filter = serde_json::to_vec(&filter).unwrap();
+
+    let get_blocks_request = BlocksRequest {
+        start_block_number: start_block as i64,
         chain_type: *chain_type as i32,
         network: network.clone().unwrap_or(Default::default()),
+        filter: encoded_filter,
     };
     match client
-        .list_blocks(Request::new(get_blocks_request.clone()))
+        .blocks(Request::new(get_blocks_request.clone()))
         .await
     {
         Ok(res) => {
@@ -443,14 +326,8 @@ async fn try_create_stream(
 pub trait MessageHandler {
     fn handle_rust_mapping(
         &self,
-        message: &mut GenericDataProto,
+        message: &mut BlockResponse,
         store: &mut dyn Store,
-    ) -> Result<(), Box<dyn Error>> {
-        Ok(())
-    }
-    fn handle_wasm_mapping(
-        &mut self,
-        message: &mut GenericDataProto,
     ) -> Result<(), Box<dyn Error>> {
         Ok(())
     }

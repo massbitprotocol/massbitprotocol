@@ -2,8 +2,9 @@ use anyhow::{Context, Error};
 use blockchain::HostFn;
 use ethabi::{Address, Token};
 use runtime_wasm::asc_abi::class::{AscEnumArray, EthereumValueKind};
-use std::{sync::Arc, time::Instant};
+use std::sync::Arc;
 
+use massbit::prelude::*;
 use massbit::runtime::{AscIndexId, IndexForAscTypeId};
 use massbit::{
     blockchain::{self, BlockPtr, HostFnCtx},
@@ -16,11 +17,7 @@ use massbit::{
 use super::abi::{AscUnresolvedContractCall, AscUnresolvedContractCall_0_0_4};
 use crate::data_source::MappingABI;
 use crate::network::EthereumNetworkAdapters;
-use crate::{
-    Chain, DataSource, EthereumAdapter, EthereumAdapterTrait, EthereumContractCall,
-    EthereumContractCallError,
-};
-use massbit::prelude::Logger;
+use crate::{Chain, DataSource, EthereumAdapter, EthereumContractCall, EthereumContractCallError};
 
 pub struct RuntimeAdapter {
     pub(crate) eth_adapters: Arc<EthereumNetworkAdapters>,
@@ -141,6 +138,7 @@ fn eth_call(
     ) {
         Ok(tokens) => Ok(Some(tokens)),
         Err(EthereumContractCallError::Revert(reason)) => {
+            info!(logger, "Contract call reverted"; "reason" => reason);
             Ok(None)
         }
 

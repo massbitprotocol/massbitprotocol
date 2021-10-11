@@ -1,4 +1,0 @@
-type MasterChefModel @entity {
-  id: ID!
-  timestamp: BigInt!
-}

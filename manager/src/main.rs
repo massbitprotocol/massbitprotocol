@@ -6,17 +6,15 @@ use chain_ethereum::adapter::EthereumAdapter;
 use chain_ethereum::network::EthereumNetworks;
 use chain_ethereum::Transport;
 use massbit::blockchain::BlockchainMap;
+use massbit::firehose::endpoints::{FirehoseEndpoint, FirehoseNetworkEndpoints, FirehoseNetworks};
 use massbit::ipfs_client::IpfsClient;
 use massbit::log::logger;
 use massbit::prelude::tokio::sync::mpsc;
 use massbit::prelude::{JsonRpcServer as _, *};
 use massbit::util::security::SafeDisplay;
-use massbit_store_postgres::IndexerStore;
 
-use crate::config::{Config, ProviderDetails, Shard};
-use crate::indexer::{
-    IndexerAssignmentProvider, IndexerInstanceManager, IndexerRegistrar, LinkResolver,
-};
+use crate::config::{Config, ProviderDetails};
+use crate::indexer::{IndexerInstanceManager, IndexerProvider, IndexerRegistrar, LinkResolver};
 use crate::json_rpc::JsonRpcServer;
 use crate::store_builder::StoreBuilder;
 
@@ -50,7 +48,9 @@ async fn main() {
         }
         Ok(config) => config,
     };
+
     let store_builder = StoreBuilder::new(&logger, &config).await;
+    let indexer_store = store_builder.indexer_store();
 
     // Try to create IPFS clients for each URL specified in `--ipfs`
     let ipfs_clients: Vec<_> = create_ipfs_clients(&logger, &opt.ipfs);
@@ -59,58 +59,50 @@ async fn main() {
     // possible temporary DNS failures, make the resolver retry
     let link_resolver = Arc::new(LinkResolver::from(ipfs_clients));
 
-    let eth_networks = create_ethereum_networks(logger.clone(), config)
+    let eth_networks = create_ethereum_networks(logger.clone(), config.clone())
         .await
         .expect("Failed to parse Ethereum networks");
 
+    let firehose_networks = create_firehose_networks(logger.clone(), &config)
+        .await
+        .expect("Failed to parse Firehose networks");
+
     // Obtain JSON-RPC server port
-    let json_rpc_port = opt.admin_port;
-    let node_id =
-        NodeId::new(opt.node_id.clone()).expect("Node ID must contain only a-z, A-Z, 0-9, and '_'");
+    let json_rpc_port = opt.json_rpc_port;
 
     let launch_services = || async move {
-        let (eth_networks, idents) = connect_networks(&logger, eth_networks).await;
+        let (eth_networks, _) = connect_networks(&logger, eth_networks).await;
 
-        let store = store_builder.store();
         let mut blockchain_map = BlockchainMap::new();
-        let ethereum_chains = networks_as_chains(
+        ethereum_networks_as_chains(
             &mut blockchain_map,
-            node_id.clone(),
             &eth_networks,
+            &firehose_networks,
             &logger_factory,
         );
         let blockchain_map = Arc::new(blockchain_map);
 
         let indexer_instance_manager = IndexerInstanceManager::new(
             &logger_factory,
-            store.cheap_clone(),
+            indexer_store.cheap_clone(),
             blockchain_map.cheap_clone(),
             link_resolver.cheap_clone(),
         );
 
-        let indexer_provider = IndexerAssignmentProvider::new(
-            &logger_factory,
-            link_resolver.cheap_clone(),
-            indexer_instance_manager,
-        );
+        let indexer_provider = IndexerProvider::new(&logger_factory, indexer_instance_manager);
 
         let indexer_registrar = Arc::new(IndexerRegistrar::new(
             &logger_factory,
-            node_id.clone(),
             blockchain_map.cheap_clone(),
             link_resolver.cheap_clone(),
-            store.cheap_clone(),
+            indexer_store.cheap_clone(),
             Arc::new(indexer_provider),
         ));
 
         // Start admin JSON-RPC server.
-        let json_rpc_server = JsonRpcServer::serve(
-            json_rpc_port,
-            indexer_registrar.clone(),
-            node_id.clone(),
-            logger.clone(),
-        )
-        .expect("failed to start JSON-RPC admin server");
+        let json_rpc_server =
+            JsonRpcServer::serve(json_rpc_port, indexer_registrar.clone(), logger.clone())
+                .expect("failed to start JSON-RPC admin server");
 
         // Let the server run forever.
         std::mem::forget(json_rpc_server);
@@ -144,7 +136,7 @@ async fn main() {
                                      "code" => LogCode::TokioContention);
             if timeout < Duration::from_secs(10) {
                 timeout *= 10;
-            } else if std::env::var_os("GRAPH_KILL_IF_UNRESPONSIVE").is_some() {
+            } else if std::env::var_os("KILL_IF_UNRESPONSIVE").is_some() {
                 // The node is unresponsive, kill it in hopes it will be restarted.
                 std::process::abort()
             }
@@ -270,22 +262,56 @@ async fn create_ethereum_networks(
     Ok(parsed_networks)
 }
 
+async fn create_firehose_networks(
+    logger: Logger,
+    config: &Config,
+) -> Result<FirehoseNetworks, anyhow::Error> {
+    debug!(
+        logger,
+        "Creating firehose networks [{} chains]",
+        config.chains.chains.len(),
+    );
+
+    let mut parsed_networks = FirehoseNetworks::new();
+    for (name, chain) in &config.chains.chains {
+        for provider in &chain.providers {
+            if let ProviderDetails::Firehose(ref firehose) = provider.details {
+                let logger = logger.new(o!("provider" => provider.label.clone()));
+                info!(
+                    logger,
+                    "Creating firehose endpoint";
+                    "url" => &firehose.url,
+                );
+
+                let endpoint =
+                    FirehoseEndpoint::new(&provider.label, &firehose.url, firehose.token.clone())
+                        .await?;
+
+                parsed_networks.insert(name.to_string(), Arc::new(endpoint));
+            }
+        }
+    }
+
+    Ok(parsed_networks)
+}
+
 /// Return the hashmap of ethereum chains and also add them to `blockchain_map`.
-fn networks_as_chains(
+fn ethereum_networks_as_chains(
     blockchain_map: &mut BlockchainMap,
-    node_id: NodeId,
     eth_networks: &EthereumNetworks,
+    firehose_networks: &FirehoseNetworks,
     logger_factory: &LoggerFactory,
-) -> HashMap<String, Arc<chain_ethereum::Chain>> {
+) {
     let chains: Vec<_> = eth_networks
         .networks
         .iter()
         .map(|(network_name, eth_adapters)| {
+            let firehose_endpoints = firehose_networks.networks.get(network_name);
             let chain = chain_ethereum::Chain::new(
                 logger_factory.clone(),
                 network_name.clone(),
-                node_id.clone(),
                 eth_adapters.clone(),
+                firehose_endpoints.map_or_else(|| FirehoseNetworkEndpoints::new(), |v| v.clone()),
             );
             (network_name.clone(), Arc::new(chain))
         })
@@ -294,8 +320,6 @@ fn networks_as_chains(
     for (network_name, chain) in chains.iter().cloned() {
         blockchain_map.insert::<chain_ethereum::Chain>(network_name, chain)
     }
-
-    HashMap::from_iter(chains)
 }
 
 /// Try to connect to all the providers in `eth_networks` and get their net
