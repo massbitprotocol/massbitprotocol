@@ -4,6 +4,7 @@ use crate::solana::metrics::instruction::common::InstructionKey;
 use crate::solana::metrics::instruction::raw_instruction::{
     create_unparsed_instruction, create_unparsed_instruction_table,
 };
+use crate::solana::metrics::instruction::spltoken_instruction::create_spltoken_entity;
 use crate::solana::metrics::instruction::system_instruction::create_system_entity;
 use crate::solana::metrics::instruction::vote_instruction::create_vote_entity;
 use crate::storage_adapter::StorageAdapter;
@@ -133,6 +134,9 @@ fn create_parsed_entity(
     match PARSABLE_PROGRAM_IDS.get(program_id) {
         Some(ParsableProgram::System) => {
             create_system_entity(tx_hash, block_time, inst_order, inst)
+        }
+        Some(ParsableProgram::SplToken) => {
+            create_spltoken_entity(tx_hash, block_time, inst_order, inst)
         }
         Some(ParsableProgram::Vote) => create_vote_entity(tx_hash, block_time, inst_order, inst),
         _ => None,
