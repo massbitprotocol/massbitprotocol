@@ -18,7 +18,7 @@ services:
       - ./data/postgres-massbit:/var/lib/postgresql/data
 
   metabase:
-    build: ./metabase
+    build: deployment/metabase
     restart: always
     # Account for login can be found in the folder /metabase/setup-mb-account.sh
     entrypoint: ["./init.sh"]
