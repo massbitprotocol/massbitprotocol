@@ -39,7 +39,6 @@ clap = { version = "2.33.3", features = ["yaml"] }
 
 massbit-chain-substrate = { path = "../../core/chain/substrate" }
 massbit-chain-solana = { path = "../../core/chain/solana" }
-massbit-chain-ethereum = { path = "../../core/chain/ethereum" }
 massbit-common = {path = "../../core/common" }
 chain-ethereum = {path = "../../chain/ethereum" }
 ipfs-client = { path = "../../core/ipfs-client" }

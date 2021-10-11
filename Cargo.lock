@@ -13,6 +13,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "adapter"
+version = "0.1.0"
+dependencies = [
+ "chain-ethereum",
+ "ethabi 12.0.0-graph",
+ "futures 0.1.31",
+ "graph 0.24.0",
+ "graph-chain-ethereum",
+ "graph-core",
+ "graph-mock",
+ "graph-runtime-wasm",
+ "index-store",
+ "lazy_static",
+ "libloading 0.7.0",
+ "log 0.4.14",
+ "massbit",
+ "massbit-chain-solana",
+ "massbit-chain-substrate",
+ "massbit-common",
+ "paste 1.0.5",
+ "prost 0.7.0",
+ "quote 1.0.9",
+ "serde_regex",
+ "serde_yaml",
+ "structmap",
+ "tonic",
+ "tonic-build",
+ "tower",
+]
+
+[[package]]
 name = "addr2line"
 version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -56,6 +87,62 @@ name = "aliasable"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "250f629c0161ad8107cf89319e990051fae62832fd343083bea452d93e2205fd"
+
+[[package]]
+name = "analytics"
+version = "0.1.0"
+dependencies = [
+ "Inflector",
+ "anyhow",
+ "async-stream 0.2.1",
+ "bigdecimal",
+ "broadcaster",
+ "chain-ethereum",
+ "chrono",
+ "clap",
+ "diesel",
+ "diesel-derive-enum",
+ "diesel-dynamic-schema",
+ "diesel_migrations",
+ "dotenv",
+ "env_logger 0.9.0",
+ "frame-system",
+ "futures 0.1.31",
+ "futures-core",
+ "futures-util",
+ "hex",
+ "hex-literal",
+ "http 0.1.21",
+ "ipfs-client",
+ "jsonrpc-core 14.2.0",
+ "lazy_static",
+ "log 0.4.14",
+ "logger",
+ "massbit",
+ "massbit-chain-solana",
+ "massbit-chain-substrate",
+ "massbit-common",
+ "multiqueue",
+ "primitive-types 0.6.2",
+ "prost 0.7.0",
+ "rand 0.7.3",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "solana-account-decoder",
+ "solana-program 1.8.0",
+ "solana-sdk 1.8.0",
+ "solana-transaction-status",
+ "solana-vote-program",
+ "sp-core",
+ "sp-keyring",
+ "thiserror",
+ "tokio 1.11.0",
+ "tokio-stream",
+ "tonic",
+ "tonic-build",
+ "tower",
+]
 
 [[package]]
 name = "ansi_term"
@@ -876,7 +963,6 @@ dependencies = [
  "log 0.4.14",
  "logger",
  "massbit",
- "massbit-chain-ethereum",
  "massbit-chain-solana",
  "massbit-chain-substrate",
  "massbit-common",
@@ -3501,6 +3587,57 @@ dependencies = [
 ]
 
 [[package]]
+name = "index-manager-lib"
+version = "0.1.0"
+dependencies = [
+ "adapter",
+ "anyhow",
+ "async-std",
+ "diesel",
+ "diesel_migrations",
+ "env_logger 0.8.4",
+ "futures 0.3.17",
+ "graph 0.24.0",
+ "graph-chain-ethereum",
+ "graph-core",
+ "index-store",
+ "ipfs-client",
+ "jsonrpc-http-server",
+ "lazy_static",
+ "log 0.4.14",
+ "massbit",
+ "massbit-chain-solana",
+ "massbit-chain-substrate",
+ "postgres",
+ "prost 0.8.0",
+ "rand 0.8.4",
+ "reqwest 0.10.10",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "strum 0.21.0",
+ "strum_macros 0.21.1",
+ "tokio 1.11.0",
+ "tokio-compat-02",
+ "tokio02-spawn",
+ "tonic",
+ "tonic-build",
+]
+
+[[package]]
+name = "index-manager-main"
+version = "0.1.0"
+dependencies = [
+ "env_logger 0.8.4",
+ "index-manager-lib",
+ "lazy_static",
+ "log 0.4.14",
+ "logger",
+ "tokio 1.11.0",
+ "tonic-build",
+]
+
+[[package]]
 name = "index-store"
 version = "0.1.0"
 dependencies = [
@@ -3803,6 +3940,16 @@ name = "libc"
 version = "0.2.101"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3cb00336871be5ed2c8ed44b60ae9959dc5b9f08539422ed43f09e34ecaeba21"
+
+[[package]]
+name = "libloading"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2b111a074963af1d37a139918ac6d49ad1d0d5e47f72fd55388619691a7d753"
+dependencies = [
+ "cc",
+ "winapi 0.3.9",
+]
 
 [[package]]
 name = "libloading"
@@ -4197,31 +4344,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "massbit-chain-ethereum"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bs58 0.4.0",
- "env_logger 0.9.0",
- "ethabi 12.0.0-graph",
- "futures 0.1.31",
- "futures 0.3.17",
- "graph 0.24.0",
- "graph-chain-ethereum",
- "graph-runtime-wasm",
- "hex",
- "log 0.4.14",
- "massbit",
- "serde",
- "serde_json",
- "stable-hash",
- "tiny-keccak 1.5.0",
- "tokio-compat-02",
- "utils",
- "web3",
-]
-
-[[package]]
 name = "massbit-chain-solana"
 version = "0.1.0"
 dependencies = [
@@ -4263,6 +4385,8 @@ dependencies = [
  "ethabi 12.0.0-graph",
  "lazy_static",
  "log 0.4.14",
+ "r2d2",
+ "r2d2-diesel",
  "regex",
  "reqwest 0.10.10",
  "serde",
@@ -5694,6 +5818,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3831453b3449ceb48b6d9c7ad7c96d5ea673e9b470a1dc578c2ce6521230884c"
 
 [[package]]
+name = "plugin"
+version = "0.1.0"
+dependencies = [
+ "index-store",
+ "libloading 0.5.2",
+ "massbit-chain-solana",
+ "structmap",
+]
+
+[[package]]
 name = "polling"
 version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6112,6 +6246,16 @@ dependencies = [
  "log 0.4.14",
  "parking_lot 0.11.2",
  "scheduled-thread-pool",
+]
+
+[[package]]
+name = "r2d2-diesel"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eb9c29bad92da76d02bc2c020452ebc3a3fe6fa74cfab91e711c43116e4fb1a3"
+dependencies = [
+ "diesel",
+ "r2d2",
 ]
 
 [[package]]
@@ -7717,7 +7861,7 @@ version = "1.8.0"
 source = "git+https://github.com/massbitprotocol/solana.git?branch=main#f829e3db64ac6ff48017624122bc1661c77f19d0"
 dependencies = [
  "libc",
- "libloading",
+ "libloading 0.7.0",
  "log 0.4.14",
  "num-derive",
  "num-traits",
@@ -9591,6 +9735,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokio02-spawn"
+version = "0.1.0"
+dependencies = [
+ "futures 0.3.17",
+]
+
+[[package]]
 name = "toml"
 version = "0.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10172,20 +10323,6 @@ name = "utf-8"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09cc8ee72d2a9becf2f2febe0205bbed8fc6615b7cb429ad062dc7b7ddd036a9"
-
-[[package]]
-name = "utils"
-version = "0.1.0"
-dependencies = [
- "futures 0.1.31",
- "futures 0.3.17",
- "log 0.4.14",
- "slog",
- "thiserror",
- "tokio 1.11.0",
- "tokio-retry 0.3.0",
- "tokio-stream",
-]
 
 [[package]]
 name = "uuid"

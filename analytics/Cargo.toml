@@ -50,7 +50,6 @@ massbit                 = { path = "../massbit"}
 massbit-common          = { path = "../core/common"}
 massbit-chain-substrate = { path = "../core/chain/substrate" }
 massbit-chain-solana = { path = "../core/chain/solana" }
-massbit-chain-ethereum = { path = "../core/chain/ethereum" }
 chain-ethereum = { path = "../chain/ethereum" }
 ipfs-client = { path = "../core/ipfs-client" }
 logger = { path = "../core/logger" }
