@@ -18,7 +18,7 @@ lazy_static! {
     // Load default config
     static ref SOLANA_WS: String = env::var("SOLANA_WS").unwrap_or(String::from("ws://api.mainnet-beta.solana.com"));
     //static ref SOLANA_URL: String = env::var("SOLANA_URL").unwrap_or(String::from("https://solana-api.projectserum.com"));
-    static ref SOLANA_URL: String = env::var("SOLANA_URL").unwrap_or(String::from("http://194.163.156.242:8899"));
+    static ref SOLANA_URL: String = env::var("SOLANA_URL").unwrap_or(String::from("http://localhost:8899"));
     static ref POLYGON_WS: String = env::var("POLYGON_WS").unwrap_or(String::from("wss://rpc-mainnet.matic.network"));
     static ref POLYGON_URL: String = env::var("POLYGON_URL").unwrap_or(String::from("https://polygon-rpc.com"));
     static ref BSC_WS: String = env::var("BSC_WS").unwrap_or(String::from("wss://bsc-ws-node.nariox.org:443"));
