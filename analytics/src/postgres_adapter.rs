@@ -6,9 +6,9 @@ use std::cmp;
 
 use crate::models::CommandData;
 use crate::postgres_queries::{UpsertConflictFragment, UpsertQuery};
-use crate::relational::{Column, Table};
+use crate::relational::Table;
 use core::ops::Deref;
-use graph::prelude::Entity;
+use massbit::prelude::Entity;
 use std::time::Instant;
 
 const MAX_POOL_SIZE: u32 = 10;
@@ -21,7 +21,6 @@ impl StorageAdapter for PostgresAdapter {
     fn upsert(
         &self,
         table: &Table,
-        columns: &Vec<Column>,
         entities: &Vec<Entity>,
         conflict_fragment: &Option<UpsertConflictFragment>,
     ) -> Result<(), anyhow::Error> {
@@ -29,8 +28,7 @@ impl StorageAdapter for PostgresAdapter {
         if entities.len() > 0 {
             match self.pool.get() {
                 Ok(conn) => {
-                    let upsert_query =
-                        UpsertQuery::new(table, columns, entities, conflict_fragment)?;
+                    let upsert_query = UpsertQuery::new(table, entities, conflict_fragment)?;
                     match upsert_query.execute(conn.deref()) {
                         Ok(_val) => {
                             log::info!(

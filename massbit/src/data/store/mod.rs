@@ -12,9 +12,9 @@ use std::str::FromStr;
 use strum::AsStaticRef as _;
 use strum_macros::AsStaticStr;
 
+pub mod ethereum;
 /// Custom scalars in GraphQL.
 pub mod scalar;
-
 /// An entity attribute name is represented as a string.
 pub type Attribute = String;
 

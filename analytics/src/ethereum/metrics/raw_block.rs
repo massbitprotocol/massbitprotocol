@@ -2,7 +2,7 @@ use crate::ethereum::handler::EthereumHandler;
 use crate::relational::{Column, ColumnType, Table};
 use crate::storage_adapter::StorageAdapter;
 use crate::{create_columns, create_entity};
-use graph::prelude::{Attribute, Entity, Value};
+use massbit::prelude::{Attribute, Entity, Value};
 use massbit_chain_ethereum::data_type::LightEthereumBlock;
 use massbit_common::NetworkType;
 use std::collections::HashMap;
@@ -25,14 +25,12 @@ impl EthereumRawBlockHandler {
 impl EthereumHandler for EthereumRawBlockHandler {
     fn handle_block(&self, block: Arc<LightEthereumBlock>) -> Result<(), anyhow::Error> {
         let entity = create_entity(block);
-        let table = Table::new("ethereum_block", Some("t"));
-        let columns = create_columns();
-        self.storage_adapter
-            .upsert(&table, &columns, &vec![entity], &None)
+        let table = create_table();
+        self.storage_adapter.upsert(&table, &vec![entity], &None)
     }
 }
-fn create_columns() -> Vec<Column> {
-    create_columns!(
+fn create_table<'a>() -> Table<'a> {
+    let columns = create_columns!(
         "block_hash" => ColumnType::String,
         "parent_hash" => ColumnType::String,
         "block_number" => ColumnType::BigInt,
@@ -46,7 +44,8 @@ fn create_columns() -> Vec<Column> {
         "gas_used" => ColumnType::BigDecimal,
         "gas_limit" => ColumnType::BigDecimal,
         "extra_data" => ColumnType::Bytes
-    )
+    );
+    Table::new("ethereum_block", columns, Some("t"))
 }
 fn create_entity(block: Arc<LightEthereumBlock>) -> Entity {
     create_entity!(

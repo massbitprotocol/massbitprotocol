@@ -1,7 +1,7 @@
 use crate::schema::*;
 use bigdecimal::{BigDecimal, FromPrimitive};
-use massbit_chain_ethereum::data_type::{LightEthereumBlock};
-use graph::prelude::web3::types::Transaction;
+use massbit::prelude::web3::types::Transaction;
+use massbit_chain_ethereum::data_type::LightEthereumBlock;
 
 //https://kotiri.com/2018/01/31/postgresql-diesel-rust-types.html
 #[derive(Debug, Clone, Insertable, Queryable)]
@@ -33,23 +33,20 @@ pub struct EthereumTransaction {
     pub value: BigDecimal,
     pub gas_limit: BigDecimal,
     pub gas_price: BigDecimal,
-    pub timestamp: i64
+    pub timestamp: i64,
 }
 
-impl From<&LightEthereumBlock> for  EthereumBlock {
+impl From<&LightEthereumBlock> for EthereumBlock {
     fn from(block: &LightEthereumBlock) -> Self {
         let block_hash = match block.hash {
-            Some(hash) => format!(
-                "0x{}",
-                hex::encode(hash.as_bytes()).trim_start_matches('0')
-            ),
-            None => String::from("")
+            Some(hash) => format!("0x{}", hex::encode(hash.as_bytes()).trim_start_matches('0')),
+            None => String::from(""),
         };
         let block_number = match block.number {
             None => None,
-            Some(val) => Some(val.as_u64() as i64)
+            Some(val) => Some(val.as_u64() as i64),
         };
-        let timestamp= block.timestamp.as_u64() as i64;
+        let timestamp = block.timestamp.as_u64() as i64;
         let _validator = format!(
             "0x{}",
             hex::encode(block.author.as_bytes()).trim_start_matches('0')
@@ -71,7 +68,7 @@ impl From<&LightEthereumBlock> for  EthereumBlock {
         };
         let size = match block.size {
             None => None,
-            Some(val) => Some(val.as_u64() as i64)
+            Some(val) => Some(val.as_u64() as i64),
         };
         let gas_limit = BigDecimal::from_u128(block.gas_limit.as_u128());
         let gas_used = BigDecimal::from_u128(block.gas_used.as_u128());
@@ -87,11 +84,11 @@ impl From<&LightEthereumBlock> for  EthereumBlock {
             size,
             gas_used,
             gas_limit,
-            extra_data: Some(block.extra_data.0.clone())
+            extra_data: Some(block.extra_data.0.clone()),
         }
     }
 }
-impl  From<&Transaction> for EthereumTransaction {
+impl From<&Transaction> for EthereumTransaction {
     fn from(trans: &Transaction) -> Self {
         let transaction_hash = format!(
             "0x{}",
@@ -106,7 +103,7 @@ impl  From<&Transaction> for EthereumTransaction {
         };
         let block_number = match trans.block_number {
             Some(val) => Some(val.as_u64() as i64),
-            _ => None
+            _ => None,
         };
         let sender = format!(
             "0x{}",
@@ -117,25 +114,25 @@ impl  From<&Transaction> for EthereumTransaction {
                 "0x{}",
                 hex::encode(val.as_bytes()).trim_start_matches('0')
             )),
-            _ => None
+            _ => None,
         };
         let value = match BigDecimal::from_u128(trans.value.as_u128()) {
             None => BigDecimal::from(0),
-            Some(val) => val
+            Some(val) => val,
         };
         let gas_limit = match BigDecimal::from_u128(trans.gas.as_u128()) {
             None => BigDecimal::from(0),
-            Some(val) => val
+            Some(val) => val,
         };
         let gas_price = match BigDecimal::from_u128(trans.gas_price.as_u128()) {
             None => BigDecimal::from(0),
-            Some(val) => val
+            Some(val) => val,
         };
         EthereumTransaction {
             transaction_hash,
             block_hash,
             block_number,
-            nonce:  BigDecimal::from_u128(trans.value.as_u128()),
+            nonce: BigDecimal::from_u128(trans.value.as_u128()),
             sender,
             receiver,
             value,

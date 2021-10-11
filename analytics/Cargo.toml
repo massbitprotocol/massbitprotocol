@@ -11,6 +11,7 @@ diesel-dynamic-schema = { git = "https://github.com/diesel-rs/diesel-dynamic-sch
 diesel-derive-enum  = { version = "1.1", features = ["postgres"] }
 diesel_migrations   = "1.4.0"
 bigdecimal      = "0.1.2"
+chrono          = "0.4.19"
 #num-bigint      = "0.2.6"
 futures         = "0.1.31"
 http            = "0.1.21" # must be compatible with the version rust-web3 uses
@@ -54,18 +55,28 @@ chain-ethereum = { path = "../chain/ethereum" }
 ipfs-client = { path = "../core/ipfs-client" }
 logger = { path = "../core/logger" }
 
-[dependencies.graph]
-package = "graph"
-git = "https://github.com/massbitprotocol/massbit-graph-node"
-branch = "main"
-
-[dependencies.graph-store-postgres]
-package = "graph-store-postgres"
-git = "https://github.com/massbitprotocol/massbit-graph-node"
-branch = "main"
-
 [dependencies.solana-transaction-status]
 package = "solana-transaction-status"
+git = "https://github.com/massbitprotocol/solana.git"
+branch = "main"
+
+[dependencies.solana-sdk]
+package = "solana-sdk"
+git = "https://github.com/massbitprotocol/solana.git"
+branch = "main"
+
+[dependencies.solana-program]
+package = "solana-program"
+git = "https://github.com/massbitprotocol/solana.git"
+branch = "main"
+
+[dependencies.solana-vote-program]
+package = "solana-vote-program"
+git = "https://github.com/massbitprotocol/solana.git"
+branch = "main"
+
+[dependencies.solana_account_decoder]
+package = "solana-account-decoder"
 git = "https://github.com/massbitprotocol/solana.git"
 branch = "main"
 
