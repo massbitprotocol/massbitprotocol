@@ -18,9 +18,7 @@ lazy_static     = "1.2.0"
 log             = "0.4.0"
 massbit-chain-substrate = { path = "../../core/chain/substrate" }
 massbit-chain-solana    = { path = "../../core/chain/solana" }
-massbit-chain-ethereum  = { path = "../../core/chain/ethereum" }
 index-store             = { path = "../../core/index-store" }
-massbit-runtime-wasm    = { path = "../runtime/wasm" }
 massbit-common          = { path = "../../core/common"}
 massbit = { path = "../../massbit"}
 chain-ethereum = {path = "../../chain/ethereum" }

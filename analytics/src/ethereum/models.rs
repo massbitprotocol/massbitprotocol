@@ -1,7 +1,7 @@
 use crate::schema::*;
 use bigdecimal::{BigDecimal, FromPrimitive};
+use massbit::components::ethereum::LightEthereumBlock;
 use massbit::prelude::web3::types::Transaction;
-use massbit_chain_ethereum::data_type::LightEthereumBlock;
 
 //https://kotiri.com/2018/01/31/postgresql-diesel-rust-types.html
 #[derive(Debug, Clone, Insertable, Queryable)]
