@@ -13,6 +13,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "adapter"
+version = "0.1.0"
+dependencies = [
+ "chain-ethereum",
+ "ethabi 12.0.0-graph",
+ "futures 0.1.31",
+ "graph 0.24.0",
+ "graph-chain-ethereum",
+ "graph-core",
+ "graph-mock",
+ "graph-runtime-wasm",
+ "index-store",
+ "lazy_static",
+ "libloading 0.7.0",
+ "log 0.4.14",
+ "massbit",
+ "massbit-chain-solana",
+ "massbit-chain-substrate",
+ "massbit-common",
+ "paste 1.0.5",
+ "prost 0.7.0",
+ "quote 1.0.9",
+ "serde_regex",
+ "serde_yaml",
+ "structmap",
+ "tonic",
+ "tonic-build",
+ "tower",
+]
+
+[[package]]
 name = "addr2line"
 version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -67,6 +98,7 @@ dependencies = [
  "bigdecimal",
  "broadcaster",
  "chain-ethereum",
+ "chrono",
  "clap",
  "diesel",
  "diesel-derive-enum",
@@ -78,8 +110,6 @@ dependencies = [
  "futures 0.1.31",
  "futures-core",
  "futures-util",
- "graph 0.24.0",
- "graph-store-postgres",
  "hex",
  "hex-literal",
  "http 0.1.21",
@@ -89,7 +119,6 @@ dependencies = [
  "log 0.4.14",
  "logger",
  "massbit",
- "massbit-chain-ethereum",
  "massbit-chain-solana",
  "massbit-chain-substrate",
  "massbit-common",
@@ -100,7 +129,11 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "solana-account-decoder",
+ "solana-program 1.8.0",
+ "solana-sdk 1.8.0",
  "solana-transaction-status",
+ "solana-vote-program",
  "sp-core",
  "sp-keyring",
  "thiserror",
@@ -926,7 +959,6 @@ dependencies = [
  "log 0.4.14",
  "logger",
  "massbit",
- "massbit-chain-ethereum",
  "massbit-chain-solana",
  "massbit-chain-substrate",
  "massbit-common",
@@ -3551,6 +3583,57 @@ dependencies = [
 ]
 
 [[package]]
+name = "index-manager-lib"
+version = "0.1.0"
+dependencies = [
+ "adapter",
+ "anyhow",
+ "async-std",
+ "diesel",
+ "diesel_migrations",
+ "env_logger 0.8.4",
+ "futures 0.3.17",
+ "graph 0.24.0",
+ "graph-chain-ethereum",
+ "graph-core",
+ "index-store",
+ "ipfs-client",
+ "jsonrpc-http-server",
+ "lazy_static",
+ "log 0.4.14",
+ "massbit",
+ "massbit-chain-solana",
+ "massbit-chain-substrate",
+ "postgres",
+ "prost 0.8.0",
+ "rand 0.8.4",
+ "reqwest 0.10.10",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "strum 0.21.0",
+ "strum_macros 0.21.1",
+ "tokio 1.11.0",
+ "tokio-compat-02",
+ "tokio02-spawn",
+ "tonic",
+ "tonic-build",
+]
+
+[[package]]
+name = "index-manager-main"
+version = "0.1.0"
+dependencies = [
+ "env_logger 0.8.4",
+ "index-manager-lib",
+ "lazy_static",
+ "log 0.4.14",
+ "logger",
+ "tokio 1.11.0",
+ "tonic-build",
+]
+
+[[package]]
 name = "index-store"
 version = "0.1.0"
 dependencies = [
@@ -3853,6 +3936,16 @@ name = "libc"
 version = "0.2.101"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3cb00336871be5ed2c8ed44b60ae9959dc5b9f08539422ed43f09e34ecaeba21"
+
+[[package]]
+name = "libloading"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2b111a074963af1d37a139918ac6d49ad1d0d5e47f72fd55388619691a7d753"
+dependencies = [
+ "cc",
+ "winapi 0.3.9",
+]
 
 [[package]]
 name = "libloading"
@@ -4243,31 +4336,6 @@ dependencies = [
  "tonic-build",
  "url 2.2.2",
  "wasmparser",
- "web3",
-]
-
-[[package]]
-name = "massbit-chain-ethereum"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bs58 0.4.0",
- "env_logger 0.9.0",
- "ethabi 12.0.0-graph",
- "futures 0.1.31",
- "futures 0.3.17",
- "graph 0.24.0",
- "graph-chain-ethereum",
- "graph-runtime-wasm",
- "hex",
- "log 0.4.14",
- "massbit",
- "serde",
- "serde_json",
- "stable-hash",
- "tiny-keccak 1.5.0",
- "tokio-compat-02",
- "utils",
  "web3",
 ]
 
@@ -5744,6 +5812,16 @@ name = "pkg-config"
 version = "0.3.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3831453b3449ceb48b6d9c7ad7c96d5ea673e9b470a1dc578c2ce6521230884c"
+
+[[package]]
+name = "plugin"
+version = "0.1.0"
+dependencies = [
+ "index-store",
+ "libloading 0.5.2",
+ "massbit-chain-solana",
+ "structmap",
+]
 
 [[package]]
 name = "polling"
@@ -7779,7 +7857,7 @@ version = "1.8.0"
 source = "git+https://github.com/massbitprotocol/solana.git?branch=main#f829e3db64ac6ff48017624122bc1661c77f19d0"
 dependencies = [
  "libc",
- "libloading",
+ "libloading 0.7.0",
  "log 0.4.14",
  "num-derive",
  "num-traits",
@@ -9653,6 +9731,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokio02-spawn"
+version = "0.1.0"
+dependencies = [
+ "futures 0.3.17",
+]
+
+[[package]]
 name = "toml"
 version = "0.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10234,20 +10319,6 @@ name = "utf-8"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09cc8ee72d2a9becf2f2febe0205bbed8fc6615b7cb429ad062dc7b7ddd036a9"
-
-[[package]]
-name = "utils"
-version = "0.1.0"
-dependencies = [
- "futures 0.1.31",
- "futures 0.3.17",
- "log 0.4.14",
- "slog",
- "thiserror",
- "tokio 1.11.0",
- "tokio-retry 0.3.0",
- "tokio-stream",
-]
 
 [[package]]
 name = "uuid"

@@ -2,8 +2,8 @@ use crate::relational::{Column, ColumnType, Table};
 use crate::solana::handler::SolanaHandler;
 use crate::storage_adapter::StorageAdapter;
 use crate::{create_columns, create_entity};
-use graph::data::store::scalar::BigInt;
-use graph::prelude::{Attribute, Entity, Value};
+use massbit::data::store::scalar::BigInt;
+use massbit::prelude::{Attribute, Entity, Value};
 use massbit_chain_solana::data_type::SolanaBlock;
 use massbit_common::NetworkType;
 use solana_transaction_status::{TransactionStatusMeta, TransactionWithStatusMeta};
@@ -27,8 +27,7 @@ impl SolanaTokenBalanceHandler {
 
 impl SolanaHandler for SolanaTokenBalanceHandler {
     fn handle_block(&self, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
-        let table = Table::new("solana_token_balances", Some("t"));
-        let columns = create_columns();
+        let table = create_table();
         let entities = block
             .block
             .transactions
@@ -44,23 +43,23 @@ impl SolanaHandler for SolanaTokenBalanceHandler {
             });
         if let Some(values) = entities {
             if values.len() > 0 {
-                self.storage_adapter
-                    .upsert(&table, &columns, &values, &None);
+                self.storage_adapter.upsert(&table, &values, &None);
             }
         }
         Ok(())
     }
 }
 
-fn create_columns() -> Vec<Column> {
-    create_columns!(
+fn create_table<'a>() -> Table<'a> {
+    let columns = create_columns!(
         "tx_hash" => ColumnType::String,
         "account" => ColumnType::String,
         "token_address" => ColumnType::String,
         "decimals" => ColumnType::Int,
         "pre_amount" => ColumnType::BigInt,
         "post_amount" => ColumnType::BigInt
-    )
+    );
+    Table::new("solana_token_balances", columns, Some("t"))
 }
 
 fn create_token_balances(

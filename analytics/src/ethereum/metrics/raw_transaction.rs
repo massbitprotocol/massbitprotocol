@@ -1,8 +1,8 @@
 use crate::ethereum::handler::EthereumHandler;
 use crate::relational::{Column, ColumnType, Table};
 use crate::storage_adapter::StorageAdapter;
-use graph::prelude::web3::types::Transaction;
-use graph::prelude::{Attribute, Entity, Value};
+use massbit::prelude::web3::types::Transaction;
+use massbit::prelude::{Attribute, Entity, Value};
 use massbit_common::NetworkType;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -32,15 +32,13 @@ impl EthereumHandler for EthereumRawTransactionHandler {
             .iter()
             .map(|tran| create_entity(block.clone(), tran))
             .collect::<Vec<Entity>>();
-        let table = Table::new("ethereum_transaction", Some("t"));
-        let columns = create_columns();
-        self.storage_adapter
-            .upsert(&table, &columns, &values, &None)
+        let table = create_table();
+        self.storage_adapter.upsert(&table, &values, &None)
     }
 }
 
-fn create_columns() -> Vec<Column> {
-    create_columns!(
+fn create_table<'a>() -> Table<'a> {
+    let columns = create_columns!(
         "transaction_hash" => ColumnType::String,
         "block_hash" => ColumnType::Varchar,
         "block_number" => ColumnType::BigInt,
@@ -51,7 +49,8 @@ fn create_columns() -> Vec<Column> {
         "gas" => ColumnType::BigDecimal,
         "gas_price" => ColumnType::BigDecimal,
         "timestamp" => ColumnType::BigInt
-    )
+    );
+    Table::new("ethereum_transaction", columns, Some("t"))
 }
 fn create_entity(block: Arc<LightEthereumBlock>, trans: &Transaction) -> Entity {
     //let _tran_receipt = block.receipts.get(&trans.hash);

@@ -1,7 +1,7 @@
 use crate::models::CommandData;
 use crate::postgres_queries::UpsertConflictFragment;
-use crate::relational::{Column, Table};
-use graph::prelude::{Entity, Value};
+use crate::relational::Table;
+use massbit::prelude::{Entity, Value};
 use std::collections::HashMap;
 
 pub trait StorageAdapter: Sync + Send {
@@ -12,8 +12,7 @@ pub trait StorageAdapter: Sync + Send {
     fn upsert(
         &self,
         _table: &Table,
-        _columns: &Vec<Column>,
-        _value: &Vec<Entity>,
+        _values: &Vec<Entity>,
         _conflict_fragment: &Option<UpsertConflictFragment>,
     ) -> Result<(), anyhow::Error> {
         unimplemented!()

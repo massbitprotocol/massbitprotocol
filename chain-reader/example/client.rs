@@ -5,7 +5,7 @@ use massbit::firehose::bstream::{
     stream_client::StreamClient, BlockResponse, BlocksRequest, ChainType,
 };
 use massbit::ipfs_client::IpfsClient;
-use massbit_chain_ethereum::data_type::{decode as ethereum_decode, EthereumBlock};
+// use massbit_chain_ethereum::data_type::{decode as ethereum_decode, EthereumBlock};
 use massbit_chain_solana::data_type::{decode as solana_decode, SolanaBlock, SolanaFilter};
 use massbit_chain_substrate::data_type::SubstrateBlock;
 use massbit_chain_substrate::data_type::{decode, get_extrinsics_from_block};
@@ -135,25 +135,25 @@ pub async fn print_blocks(
                 debug!("Elapsed processing solana block: {:.2?}", elapsed);
             }
             ChainType::Ethereum => {
-                let block: EthereumBlock = ethereum_decode(&mut data.payload).unwrap();
-                info!(
-                    "Recieved ETHREUM BLOCK with Block number: {}",
-                    &block.block.number.unwrap().as_u64()
-                );
-
-                count += 1;
-                if count >= MAX_COUNT {
-                    break;
-                }
-
-                // for data_source in &data_sources {
-                //     //println!("data_source: {:#?}", &data_source);
-                //     let events = get_events(&block, data_source);
+                // let block: EthereumBlock = ethereum_decode(&mut data.payload).unwrap();
+                // info!(
+                //     "Recieved ETHREUM BLOCK with Block number: {}",
+                //     &block.block.number.unwrap().as_u64()
+                // );
                 //
-                //     // for event in events {
-                //     //     println!("Ethereum Event address: {:?}", &event.event.address);
-                //     // }
+                // count += 1;
+                // if count >= MAX_COUNT {
+                //     break;
                 // }
+                //
+                // // for data_source in &data_sources {
+                // //     //println!("data_source: {:#?}", &data_source);
+                // //     let events = get_events(&block, data_source);
+                // //
+                // //     // for event in events {
+                // //     //     println!("Ethereum Event address: {:?}", &event.event.address);
+                // //     // }
+                // // }
             }
         }
     }

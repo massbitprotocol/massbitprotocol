@@ -147,7 +147,7 @@ pub async fn process_ethereum_stream(
 //             },
 //         Some(state) => state.got_block as u64 + 1
 //     };
-//     let mut opt_stream: Option<Streaming<GenericDataProto>> = None;
+//     let mut opt_stream: Option<Streaming<BlockResponse>> = None;
 //     loop {
 //         match opt_stream {
 //             None => {
