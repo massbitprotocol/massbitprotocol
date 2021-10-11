@@ -19,7 +19,7 @@ use libloading::Library;
 use paste::paste;
 use std::{error::Error, sync::Arc};
 use massbit_chain_solana::data_type::{SolanaBlock, SolanaLogMessages, SolanaTransaction, SolanaEncodedBlock, decode, convert_solana_encoded_block_to_solana_block};
-pub use crate::stream_mod::{DataType, GenericDataProto};
+pub use crate::stream_mod::{DataType, BlockResponse};
 use std::result::Result::Err;
 use crate::core::MessageHandler;
 
@@ -30,7 +30,7 @@ crate::prepare_adapter!(Solana, {
 });
 
 impl MessageHandler for SolanaHandlerProxy {
-     fn handle_message(&self, data: &mut GenericDataProto) -> Result<(), Box<dyn Error>> {
+     fn handle_message(&self, data: &mut BlockResponse) -> Result<(), Box<dyn Error>> {
           match DataType::from_i32(data.data_type) {
                Some(DataType::Block) => {
                     let encoded_block: SolanaEncodedBlock = decode(&mut data.payload).unwrap();
