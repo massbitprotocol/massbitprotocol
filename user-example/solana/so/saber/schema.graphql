@@ -1,0 +1,38 @@
+type SaberInit @entity {
+    id: ID!
+    nonce: Int!
+    amp_factor: BigInt!
+    admin_trade_fee_numerator: BigInt!
+    admin_trade_fee_denominator: BigInt!
+    admin_withdraw_fee_numerator: BigInt!
+    admin_withdraw_fee_denominator: BigInt!
+    trade_fee_numerator: BigInt!
+    trade_fee_denominator: BigInt!
+    withdraw_fee_numerator: BigInt!
+    withdraw_fee_denominator: BigInt!
+}
+
+type SaberSwap @entity {
+    id: ID!
+    amount_in: BigInt!
+    minimum_amount_out: BigInt!
+}
+type SaberDeposit @entity {
+    id: ID!
+    token_a_amount: BigInt!
+    token_b_amount: BigInt!
+    min_mint_amount: BigInt!
+}
+
+type SaberWithdraw @entity {
+    id: ID!
+    pool_token_amount: BigInt!
+    minimum_token_a_amount: BigInt!
+    minimum_token_b_amount: BigInt!
+}
+
+type SaberWithdrawOne @entity {
+    id: ID!
+    pool_token_amount: BigInt!
+    minimum_token_amount: BigInt!
+}
