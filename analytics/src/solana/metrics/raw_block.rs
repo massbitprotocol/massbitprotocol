@@ -2,7 +2,7 @@ use crate::relational::{Column, ColumnType, Table};
 use crate::solana::handler::SolanaHandler;
 use crate::storage_adapter::StorageAdapter;
 use crate::{create_columns, create_entity};
-use graph::prelude::{Attribute, Entity, Value};
+use massbit::prelude::{Attribute, Entity, Value};
 use massbit_chain_solana::data_type::SolanaBlock;
 use massbit_common::NetworkType;
 use solana_transaction_status::{ConfirmedBlock, RewardType};
@@ -24,16 +24,14 @@ impl SolanaRawBlockHandler {
 
 impl SolanaHandler for SolanaRawBlockHandler {
     fn handle_block(&self, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
-        let table = Table::new("solana_blocks", Some("t"));
-        let columns = create_columns();
+        let table = create_table();
         let entity = create_entity(&block.block);
         //println!("Block {:?} has reward {:?}", &block.block.block_height, &block.block.rewards);
-        self.storage_adapter
-            .upsert(&table, &columns, &vec![entity], &None)
+        self.storage_adapter.upsert(&table, &vec![entity], &None)
     }
 }
-fn create_columns() -> Vec<Column> {
-    create_columns!(
+fn create_table<'a>() -> Table<'a> {
+    let columns = create_columns!(
         "previous_block_hash" => ColumnType::String,
         "parent_slot" => ColumnType::BigInt,
         "block_hash" => ColumnType::String,
@@ -42,7 +40,8 @@ fn create_columns() -> Vec<Column> {
         "timestamp" => ColumnType::BigInt,
         "leader" => ColumnType::String,
         "reward" => ColumnType::BigInt
-    )
+    );
+    Table::new("solana_blocks", columns, Some("t"))
 }
 fn create_entity(block: &ConfirmedBlock) -> Entity {
     let timestamp = match block.block_time {

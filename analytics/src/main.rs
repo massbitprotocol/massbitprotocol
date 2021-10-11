@@ -12,6 +12,7 @@ use std::time::Duration;
 use analytics::{
     create_postgres_storage, establish_connection, GET_BLOCK_TIMEOUT_SEC, GET_STREAM_TIMEOUT_SEC,
 };
+use logger::core::init_logger;
 use massbit::firehose::bstream::stream_client::StreamClient;
 use std::sync::Arc;
 use std::thread::sleep;
@@ -32,9 +33,9 @@ embed_migrations!("./migrations");
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
-    env_logger::init();
+    let res = init_logger(&String::from("analytic"));
+    info!("{}", res); // Print log output type
     info!("Waiting for chain-reader");
-
     let matches = App::new("Analytic")
         .version("1.0")
         .about("Service for analytics data")

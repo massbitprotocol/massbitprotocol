@@ -1,5 +1,0 @@
-type SubstrateExtrinsic @entity {
-    id: ID!
-    block_number: BigInt!
-    extrinsic: String!
-}
