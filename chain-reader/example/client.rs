@@ -1,32 +1,16 @@
 use clap::{App, Arg};
 
-use graph::data::subgraph::UnresolvedSubgraphManifest;
-use graph::ipfs_client::IpfsClient;
-use graph_core::LinkResolver;
-use log::{debug, info, warn};
+use log::{debug, info};
 use massbit::firehose::bstream::{
     stream_client::StreamClient, BlockResponse, BlocksRequest, ChainType,
 };
-use massbit_chain_ethereum::data_type::{decode as ethereum_decode, get_events, EthereumBlock};
-use massbit_chain_solana::data_type::{
-    convert_solana_encoded_block_to_solana_block, decode as solana_decode, Pubkey, SolanaBlock,
-    SolanaEncodedBlock, SolanaFilter, SolanaLogMessages, SolanaTransaction,
-};
-use massbit_chain_substrate::data_type::{SubstrateBlock, SubstrateEventRecord};
-
-use graph::data::subgraph::SubgraphAssignmentProviderError;
-use graph::log::logger;
-use graph_chain_ethereum::{Chain, DataSource};
-
+use massbit::ipfs_client::IpfsClient;
+use massbit_chain_ethereum::data_type::{decode as ethereum_decode, EthereumBlock};
+use massbit_chain_solana::data_type::{decode as solana_decode, SolanaBlock, SolanaFilter};
+use massbit_chain_substrate::data_type::SubstrateBlock;
 use massbit_chain_substrate::data_type::{decode, get_extrinsics_from_block};
+use std::time::Instant;
 
-use std::sync::Arc;
-use std::time::{Duration, Instant};
-use tokio_compat_02::FutureExt;
-
-use serde_yaml::Value;
-
-use massbit::blockchain::{Blockchain, TriggerFilter};
 use massbit_common::NetworkType;
 #[allow(unused_imports)]
 use tonic::{
@@ -41,6 +25,7 @@ use tonic::{
 const URL: &str = "http://127.0.0.1:50051";
 const MAX_COUNT: i32 = 3;
 const SABER_STABLE_SWAP_PROGRAM: &str = "SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ";
+#[allow(dead_code)]
 const SABER_ROUTER_PROGRAM: &str = "Crt7UoUR6QgrFrN7j8rmSQpUTNWNSitSwWvsWGf1qZ5t";
 
 pub async fn print_blocks(
@@ -71,8 +56,8 @@ pub async fn print_blocks(
             .into_inner(),
     );
 
-    let mut file_hash = "".to_string();
-    let mut data_sources: Vec<DataSource> = vec![];
+    // let mut file_hash = "".to_string();
+    // let mut data_sources: Vec<DataSource> = vec![];
     // if chain_type == ChainType::Ethereum {
     //     // For ethereum only
     //     file_hash = "/ipfs/QmVVrXLPKJYiXQqmR5LVmPTJBbYEQp4vgwve3hqXroHDp5".to_string();
@@ -107,8 +92,8 @@ pub async fn print_blocks(
                 let now = Instant::now();
                 let block: SolanaBlock = solana_decode(&mut data.payload).unwrap();
                 // Decode
-                //let block = convert_solana_encoded_block_to_solana_block(encoded_block);
-                let mut print_flag = true;
+                // let block = convert_solana_encoded_block_to_solana_block(encoded_block);
+                // let mut print_flag = true;
                 info!(
                     "Recieved SOLANA {} TRANSACTIONS in Block height: {:?}",
                     &block.block.transactions.len(),
@@ -174,8 +159,6 @@ pub async fn print_blocks(
     }
     //drop(stream);
     //stream = None;
-    loop {}
-
     Ok(())
 }
 

@@ -55,7 +55,7 @@ pub async fn try_create_stream(
     log::info!("Create new stream from block {}", start_block);
     let filter = vec![];
     let get_blocks_request = BlocksRequest {
-        start_block_number: start_block,
+        start_block_number: Some(start_block as u64),
         chain_type: chain_type as i32,
         network: network.clone().unwrap_or_default(),
         filter,

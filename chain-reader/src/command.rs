@@ -1,21 +1,16 @@
 use crate::grpc_stream::StreamService;
-use crate::solana_chain;
 use crate::substrate_chain;
 use crate::CONFIG;
-use chain_ethereum::network::{EthereumNetworkAdapter, EthereumNetworkAdapters, EthereumNetworks};
+use chain_ethereum::network::{EthereumNetworkAdapter, EthereumNetworkAdapters};
 use chain_ethereum::{Chain, EthereumAdapter, Transport};
-use graph::semver::Op;
 use log::{error, info};
 use massbit::firehose::bstream::{stream_server::StreamServer, BlockResponse, ChainType};
 use massbit::firehose::endpoints::FirehoseNetworkEndpoints;
 use massbit::log::logger;
 use massbit::prelude::LoggerFactory;
 use massbit_common::NetworkType;
-use solana_client::pubsub_client::PubsubClient;
 use solana_client::rpc_client::RpcClient;
-use solana_client::rpc_response::SlotInfo;
 use std::collections::HashMap;
-use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 use std::thread::sleep;
 use std::time::Duration;
@@ -148,7 +143,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
                 info!("Finished init Solana client");
                 let client = Arc::new(RpcClient::new(json_rpc_url.clone()));
 
-                solana_adaptors.insert(network_clone, (client));
+                solana_adaptors.insert(network_clone, client);
 
                 // Spawn task
                 // tokio::spawn(async move {

@@ -1,15 +1,11 @@
 use crate::{ethereum_chain, solana_chain};
-use chain_ethereum::network::{EthereumNetworkAdapter, EthereumNetworkAdapters};
-use chain_ethereum::{Chain, EthereumAdapter, Transport, TriggerFilter};
+use chain_ethereum::{Chain, TriggerFilter};
 use log::{error, info};
 use massbit::firehose::bstream::{stream_server::Stream, BlockResponse, BlocksRequest, ChainType};
-use massbit::prelude::Debug;
 use massbit_chain_solana::data_type::SolanaFilter;
 use massbit_common::NetworkType;
-use solana_client::rpc_response::SlotInfo;
-use solana_client::{pubsub_client::PubsubClient, rpc_client::RpcClient};
+use solana_client::rpc_client::RpcClient;
 use std::collections::HashMap;
-use std::fmt;
 use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc};
 use tokio::task;
@@ -25,7 +21,7 @@ const QUEUE_BUFFER: usize = 1024;
 pub struct StreamService {
     pub chans: HashMap<(ChainType, NetworkType), broadcast::Sender<BlockResponse>>,
     pub ethereum_chains: HashMap<(ChainType, NetworkType), Arc<Chain>>,
-    pub solana_adaptors: HashMap<NetworkType, (Arc<RpcClient>)>,
+    pub solana_adaptors: HashMap<NetworkType, Arc<RpcClient>>,
 }
 
 #[tonic::async_trait]
@@ -109,14 +105,9 @@ impl Stream for StreamService {
                     massbit::block_on(task::unconstrained(async {
                         let filter: TriggerFilter =
                             serde_json::from_slice(&encoded_filter).unwrap_or_default();
-                        let resp = ethereum_chain::loop_get_block(
-                            tx.clone(),
-                            &start_block,
-                            &network,
-                            chain,
-                            filter,
-                        )
-                        .await;
+                        let resp =
+                            ethereum_chain::loop_get_block(tx.clone(), &start_block, chain, filter)
+                                .await;
 
                         error!("Stop loop_get_block, error: {:?}", resp);
                     }))

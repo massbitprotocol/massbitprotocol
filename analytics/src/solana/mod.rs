@@ -12,7 +12,8 @@ use crate::{
 use lazy_static::lazy_static;
 use massbit::firehose::bstream::{stream_client::StreamClient, BlockResponse, ChainType};
 use massbit_chain_solana::data_type::{
-    convert_solana_encoded_block_to_solana_block, decode as solana_decode, SolanaEncodedBlock,
+    convert_solana_encoded_block_to_solana_block, decode as solana_decode, SolanaBlock,
+    SolanaEncodedBlock,
 };
 use massbit_common::prelude::diesel::pg::upsert::excluded;
 use massbit_common::prelude::diesel::{ExpressionMethods, RunQueryDsl};
@@ -80,10 +81,9 @@ pub async fn process_solana_stream(
                     Ok(Ok(res)) => {
                         if let Some(mut data) = res {
                             let start = Instant::now();
-                            let encoded_block: SolanaEncodedBlock =
-                                solana_decode(&mut data.payload).unwrap();
+                            let block: SolanaBlock = solana_decode(&mut data.payload).unwrap();
                             // Decode
-                            let block = convert_solana_encoded_block_to_solana_block(encoded_block);
+                            //let block = convert_solana_encoded_block_to_solana_block(encoded_block);
                             let block_number = block.block.block_height.unwrap() as i64;
                             let transaction_counter = block.block.transactions.len();
                             log::info!(

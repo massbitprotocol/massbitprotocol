@@ -6,19 +6,12 @@ use massbit_chain_solana::data_type::{
     decode_encoded_block, get_list_log_messages_from_encoded_block, SolanaBlock as Block,
     SolanaFilter,
 };
-use massbit_common::prelude::tokio::time::{sleep, timeout, Duration};
+use massbit_common::prelude::tokio::time::{timeout, Duration};
 use massbit_common::NetworkType;
-use solana_client::rpc_response::SlotInfo;
 use solana_client::{pubsub_client::PubsubClient, rpc_client::RpcClient};
 use solana_transaction_status::{EncodedConfirmedBlock, UiTransactionEncoding};
 use std::error::Error;
-use std::{
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-    time::Instant,
-};
+use std::{sync::Arc, time::Instant};
 use tokio::sync::mpsc;
 use tonic::Status;
 
@@ -40,7 +33,8 @@ pub async fn loop_get_block(
     info!("Start get block Solana from: {:?}", start_block);
     let config = CONFIG.get_chain_config(&CHAIN_TYPE, &network).unwrap();
     let websocket_url = config.ws.clone();
-    let (mut subscription_client, receiver) = PubsubClient::slot_subscribe(&websocket_url).unwrap();
+    let (mut _subscription_client, receiver) =
+        PubsubClient::slot_subscribe(&websocket_url).unwrap();
     let mut last_indexed_slot: Option<u64> = start_block.map(|start_block| start_block + 1);
     //fix_one_thread_not_receive(&chan);
     let sem = Arc::new(Semaphore::new(2 * BLOCK_BATCH_SIZE as usize));
