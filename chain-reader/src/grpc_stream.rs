@@ -1,15 +1,15 @@
+use crate::{ethereum_chain, solana_chain};
+use chain_ethereum::{Chain, TriggerFilter};
+use log::{error, info};
+use massbit::firehose::bstream::{stream_server::Stream, BlockResponse, BlocksRequest, ChainType};
+use massbit_chain_solana::data_type::SolanaFilter;
+use massbit_common::NetworkType;
+use solana_client::rpc_client::RpcClient;
+use std::collections::HashMap;
+use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc};
 use tokio::task;
 use tokio_stream::wrappers::ReceiverStream;
-
-use crate::ethereum_chain;
-use chain_ethereum::network::{EthereumNetworkAdapter, EthereumNetworkAdapters};
-use chain_ethereum::{Chain, EthereumAdapter, Transport, TriggerFilter};
-use log::{error, info};
-use massbit::firehose::bstream::{stream_server::Stream, BlockResponse, BlocksRequest, ChainType};
-use massbit_common::NetworkType;
-use std::collections::HashMap;
-use std::sync::Arc;
 use tonic::{Request, Response, Status};
 
 const QUEUE_BUFFER: usize = 1024;
@@ -18,10 +18,10 @@ const QUEUE_BUFFER: usize = 1024;
 //     tonic::include_proto!("chaindata");
 // }
 
-#[derive(Debug)]
 pub struct StreamService {
     pub chans: HashMap<(ChainType, NetworkType), broadcast::Sender<BlockResponse>>,
-    pub chains: HashMap<(ChainType, NetworkType), Arc<Chain>>,
+    pub ethereum_chains: HashMap<(ChainType, NetworkType), Arc<Chain>>,
+    pub solana_adaptors: HashMap<NetworkType, Arc<RpcClient>>,
 }
 
 #[tonic::async_trait]
@@ -39,7 +39,7 @@ impl Stream for StreamService {
         let (tx, rx) = mpsc::channel(QUEUE_BUFFER);
         let encoded_filter: Vec<u8> = request.get_ref().filter.clone();
         match chain_type {
-            ChainType::Substrate | ChainType::Solana => {
+            ChainType::Substrate => {
                 // tx, rx for out stream gRPC
                 // let (tx, rx) = mpsc::channel(1024);
 
@@ -69,31 +69,45 @@ impl Stream for StreamService {
                     }
                 });
             }
+            ChainType::Solana => {
+                // Decode filter
+                let filter: SolanaFilter =
+                    serde_json::from_slice(&encoded_filter).unwrap_or_default();
+
+                let client = self.solana_adaptors.get(&network).unwrap().clone();
+                let name = "deployment_solana".to_string();
+
+                // Spawn task
+                massbit::spawn_thread(name, move || {
+                    massbit::block_on(task::unconstrained(async {
+                        // Todo: add start at save block after restart
+                        let resp = solana_chain::loop_get_block(
+                            tx.clone(),
+                            &start_block,
+                            &network,
+                            &client,
+                            &filter,
+                        )
+                        .await;
+                        error!("Restart {:?} response {:?}", &chain_type, resp);
+                    }))
+                });
+            }
             ChainType::Ethereum => {
-                let name = "deployment".to_string();
+                let name = "deployment_ethereum".to_string();
                 let chain = self
-                    .chains
+                    .ethereum_chains
                     .get(&(chain_type, network.clone()))
                     .unwrap()
                     .clone();
 
                 massbit::spawn_thread(name, move || {
                     massbit::block_on(task::unconstrained(async {
-                        let start_block = match start_block {
-                            0 => None,
-                            _ => Some(start_block as u64),
-                        };
-
                         let filter: TriggerFilter =
                             serde_json::from_slice(&encoded_filter).unwrap_or_default();
-                        let resp = ethereum_chain::loop_get_block(
-                            tx.clone(),
-                            &start_block,
-                            &network,
-                            chain,
-                            filter,
-                        )
-                        .await;
+                        let resp =
+                            ethereum_chain::loop_get_block(tx.clone(), &start_block, chain, filter)
+                                .await;
 
                         error!("Stop loop_get_block, error: {:?}", resp);
                     }))
