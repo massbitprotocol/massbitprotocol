@@ -303,7 +303,7 @@ async fn try_create_stream(
     let encoded_filter = serde_json::to_vec(&filter).unwrap();
 
     let get_blocks_request = BlocksRequest {
-        start_block_number: start_block as i64,
+        start_block_number: Some(start_block),
         chain_type: *chain_type as i32,
         network: network.clone().unwrap_or(Default::default()),
         filter: encoded_filter,
