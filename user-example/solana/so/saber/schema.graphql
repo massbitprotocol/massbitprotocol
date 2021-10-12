@@ -15,10 +15,15 @@ type SaberInit @entity {
 }
 
 type SaberSwap @entity {
-    id: ID!
     block_height: BigInt!
     parent_slot: BigInt!
-    authority: String
+    tx_hash: String
+    instruction_index: BigInt
+    block_time: BigInt
+    owner_account: String
+    id: ID!
+    authority_base: String
+    authority_source: String
     source: String
     base_into: String
     base_from: String
