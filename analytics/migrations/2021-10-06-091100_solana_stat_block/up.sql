@@ -3,8 +3,8 @@ create table solana_daily_stat_block
     id                      bigserial constraint solana_daily_stat_block_pk primary key,
     network                 varchar(100),
     date                    bigint,
-    min_block_height        bigint,
-    max_block_height        bigint,
+    min_block_slot          bigint,
+    max_block_slot          bigint,
     block_counter           bigint,     -- Number of indexed blocks
     total_tx                bigint,
     success_tx              bigint,

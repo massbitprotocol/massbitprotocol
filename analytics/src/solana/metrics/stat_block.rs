@@ -25,16 +25,16 @@ impl SolanaStatBlockHandler {
 }
 
 impl SolanaHandler for SolanaStatBlockHandler {
-    fn handle_block(&self, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
+    fn handle_block(&self, block_slot: u64, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
         let table = create_table();
         let network = match &self.network {
             None => "",
             Some(val) => val.as_str(),
         };
-        let entity = create_stat_block_entity(network, block);
+        let entity = create_stat_block_entity(network, block_slot, block);
         let mut conflict_frag = UpsertConflictFragment::new("solana_daily_stat_block_date_uindex");
-        conflict_frag.add_expression("min_block_height", "LEAST(t.min_block_height, EXCLUDED.min_block_height)")
-            .add_expression("max_block_height", "GREATEST(t.max_block_height, EXCLUDED.max_block_height)")
+        conflict_frag.add_expression("min_block_slot", "LEAST(t.min_block_slot, EXCLUDED.min_block_slot)")
+            .add_expression("max_block_slot", "GREATEST(t.max_block_slot, EXCLUDED.max_block_slot)")
             .add_expression("block_counter","t.block_counter + EXCLUDED.block_counter")
             .add_expression("total_tx","t.total_tx + EXCLUDED.total_tx")
             .add_expression("success_tx","t.success_tx + EXCLUDED.success_tx")
@@ -46,7 +46,7 @@ impl SolanaHandler for SolanaStatBlockHandler {
             .add_expression("last_block_time","GREATEST(t.last_block_time, EXCLUDED.last_block_time)")
             //Average block time in ms
             .add_expression("average_block_time","(GREATEST(t.last_block_time, EXCLUDED.last_block_time) - LEAST(t.fist_block_time, EXCLUDED.fist_block_time))\
-                    * 1000 /(GREATEST(t.max_block_height, EXCLUDED.max_block_height) - LEAST(t.min_block_height, EXCLUDED.min_block_height) + 1)");
+                    * 1000 /(GREATEST(t.max_block_slot, EXCLUDED.max_block_slot) - LEAST(t.min_block_slot, EXCLUDED.min_block_slot) + 1)");
         self.storage_adapter
             .upsert(&table, &vec![entity], &Some(conflict_frag))
     }
@@ -56,8 +56,8 @@ fn create_table<'a>() -> Table<'a> {
     let columns = create_columns!(
         "network" => ColumnType::String,
         "date" => ColumnType::BigInt,
-        "min_block_height" => ColumnType::BigInt,
-        "max_block_height" => ColumnType::BigInt,
+        "min_block_slot" => ColumnType::BigInt,
+        "max_block_slot" => ColumnType::BigInt,
         "block_counter" => ColumnType::BigInt,
         "total_tx" => ColumnType::BigInt,
         "success_tx" => ColumnType::BigInt,
@@ -68,13 +68,12 @@ fn create_table<'a>() -> Table<'a> {
     );
     Table::new("solana_daily_stat_block", columns, Some("t"))
 }
-fn create_stat_block_entity(network: &str, block: Arc<SolanaBlock>) -> Entity {
+fn create_stat_block_entity(network: &str, block_slot: u64, block: Arc<SolanaBlock>) -> Entity {
     //Make timestamp as multiple of a day's seconds
     let block_time = match block.block.block_time {
         None => 0_u64,
         Some(val) => val as u64,
     };
-    let block_height = block.block.block_height.unwrap_or_default();
     let date = block_time / 86400 * 86400;
     let mut reward_val = 0_u64;
     for reward in &block.block.rewards {
@@ -106,8 +105,8 @@ fn create_stat_block_entity(network: &str, block: Arc<SolanaBlock>) -> Entity {
     create_entity!(
         "network" => network.to_string(),
         "date" => date,
-        "min_block_height" => block_height,
-        "max_block_height" => block_height,
+        "min_block_slot" => block_slot,
+        "max_block_slot" => block_slot,
         "block_counter" => 1_u64,
         "total_tx" => block.block.transactions.len() as u64,
         "success_tx" => counter,
