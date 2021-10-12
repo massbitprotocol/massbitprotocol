@@ -34,11 +34,11 @@ impl SolanaHandler for SolanaInstructionHandler {
     fn handle_block(&self, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
         let table = create_unparsed_instruction_table();
         let mut parsed_entities: HashMap<InstructionKey, Vec<Entity>> = HashMap::default();
-        let mut unparsed_entities = Vec::default();
+        //let mut unparsed_entities = Vec::default();
         for tran in &block.block.transactions {
             let entities = create_instructions(&block.block, tran);
             parsed_entities.extend(entities.0);
-            unparsed_entities.extend(entities.1);
+            //unparsed_entities.extend(entities.1);
             //create_inner_instructions(&block.block, tran);
         }
         let arc_map_entities = Arc::new(parsed_entities);
@@ -55,12 +55,14 @@ impl SolanaHandler for SolanaInstructionHandler {
                 }
             });
         });
-        if unparsed_entities.len() > 0 {
-            self.storage_adapter
-                .upsert(&table, &unparsed_entities, &None)
-        } else {
-            Ok(())
-        }
+        Ok(())
+        //Don't store unpased instruction due to huge amount of data
+        // if unparsed_entities.len() > 0 {
+        //     self.storage_adapter
+        //         .upsert(&table, &unparsed_entities, &None)
+        // } else {
+        //     Ok(())
+        // }
     }
 }
 
