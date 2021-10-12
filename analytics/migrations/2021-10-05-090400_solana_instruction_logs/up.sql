@@ -8,14 +8,13 @@ create table solana_logs
 create table solana_instructions
 (
     id              bigserial constraint solana_instructions_pk primary key,
-    block_hash      varchar(100),
-    tx_hash         varchar(100),
+    block_slot      bigint,
+    tx_index        smallint,
     block_time      bigint,
-    inst_order      int,
+    inst_index      int,
     program_name    text,
     accounts        text[],
-    data            bytea,
-    encoded_data    text
+    data            bytea
 );
 
 create table solana_inner_instructions

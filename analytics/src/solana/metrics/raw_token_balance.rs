@@ -26,7 +26,7 @@ impl SolanaTokenBalanceHandler {
 }
 
 impl SolanaHandler for SolanaTokenBalanceHandler {
-    fn handle_block(&self, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
+    fn handle_block(&self, block_slot: u64, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
         let table = create_table();
         let entities = block
             .block
@@ -38,7 +38,7 @@ impl SolanaHandler for SolanaTokenBalanceHandler {
                     Some(create_token_balances(
                         tran,
                         meta,
-                        block.block.block_height.unwrap_or_default(),
+                        block_slot,
                         tran_order as i32,
                     ))
                 })
@@ -58,8 +58,8 @@ impl SolanaHandler for SolanaTokenBalanceHandler {
 
 fn create_table<'a>() -> Table<'a> {
     let columns = create_columns!(
-        "block_height" => ColumnType::BigInt,
-        "order_in_block" => ColumnType::Int,
+        "block_slot" => ColumnType::BigInt,
+        "tx_index" => ColumnType::Int,
         "account" => ColumnType::String,
         "token_address" => ColumnType::String,
         "decimals" => ColumnType::Int,
@@ -72,8 +72,8 @@ fn create_table<'a>() -> Table<'a> {
 fn create_token_balances(
     tran: &TransactionWithStatusMeta,
     meta: &TransactionStatusMeta,
-    block_height: u64,
-    tran_order: i32,
+    block_slot: u64,
+    tran_index: i32,
 ) -> Vec<Entity> {
     // let tx_hash = match tran.transaction.signatures.get(0) {
     //     Some(sig) => format!("{:?}", sig),
@@ -110,8 +110,8 @@ fn create_token_balances(
                     })
                     .unwrap_or(BigInt::from(0_i32));
                 create_entity!(
-                    "block_height" => block_height,
-                    "order_in_block" => tran_order,
+                    "block_slot" => block_slot,
+                    "tx_index" => tran_index,
                     "account" => account,
                     "token_address" => token_balance.mint.clone(),
                     "decimals" => token_balance.ui_token_amount.decimals as i32,
