@@ -31,14 +31,14 @@ use tower::timeout::Timeout;
 lazy_static! {
     pub static ref CHAIN: String = String::from("solana");
 }
-const START_SOLANA_BLOCK: i64 = 80_000_000_i64;
+//const START_SOLANA_BLOCK: i64 = 80_000_000_i64;
 const DEFAULT_NETWORK: &str = "mainnet";
 
 pub async fn process_solana_stream(
     client: &mut StreamClient<Timeout<Channel>>,
     storage_adapter: Arc<PostgresAdapter>,
     network_name: Option<NetworkType>,
-    block: i64,
+    block: Option<u64>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     let network = match network_name {
         None => Some(String::from(DEFAULT_NETWORK)),
@@ -52,23 +52,15 @@ pub async fn process_solana_stream(
         CHAIN.clone(),
         network.clone().unwrap_or(String::from(DEFAULT_NETWORK)),
     );
-    let start_block = match current_state {
-        None => {
-            if block > 0 {
-                block
-            } else {
-                START_SOLANA_BLOCK
-            }
-        }
-        Some(state) => state.got_block + 1,
-    };
+    let start_block = current_state
+        .and_then(|state| Some(state.got_block as u64 + 1))
+        .or(block);
     let mut opt_stream: Option<Streaming<BlockResponse>> = None;
     loop {
         match opt_stream {
             None => {
                 opt_stream =
-                    try_create_stream(client, ChainType::Solana, start_block.clone(), &network)
-                        .await;
+                    try_create_stream(client, ChainType::Solana, start_block, &network).await;
                 if opt_stream.is_none() {
                     //Sleep for a while and reconnect
                     sleep(Duration::from_secs(GET_STREAM_TIMEOUT_SEC)).await;

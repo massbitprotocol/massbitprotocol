@@ -48,26 +48,26 @@ pub fn create_solana_handler_manager(
 ) -> SolanaHandlerManager {
     let handler_manager = SolanaHandlerManager::new();
     handler_manager
-        // .add_handler(Arc::new(SolanaRawBlockHandler::new(
-        //     network,
-        //     storate_adapter.clone(),
-        // )))
-        // .add_handler(Arc::new(SolanaRawTransactionHandler::new(
-        //     network,
-        //     storate_adapter.clone(),
-        // )))
+        .add_handler(Arc::new(SolanaRawBlockHandler::new(
+            network,
+            storate_adapter.clone(),
+        )))
+        .add_handler(Arc::new(SolanaRawTransactionHandler::new(
+            network,
+            storate_adapter.clone(),
+        )))
         // .add_handler(Arc::new(SolanaRawLogHandler::new(
         //     network,
         //     storate_adapter.clone(),
         // )))
-        // .add_handler(Arc::new(SolanaInstructionHandler::new(
-        //     network,
-        //     storate_adapter.clone(),
-        // )))
-        // .add_handler(Arc::new(SolanaTokenBalanceHandler::new(
-        //     network,
-        //     storate_adapter.clone(),
-        // )))
+        .add_handler(Arc::new(SolanaInstructionHandler::new(
+            network,
+            storate_adapter.clone(),
+        )))
+        .add_handler(Arc::new(SolanaTokenBalanceHandler::new(
+            network,
+            storate_adapter.clone(),
+        )))
         .add_handler(Arc::new(SolanaStatBlockHandler::new(
             network,
             storate_adapter.clone(),

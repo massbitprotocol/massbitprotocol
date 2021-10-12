@@ -49,13 +49,13 @@ pub fn establish_connection() -> PgConnection {
 pub async fn try_create_stream(
     client: &mut StreamClient<Timeout<Channel>>,
     chain_type: ChainType,
-    start_block: i64,
+    start_block: Option<u64>,
     network: &Option<NetworkType>,
 ) -> Option<Streaming<BlockResponse>> {
-    log::info!("Create new stream from block {}", start_block);
+    log::info!("Create new stream from block {:?}", start_block);
     let filter = vec![];
     let get_blocks_request = BlocksRequest {
-        start_block_number: Some(start_block as u64),
+        start_block_number: start_block,
         chain_type: chain_type as i32,
         network: network.clone().unwrap_or_default(),
         filter,

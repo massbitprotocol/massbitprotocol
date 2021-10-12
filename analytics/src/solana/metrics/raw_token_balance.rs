@@ -32,10 +32,16 @@ impl SolanaHandler for SolanaTokenBalanceHandler {
             .block
             .transactions
             .iter()
-            .filter_map(|tran| {
-                tran.meta
-                    .as_ref()
-                    .and_then(|meta| Some(create_token_balances(tran, meta)))
+            .enumerate()
+            .filter_map(|(tran_order, tran)| {
+                tran.meta.as_ref().and_then(|meta| {
+                    Some(create_token_balances(
+                        tran,
+                        meta,
+                        block.block.block_height.unwrap_or_default(),
+                        tran_order as i32,
+                    ))
+                })
             })
             .reduce(|mut a, mut b| {
                 a.append(&mut b);
@@ -52,7 +58,8 @@ impl SolanaHandler for SolanaTokenBalanceHandler {
 
 fn create_table<'a>() -> Table<'a> {
     let columns = create_columns!(
-        "tx_hash" => ColumnType::String,
+        "block_height" => ColumnType::BigInt,
+        "order_in_block" => ColumnType::Int,
         "account" => ColumnType::String,
         "token_address" => ColumnType::String,
         "decimals" => ColumnType::Int,
@@ -65,11 +72,13 @@ fn create_table<'a>() -> Table<'a> {
 fn create_token_balances(
     tran: &TransactionWithStatusMeta,
     meta: &TransactionStatusMeta,
+    block_height: u64,
+    tran_order: i32,
 ) -> Vec<Entity> {
-    let tx_hash = match tran.transaction.signatures.get(0) {
-        Some(sig) => format!("{:?}", sig),
-        None => String::from(""),
-    };
+    // let tx_hash = match tran.transaction.signatures.get(0) {
+    //     Some(sig) => format!("{:?}", sig),
+    //     None => String::from(""),
+    // };
     if meta.pre_token_balances.is_some() && meta.post_token_balances.is_some() {
         meta.post_token_balances
             .as_ref()
@@ -101,7 +110,8 @@ fn create_token_balances(
                     })
                     .unwrap_or(BigInt::from(0_i32));
                 create_entity!(
-                    "tx_hash" => tx_hash.clone(),
+                    "block_height" => block_height,
+                    "order_in_block" => tran_order,
                     "account" => account,
                     "token_address" => token_balance.mint.clone(),
                     "decimals" => token_balance.ui_token_amount.decimals as i32,

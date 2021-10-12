@@ -32,11 +32,11 @@ impl SolanaHandler for SolanaRawBlockHandler {
 }
 fn create_table<'a>() -> Table<'a> {
     let columns = create_columns!(
+        "block_height" => ColumnType::BigInt,
         "previous_block_hash" => ColumnType::String,
         "parent_slot" => ColumnType::BigInt,
         "block_hash" => ColumnType::String,
-        "block_height" => ColumnType::BigInt,
-        "transaction_number" => ColumnType::BigInt,
+        "transaction_number" => ColumnType::Int,
         "timestamp" => ColumnType::BigInt,
         "leader" => ColumnType::String,
         "reward" => ColumnType::BigInt
@@ -59,11 +59,11 @@ fn create_entity(block: &ConfirmedBlock) -> Entity {
         }
     }
     create_entity!(
+        "block_height" => block.block_height,
         "previous_block_hash" => block.previous_blockhash.clone(),
         "parent_slot" => block.parent_slot,
         "block_hash" => block.blockhash.clone(),
-        "block_height" => block.block_height,
-        "transaction_number" => block.transactions.len() as u64,
+        "transaction_number" => block.transactions.len() as i32,
         "timestamp" => timestamp,
         "leader" => validator,
         "reward" => reward_val
