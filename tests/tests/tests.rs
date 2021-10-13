@@ -22,7 +22,7 @@ lazy_static::lazy_static! {
 }
 
 /// All integration tests subdirectories to run
-pub const INTEGRATION_TESTS_DIRECTORIES: [&str; 1] = ["api-version-v0-0-4"];
+pub const INTEGRATION_TESTS_DIRECTORIES: [&str; 1] = ["quickswap"];
 
 /// Contains all information a test command needs
 #[derive(Debug)]
@@ -136,6 +136,9 @@ async fn parallel_integration_tests() -> anyhow::Result<()> {
     for dir in &test_directories {
         println!("  - {}", basename(dir));
     }
+
+    // run `yarn` command to build workspace
+    run_yarn_command(&integration_tests_root_directory).await;
 
     // start docker containers for Postgres and IPFS and wait for them to be ready
     let postgres = Arc::new(
@@ -260,6 +263,7 @@ async fn run_integration_test(
     let mut indexer_manager_child_command = run_indexer_manager(&test_setup).await?;
 
     println!("Test started: {}", basename(&test_setup.test_directory));
+    let test_command_results = run_test_command(&test_setup).await?;
 
     let indexer_manger_stdio = stop_indexer_manager(&mut indexer_manager_child_command).await?;
 
@@ -270,11 +274,43 @@ async fn run_integration_test(
     })
 }
 
+/// Runs a command for a integration test
+async fn run_test_command(test_setup: &IntegrationTestSetup) -> anyhow::Result<TestCommandResults> {
+    let output = Command::new("yarn")
+        .arg("test")
+        .current_dir(&test_setup.test_directory)
+        .output()
+        .await
+        .context("failed to run test command")?;
+
+    let test_name = test_setup.test_name();
+    let stdout_tag = format!("[{}:stdout] ", test_name);
+    let stderr_tag = format!("[{}:stderr] ", test_name);
+
+    Ok(TestCommandResults {
+        success: output.status.success(),
+        exit_code: output.status.code(),
+        stdout: pretty_output(&output.stdout, &stdout_tag),
+        stderr: pretty_output(&output.stderr, &stderr_tag),
+    })
+}
+
 async fn run_indexer_manager(test_setup: &IntegrationTestSetup) -> anyhow::Result<Child> {
     use std::process::Stdio;
 
     let mut command = Command::new(test_setup.indexer_manager_bin.as_os_str());
-    command.stdout(Stdio::piped()).stderr(Stdio::piped());
+    command
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        // postgres
+        .arg("--postgres-url")
+        .arg(&test_setup.postgres_uri)
+        // ethereum
+        .arg("--ethereum-rpc")
+        .arg(&"matic:https://polygon-rpc.com".to_string())
+        // ipfs
+        .arg("--ipfs")
+        .arg(&test_setup.ipfs_uri);
 
     command
         .spawn()
