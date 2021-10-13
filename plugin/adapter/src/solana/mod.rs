@@ -22,8 +22,8 @@ impl MessageHandler for SolanaHandlerProxy {
         data: &mut BlockResponse,
         store: &mut dyn Store,
     ) -> Result<(), Box<dyn Error>> {
-        let encoded_block: SolanaEncodedBlock = decode(&mut data.payload).unwrap();
-        let block = convert_solana_encoded_block_to_solana_block(encoded_block); // Decoding
+        let block: SolanaBlock = decode(&mut data.payload).unwrap();
+        //let block = convert_solana_encoded_block_to_solana_block(encoded_block); // Decoding
         log::info!(
             "{} Received SOLANA BLOCK with block height: {:?}, hash: {:?}",
             &*COMPONENT_NAME,
