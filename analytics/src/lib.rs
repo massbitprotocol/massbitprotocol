@@ -33,6 +33,7 @@ use massbit_common::NetworkType;
 pub const GET_STREAM_TIMEOUT_SEC: u64 = 60;
 pub const GET_BLOCK_TIMEOUT_SEC: u64 = 600;
 pub const DEFAULT_DATABASE_URL: &str = "postgres://graph-node:let-me-in@localhost/analytic";
+pub const MAX_POOL_SIZE: u32 = 50;
 
 pub fn create_postgres_storage() -> PostgresAdapter {
     let database_url = env::var("DATABASE_URL").unwrap_or(String::from(DEFAULT_DATABASE_URL));
