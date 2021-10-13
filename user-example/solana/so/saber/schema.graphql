@@ -64,7 +64,7 @@ type SaberDeposit @entity {
     token_b_amount: BigInt!
     min_mint_amount: BigInt!
     token_a_mint_account: String
-    token_b_mint_account String
+    token_b_mint_account: String
 }
 
 type SaberWithdraw @entity {

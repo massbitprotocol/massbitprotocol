@@ -14,11 +14,13 @@ use libloading::Library;
 use massbit::blockchain::Blockchain;
 use massbit::blockchain::TriggerFilter;
 use massbit::prelude::*;
+use massbit_chain_solana::data_type::{Pubkey, SolanaFilter};
 use massbit_common::prelude::serde_json;
 use massbit_common::prelude::tokio::time::{sleep, timeout, Duration};
 use massbit_common::NetworkType;
 use serde_yaml::Value;
 use std::path::Path;
+use std::str::FromStr;
 use std::{
     alloc::System, collections::HashMap, env, error::Error, ffi::OsStr, fmt, path::PathBuf,
     sync::Arc,
@@ -35,6 +37,7 @@ lazy_static! {
     static ref GENERATED_FOLDER: String = String::from("index-manager/generated/");
     static ref COMPONENT_NAME: String = String::from("[Adapter-Manager]");
 }
+const SABER_STABLE_SWAP_PROGRAM: &str = "SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ";
 const GET_BLOCK_TIMEOUT_SEC: u64 = 30;
 const GET_STREAM_TIMEOUT_SEC: u64 = 30;
 #[global_allocator]
@@ -300,6 +303,11 @@ async fn try_create_stream(
     log::info!("Create new stream from block {}", start_block);
     let filter =
         <chain_ethereum::Chain as Blockchain>::TriggerFilter::from_data_sources(vec![].iter());
+    println!(
+        "{:?}",
+        Pubkey::from_str("SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ")
+    );
+    let filter1 = SolanaFilter::new(vec![SABER_STABLE_SWAP_PROGRAM]);
     let encoded_filter = serde_json::to_vec(&filter).unwrap();
 
     let get_blocks_request = BlocksRequest {

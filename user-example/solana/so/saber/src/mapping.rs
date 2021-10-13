@@ -1,5 +1,6 @@
 use crate::models::*;
 use massbit_chain_solana::data_type::{Pubkey, SolanaBlock, SolanaLogMessages, SolanaTransaction};
+use massbit_chain_solana::helper::get_account_info;
 use massbit_chain_solana::{get_mint_account, get_owner_account};
 use solana_program::instruction::CompiledInstruction;
 use solana_transaction_status::{parse_instruction, ConfirmedBlock, TransactionWithStatusMeta};
@@ -140,33 +141,30 @@ fn create_swap_entity(
         .and_then(|sig| Some(sig.to_string()))
         .unwrap_or_default();
     let program_key = inst.program_id(tran.transaction.message.account_keys.as_slice());
-    let source_account = tran
-        .transaction
-        .message
-        .account_keys
-        .get(
-            inst.accounts
-                .get(3)
-                .and_then(|ind| Some(*ind as usize))
-                .unwrap(),
-        )
-        .and_then(|key| Some(key.to_string()))
+    let source_account = tran.transaction.message.account_keys.get(
+        inst.accounts
+            .get(3)
+            .and_then(|ind| Some(*ind as usize))
+            .unwrap(),
+    );
+
+    let account_info = source_account.and_then(|key| get_account_info(key));
+    let source_mint_account = account_info
+        .and_then(|info| Some(info.0.to_string()))
+        .unwrap_or_default(); //get_mint_account(&source_account).unwrap_or_default();
+    let owner_account = account_info
+        .and_then(|info| Some(info.1.to_string()))
         .unwrap_or_default();
-    let owner_account = get_owner_account(&source_account).unwrap_or_default();
-    let source_mint_account = get_mint_account(&source_account).unwrap_or_default();
-    let destination = tran
-        .transaction
-        .message
-        .account_keys
-        .get(
-            inst.accounts
-                .get(6)
-                .and_then(|ind| Some(*ind as usize))
-                .unwrap(),
-        )
-        .and_then(|key| Some(key.to_string()))
+    let destination = tran.transaction.message.account_keys.get(
+        inst.accounts
+            .get(6)
+            .and_then(|ind| Some(*ind as usize))
+            .unwrap(),
+    );
+    let account_info = destination.and_then(|key| get_account_info(key));
+    let destination_mint_account = account_info
+        .and_then(|info| Some(info.0.to_string()))
         .unwrap_or_default();
-    let destination_mint_account = get_mint_account(&destination).unwrap_or_default();
     SaberSwap {
         block_slot: block.parent_slot as i64 + 1,
         parent_slot: block.parent_slot as i64,
@@ -212,7 +210,9 @@ fn create_swap_entity(
             )
             .and_then(|key| Some(key.to_string()))
             .unwrap_or_default(),
-        source: source_account,
+        source: source_account
+            .and_then(|key| Some(key.to_string()))
+            .unwrap_or_default(),
         base_into: tran
             .transaction
             .message
@@ -237,7 +237,9 @@ fn create_swap_entity(
             )
             .and_then(|key| Some(key.to_string()))
             .unwrap_or_default(),
-        destination,
+        destination: destination
+            .and_then(|key| Some(key.to_string()))
+            .unwrap_or_default(),
         admin_fee_account: tran
             .transaction
             .message
@@ -294,33 +296,35 @@ fn create_deposit_entity(
         .get(0)
         .and_then(|sig| Some(sig.to_string()))
         .unwrap_or_default();
-    let token_a = tran
-        .transaction
-        .message
-        .account_keys
-        .get(
-            inst.accounts
-                .get(3)
-                .and_then(|ind| Some(*ind as usize))
-                .unwrap(),
-        )
-        .and_then(|key| Some(key.to_string()))
+    let token_a = tran.transaction.message.account_keys.get(
+        inst.accounts
+            .get(3)
+            .and_then(|ind| Some(*ind as usize))
+            .unwrap(),
+    );
+    //.and_then(|key| Some(key.to_string()))
+    //.unwrap_or_default();
+    let token_b = tran.transaction.message.account_keys.get(
+        inst.accounts
+            .get(4)
+            .and_then(|ind| Some(*ind as usize))
+            .unwrap(),
+    );
+    //.and_then(|key| Some(key.to_string()))
+    //.unwrap_or_default();
+    let token_a_info = token_a.and_then(|key| get_account_info(key));
+    let token_b_info = token_b.and_then(|key| get_account_info(key));
+    let token_a_mint_account = token_a_info
+        .and_then(|info| Some(info.0.to_string()))
         .unwrap_or_default();
-    let token_b = tran
-        .transaction
-        .message
-        .account_keys
-        .get(
-            inst.accounts
-                .get(4)
-                .and_then(|ind| Some(*ind as usize))
-                .unwrap(),
-        )
-        .and_then(|key| Some(key.to_string()))
+    let owner_account = token_a_info
+        .and_then(|info| Some(info.1.to_string()))
         .unwrap_or_default();
-    let owner_account = get_owner_account(&token_a).unwrap_or_default();
-    let token_a_mint_account = get_mint_account(&token_a).unwrap_or_default();
-    let token_b_mint_account = get_mint_account(&token_b).unwrap_or_default();
+    let token_b_mint_account = token_b_info
+        .and_then(|info| Some(info.0.to_string()))
+        .unwrap_or_default();
+    // let token_a_mint_account = get_mint_account(&token_a).unwrap_or_default();
+    // let token_b_mint_account = get_mint_account(&token_b).unwrap_or_default();
     SaberDeposit {
         block_slot: block.parent_slot as i64 + 1,
         parent_slot: block.parent_slot as i64,
@@ -365,8 +369,12 @@ fn create_deposit_entity(
             )
             .and_then(|key| Some(key.to_string()))
             .unwrap_or_default(),
-        token_a,
-        token_b,
+        token_a: token_a
+            .and_then(|key| Some(key.to_string()))
+            .unwrap_or_default(),
+        token_b: token_b
+            .and_then(|key| Some(key.to_string()))
+            .unwrap_or_default(),
         token_a_base: tran
             .transaction
             .message
