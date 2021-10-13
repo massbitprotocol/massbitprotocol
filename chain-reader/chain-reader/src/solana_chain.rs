@@ -2,10 +2,13 @@ use crate::CONFIG;
 use log::{debug, info};
 use massbit::firehose::bstream::{BlockResponse, ChainType};
 use massbit_chain_solana::data_type::{
-    get_list_log_messages_from_encoded_block, SolanaEncodedBlock as Block,
+    get_list_log_messages_from_encoded_block, Pubkey, SolanaEncodedBlock as Block,
 };
 use massbit_common::NetworkType;
+use solana_client::client_error::{ClientError, ClientErrorKind, Result as ClientResult};
 use solana_client::{pubsub_client::PubsubClient, rpc_client::RpcClient};
+use solana_program::account_info::{Account as _, AccountInfo};
+use solana_sdk::account::Account;
 use solana_transaction_status::UiTransactionEncoding;
 use std::error::Error;
 use std::{
@@ -134,4 +137,16 @@ fn get_block(client: Arc<RpcClient>, block_height: u64) -> Result<Block, Box<dyn
             Err(format!("Error cannot get block").into())
         }
     }
+}
+
+// Helper function for direct call
+fn get_rpc_client(network: NetworkType) -> Arc<RpcClient> {
+    let config = CONFIG.get_chain_config(&CHAIN_TYPE, &network).unwrap();
+    let json_rpc_url = config.url.clone();
+    info!("Init Solana client, url: {}", json_rpc_url);
+    Arc::new(RpcClient::new(json_rpc_url.clone()))
+}
+
+fn get_account_info(client: Arc<RpcClient>, pubkey: &Pubkey) -> ClientResult<Account> {
+    client.get_account(pubkey)
 }
