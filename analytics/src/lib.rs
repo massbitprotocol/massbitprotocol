@@ -32,7 +32,7 @@ use massbit_common::NetworkType;
 
 pub const GET_STREAM_TIMEOUT_SEC: u64 = 60;
 pub const GET_BLOCK_TIMEOUT_SEC: u64 = 600;
-pub const MAX_POOL_SIZE: u32 = 10;
+pub const MAX_POOL_SIZE: u32 = 50;
 pub const DEFAULT_DATABASE_URL: &str = "postgres://graph-node:let-me-in@localhost/analytic";
 
 pub fn create_postgres_storage() -> PostgresAdapter {
