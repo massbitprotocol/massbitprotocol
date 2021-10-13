@@ -20,7 +20,7 @@ pub struct MappedPorts(pub HashMap<u16, u16>);
 pub fn basename(path: &impl AsRef<Path>) -> String {
     path.as_ref()
         .file_name()
-        .map(OsStr::to_string_lossy())
+        .map(OsStr::to_string_lossy)
         .map(String::from)
         .expect("failed to infer basename for path.")
 }
