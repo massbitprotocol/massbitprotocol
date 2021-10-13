@@ -1,4 +1,10 @@
 type SaberInit @entity {
+    block_slot: BigInt!
+    parent_slot: BigInt!
+    tx_index: Int
+    tx_hash: String
+    instruction_index: Int
+    block_time: BigInt
     id: ID!
     nonce: Int!
     amp_factor: BigInt!
@@ -10,15 +16,14 @@ type SaberInit @entity {
     trade_fee_denominator: BigInt!
     withdraw_fee_numerator: BigInt!
     withdraw_fee_denominator: BigInt!
-    block_height: BigInt!
-    parent_slot: BigInt!
 }
 
 type SaberSwap @entity {
-    block_height: BigInt!
+    block_slot: BigInt!
     parent_slot: BigInt!
+    tx_index: Int
     tx_hash: String
-    instruction_index: BigInt
+    instruction_index: Int
     block_time: BigInt
     owner_account: String
     id: ID!
@@ -33,12 +38,22 @@ type SaberSwap @entity {
     clock_sysvar: String
     amount_in: BigInt!
     minimum_amount_out: BigInt!
+    source_mint_account: String
+    destination_mint_account: String
 }
 type SaberDeposit @entity {
+    block_slot: BigInt!
+    parent_slot: BigInt!
+    tx_index: Int
+    tx_hash: String
+    instruction_index: Int
+    block_time: BigInt
+    owner_account: String
     id: ID!
-    authority: String
-    token_a_authority: String
-    token_b_authority: String
+    base_authority: String
+    owner_authority: String
+    token_a: String
+    token_b: String
     token_a_base: String
     token_b_base: String
     mint_account: String
@@ -48,11 +63,18 @@ type SaberDeposit @entity {
     token_a_amount: BigInt!
     token_b_amount: BigInt!
     min_mint_amount: BigInt!
-    block_height: BigInt!
-    parent_slot: BigInt!
+    token_a_mint_account: String
+    token_b_mint_account String
 }
 
 type SaberWithdraw @entity {
+    block_slot: BigInt!
+    parent_slot: BigInt!
+    tx_index: Int
+    tx_hash: String
+    instruction_index: Int
+    block_time: BigInt
+    owner_account: String
     id: ID!
     authority: String,
     mint_pool: String,
@@ -67,11 +89,16 @@ type SaberWithdraw @entity {
     pool_token_amount: BigInt!
     minimum_token_a_amount: BigInt!
     minimum_token_b_amount: BigInt!
-    block_height: BigInt!
-    parent_slot: BigInt!
 }
 
 type SaberWithdrawOne @entity {
+    block_slot: BigInt!
+    parent_slot: BigInt!
+    tx_index: Int
+    tx_hash: String
+    instruction_index: Int
+    block_time: BigInt
+    owner_account: String
     id: ID!
     authority: String,
     mint_pool: String,
@@ -84,6 +111,4 @@ type SaberWithdrawOne @entity {
     clock_sysvar: String,
     pool_token_amount: BigInt!
     minimum_token_amount: BigInt!
-    block_height: BigInt!
-    parent_slot: BigInt!
 }
