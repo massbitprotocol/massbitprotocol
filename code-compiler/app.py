@@ -18,8 +18,6 @@ cors = CORS(app)
 @cross_origin()
 def compile_handler():
     data = request.json
-    #deployment_hash = random_hash()  # Random hash should be used as folder name for each new deployment
-
     deployment_hash = compile_so(data)
     return {
                "status": "success",
@@ -32,7 +30,6 @@ def compile_handler():
 @cross_origin()
 def compile_wasm_handler():
     data = request.json
-    # deployment_hash = random_hash()  # Random hash should be used as folder name for each new deployment
     deployment_hash = compile_wasm(data)
     return {
                "status": "success",
