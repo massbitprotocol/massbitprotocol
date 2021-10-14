@@ -72,10 +72,17 @@ fn process_swap_instruction(
     match instruction {
         SwapInstruction::Initialize(init) => {
             //println!("{:?}", tran.transaction.message.account_keys.as_slice());
+            let tx_hash = tran
+                .transaction
+                .signatures
+                .get(0)
+                .and_then(|sig| Some(sig.to_string()))
+                .unwrap_or_default();
             let entity = SaberInit {
                 block_slot: block.parent_slot as i64 + 1,
                 parent_slot: block.parent_slot as i64,
                 tx_index: tx_ind as i64,
+                tx_hash,
                 instruction_index: inst_ind as i64,
                 block_time: block.block_time.unwrap_or_default(),
                 id: tran

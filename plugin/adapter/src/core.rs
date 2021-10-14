@@ -38,7 +38,7 @@ lazy_static! {
     static ref COMPONENT_NAME: String = String::from("[Adapter-Manager]");
 }
 const SABER_STABLE_SWAP_PROGRAM: &str = "SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ";
-const GET_BLOCK_TIMEOUT_SEC: u64 = 30;
+const GET_BLOCK_TIMEOUT_SEC: u64 = 600;
 const GET_STREAM_TIMEOUT_SEC: u64 = 30;
 #[global_allocator]
 static ALLOCATOR: System = System;
@@ -301,17 +301,18 @@ async fn try_create_stream(
     network: &Option<NetworkType>,
 ) -> Option<Streaming<BlockResponse>> {
     log::info!("Create new stream from block {}", start_block);
+    //Todo: if remove this line, debug will be broken
     let filter =
         <chain_ethereum::Chain as Blockchain>::TriggerFilter::from_data_sources(vec![].iter());
-    println!(
-        "{:?}",
-        Pubkey::from_str("SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ")
-    );
-    let filter1 = SolanaFilter::new(vec![SABER_STABLE_SWAP_PROGRAM]);
+    let filter = SolanaFilter::new(vec![SABER_STABLE_SWAP_PROGRAM]);
     let encoded_filter = serde_json::to_vec(&filter).unwrap();
 
     let get_blocks_request = BlocksRequest {
-        start_block_number: Some(start_block),
+        start_block_number: if start_block > 0 {
+            Some(start_block)
+        } else {
+            None
+        },
         chain_type: *chain_type as i32,
         network: network.clone().unwrap_or(Default::default()),
         filter: encoded_filter,
