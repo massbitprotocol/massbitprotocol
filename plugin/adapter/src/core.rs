@@ -7,6 +7,7 @@ pub use massbit::firehose::bstream::{
 use graph::data::subgraph::SubgraphManifest;
 use graph_chain_ethereum::Chain;
 use graph_chain_ethereum::{DataSource, DataSourceTemplate};
+use index_store::indexer::IndexerStore;
 use index_store::postgres::store_builder::*;
 use index_store::{IndexerState, Store};
 use lazy_static::lazy_static;
@@ -238,6 +239,11 @@ impl AdapterManager {
                                                 }
                                                 Ok(_) => {
                                                     start_block = data.block_number + 1;
+                                                    //Store got_block to db
+                                                    IndexerStore::store_got_block(
+                                                        indexer_hash,
+                                                        data.block_number as i64,
+                                                    );
                                                 }
                                             }
                                         } else {
