@@ -1,0 +1,35 @@
+[package]
+name = "block"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+diesel = { version = "1.4.0", features = ["postgres"] }
+#structmap = "0.1.5"
+#structmap-derive = "0.1.5"
+chrono = "0.4.19"
+hex = "0.4.3"
+uuid = { version = "0.8", features = ["serde", "v4"] }
+# Massbit dependencies
+adapter = { path = "../../../plugin/adapter" }
+massbit-chain-substrate = { path = "../../../core/chain/substrate" }
+massbit-chain-solana = { path = "../../../core/chain/solana" }
+index-store = { path = "../../../core/index-store" }
+massbit-drive = {path = "../../../core/drive" }
+
+[dependencies.solana-transaction-status]
+package = "solana-transaction-status"
+git = "https://github.com/massbitprotocol/solana.git"
+branch = "main"
+
+[dependencies.stable-swap-client]
+package = "stable-swap-client"
+git = "https://github.com/saber-hq/stable-swap.git"
+branch = "master"
+
+[lib]
+crate-type = ["cdylib"]
+
+[workspace]
