@@ -106,16 +106,17 @@ def compile_so(data, use_precompile=True):
     mapping = urllib.parse.unquote(data["mappings"]["mapping.rs"])
     project = urllib.parse.unquote(data["configs"]["subgraph.yaml"])
     schema = urllib.parse.unquote(data["configs"]["schema.graphql"])
+    cargo = urllib.parse.unquote(data["configs"]["Cargo.toml"])
     abis = data["abis"]
 
     # Populating stub data
-    populate_stub(generated_folder, "Cargo.toml")
-    copy_tree("stub/target", generated_folder + "/target")
+    # copy_tree("stub/target", generated_folder + "/target") # The cargo.toml is based on user so the target file won't work
 
     # Save the formatted data from request to disk, ready for compiling
     write_to_disk(generated_folder + "/src/mapping.rs", mapping)
     write_to_disk(generated_folder + "/src/subgraph.yaml", project)
     write_to_disk(generated_folder + "/src/schema.graphql", schema)
+    write_to_disk(generated_folder + "/Cargo.toml", cargo)
     for file_name in abis:
         write_to_disk(os.path.join(generated_folder, "abis", file_name), urllib.parse.unquote(abis[file_name]))
 
@@ -123,6 +124,7 @@ def compile_so(data, use_precompile=True):
     print("Generating code + compiling for: " + hash + ". This will take a while!")
     cargo_gen_and_build = CargoGenAndBuild(generated_folder)
     cargo_gen_and_build.start()
+    return hash
 
 
 

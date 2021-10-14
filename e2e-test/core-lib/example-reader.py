@@ -7,6 +7,7 @@ def read_so_example(path):
     mapping = read_file_content(os.path.join(path, "src", "mapping.rs"))
     subgraph = read_file_content(os.path.join(path, "subgraph.yaml"))
     schema = read_file_content(os.path.join(path, "schema.graphql"))
+    cargo = read_file_content(os.path.join(path, "Cargo.toml"))
     abi = read_abi_content(os.path.join(path, "abis"))
 
     payload = {
@@ -15,7 +16,8 @@ def read_so_example(path):
         },
         "configs": {
             "subgraph.yaml": subgraph,
-            "schema.graphql": schema
+            "schema.graphql": schema,
+            "Cargo.toml": cargo
         },
         "abis": abi,
     }
