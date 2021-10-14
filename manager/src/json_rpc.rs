@@ -1,28 +1,19 @@
-extern crate jsonrpc_http_server;
-extern crate lazy_static;
-extern crate massbit;
-extern crate serde;
-
-use self::massbit::data::indexer::IndexerRegistrarError;
 use futures::StreamExt;
+use jsonrpc_http_server;
 use jsonrpc_http_server::{
     jsonrpc_core::{self, Compatibility, IoHandler, Params, Value},
     RestApi, Server, ServerBuilder,
 };
 use lazy_static::lazy_static;
-use massbit::prelude::futures03::channel::{mpsc, oneshot};
-use massbit::prelude::futures03::SinkExt;
-use massbit::prelude::{JsonRpcServer as JsonRpcServerTrait, *};
+use serde;
 use std::env;
 use std::io;
 use std::net::{Ipv4Addr, SocketAddrV4};
 
-lazy_static! {
-    static ref EXTERNAL_HTTP_BASE_URL: Option<String> = env::var_os("EXTERNAL_HTTP_BASE_URL")
-        .map(|s| s.into_string().expect("invalid external HTTP base URL"));
-    static ref EXTERNAL_WS_BASE_URL: Option<String> = env::var_os("EXTERNAL_WS_BASE_URL")
-        .map(|s| s.into_string().expect("invalid external WS base URL"));
-}
+use massbit::data::indexer::IndexerRegistrarError;
+use massbit::prelude::futures03::channel::{mpsc, oneshot};
+use massbit::prelude::futures03::SinkExt;
+use massbit::prelude::{JsonRpcServer as JsonRpcServerTrait, *};
 
 const JSON_RPC_DEPLOY_ERROR: i64 = 0;
 
