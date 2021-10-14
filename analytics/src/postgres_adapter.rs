@@ -1,17 +1,17 @@
 use crate::storage_adapter::StorageAdapter;
 use diesel::PgConnection;
-use massbit_common::prelude::diesel::r2d2::{ConnectionManager, Pool};
+use massbit_common::prelude::diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
 use massbit_common::prelude::diesel::{r2d2, Connection, RunQueryDsl};
 use std::cmp;
 
 use crate::models::CommandData;
 use crate::postgres_queries::{UpsertConflictFragment, UpsertQuery};
 use crate::relational::Table;
+use crate::MAX_POOL_SIZE;
 use core::ops::Deref;
 use massbit::prelude::Entity;
+use massbit_common::prelude::r2d2::Error;
 use std::time::Instant;
-
-const MAX_POOL_SIZE: u32 = 10;
 
 pub struct PostgresAdapter {
     pool: Pool<ConnectionManager<PgConnection>>,
@@ -93,6 +93,13 @@ impl StorageAdapter for PostgresAdapter {
     }
 }
 
+impl PostgresAdapter {
+    pub fn get_connection(
+        &self,
+    ) -> Result<PooledConnection<ConnectionManager<PgConnection>>, Error> {
+        self.pool.get()
+    }
+}
 #[derive(Default)]
 pub struct PostgresAdapterBuilder {
     url: Option<String>,

@@ -2,6 +2,7 @@ use crate::CONFIG;
 use log::{debug, info, warn};
 use massbit::firehose::bstream::{BlockResponse, ChainType};
 use massbit::prelude::tokio::sync::{OwnedSemaphorePermit, Semaphore};
+use massbit::prelude::tokio::time::sleep;
 use massbit_chain_solana::data_type::{
     decode_encoded_block, get_list_log_messages_from_encoded_block, SolanaBlock as Block,
     SolanaFilter,
@@ -22,6 +23,7 @@ const BLOCK_AVAILABLE_MARGIN: u64 = 100;
 const RPC_BLOCK_ENCODING: UiTransactionEncoding = UiTransactionEncoding::Base64;
 const GET_BLOCK_TIMEOUT_SEC: u64 = 60;
 const BLOCK_BATCH_SIZE: u64 = 10;
+const GET_NEW_SLOT_DELAY_MS: u64 = 500;
 
 pub async fn loop_get_block(
     chan: mpsc::Sender<Result<BlockResponse, Status>>,
@@ -32,9 +34,9 @@ pub async fn loop_get_block(
 ) -> Result<(), Box<dyn Error>> {
     info!("Start get block Solana from: {:?}", start_block);
     let config = CONFIG.get_chain_config(&CHAIN_TYPE, &network).unwrap();
-    let websocket_url = config.ws.clone();
-    let (mut _subscription_client, receiver) =
-        PubsubClient::slot_subscribe(&websocket_url).unwrap();
+    // let websocket_url = config.ws.clone();
+    // let (mut _subscription_client, receiver) =
+    //     PubsubClient::slot_subscribe(&websocket_url).unwrap();
     let mut last_indexed_slot: Option<u64> = start_block.map(|start_block| start_block + 1);
     //fix_one_thread_not_receive(&chan);
     let sem = Arc::new(Semaphore::new(2 * BLOCK_BATCH_SIZE as usize));
@@ -42,14 +44,16 @@ pub async fn loop_get_block(
         if chan.is_closed() {
             return Err("Stream is closed!".into());
         }
-        match receiver.recv() {
-            Ok(new_info) => {
+        //match receiver.recv() {
+        match client.get_slot() {
+            Ok(new_slot) => {
                 // Root is finalized block in Solana
-                let current_root = new_info.root - BLOCK_AVAILABLE_MARGIN;
+                let current_root = new_slot - BLOCK_AVAILABLE_MARGIN;
                 //info!("Root: {:?}",new_info.root);
                 match last_indexed_slot {
                     Some(value_last_indexed_slot) => {
                         if current_root == value_last_indexed_slot {
+                            sleep(Duration::from_millis(GET_NEW_SLOT_DELAY_MS)).await;
                             continue;
                         }
                         info!(
@@ -129,8 +133,9 @@ pub async fn loop_get_block(
                 };
             }
             Err(err) => {
-                eprintln!("disconnected: {}", err);
-                break;
+                eprintln!("Get slot error: {:?}", err);
+                sleep(Duration::from_millis(GET_NEW_SLOT_DELAY_MS)).await;
+                continue;
             }
         }
     }

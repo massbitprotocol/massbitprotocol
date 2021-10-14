@@ -26,7 +26,7 @@ impl SolanaRawTransactionHandler {
 }
 
 impl SolanaHandler for SolanaRawTransactionHandler {
-    fn handle_block(&self, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
+    fn handle_block(&self, block_slot: u64, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
         let tran_table = create_trans_table();
         let acc_tran_table = create_acc_trans_table();
         //maximum rows allowed in a query.
@@ -34,18 +34,14 @@ impl SolanaHandler for SolanaRawTransactionHandler {
         let mut tran_entities = Vec::default();
         let mut vec_entities = Vec::default();
         for (ind, tran) in block.block.transactions.iter().enumerate() {
-            tran_entities.push(create_entity(&block.block, tran, ind as i32));
+            tran_entities.push(create_entity(block_slot, &block.block, tran, ind as i32));
             //Create account trans list
             // let tx_hash = tran
             //     .transaction
             //     .signatures
             //     .get(0)
             //     .and_then(|sig| Some(sig.to_string()));
-            let entities = create_transaction_account(
-                block.block.block_height.unwrap_or_default(),
-                tran,
-                ind as i32,
-            );
+            let entities = create_transaction_account(block_slot, tran, ind as i32);
             if entities.len() > 0 {
                 match vec_entities.last_mut() {
                     None => vec_entities.push(entities),
@@ -76,8 +72,8 @@ impl SolanaHandler for SolanaRawTransactionHandler {
 }
 fn create_trans_table<'a>() -> Table<'a> {
     let columns = create_columns!(
-        "block_height" => ColumnType::BigInt,
-        "order_in_block" => ColumnType::BigInt,
+        "block_slot" => ColumnType::BigInt,
+        "tx_index" => ColumnType::Int,
         "signatures" => ColumnType::String,
         "signers" => ColumnType::String,
         "reward" => ColumnType::BigInt,
@@ -88,15 +84,20 @@ fn create_trans_table<'a>() -> Table<'a> {
 }
 fn create_acc_trans_table<'a>() -> Table<'a> {
     let columns = create_columns!(
-        "block_height" => ColumnType::BigInt,
-        "order_in_block" => ColumnType::BigInt,
+        "block_slot" => ColumnType::BigInt,
+        "tx_index" => ColumnType::Int,
         "account" => ColumnType::String,
         "pre_balance" => ColumnType::BigInt,
         "post_balance" => ColumnType::BigInt
     );
     Table::new("solana_account_transactions", columns, Some("t"))
 }
-fn create_entity(block: &ConfirmedBlock, tran: &TransactionWithStatusMeta, ind: i32) -> Entity {
+fn create_entity(
+    block_slot: u64,
+    block: &ConfirmedBlock,
+    tran: &TransactionWithStatusMeta,
+    ind: i32,
+) -> Entity {
     let timestamp = match block.block_time {
         None => 0_u64,
         Some(val) => val as u64,
@@ -104,10 +105,12 @@ fn create_entity(block: &ConfirmedBlock, tran: &TransactionWithStatusMeta, ind: 
     // let signatures = tran.transaction.signatures.iter().map(|sig|{
     //     format!("{:?}", sig)
     // }).collect::<Vec<String>>();
-    let mut tx_hash = String::from("");
-    if let Some(sig) = tran.transaction.signatures.get(0) {
-        tx_hash = format!("{:?}", sig);
-    }
+    let tx_hash = tran
+        .transaction
+        .signatures
+        .get(0)
+        .and_then(|sig| Some(sig.to_string()));
+
     let mut signers: Vec<String> = Vec::default();
     for i in 0..tran.transaction.signatures.len() {
         if let Some(key) = tran.transaction.message.account_keys.get(i) {
@@ -125,8 +128,8 @@ fn create_entity(block: &ConfirmedBlock, tran: &TransactionWithStatusMeta, ind: 
         }
     }
     create_entity!(
-        "block_height" => block.block_height,
-        "order_in_block" => ind,
+        "block_slot" => block_slot,
+        "tx_index" => ind,
         "signatures" => tx_hash,
         "signers" => signers.join(","),
         "status" => tran_status,
@@ -136,9 +139,9 @@ fn create_entity(block: &ConfirmedBlock, tran: &TransactionWithStatusMeta, ind: 
 }
 
 fn create_transaction_account(
-    block_height: u64,
+    block_slot: u64,
     tran: &TransactionWithStatusMeta,
-    tran_order: i32,
+    tran_index: i32,
 ) -> Vec<Entity> {
     //let hash = tx_hash.clone().unwrap_or_default();
     tran.transaction
@@ -158,8 +161,8 @@ fn create_transaction_account(
                 .and_then(|meta| meta.post_balances.get(ind))
                 .unwrap_or(&0_u64);
             create_entity!(
-                "block_height" => block_height,
-                "order_in_block" => tran_order,
+                "block_slot" => block_slot,
+                "tx_index" => tran_index,
                 "account" => format!("{:?}", key),
                 "pre_balance" => *pre_balance,
                 "post_balance" => *post_balance
