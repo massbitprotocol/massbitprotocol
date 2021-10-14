@@ -4,6 +4,23 @@ use solana_transaction_status::parse_instruction::ParsedInstruction;
 
 pub fn create_spltoken_inst_table(inst_type: &str) -> Option<Table> {
     match inst_type {
+        "initializeMint" => {
+            let columns = create_columns!(
+                "tx_hash" => ColumnType::String,
+                "block_time" => ColumnType::BigInt,
+                "inst_order" => ColumnType::Int,
+                "source" => ColumnType::String,
+                "new_account" => ColumnType::String,
+                "lamports" => ColumnType::BigInt,
+                "space" => ColumnType::BigInt,
+                "owner" => ColumnType::String
+            );
+            Some(Table::new(
+                "solana_spl_token_initialize_mint",
+                columns,
+                Some("t"),
+            ))
+        }
         _ => None,
     }
 }
