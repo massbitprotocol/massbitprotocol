@@ -12,7 +12,9 @@ use massbit::prelude::Entity;
 use massbit_chain_solana::data_type::{Pubkey, SolanaBlock};
 use massbit_common::NetworkType;
 use solana_transaction_status::parse_instruction::{ParsableProgram, ParsedInstruction};
-use solana_transaction_status::{parse_instruction, ConfirmedBlock, TransactionWithStatusMeta};
+use solana_transaction_status::{
+    parse_instruction, ConfirmedBlock, EncodedConfirmedBlock, TransactionWithStatusMeta,
+};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -37,6 +39,43 @@ impl SolanaHandler for SolanaInstructionHandler {
         let mut unparsed_entities = Vec::default();
         for (tx_index, tran) in block.block.transactions.iter().enumerate() {
             let entities = create_instructions(block_slot, &block.block, tran, tx_index as i32);
+            parsed_entities.extend(entities.0);
+            unparsed_entities.extend(entities.1);
+            //create_inner_instructions(&block.block, tran);
+        }
+        let arc_map_entities = Arc::new(parsed_entities);
+        arc_map_entities.iter().for_each(|(key, _)| {
+            let adapter = self.storage_adapter.clone();
+            let cloned_map = arc_map_entities.clone();
+            let cloned_key = key.clone();
+            tokio::spawn(async move {
+                match cloned_key.create_table() {
+                    Some(table) => {
+                        adapter.upsert(&table, cloned_map.get(&cloned_key).unwrap(), &None);
+                    }
+                    None => {}
+                }
+            });
+        });
+        //Ok(())
+        //Don't store unpased instruction due to huge amount of data
+        if unparsed_entities.len() > 0 {
+            self.storage_adapter
+                .upsert(&table, &unparsed_entities, &None)
+        } else {
+            Ok(())
+        }
+    }
+    fn handle_confirmed_block(
+        &self,
+        block_slot: u64,
+        block: Arc<EncodedConfirmedBlock>,
+    ) -> Result<(), anyhow::Error> {
+        let table = create_unparsed_instruction_table();
+        let mut parsed_entities: HashMap<InstructionKey, Vec<Entity>> = HashMap::default();
+        let mut unparsed_entities = Vec::default();
+        for (tx_index, tran) in block.transactions.iter().enumerate() {
+            let entities = create_instructions(block_slot, &block, tran, tx_index as i32);
             parsed_entities.extend(entities.0);
             unparsed_entities.extend(entities.1);
             //create_inner_instructions(&block.block, tran);

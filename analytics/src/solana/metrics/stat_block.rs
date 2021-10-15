@@ -6,7 +6,7 @@ use crate::{create_columns, create_entity};
 use massbit::prelude::{Attribute, Entity, Value};
 use massbit_chain_solana::data_type::SolanaBlock;
 use massbit_common::NetworkType;
-use solana_transaction_status::RewardType;
+use solana_transaction_status::{ConfirmedBlock, EncodedConfirmedBlock, RewardType};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -26,6 +26,36 @@ impl SolanaStatBlockHandler {
 
 impl SolanaHandler for SolanaStatBlockHandler {
     fn handle_block(&self, block_slot: u64, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
+        let table = create_table();
+        let network = match &self.network {
+            None => "",
+            Some(val) => val.as_str(),
+        };
+        let entity = create_stat_block_entity(network, block_slot, block);
+        let mut conflict_frag = UpsertConflictFragment::new("solana_daily_stat_block_date_uindex");
+        conflict_frag.add_expression("min_block_slot", "LEAST(t.min_block_slot, EXCLUDED.min_block_slot)")
+            .add_expression("max_block_slot", "GREATEST(t.max_block_slot, EXCLUDED.max_block_slot)")
+            .add_expression("block_counter","t.block_counter + EXCLUDED.block_counter")
+            .add_expression("total_tx","t.total_tx + EXCLUDED.total_tx")
+            .add_expression("success_tx","t.success_tx + EXCLUDED.success_tx")
+            .add_expression("total_fee","t.total_fee + EXCLUDED.total_fee")
+            .add_expression("total_reward","t.total_reward + EXCLUDED.total_reward")
+            //First block in current day
+            .add_expression("fist_block_time","LEAST(t.fist_block_time, EXCLUDED.fist_block_time)")
+            //latest incoming block
+            .add_expression("last_block_time","GREATEST(t.last_block_time, EXCLUDED.last_block_time)")
+            //Average block time in ms
+            .add_expression("average_block_time","(GREATEST(t.last_block_time, EXCLUDED.last_block_time) - LEAST(t.fist_block_time, EXCLUDED.fist_block_time))\
+                    * 1000 /(GREATEST(t.max_block_slot, EXCLUDED.max_block_slot) - LEAST(t.min_block_slot, EXCLUDED.min_block_slot) + 1)");
+        self.storage_adapter
+            .upsert(&table, &vec![entity], &Some(conflict_frag))
+    }
+
+    fn handle_confirmed_block(
+        &self,
+        block_slot: u64,
+        block: Arc<EncodedConfirmedBlock>,
+    ) -> Result<(), anyhow::Error> {
         let table = create_table();
         let network = match &self.network {
             None => "",

@@ -4,10 +4,20 @@ use crate::storage_adapter::StorageAdapter;
 use massbit_chain_solana::data_type::SolanaBlock;
 use massbit_common::prelude::anyhow;
 use massbit_common::NetworkType;
+use solana_transaction_status::{ConfirmedBlock, EncodedConfirmedBlock};
 use std::sync::Arc;
 
 pub trait SolanaHandler: Sync + Send {
-    fn handle_block(&self, block_slot: u64, _block: Arc<SolanaBlock>) -> Result<(), anyhow::Error>;
+    fn handle_block(&self, block_slot: u64, _block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
+        Ok(())
+    }
+    fn handle_confirmed_block(
+        &self,
+        block_slot: u64,
+        _block: Arc<EncodedConfirmedBlock>,
+    ) -> Result<(), anyhow::Error> {
+        Ok(())
+    }
     //fn handle_blocks(&self, _vec_blocks: Arc<Vec<SolanaBlock>>) -> Result<(), anyhow::Error>;
 }
 
@@ -33,6 +43,23 @@ impl SolanaHandlerManager {
             let clone_block = Arc::clone(&block);
             tokio::spawn(async move {
                 match clone_handler.handle_block(block_slot, clone_block) {
+                    Ok(_) => {}
+                    Err(err) => log::error!("{:?}", &err),
+                }
+            });
+        });
+        Ok(())
+    }
+    pub fn handle_confirmed_block(
+        &self,
+        block_slot: u64,
+        block: Arc<EncodedConfirmedBlock>,
+    ) -> Result<(), anyhow::Error> {
+        self.handlers.iter().for_each(|handler| {
+            let clone_handler = handler.clone();
+            let clone_block = Arc::clone(&block);
+            tokio::spawn(async move {
+                match clone_handler.handle_confirmed_block(block_slot, clone_block) {
                     Ok(_) => {}
                     Err(err) => log::error!("{:?}", &err),
                 }

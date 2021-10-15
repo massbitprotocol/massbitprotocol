@@ -1,6 +1,8 @@
 pub mod handler;
 pub mod metrics;
 pub mod model;
+pub mod processor;
+pub mod reader;
 
 use crate::postgres_adapter::{create_r2d2_connection_pool, PostgresAdapter};
 use crate::schema::network_state;
@@ -23,17 +25,23 @@ use massbit_common::prelude::diesel::{ExpressionMethods, RunQueryDsl};
 use massbit_common::prelude::r2d2::Error;
 use massbit_common::prelude::tokio::time::{sleep, timeout, Duration};
 use massbit_common::NetworkType;
+use std::env;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
+use tokio::sync::mpsc::Receiver;
+
+pub use processor::process_solana_channel;
 #[allow(unused_imports)]
 use tonic::{
     transport::{Channel, Server},
     Request, Response, Status, Streaming,
 };
 use tower::timeout::Timeout;
-
 lazy_static! {
     pub static ref CHAIN: String = String::from("solana");
+    pub static ref SOLANA_WS: String = env::var("SOLANA_WS").unwrap_or(String::from("ws://api.mainnet-beta.solana.com"));
+    //static ref SOLANA_URL: String = env::var("SOLANA_URL").unwrap_or(String::from("https://solana-api.projectserum.com"));
+    pub static ref SOLANA_URL: String = env::var("SOLANA_URL").unwrap_or(String::from("http://194.163.156.242:8899"));
 }
 //const START_SOLANA_BLOCK: i64 = 80_000_000_i64;
 const DEFAULT_NETWORK: &str = "mainnet";

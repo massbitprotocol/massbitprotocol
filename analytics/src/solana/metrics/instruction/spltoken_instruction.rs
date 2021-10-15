@@ -1,7 +1,7 @@
-use crate::relational::Table;
+use crate::relational::{Column, ColumnType, Table};
+use crate::{create_columns, create_entity};
 use massbit::prelude::Entity;
 use solana_transaction_status::parse_instruction::ParsedInstruction;
-
 pub fn create_spltoken_inst_table(inst_type: &str) -> Option<Table> {
     match inst_type {
         "initializeMint" => {
