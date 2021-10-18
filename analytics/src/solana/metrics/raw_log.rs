@@ -24,7 +24,7 @@ impl SolanaRawLogHandler {
 }
 
 impl SolanaHandler for SolanaRawLogHandler {
-    fn handle_block(&self, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
+    fn handle_block(&self, block_slot: u64, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
         let table = create_table();
         let entities = block
             .block
@@ -34,7 +34,7 @@ impl SolanaHandler for SolanaRawLogHandler {
                 tran.meta
                     .as_ref()
                     .and_then(|meta| meta.log_messages.as_ref())
-                    .and_then(|logs| Some(create_entity(&block.block, tran, logs)))
+                    .and_then(|logs| Some(create_entity(block_slot, &block.block, tran, logs)))
             })
             .collect::<Vec<Entity>>();
         if entities.len() > 0 {
@@ -54,6 +54,7 @@ fn create_table<'a>() -> Table<'a> {
     Table::new("solana_logs", columns, Some("t"))
 }
 fn create_entity(
+    block_slot: u64,
     block: &ConfirmedBlock,
     tran: &TransactionWithStatusMeta,
     logs: &Vec<String>,

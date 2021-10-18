@@ -26,16 +26,22 @@ impl SolanaTokenBalanceHandler {
 }
 
 impl SolanaHandler for SolanaTokenBalanceHandler {
-    fn handle_block(&self, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
+    fn handle_block(&self, block_slot: u64, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
         let table = create_table();
         let entities = block
             .block
             .transactions
             .iter()
-            .filter_map(|tran| {
-                tran.meta
-                    .as_ref()
-                    .and_then(|meta| Some(create_token_balances(tran, meta)))
+            .enumerate()
+            .filter_map(|(tran_order, tran)| {
+                tran.meta.as_ref().and_then(|meta| {
+                    Some(create_token_balances(
+                        tran,
+                        meta,
+                        block_slot,
+                        tran_order as i32,
+                    ))
+                })
             })
             .reduce(|mut a, mut b| {
                 a.append(&mut b);
@@ -52,7 +58,8 @@ impl SolanaHandler for SolanaTokenBalanceHandler {
 
 fn create_table<'a>() -> Table<'a> {
     let columns = create_columns!(
-        "tx_hash" => ColumnType::String,
+        "block_slot" => ColumnType::BigInt,
+        "tx_index" => ColumnType::Int,
         "account" => ColumnType::String,
         "token_address" => ColumnType::String,
         "decimals" => ColumnType::Int,
@@ -65,11 +72,13 @@ fn create_table<'a>() -> Table<'a> {
 fn create_token_balances(
     tran: &TransactionWithStatusMeta,
     meta: &TransactionStatusMeta,
+    block_slot: u64,
+    tran_index: i32,
 ) -> Vec<Entity> {
-    let tx_hash = match tran.transaction.signatures.get(0) {
-        Some(sig) => format!("{:?}", sig),
-        None => String::from(""),
-    };
+    // let tx_hash = match tran.transaction.signatures.get(0) {
+    //     Some(sig) => format!("{:?}", sig),
+    //     None => String::from(""),
+    // };
     if meta.pre_token_balances.is_some() && meta.post_token_balances.is_some() {
         meta.post_token_balances
             .as_ref()
@@ -101,7 +110,8 @@ fn create_token_balances(
                     })
                     .unwrap_or(BigInt::from(0_i32));
                 create_entity!(
-                    "tx_hash" => tx_hash.clone(),
+                    "block_slot" => block_slot,
+                    "tx_index" => tran_index,
                     "account" => account,
                     "token_address" => token_balance.mint.clone(),
                     "decimals" => token_balance.ui_token_amount.decimals as i32,

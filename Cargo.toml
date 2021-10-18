@@ -15,7 +15,8 @@ members = [
     "manager",
     "index-manager/main",
     "plugin/adapter",
-    "plugin/plugin"
+    "plugin/plugin",
+    "tests"
 ]
 exclude = ["code-compiler/generated"]
 

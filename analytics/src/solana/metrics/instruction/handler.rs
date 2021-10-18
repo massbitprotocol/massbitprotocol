@@ -31,12 +31,12 @@ impl SolanaInstructionHandler {
 }
 
 impl SolanaHandler for SolanaInstructionHandler {
-    fn handle_block(&self, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
+    fn handle_block(&self, block_slot: u64, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
         let table = create_unparsed_instruction_table();
         let mut parsed_entities: HashMap<InstructionKey, Vec<Entity>> = HashMap::default();
         let mut unparsed_entities = Vec::default();
-        for tran in &block.block.transactions {
-            let entities = create_instructions(&block.block, tran);
+        for (tx_index, tran) in block.block.transactions.iter().enumerate() {
+            let entities = create_instructions(block_slot, &block.block, tran, tx_index as i32);
             parsed_entities.extend(entities.0);
             unparsed_entities.extend(entities.1);
             //create_inner_instructions(&block.block, tran);
@@ -55,6 +55,8 @@ impl SolanaHandler for SolanaInstructionHandler {
                 }
             });
         });
+        //Ok(())
+        //Don't store unpased instruction due to huge amount of data
         if unparsed_entities.len() > 0 {
             self.storage_adapter
                 .upsert(&table, &unparsed_entities, &None)
@@ -69,8 +71,10 @@ impl SolanaHandler for SolanaInstructionHandler {
 /// Unparsed instructions are converted to common entities
 ///
 fn create_instructions(
+    block_slot: u64,
     block: &ConfirmedBlock,
     tran: &TransactionWithStatusMeta,
+    tx_index: i32,
 ) -> (HashMap<InstructionKey, Vec<Entity>>, Vec<Entity>) {
     let timestamp = match block.block_time {
         None => 0_u64,
@@ -92,6 +96,7 @@ fn create_instructions(
             Ok(parsed_inst) => {
                 let key = InstructionKey::from(&parsed_inst);
                 if let Some(entity) = create_parsed_entity(
+                    block_slot,
                     program_key,
                     tx_hash.clone(),
                     timestamp,
@@ -110,8 +115,8 @@ fn create_instructions(
             }
             Err(_) => {
                 unparsed_instruactions.push(create_unparsed_instruction(
-                    block.blockhash.clone(),
-                    tx_hash.clone(),
+                    block_slot,
+                    tx_index,
                     timestamp,
                     ind as i32,
                     program_key.to_string(),
@@ -125,6 +130,7 @@ fn create_instructions(
 }
 
 fn create_parsed_entity(
+    block_slot: u64,
     program_id: &Pubkey,
     tx_hash: String,
     block_time: u64,
@@ -133,12 +139,14 @@ fn create_parsed_entity(
 ) -> Option<Entity> {
     match PARSABLE_PROGRAM_IDS.get(program_id) {
         Some(ParsableProgram::System) => {
-            create_system_entity(tx_hash, block_time, inst_order, inst)
+            create_system_entity(block_slot, tx_hash, block_time, inst_order, inst)
         }
         Some(ParsableProgram::SplToken) => {
-            create_spltoken_entity(tx_hash, block_time, inst_order, inst)
+            create_spltoken_entity(block_slot, tx_hash, block_time, inst_order, inst)
         }
-        Some(ParsableProgram::Vote) => create_vote_entity(tx_hash, block_time, inst_order, inst),
+        Some(ParsableProgram::Vote) => {
+            create_vote_entity(block_slot, tx_hash, block_time, inst_order, inst)
+        }
         _ => None,
     }
 }
