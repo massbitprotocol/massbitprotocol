@@ -4,10 +4,12 @@ use crate::relational::{Column, ColumnType, Table};
 use crate::solana::handler::SolanaHandler;
 use crate::storage_adapter::StorageAdapter;
 use crate::{create_columns, create_entity};
-use massbit::prelude::{Attribute, Entity, Value};
+use massbit::prelude::{Attribute, Entity, Error, Value};
 use massbit_chain_solana::data_type::SolanaBlock;
 use massbit_common::NetworkType;
-use solana_transaction_status::{ConfirmedBlock, TransactionWithStatusMeta};
+use solana_transaction_status::{
+    ConfirmedBlock, EncodedConfirmedBlock, TransactionWithStatusMeta, UiTransactionStatusMeta,
+};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -26,15 +28,63 @@ impl SolanaRawTransactionHandler {
 }
 
 impl SolanaHandler for SolanaRawTransactionHandler {
-    fn handle_block(&self, block_slot: u64, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
+    // fn handle_block(&self, block_slot: u64, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
+    //     let tran_table = create_trans_table();
+    //     let acc_tran_table = create_acc_trans_table();
+    //     //maximum rows allowed in a query.
+    //     let max_rows = 65535 / acc_tran_table.columns.len();
+    //     let mut tran_entities = Vec::default();
+    //     let mut vec_entities = Vec::default();
+    //     for (ind, tran) in block.block.transactions.iter().enumerate() {
+    //         tran_entities.push(create_entity(block_slot, &block.block, tran, ind as i32));
+    //         //Create account trans list
+    //         // let tx_hash = tran
+    //         //     .transaction
+    //         //     .signatures
+    //         //     .get(0)
+    //         //     .and_then(|sig| Some(sig.to_string()));
+    //         let entities = create_transaction_account(block_slot, tran, ind as i32);
+    //         if entities.len() > 0 {
+    //             match vec_entities.last_mut() {
+    //                 None => vec_entities.push(entities),
+    //                 Some(last) => {
+    //                     if last.len() + entities.len() <= max_rows {
+    //                         last.extend(entities);
+    //                     } else {
+    //                         vec_entities.push(entities);
+    //                     }
+    //                 }
+    //             };
+    //         }
+    //     }
+    //     let mut vec_commands = vec_entities
+    //         .iter()
+    //         .map(|entities| CommandData::new(&acc_tran_table, entities, &None))
+    //         .collect::<Vec<CommandData>>();
+    //     if tran_entities.len() > 0 {
+    //         let trans_data = CommandData::new(&tran_table, &tran_entities, &None);
+    //         vec_commands.push(trans_data);
+    //     }
+    //     if vec_commands.len() > 0 {
+    //         self.storage_adapter.transact_upserts(vec_commands)
+    //     } else {
+    //         Ok(())
+    //     }
+    // }
+
+    fn handle_confirmed_block(
+        &self,
+        block_slot: u64,
+        block: Arc<EncodedConfirmedBlock>,
+    ) -> Result<(), Error> {
         let tran_table = create_trans_table();
         let acc_tran_table = create_acc_trans_table();
         //maximum rows allowed in a query.
         let max_rows = 65535 / acc_tran_table.columns.len();
         let mut tran_entities = Vec::default();
         let mut vec_entities = Vec::default();
-        for (ind, tran) in block.block.transactions.iter().enumerate() {
-            tran_entities.push(create_entity(block_slot, &block.block, tran, ind as i32));
+        for (ind, tran) in block.transactions.iter().enumerate() {
+            tran_entities.push(create_entity(block_slot, block, tran, ind as i32));
             //Create account trans list
             // let tx_hash = tran
             //     .transaction
@@ -94,8 +144,8 @@ fn create_acc_trans_table<'a>() -> Table<'a> {
 }
 fn create_entity(
     block_slot: u64,
-    block: &ConfirmedBlock,
-    tran: &TransactionWithStatusMeta,
+    block: Arc<EncodedConfirmedBlock>,
+    tran: &UiTransactionStatusMeta,
     ind: i32,
 ) -> Entity {
     let timestamp = match block.block_time {
@@ -140,7 +190,7 @@ fn create_entity(
 
 fn create_transaction_account(
     block_slot: u64,
-    tran: &TransactionWithStatusMeta,
+    tran: &UiTransactionStatusMeta,
     tran_index: i32,
 ) -> Vec<Entity> {
     //let hash = tx_hash.clone().unwrap_or_default();

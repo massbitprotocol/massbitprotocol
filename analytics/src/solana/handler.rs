@@ -15,9 +15,7 @@ pub trait SolanaHandler: Sync + Send {
         &self,
         block_slot: u64,
         _block: Arc<EncodedConfirmedBlock>,
-    ) -> Result<(), anyhow::Error> {
-        Ok(())
-    }
+    ) -> Result<(), anyhow::Error>;
     //fn handle_blocks(&self, _vec_blocks: Arc<Vec<SolanaBlock>>) -> Result<(), anyhow::Error>;
 }
 

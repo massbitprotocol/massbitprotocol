@@ -52,8 +52,7 @@ pub async fn process_solana_channel(
             // Decode
             //let block = convert_solana_encoded_block_to_solana_block(encoded_block);
             //let block = decode_encoded_block(data.block);
-            let block = data.block;
-            let transaction_counter = block.transactions.len();
+            let transaction_counter = data.block.transactions.len();
             log::info!(
                 "Decode block {} with {} transaction in {:?}",
                 block_slot,

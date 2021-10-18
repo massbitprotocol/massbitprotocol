@@ -96,9 +96,14 @@ pub async fn loop_get_block(
                             let block_slot = block.block_slot;
                             debug!("gRPC sending block {}", &block_slot);
                             if !chan.is_closed() {
+                                let start = Instant::now();
                                 let send_res = chan.send(block).await;
                                 if send_res.is_ok() {
-                                    debug!("gRPC successfully sending block {}", &block_slot);
+                                    info!(
+                                        "gRPC successfully sending block {} in {:?}",
+                                        &block_slot,
+                                        start.elapsed()
+                                    );
                                 } else {
                                     warn!("gRPC unsuccessfully sending block {}", &block_slot);
                                 }

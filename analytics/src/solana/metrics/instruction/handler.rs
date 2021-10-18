@@ -13,7 +13,8 @@ use massbit_chain_solana::data_type::{Pubkey, SolanaBlock};
 use massbit_common::NetworkType;
 use solana_transaction_status::parse_instruction::{ParsableProgram, ParsedInstruction};
 use solana_transaction_status::{
-    parse_instruction, ConfirmedBlock, EncodedConfirmedBlock, TransactionWithStatusMeta,
+    parse_instruction, ConfirmedBlock, EncodedConfirmedBlock, EncodedTransactionWithStatusMeta,
+    TransactionWithStatusMeta, UiTransactionStatusMeta,
 };
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -33,39 +34,39 @@ impl SolanaInstructionHandler {
 }
 
 impl SolanaHandler for SolanaInstructionHandler {
-    fn handle_block(&self, block_slot: u64, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
-        let table = create_unparsed_instruction_table();
-        let mut parsed_entities: HashMap<InstructionKey, Vec<Entity>> = HashMap::default();
-        let mut unparsed_entities = Vec::default();
-        for (tx_index, tran) in block.block.transactions.iter().enumerate() {
-            let entities = create_instructions(block_slot, &block.block, tran, tx_index as i32);
-            parsed_entities.extend(entities.0);
-            unparsed_entities.extend(entities.1);
-            //create_inner_instructions(&block.block, tran);
-        }
-        let arc_map_entities = Arc::new(parsed_entities);
-        arc_map_entities.iter().for_each(|(key, _)| {
-            let adapter = self.storage_adapter.clone();
-            let cloned_map = arc_map_entities.clone();
-            let cloned_key = key.clone();
-            tokio::spawn(async move {
-                match cloned_key.create_table() {
-                    Some(table) => {
-                        adapter.upsert(&table, cloned_map.get(&cloned_key).unwrap(), &None);
-                    }
-                    None => {}
-                }
-            });
-        });
-        //Ok(())
-        //Don't store unpased instruction due to huge amount of data
-        if unparsed_entities.len() > 0 {
-            self.storage_adapter
-                .upsert(&table, &unparsed_entities, &None)
-        } else {
-            Ok(())
-        }
-    }
+    // fn handle_block(&self, block_slot: u64, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
+    //     let table = create_unparsed_instruction_table();
+    //     let mut parsed_entities: HashMap<InstructionKey, Vec<Entity>> = HashMap::default();
+    //     let mut unparsed_entities = Vec::default();
+    //     for (tx_index, tran) in block.block.transactions.iter().enumerate() {
+    //         let entities = create_instructions(block_slot, &block.block, tran, tx_index as i32);
+    //         parsed_entities.extend(entities.0);
+    //         unparsed_entities.extend(entities.1);
+    //         //create_inner_instructions(&block.block, tran);
+    //     }
+    //     let arc_map_entities = Arc::new(parsed_entities);
+    //     arc_map_entities.iter().for_each(|(key, _)| {
+    //         let adapter = self.storage_adapter.clone();
+    //         let cloned_map = arc_map_entities.clone();
+    //         let cloned_key = key.clone();
+    //         tokio::spawn(async move {
+    //             match cloned_key.create_table() {
+    //                 Some(table) => {
+    //                     adapter.upsert(&table, cloned_map.get(&cloned_key).unwrap(), &None);
+    //                 }
+    //                 None => {}
+    //             }
+    //         });
+    //     });
+    //     //Ok(())
+    //     //Don't store unpased instruction due to huge amount of data
+    //     if unparsed_entities.len() > 0 {
+    //         self.storage_adapter
+    //             .upsert(&table, &unparsed_entities, &None)
+    //     } else {
+    //         Ok(())
+    //     }
+    // }
     fn handle_confirmed_block(
         &self,
         block_slot: u64,
@@ -75,7 +76,7 @@ impl SolanaHandler for SolanaInstructionHandler {
         let mut parsed_entities: HashMap<InstructionKey, Vec<Entity>> = HashMap::default();
         let mut unparsed_entities = Vec::default();
         for (tx_index, tran) in block.transactions.iter().enumerate() {
-            let entities = create_instructions(block_slot, &block, tran, tx_index as i32);
+            let entities = create_instructions(block_slot, block.clone(), tran, tx_index as i32);
             parsed_entities.extend(entities.0);
             unparsed_entities.extend(entities.1);
             //create_inner_instructions(&block.block, tran);
@@ -111,8 +112,8 @@ impl SolanaHandler for SolanaInstructionHandler {
 ///
 fn create_instructions(
     block_slot: u64,
-    block: &ConfirmedBlock,
-    tran: &TransactionWithStatusMeta,
+    block: Arc<EncodedConfirmedBlock>,
+    tran: &EncodedTransactionWithStatusMeta,
     tx_index: i32,
 ) -> (HashMap<InstructionKey, Vec<Entity>>, Vec<Entity>) {
     let timestamp = match block.block_time {
@@ -123,7 +124,7 @@ fn create_instructions(
         Some(sig) => format!("{:?}", sig),
         None => String::from(""),
     };
-    let mut unparsed_instruactions = Vec::default();
+    let mut unparsed_instructions = Vec::default();
     let mut parsed_instrucions: HashMap<InstructionKey, Vec<Entity>> = HashMap::default();
     for (ind, inst) in tran.transaction.message.instructions.iter().enumerate() {
         let program_key = inst.program_id(tran.transaction.message.account_keys.as_slice());
@@ -153,7 +154,7 @@ fn create_instructions(
                 };
             }
             Err(_) => {
-                unparsed_instruactions.push(create_unparsed_instruction(
+                unparsed_instructions.push(create_unparsed_instruction(
                     block_slot,
                     tx_index,
                     timestamp,
@@ -165,7 +166,7 @@ fn create_instructions(
             }
         }
     }
-    (parsed_instrucions, unparsed_instruactions)
+    (parsed_instrucions, unparsed_instructions)
 }
 
 fn create_parsed_entity(

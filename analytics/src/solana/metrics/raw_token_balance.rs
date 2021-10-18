@@ -3,10 +3,13 @@ use crate::solana::handler::SolanaHandler;
 use crate::storage_adapter::StorageAdapter;
 use crate::{create_columns, create_entity};
 use massbit::data::store::scalar::BigInt;
-use massbit::prelude::{Attribute, Entity, Value};
+use massbit::prelude::{Attribute, Entity, Error, Value};
 use massbit_chain_solana::data_type::SolanaBlock;
 use massbit_common::NetworkType;
-use solana_transaction_status::{TransactionStatusMeta, TransactionWithStatusMeta};
+use solana_transaction_status::{
+    EncodedConfirmedBlock, EncodedTransactionWithStatusMeta, TransactionStatusMeta,
+    TransactionWithStatusMeta, UiTransactionStatusMeta,
+};
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -26,10 +29,42 @@ impl SolanaTokenBalanceHandler {
 }
 
 impl SolanaHandler for SolanaTokenBalanceHandler {
-    fn handle_block(&self, block_slot: u64, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
+    // fn handle_block(&self, block_slot: u64, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
+    //     let table = create_table();
+    //     let entities = block
+    //         .block
+    //         .transactions
+    //         .iter()
+    //         .enumerate()
+    //         .filter_map(|(tran_order, tran)| {
+    //             tran.meta.as_ref().and_then(|meta| {
+    //                 Some(create_token_balances(
+    //                     tran,
+    //                     meta,
+    //                     block_slot,
+    //                     tran_order as i32,
+    //                 ))
+    //             })
+    //         })
+    //         .reduce(|mut a, mut b| {
+    //             a.append(&mut b);
+    //             a
+    //         });
+    //     if let Some(values) = entities {
+    //         if values.len() > 0 {
+    //             self.storage_adapter.upsert(&table, &values, &None);
+    //         }
+    //     }
+    //     Ok(())
+    // }
+
+    fn handle_confirmed_block(
+        &self,
+        block_slot: u64,
+        block: Arc<EncodedConfirmedBlock>,
+    ) -> Result<(), Error> {
         let table = create_table();
         let entities = block
-            .block
             .transactions
             .iter()
             .enumerate()
@@ -70,8 +105,8 @@ fn create_table<'a>() -> Table<'a> {
 }
 
 fn create_token_balances(
-    tran: &TransactionWithStatusMeta,
-    meta: &TransactionStatusMeta,
+    tran: &EncodedTransactionWithStatusMeta,
+    meta: &UiTransactionStatusMeta,
     block_slot: u64,
     tran_index: i32,
 ) -> Vec<Entity> {
