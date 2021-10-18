@@ -29,36 +29,7 @@ impl SolanaTokenBalanceHandler {
 }
 
 impl SolanaHandler for SolanaTokenBalanceHandler {
-    // fn handle_block(&self, block_slot: u64, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
-    //     let table = create_table();
-    //     let entities = block
-    //         .block
-    //         .transactions
-    //         .iter()
-    //         .enumerate()
-    //         .filter_map(|(tran_order, tran)| {
-    //             tran.meta.as_ref().and_then(|meta| {
-    //                 Some(create_token_balances(
-    //                     tran,
-    //                     meta,
-    //                     block_slot,
-    //                     tran_order as i32,
-    //                 ))
-    //             })
-    //         })
-    //         .reduce(|mut a, mut b| {
-    //             a.append(&mut b);
-    //             a
-    //         });
-    //     if let Some(values) = entities {
-    //         if values.len() > 0 {
-    //             self.storage_adapter.upsert(&table, &values, &None);
-    //         }
-    //     }
-    //     Ok(())
-    // }
-
-    fn handle_confirmed_block(
+    fn handle_block(
         &self,
         block_slot: u64,
         block: Arc<EncodedConfirmedBlock>,
@@ -114,15 +85,20 @@ fn create_token_balances(
     //     Some(sig) => format!("{:?}", sig),
     //     None => String::from(""),
     // };
-    if meta.pre_token_balances.is_some() && meta.post_token_balances.is_some() {
+    let decoded_tran = tran.transaction.decode();
+    if meta.pre_token_balances.is_some()
+        && meta.post_token_balances.is_some()
+        && decoded_tran.is_some()
+    {
         meta.post_token_balances
             .as_ref()
             .unwrap()
             .iter()
             .enumerate()
             .map(|(ind, token_balance)| {
-                let account = tran
-                    .transaction
+                let account = decoded_tran
+                    .as_ref()
+                    .unwrap()
                     .message
                     .account_keys
                     .get(token_balance.account_index as usize)

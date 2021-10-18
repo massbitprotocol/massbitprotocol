@@ -127,34 +127,6 @@ pub async fn loop_get_block(
     Ok(())
 }
 
-// fn _create_generic_block(block_hash: String, block_number: u64, block: &Block) -> BlockResponse {
-//     let generic_data = BlockResponse {
-//         chain_type: CHAIN_TYPE as i32,
-//         version: VERSION.to_string(),
-//         block_hash,
-//         block_number,
-//         payload: serde_json::to_vec(block).unwrap(),
-//     };
-//     generic_data
-// }
-//
-// fn _to_generic_block(block: solana_transaction_status::ConfirmedBlock) -> BlockResponse {
-//     let timestamp = (&block).block_time.unwrap();
-//     let list_log_messages = get_list_log_messages_from_encoded_block(&block);
-//     let ext_block = Block {
-//         version: VERSION.to_string(),
-//         block,
-//         timestamp,
-//         list_log_messages,
-//     };
-//     let generic_data_proto = _create_generic_block(
-//         ext_block.block.blockhash.clone(),
-//         &ext_block.block.parent_slot + 1,
-//         &ext_block,
-//     );
-//     generic_data_proto
-// }
-
 async fn get_block(
     client: Arc<RpcClient>,
     permit: OwnedSemaphorePermit,

@@ -46,21 +46,10 @@ pub async fn process_solana_channel(
         let storage_adapter = storage_adapter.clone();
         let network_name = network.clone();
         let last_block = Arc::clone(&last_block);
+        let transaction_counter = data.block.transactions.len();
         tokio::spawn(async move {
             let start = Instant::now();
-            //let block: SolanaBlock = solana_decode(&mut data.payload).unwrap();
-            // Decode
-            //let block = convert_solana_encoded_block_to_solana_block(encoded_block);
-            //let block = decode_encoded_block(data.block);
-            let transaction_counter = data.block.transactions.len();
-            log::info!(
-                "Decode block {} with {} transaction in {:?}",
-                block_slot,
-                transaction_counter,
-                start.elapsed()
-            );
-            let start = Instant::now();
-            match handler.handle_confirmed_block(block_slot, Arc::new(data.block)) {
+            match handler.handle_block(block_slot, Arc::new(data.block)) {
                 Ok(_) => {}
                 Err(err) => log::error!("{:?}", &err),
             };

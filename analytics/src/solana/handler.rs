@@ -8,10 +8,7 @@ use solana_transaction_status::{ConfirmedBlock, EncodedConfirmedBlock};
 use std::sync::Arc;
 
 pub trait SolanaHandler: Sync + Send {
-    fn handle_block(&self, block_slot: u64, _block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
-        Ok(())
-    }
-    fn handle_confirmed_block(
+    fn handle_block(
         &self,
         block_slot: u64,
         _block: Arc<EncodedConfirmedBlock>,
@@ -34,30 +31,13 @@ impl SolanaHandlerManager {
     pub fn handle_block(
         &self,
         block_slot: u64,
-        block: Arc<SolanaBlock>,
-    ) -> Result<(), anyhow::Error> {
-        self.handlers.iter().for_each(|handler| {
-            let clone_handler = handler.clone();
-            let clone_block = Arc::clone(&block);
-            tokio::spawn(async move {
-                match clone_handler.handle_block(block_slot, clone_block) {
-                    Ok(_) => {}
-                    Err(err) => log::error!("{:?}", &err),
-                }
-            });
-        });
-        Ok(())
-    }
-    pub fn handle_confirmed_block(
-        &self,
-        block_slot: u64,
         block: Arc<EncodedConfirmedBlock>,
     ) -> Result<(), anyhow::Error> {
         self.handlers.iter().for_each(|handler| {
             let clone_handler = handler.clone();
             let clone_block = Arc::clone(&block);
             tokio::spawn(async move {
-                match clone_handler.handle_confirmed_block(block_slot, clone_block) {
+                match clone_handler.handle_block(block_slot, clone_block) {
                     Ok(_) => {}
                     Err(err) => log::error!("{:?}", &err),
                 }

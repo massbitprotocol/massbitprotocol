@@ -23,20 +23,13 @@ impl SolanaRawBlockHandler {
 }
 
 impl SolanaHandler for SolanaRawBlockHandler {
-    // fn handle_block(&self, block_slot: u64, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
-    //     let table = create_table();
-    //     let entity = create_entity(block_slot, &block.block);
-    //     //println!("Block {:?} has reward {:?}", &block.block.block_height, &block.block.rewards);
-    //     self.storage_adapter.upsert(&table, &vec![entity], &None)
-    // }
-
-    fn handle_confirmed_block(
+    fn handle_block(
         &self,
         block_slot: u64,
         block: Arc<EncodedConfirmedBlock>,
     ) -> Result<(), Error> {
         let table = create_table();
-        let entity = create_entity(block_slot, &block.block);
+        let entity = create_entity(block_slot, block);
         //println!("Block {:?} has reward {:?}", &block.block.block_height, &block.block.rewards);
         self.storage_adapter.upsert(&table, &vec![entity], &None)
     }
@@ -54,7 +47,7 @@ fn create_table<'a>() -> Table<'a> {
     );
     Table::new("solana_blocks", columns, Some("t"))
 }
-fn create_entity(block_slot: u64, block: &EncodedConfirmedBlock) -> Entity {
+fn create_entity(block_slot: u64, block: Arc<EncodedConfirmedBlock>) -> Entity {
     let timestamp = match block.block_time {
         None => 0_u64,
         Some(val) => val as u64,

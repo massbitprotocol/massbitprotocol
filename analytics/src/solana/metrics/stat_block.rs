@@ -25,33 +25,7 @@ impl SolanaStatBlockHandler {
 }
 
 impl SolanaHandler for SolanaStatBlockHandler {
-    fn handle_block(&self, block_slot: u64, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
-        let table = create_table();
-        let network = match &self.network {
-            None => "",
-            Some(val) => val.as_str(),
-        };
-        let entity = create_stat_block_entity(network, block_slot, block);
-        let mut conflict_frag = UpsertConflictFragment::new("solana_daily_stat_block_date_uindex");
-        conflict_frag.add_expression("min_block_slot", "LEAST(t.min_block_slot, EXCLUDED.min_block_slot)")
-            .add_expression("max_block_slot", "GREATEST(t.max_block_slot, EXCLUDED.max_block_slot)")
-            .add_expression("block_counter","t.block_counter + EXCLUDED.block_counter")
-            .add_expression("total_tx","t.total_tx + EXCLUDED.total_tx")
-            .add_expression("success_tx","t.success_tx + EXCLUDED.success_tx")
-            .add_expression("total_fee","t.total_fee + EXCLUDED.total_fee")
-            .add_expression("total_reward","t.total_reward + EXCLUDED.total_reward")
-            //First block in current day
-            .add_expression("fist_block_time","LEAST(t.fist_block_time, EXCLUDED.fist_block_time)")
-            //latest incoming block
-            .add_expression("last_block_time","GREATEST(t.last_block_time, EXCLUDED.last_block_time)")
-            //Average block time in ms
-            .add_expression("average_block_time","(GREATEST(t.last_block_time, EXCLUDED.last_block_time) - LEAST(t.fist_block_time, EXCLUDED.fist_block_time))\
-                    * 1000 /(GREATEST(t.max_block_slot, EXCLUDED.max_block_slot) - LEAST(t.min_block_slot, EXCLUDED.min_block_slot) + 1)");
-        self.storage_adapter
-            .upsert(&table, &vec![entity], &Some(conflict_frag))
-    }
-
-    fn handle_confirmed_block(
+    fn handle_block(
         &self,
         block_slot: u64,
         block: Arc<EncodedConfirmedBlock>,
@@ -98,15 +72,19 @@ fn create_table<'a>() -> Table<'a> {
     );
     Table::new("solana_daily_stat_block", columns, Some("t"))
 }
-fn create_stat_block_entity(network: &str, block_slot: u64, block: Arc<SolanaBlock>) -> Entity {
+fn create_stat_block_entity(
+    network: &str,
+    block_slot: u64,
+    block: Arc<EncodedConfirmedBlock>,
+) -> Entity {
     //Make timestamp as multiple of a day's seconds
-    let block_time = match block.block.block_time {
+    let block_time = match block.block_time {
         None => 0_u64,
         Some(val) => val as u64,
     };
     let date = block_time / 86400 * 86400;
     let mut reward_val = 0_u64;
-    for reward in &block.block.rewards {
+    for reward in &block.rewards {
         if Some(RewardType::Fee) == reward.reward_type {
             reward_val = reward.lamports as u64;
             break;
@@ -115,7 +93,6 @@ fn create_stat_block_entity(network: &str, block_slot: u64, block: Arc<SolanaBlo
     //Sum success transactions' fee and count success transaction
 
     let success_trans = block
-        .block
         .transactions
         .iter()
         .filter_map(|tran| {
@@ -138,7 +115,7 @@ fn create_stat_block_entity(network: &str, block_slot: u64, block: Arc<SolanaBlo
         "min_block_slot" => block_slot,
         "max_block_slot" => block_slot,
         "block_counter" => 1_u64,
-        "total_tx" => block.block.transactions.len() as u64,
+        "total_tx" => block.transactions.len() as u64,
         "success_tx" => counter,
         "total_reward" => reward_val,
         "total_fee" => total_fee,

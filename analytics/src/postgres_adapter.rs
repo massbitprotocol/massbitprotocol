@@ -9,8 +9,10 @@ use crate::postgres_queries::{UpsertConflictFragment, UpsertQuery};
 use crate::relational::Table;
 use crate::MAX_POOL_SIZE;
 use core::ops::Deref;
+use massbit::data::store::Value;
 use massbit::prelude::Entity;
 use massbit_common::prelude::r2d2::Error;
+use std::collections::HashMap;
 use std::time::Instant;
 
 pub struct PostgresAdapter {
@@ -18,6 +20,14 @@ pub struct PostgresAdapter {
 }
 
 impl StorageAdapter for PostgresAdapter {
+    fn insert(
+        &self,
+        _table_name: &str,
+        _value: HashMap<&str, Value>,
+    ) -> Result<(), massbit::prelude::Error> {
+        todo!()
+    }
+
     fn upsert(
         &self,
         table: &Table,
