@@ -35,6 +35,7 @@ prost = "0.7"
 tower           = { version = "0.4" }
 futures-core = "0.3"
 futures-util = "0.3"
+futures03       = { version = "0.3.1", package = "futures", features = ["compat"] }
 tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "sync", "time"] }
 tokio-stream = "0.1"
 async-stream = "0.2"
@@ -53,6 +54,11 @@ massbit-chain-solana = { path = "../core/chain/solana" }
 chain-ethereum = { path = "../chain/ethereum" }
 ipfs-client = { path = "../core/ipfs-client" }
 logger = { path = "../core/logger" }
+
+[dependencies.solana-client]
+package = "solana-client"
+git = "https://github.com/massbitprotocol/solana.git"
+branch = "main"
 
 [dependencies.solana-transaction-status]
 package = "solana-transaction-status"
@@ -85,3 +91,7 @@ tonic-build = "0.5"
 [[bin]]
 name = "analytics"
 path = "src/main.rs"
+
+[[bin]]
+name = "solana_scanner"
+path = "src/solana_scanner.rs"

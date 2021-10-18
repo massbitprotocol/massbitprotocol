@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate diesel_migrations;
 use analytics::ethereum::process_ethereum_stream;
-use analytics::solana::process_solana_stream;
 use clap::{App, Arg};
 use diesel_migrations::embed_migrations;
 use lazy_static::lazy_static;
@@ -94,17 +93,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
                 };
                 match chain_type {
                     "solana" => {
-                        match process_solana_stream(
-                            &mut client,
-                            storage_adapter.clone(),
-                            network,
-                            block,
-                        )
-                        .await
-                        {
-                            Err(err) => log::error!("{:?}", &err),
-                            Ok(_) => {}
-                        }
+                        // match process_solana_stream(
+                        //     &mut client,
+                        //     storage_adapter.clone(),
+                        //     network,
+                        //     block,
+                        // )
+                        // .await
+                        // {
+                        //     Err(err) => log::error!("{:?}", &err),
+                        //     Ok(_) => {}
+                        // }
                     }
                     "substrate" => {
                         //process_substrate_stream(&mut client).await;
