@@ -6,4 +6,37 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+bigdecimal = "0.3.0"
+diesel          = { version = "1.4.7", features = ["postgres", "serde_json", "numeric", "r2d2", "chrono"] }
+diesel-derive-enum  = { version = "1.1", features = ["postgres"] }
+logger = { path = "../../core/logger" }
+log = "0.4.14"
 massbit = { path = "../../massbit" }
+massbit-common = { path = "../../core/common" }
+massbit-chain-solana = { path = "../../core/chain/solana" }
+massbit-store-postgres = { path = "../../store/postgres"}
+jsonrpc-core = "18.0.0"
+jsonrpc-core-client = "18.0.0"
+jsonrpc-derive      = "18.0.0"
+jsonrpc-http-server = "18.0.0"
+
+lazy_static     = "1.4.0"
+serde           = { version = "1.0", optional = false }
+tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "sync", "time"] }
+
+[dependencies.solana-client]
+package = "solana-client"
+git = "https://github.com/massbitprotocol/solana.git"
+branch = "main"
+
+[dependencies.solana-program]
+package = "solana-program"
+git = "https://github.com/massbitprotocol/solana.git"
+branch = "main"
+
+[build-dependencies]
+tonic-build = "0.5"
+
+[[bin]] # Bin to run gRPC server
+name = "solana-api"
+path = "src/main.rs"
