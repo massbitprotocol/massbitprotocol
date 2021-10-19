@@ -18,8 +18,10 @@ use tokio::time::Instant;
 pub trait RpcBlocks {
     #[rpc(name = "block/lasts")]
     fn get_last_blocks(&self, limit: i64) -> JsonRpcResult<String>;
-    #[rpc(name = "block/detail")]
-    fn get_block_detail(&self, block_slot: Slot) -> JsonRpcResult<String>;
+    #[rpc(name = "block/detail_db")]
+    fn get_dbblock_detail(&self, block_slot: Slot) -> JsonRpcResult<String>;
+    #[rpc(name = "block/detail_net")]
+    fn get_netblock_detail(&self, block_slot: Slot) -> JsonRpcResult<String>;
 }
 
 pub struct RpcBlocksImpl {
@@ -65,7 +67,7 @@ impl RpcBlocks for RpcBlocksImpl {
         })
     }
 
-    fn get_block_detail(&self, block_slot: Slot) -> jsonrpc_core::Result<String> {
+    fn get_dbblock_detail(&self, block_slot: Slot) -> jsonrpc_core::Result<String> {
         log::info!("Get detail of block {}", block_slot);
         let start = Instant::now();
 
@@ -81,21 +83,25 @@ impl RpcBlocks for RpcBlocksImpl {
                         jsonrpc_core::Error::invalid_request()
                     })
             });
+        log::info!("Get block from database in {:?}", start.elapsed());
         block_res.and_then(|block| {
             serde_json::to_string(&block).map_err(|_err| jsonrpc_core::Error::parse_error())
         })
-
+    }
+    fn get_netblock_detail(&self, block_slot: Slot) -> jsonrpc_core::Result<String> {
+        log::info!("Get detail of block {}", block_slot);
+        let start = Instant::now();
         //Get block from net work
-        // match self.rpc_client.get_block(block_slot) {
-        //     Ok(block) => {
-        //         log::info!("Get block from network in {:?}", start.elapsed());
-        //
-        //         match serde_json::to_string(&block) {
-        //             Ok(value) => Ok(value),
-        //             Err(_) => Ok(String::from("")),
-        //         }
-        //     }
-        //     Err(e) => Err(Error::invalid_params("Block not found")),
-        // }
+        match self.rpc_client.get_block(block_slot) {
+            Ok(block) => {
+                log::info!("Get block from network in {:?}", start.elapsed());
+
+                match serde_json::to_string(&block) {
+                    Ok(value) => Ok(value),
+                    Err(_) => Ok(String::from("")),
+                }
+            }
+            Err(e) => Err(Error::invalid_params("Block not found")),
+        }
     }
 }
