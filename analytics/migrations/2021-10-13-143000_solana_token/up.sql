@@ -1,5 +1,6 @@
 create table solana_spl_token_initialize_mint
 (
+    id                  bigserial constraint solana_spl_token_initialize_mint_pk primary key,
     block_slot          bigint,
     block_time          bigint,
     tx_index            int,    --Index of transaction in block
@@ -13,6 +14,7 @@ create table solana_spl_token_initialize_mint
 
 create table solana_spl_token_initialize_account
 (
+    id                  bigserial constraint solana_spl_token_initialize_account_pk primary key,
     block_slot          bigint,
     block_time          bigint,
     tx_index            int,    --Index of transaction in block
@@ -25,6 +27,7 @@ create table solana_spl_token_initialize_account
 
 create table solana_spl_token_initialize_account2
 (
+    id                  bigserial constraint solana_spl_token_initialize_account2_pk primary key,
     block_slot          bigint,
     block_time          bigint,
     tx_index            int,    --Index of transaction in block
@@ -37,6 +40,7 @@ create table solana_spl_token_initialize_account2
 
 create table solana_spl_token_initialize_multisig
 (
+    id                  bigserial constraint solana_spl_token_initialize_multisig_pk primary key,
     block_slot          bigint,
     block_time          bigint,
     tx_index            int,    --Index of transaction in block
@@ -50,6 +54,7 @@ create table solana_spl_token_initialize_multisig
 
 create table solana_spl_token_transfer
 (
+    id                  bigserial constraint solana_spl_token_transfer_pk primary key,
     block_slot          bigint,
     block_time          bigint,
     tx_index            int,    --Index of transaction in block
@@ -63,6 +68,7 @@ create table solana_spl_token_transfer
 );
 create table solana_spl_token_transfer_checked
 (
+    id                          bigserial constraint solana_spl_token_transfer_checked_pk primary key,
     block_slot                  bigint,
     block_time                  bigint,
     tx_index                    int,    --Index of transaction in block
@@ -77,6 +83,7 @@ create table solana_spl_token_transfer_checked
 );
 create table solana_spl_token_approve
 (
+    id                  bigserial constraint solana_spl_token_approve_pk primary key,
     block_slot          bigint,
     block_time          bigint,
     tx_index            int,    --Index of transaction in block
@@ -92,6 +99,7 @@ create table solana_spl_token_approve
 
 create table solana_spl_token_approve_checked
 (
+    id                          bigserial constraint solana_spl_token_approve_checked_pk primary key,
     block_slot                  bigint,
     block_time                  bigint,
     tx_index                    int,    --Index of transaction in block
@@ -107,6 +115,7 @@ create table solana_spl_token_approve_checked
 
 create table solana_spl_token_revoke
 (
+    id                  bigserial constraint solana_spl_token_revoke_pk primary key,
     block_slot          bigint,
     block_time          bigint,
     tx_index            int,    --Index of transaction in block
@@ -119,6 +128,7 @@ create table solana_spl_token_revoke
 
 create table solana_spl_token_set_authority
 (
+    id                  bigserial constraint solana_spl_token_set_authority_pk primary key,
     block_slot          bigint,
     block_time          bigint,
     tx_index            int,    --Index of transaction in block
@@ -132,6 +142,7 @@ create table solana_spl_token_set_authority
 
 create table solana_spl_token_mint_to
 (
+    id                  bigserial constraint solana_spl_token_mint_to_pk primary key,
     block_slot          bigint,
     block_time          bigint,
     tx_index            int,    --Index of transaction in block
@@ -146,6 +157,7 @@ create table solana_spl_token_mint_to
 
 create table solana_spl_token_min_to_checked
 (
+    id                          bigserial constraint solana_spl_token_min_to_checked_pk primary key,
     block_slot                  bigint,
     block_time                  bigint,
     tx_index                    int,    --Index of transaction in block
@@ -160,6 +172,7 @@ create table solana_spl_token_min_to_checked
 
 create table solana_spl_token_burn
 (
+    id                  bigserial constraint solana_spl_token_burn_pk primary key,
     block_slot          bigint,
     block_time          bigint,
     tx_index            int,    --Index of transaction in block
@@ -174,6 +187,7 @@ create table solana_spl_token_burn
 
 create table solana_spl_token_burn_checked
 (
+    id                          bigserial constraint solana_spl_token_burn_checked_pk primary key,
     block_slot                  bigint,
     block_time                  bigint,
     tx_index                    int,    --Index of transaction in block
@@ -188,6 +202,7 @@ create table solana_spl_token_burn_checked
 
 create table solana_spl_token_close_account
 (
+    id                  bigserial constraint solana_spl_token_close_account_pk primary key,
     block_slot          bigint,
     block_time          bigint,
     tx_index            int,    --Index of transaction in block
@@ -201,6 +216,7 @@ create table solana_spl_token_close_account
 
 create table solana_spl_token_freeze_account
 (
+    id                          bigserial constraint solana_spl_token_freeze_account_pk primary key,
     block_slot                  bigint,
     block_time                  bigint,
     tx_index                    int,    --Index of transaction in block
@@ -214,6 +230,7 @@ create table solana_spl_token_freeze_account
 
 create table solana_spl_token_thaw_account
 (
+    id                          bigserial constraint solana_spl_token_thaw_account_pk primary key,
     block_slot                  bigint,
     block_time                  bigint,
     tx_index                    int,    --Index of transaction in block
@@ -227,6 +244,7 @@ create table solana_spl_token_thaw_account
 
 create table solana_spl_token_sync_native
 (
+    id                          bigserial constraint solana_spl_token_sync_native_pk primary key,
     block_slot                  bigint,
     block_time                  bigint,
     tx_index                    int,    --Index of transaction in block

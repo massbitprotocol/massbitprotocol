@@ -1,7 +1,7 @@
 create table solana_blocks
 (
-    block_slot       bigint,
-    block_hash       varchar(100) constraint solana_blocks_pk primary key,
+    block_slot       bigint constraint solana_blocks_pk primary key,
+    block_hash       varchar(100),
     previous_block_hash      varchar(100),
     parent_slot      bigint,
     transaction_number bigint,
@@ -16,7 +16,7 @@ create table solana_transactions
 (
     block_slot          bigint,
     tx_index            smallint,
-    signatures          varchar(100),
+    signatures          varchar(88) constraint solana_transactions_pk primary key,
     signers             text,
     reward              bigint default 0,
     fee                 bigint,
@@ -27,6 +27,7 @@ create index solana_transactions_block_height_order_in_block_index
 
 create table solana_account_transactions
 (
+    id                  bigserial constraint solana_account_transactions_pk primary key,
     block_slot          bigint,
     tx_index            smallint,
     account             varchar(100),
