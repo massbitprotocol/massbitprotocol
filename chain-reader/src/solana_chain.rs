@@ -4,12 +4,15 @@ use massbit::firehose::bstream::{BlockResponse, ChainType};
 use massbit::prelude::tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use massbit::prelude::tokio::time::sleep;
 use massbit_chain_solana::data_type::{
-    decode_encoded_block, get_list_log_messages_from_encoded_block, SolanaBlock as Block,
+    decode_encoded_block, get_list_log_messages_from_encoded_block, Pubkey, SolanaBlock as Block,
     SolanaFilter,
 };
 use massbit_common::prelude::tokio::time::{timeout, Duration};
 use massbit_common::NetworkType;
+use solana_client::client_error::{ClientError, ClientErrorKind, Result as ClientResult};
 use solana_client::{pubsub_client::PubsubClient, rpc_client::RpcClient};
+use solana_program::account_info::{Account as _, AccountInfo};
+use solana_sdk::account::Account;
 use solana_transaction_status::{EncodedConfirmedBlock, UiTransactionEncoding};
 use std::error::Error;
 use std::{sync::Arc, time::Instant};
@@ -196,4 +199,16 @@ async fn get_block(
             Err(format!("Error cannot get block").into())
         }
     }
+}
+
+// Helper function for direct call
+fn get_rpc_client(network: NetworkType) -> Arc<RpcClient> {
+    let config = CONFIG.get_chain_config(&CHAIN_TYPE, &network).unwrap();
+    let json_rpc_url = config.url.clone();
+    info!("Init Solana client, url: {}", json_rpc_url);
+    Arc::new(RpcClient::new(json_rpc_url.clone()))
+}
+
+fn get_account_info(client: Arc<RpcClient>, pubkey: &Pubkey) -> ClientResult<Account> {
+    client.get_account(pubkey)
 }
