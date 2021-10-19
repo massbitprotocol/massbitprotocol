@@ -1,18 +1,15 @@
-use crate::CONFIG;
+use crate::solana::model::EncodedConfirmedBlockWithSlot;
 use log::{debug, info, warn};
 use massbit::firehose::bstream::{BlockResponse, ChainType};
 use massbit::prelude::tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use massbit::prelude::tokio::time::sleep;
 use massbit_chain_solana::data_type::{
-    decode_encoded_block, get_list_log_messages_from_encoded_block, Pubkey, SolanaBlock as Block,
+    decode_encoded_block, get_list_log_messages_from_encoded_block, SolanaBlock as Block,
     SolanaFilter,
 };
 use massbit_common::prelude::tokio::time::{timeout, Duration};
 use massbit_common::NetworkType;
-use solana_client::client_error::{ClientError, ClientErrorKind, Result as ClientResult};
 use solana_client::{pubsub_client::PubsubClient, rpc_client::RpcClient};
-use solana_program::account_info::{Account as _, AccountInfo};
-use solana_sdk::account::Account;
 use solana_transaction_status::{EncodedConfirmedBlock, UiTransactionEncoding};
 use std::error::Error;
 use std::{sync::Arc, time::Instant};
@@ -29,14 +26,14 @@ const BLOCK_BATCH_SIZE: u64 = 10;
 const GET_NEW_SLOT_DELAY_MS: u64 = 500;
 
 pub async fn loop_get_block(
-    chan: mpsc::Sender<Result<BlockResponse, Status>>,
+    chan: mpsc::Sender<EncodedConfirmedBlockWithSlot>,
     start_block: &Option<u64>,
     network: &NetworkType,
     client: &Arc<RpcClient>,
     filter: &SolanaFilter,
 ) -> Result<(), Box<dyn Error>> {
     info!("Start get block Solana from: {:?}", start_block);
-    let config = CONFIG.get_chain_config(&CHAIN_TYPE, &network).unwrap();
+    //let config = CONFIG.get_chain_config(&CHAIN_TYPE, &network).unwrap();
     // let websocket_url = config.ws.clone();
     // let (mut _subscription_client, receiver) =
     //     PubsubClient::slot_subscribe(&websocket_url).unwrap();
@@ -89,41 +86,26 @@ pub async fn loop_get_block(
                             }));
                         }
                         let blocks: Vec<Result<_, _>> = futures03::future::join_all(tasks).await;
-                        let mut blocks: Vec<BlockResponse> = blocks
+                        let mut blocks: Vec<EncodedConfirmedBlockWithSlot> = blocks
                             .into_iter()
-                            .filter_map(|res_block| {
-                                if let Ok(Ok(block)) = res_block {
-                                    info!(
-                                        "Got SOLANA block at slot : {:?}",
-                                        &block.parent_slot + 1
-                                    );
-                                    let decode_block = decode_encoded_block(block);
-                                    let filtered_block = filter.filter_block(decode_block);
-                                    if filtered_block.transactions.is_empty() {
-                                        println!(
-                                            "Block slot {} has no match Transaction",
-                                            filtered_block.parent_slot + 1
-                                        );
-                                        None
-                                    } else {
-                                        Some(_to_generic_block(filtered_block))
-                                    }
-                                } else {
-                                    None
-                                }
-                            })
+                            .filter_map(|res_block| res_block.ok().and_then(|res| res.ok()))
                             .collect();
-                        blocks.sort_by(|a, b| a.block_number.cmp(&b.block_number));
-                        info!("Finished get blocks");
+                        blocks.sort_by(|a, b| a.block_slot.cmp(&b.block_slot));
+                        //info!("Finished get blocks");
                         for block in blocks.into_iter() {
-                            let block_number = block.block_number;
-                            debug!("gRPC sending block {}", &block_number);
+                            let block_slot = block.block_slot;
+                            debug!("gRPC sending block {}", &block_slot);
                             if !chan.is_closed() {
-                                let send_res = chan.send(Ok(block as BlockResponse)).await;
+                                let start = Instant::now();
+                                let send_res = chan.send(block).await;
                                 if send_res.is_ok() {
-                                    info!("gRPC successfully sending block {}", &block_number);
+                                    info!(
+                                        "gRPC successfully sending block {} in {:?}",
+                                        &block_slot,
+                                        start.elapsed()
+                                    );
                                 } else {
-                                    warn!("gRPC unsuccessfully sending block {}", &block_number);
+                                    warn!("gRPC unsuccessfully sending block {}", &block_slot);
                                 }
                             } else {
                                 return Err("Stream is closed!".into());
@@ -145,70 +127,30 @@ pub async fn loop_get_block(
     Ok(())
 }
 
-fn _create_generic_block(block_hash: String, block_number: u64, block: &Block) -> BlockResponse {
-    let generic_data = BlockResponse {
-        chain_type: CHAIN_TYPE as i32,
-        version: VERSION.to_string(),
-        block_hash,
-        block_number,
-        payload: serde_json::to_vec(block).unwrap(),
-    };
-    generic_data
-}
-
-fn _to_generic_block(block: solana_transaction_status::ConfirmedBlock) -> BlockResponse {
-    let timestamp = (&block).block_time.unwrap();
-    let list_log_messages = get_list_log_messages_from_encoded_block(&block);
-    let ext_block = Block {
-        version: VERSION.to_string(),
-        block,
-        timestamp,
-        list_log_messages,
-    };
-    let generic_data_proto = _create_generic_block(
-        ext_block.block.blockhash.clone(),
-        &ext_block.block.parent_slot + 1,
-        &ext_block,
-    );
-    generic_data_proto
-}
-
 async fn get_block(
     client: Arc<RpcClient>,
     permit: OwnedSemaphorePermit,
-    block_height: u64,
-) -> Result<EncodedConfirmedBlock, Box<dyn Error + Send + Sync + 'static>> {
+    block_slot: u64,
+) -> Result<EncodedConfirmedBlockWithSlot, Box<dyn Error + Send + Sync + 'static>> {
     let _permit = permit;
-    info!("Starting RPC get Block {}", block_height);
+    //info!("Starting RPC get Block {}", block_slot);
     let now = Instant::now();
-    let block = client.get_block_with_encoding(block_height, RPC_BLOCK_ENCODING);
+    let block = client.get_block_with_encoding(block_slot, RPC_BLOCK_ENCODING);
     let elapsed = now.elapsed();
     match block {
         Ok(block) => {
             info!(
                 "Finished RPC get Block: {:?}, time: {:?}, hash: {}",
-                block_height, elapsed, &block.blockhash
+                block_slot, elapsed, &block.blockhash
             );
-            Ok(block)
+            Ok(EncodedConfirmedBlockWithSlot { block_slot, block })
         }
         _ => {
             info!(
                 "Cannot get RPC get Block: {:?}, Error:{:?}, time: {:?}",
-                block_height, block, elapsed
+                block_slot, block, elapsed
             );
             Err(format!("Error cannot get block").into())
         }
     }
-}
-
-// Helper function for direct call
-fn get_rpc_client(network: NetworkType) -> Arc<RpcClient> {
-    let config = CONFIG.get_chain_config(&CHAIN_TYPE, &network).unwrap();
-    let json_rpc_url = config.url.clone();
-    info!("Init Solana client, url: {}", json_rpc_url);
-    Arc::new(RpcClient::new(json_rpc_url.clone()))
-}
-
-fn get_account_info(client: Arc<RpcClient>, pubkey: &Pubkey) -> ClientResult<Account> {
-    client.get_account(pubkey)
 }
