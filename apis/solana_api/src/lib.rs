@@ -14,7 +14,7 @@ lazy_static! {
     pub static ref CONNECTION_POOL_SIZE: u32 = env::var("CONNECTION_POOL_SIZE")
         .ok()
         .and_then(|val| val.parse().ok())
-        .unwrap_or(10);
+        .unwrap_or(20);
     pub static ref API_ENDPOINT: String =
         env::var("API_ENDPOINT").unwrap_or(String::from("0.0.0.0:9090"));
     pub static ref SOLANA_CLIENT: Arc<RpcClient> = Arc::new(RpcClient::new(
