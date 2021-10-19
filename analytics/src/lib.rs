@@ -80,8 +80,8 @@ pub fn get_block_number(
     chain_value: String,
     network_value: String,
 ) -> Option<NetworkState> {
-    use crate::schema::network_state::dsl::*;
-    let results = network_state
+    use crate::schema::network_states::dsl::*;
+    let results = network_states
         .filter(chain.eq(chain_value))
         .filter(network.eq(network_value))
         .limit(1)

@@ -4,7 +4,7 @@ use crate::schema::*;
 use massbit::prelude::Entity;
 
 #[derive(Debug, Clone, Insertable, Queryable)]
-#[table_name = "network_state"]
+#[table_name = "network_states"]
 pub struct NetworkState {
     pub id: i64,
     pub chain: String,

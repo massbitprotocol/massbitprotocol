@@ -26,12 +26,12 @@ mod deployment;
 mod deployment_store;
 mod detail;
 mod dynds;
+pub mod helper;
 mod indexer_store;
 mod primary;
-mod relational;
+pub mod relational;
 mod relational_queries;
 mod sql_value;
-
 pub use self::indexer_store::{IndexerStore, Shard, PRIMARY_SHARD};
 
 /// This module is only meant to support command line tooling. It must not
