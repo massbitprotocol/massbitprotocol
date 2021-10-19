@@ -1,4 +1,4 @@
-create table ethereum_block
+create table ethereum_blocks
 (
     block_hash          text constraint ethereum_block_pk primary key,
     block_number        bigint,
@@ -14,7 +14,7 @@ create table ethereum_block
     extra_data          bytea
 );
 
-create table ethereum_transaction
+create table ethereum_transactions
 (
     transaction_hash    text primary key ,
     block_hash          text,
@@ -29,33 +29,33 @@ create table ethereum_transaction
 );
 
 create index attr_0_1_ethereum_transaction_block_hash
-    on ethereum_transaction ("left"(block_hash, 256));
+    on ethereum_transactions ("left"(block_hash, 256));
 
 create index attr_0_2_ethereum_transaction_block_number
-    on ethereum_transaction (block_number);
+    on ethereum_transactions (block_number);
 
 create index attr_0_3_ethereum_transaction_nonce
-    on ethereum_transaction (nonce);
+    on ethereum_transactions (nonce);
 
 create index attr_0_4_ethereum_transaction_sender
-    on ethereum_transaction ("left"(sender, 256));
+    on ethereum_transactions ("left"(sender, 256));
 
 create index attr_0_5_ethereum_transaction_receiver
-    on ethereum_transaction ("left"(receiver, 256));
+    on ethereum_transactions ("left"(receiver, 256));
 
 create index attr_0_6_ethereum_transaction_value
-    on ethereum_transaction (value);
+    on ethereum_transactions (value);
 
 create index attr_0_7_ethereum_transaction_gas_limit
-    on ethereum_transaction (gas_limit);
+    on ethereum_transactions (gas_limit);
 
 create index attr_0_8_ethereum_transaction_gas_price
-    on ethereum_transaction (gas_price);
+    on ethereum_transactions (gas_price);
 
 create index attr_0_10_ethereum_transaction_timestamp
-    on ethereum_transaction (timestamp);
+    on ethereum_transactions (timestamp);
 
-create table ethereum_daily_transaction
+create table ethereum_daily_transactions
 (
     id integer generated always as identity
         constraint daily_transaction_pkey
@@ -70,7 +70,7 @@ create table ethereum_daily_transaction
         unique (transaction_date, network)
 );
 
-create table ethereum_daily_address_transaction
+create table ethereum_daily_address_transactions
 (
     id integer generated always as identity
         constraint daily_address_transaction_pkey
@@ -91,26 +91,26 @@ CREATE OR REPLACE FUNCTION insert_ethereum_transaction()
   AS
 $$
 BEGIN
-INSERT INTO ethereum_daily_transaction(network, transaction_date, transaction_count, transaction_volume, gas, average_gas_price)
+INSERT INTO ethereum_daily_transactions(network, transaction_date, transaction_count, transaction_volume, gas, average_gas_price)
 VALUES('matic', to_timestamp(NEW.timestamp)::date, 1, NEW.value, NEW.gas_limit, NEW.gas_price)
     ON CONFLICT (transaction_date, network) DO
-UPDATE SET transaction_count = ethereum_daily_transaction.transaction_count + EXCLUDED.transaction_count,
-    transaction_volume = ethereum_daily_transaction.transaction_volume + EXCLUDED.transaction_volume,
-    gas = ethereum_daily_transaction.gas + EXCLUDED.gas,
-    average_gas_price = (ethereum_daily_transaction.average_gas_price * ethereum_daily_transaction.transaction_count + EXCLUDED.average_gas_price)
-    / (ethereum_daily_transaction.transaction_count + 1);
-INSERT INTO ethereum_daily_address_transaction(address, transaction_date, transaction_count, transaction_volume, gas)
+UPDATE SET transaction_count = ethereum_daily_transactions.transaction_count + EXCLUDED.transaction_count,
+    transaction_volume = ethereum_daily_transactions.transaction_volume + EXCLUDED.transaction_volume,
+    gas = ethereum_daily_transactions.gas + EXCLUDED.gas,
+    average_gas_price = (ethereum_daily_transactions.average_gas_price * ethereum_daily_transactions.transaction_count + EXCLUDED.average_gas_price)
+    / (ethereum_daily_transactions.transaction_count + 1);
+INSERT INTO ethereum_daily_address_transactions(address, transaction_date, transaction_count, transaction_volume, gas)
 VALUES(NEW.sender, to_timestamp(NEW.timestamp)::date, 1, NEW.value, NEW.gas_limit)
     ON CONFLICT (address, transaction_date) DO
-UPDATE SET transaction_count = ethereum_daily_address_transaction.transaction_count + EXCLUDED.transaction_count,
-    transaction_volume = ethereum_daily_address_transaction.transaction_volume + EXCLUDED.transaction_volume,
-    gas = ethereum_daily_address_transaction.gas + EXCLUDED.gas;
+UPDATE SET transaction_count = ethereum_daily_address_transactions.transaction_count + EXCLUDED.transaction_count,
+    transaction_volume = ethereum_daily_address_transactions.transaction_volume + EXCLUDED.transaction_volume,
+    gas = ethereum_daily_address_transactions.gas + EXCLUDED.gas;
 RETURN NEW;
 END;
 $$;
 
 create trigger insert_ethereum_transaction
     after insert
-    on ethereum_transaction
+    on ethereum_transactions
     for each row
     execute procedure insert_ethereum_transaction();

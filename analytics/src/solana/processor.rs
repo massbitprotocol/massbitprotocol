@@ -1,7 +1,7 @@
 use super::CHAIN;
 use crate::get_block_number;
 use crate::postgres_adapter::PostgresAdapter;
-use crate::schema::network_state;
+use crate::schema::network_states;
 use crate::solana::handler::create_solana_handler_manager;
 use crate::solana::model::EncodedConfirmedBlockWithSlot;
 use core::ops::Deref;
@@ -57,15 +57,15 @@ pub async fn process_solana_channel(
             if *last_block < block_slot {
                 *last_block = block_slot;
                 if let Ok(conn) = storage_adapter.get_connection() {
-                    match diesel::insert_into(network_state::table)
+                    match diesel::insert_into(network_states::table)
                         .values((
-                            network_state::chain.eq(CHAIN.clone()),
-                            network_state::network.eq(network_name.unwrap_or_default()),
-                            network_state::got_block.eq(block_slot as i64),
+                            network_states::chain.eq(CHAIN.clone()),
+                            network_states::network.eq(network_name.unwrap_or_default()),
+                            network_states::got_block.eq(block_slot as i64),
                         ))
-                        .on_conflict((network_state::chain, network_state::network))
+                        .on_conflict((network_states::chain, network_states::network))
                         .do_update()
-                        .set(network_state::got_block.eq(excluded(network_state::got_block)))
+                        .set(network_states::got_block.eq(excluded(network_states::got_block)))
                         .execute(conn.deref())
                     {
                         Ok(_) => {}

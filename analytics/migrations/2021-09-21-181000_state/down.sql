@@ -1,1 +1,1 @@
-drop table if exists network_state;
+drop table if exists network_states;

@@ -1,5 +1,5 @@
 table! {
-    ethereum_block (block_hash) {
+    ethereum_blocks (block_hash) {
         block_hash -> Text,
         block_number -> Nullable<Int8>,
         transaction_number -> Nullable<Int8>,
@@ -16,7 +16,7 @@ table! {
 }
 
 table! {
-    ethereum_daily_address_transaction (id) {
+    ethereum_daily_address_transactions (id) {
         id -> Int4,
         address -> Nullable<Text>,
         transaction_date -> Date,
@@ -27,7 +27,7 @@ table! {
 }
 
 table! {
-    ethereum_daily_transaction (id) {
+    ethereum_daily_transactions (id) {
         id -> Int4,
         network -> Varchar,
         transaction_date -> Date,
@@ -39,7 +39,7 @@ table! {
 }
 
 table! {
-    ethereum_transaction (transaction_hash) {
+    ethereum_transactions (transaction_hash) {
         transaction_hash -> Text,
         block_hash -> Nullable<Text>,
         block_number -> Nullable<Int8>,
@@ -54,7 +54,7 @@ table! {
 }
 
 table! {
-    network_state (id) {
+    network_states (id) {
         id -> Int8,
         chain -> Text,
         network -> Text,
@@ -63,9 +63,9 @@ table! {
 }
 
 allow_tables_to_appear_in_same_query!(
-    ethereum_block,
-    ethereum_daily_address_transaction,
-    ethereum_daily_transaction,
-    ethereum_transaction,
-    network_state,
+    ethereum_blocks,
+    ethereum_daily_address_transactions,
+    ethereum_daily_transactions,
+    ethereum_transactions,
+    network_states,
 );

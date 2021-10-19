@@ -84,17 +84,18 @@ pub async fn process_ethereum_stream(
                                 };
                             });
 
-                            match diesel::insert_into(network_state::table)
+                            match diesel::insert_into(network_states::table)
                                 .values((
-                                    network_state::chain.eq(CHAIN.clone()),
-                                    network_state::network
+                                    network_states::chain.eq(CHAIN.clone()),
+                                    network_states::network
                                         .eq(network.clone().unwrap_or(DEFAULT_NETWORK.to_string())),
-                                    network_state::got_block.eq(block_number.clone()),
+                                    network_states::got_block.eq(block_number.clone()),
                                 ))
-                                .on_conflict((network_state::chain, network_state::network))
+                                .on_conflict((network_states::chain, network_states::network))
                                 .do_update()
                                 .set(
-                                    network_state::got_block.eq(excluded(network_state::got_block)),
+                                    network_states::got_block
+                                        .eq(excluded(network_states::got_block)),
                                 )
                                 .execute(&conn)
                             {

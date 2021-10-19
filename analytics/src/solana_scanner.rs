@@ -18,7 +18,6 @@ use analytics::solana::SOLANA_WS;
 
 embed_migrations!("./migrations");
 const QUEUE_BUFFER: usize = 1024;
-const DEFAULT_NETWORK: &str = "mainnet";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {

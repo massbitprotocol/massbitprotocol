@@ -4,8 +4,8 @@ pub mod model;
 pub mod processor;
 pub mod reader;
 
-use crate::postgres_adapter::{create_r2d2_connection_pool, PostgresAdapter};
-use crate::schema::network_state;
+use crate::postgres_adapter::PostgresAdapter;
+use crate::schema::network_states;
 use crate::solana::handler::create_solana_handler_manager;
 use crate::{
     establish_connection, get_block_number, try_create_stream, DEFAULT_DATABASE_URL,
