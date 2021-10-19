@@ -6,7 +6,7 @@ use crate::{create_columns, create_entity};
 use massbit::prelude::{Attribute, Entity, Value};
 use massbit_chain_solana::data_type::SolanaBlock;
 use massbit_common::NetworkType;
-use solana_transaction_status::RewardType;
+use solana_transaction_status::{ConfirmedBlock, EncodedConfirmedBlock, RewardType};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -25,7 +25,11 @@ impl SolanaStatBlockHandler {
 }
 
 impl SolanaHandler for SolanaStatBlockHandler {
-    fn handle_block(&self, block_slot: u64, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
+    fn handle_block(
+        &self,
+        block_slot: u64,
+        block: Arc<EncodedConfirmedBlock>,
+    ) -> Result<(), anyhow::Error> {
         let table = create_table();
         let network = match &self.network {
             None => "",
@@ -68,15 +72,19 @@ fn create_table<'a>() -> Table<'a> {
     );
     Table::new("solana_daily_stat_block", columns, Some("t"))
 }
-fn create_stat_block_entity(network: &str, block_slot: u64, block: Arc<SolanaBlock>) -> Entity {
+fn create_stat_block_entity(
+    network: &str,
+    block_slot: u64,
+    block: Arc<EncodedConfirmedBlock>,
+) -> Entity {
     //Make timestamp as multiple of a day's seconds
-    let block_time = match block.block.block_time {
+    let block_time = match block.block_time {
         None => 0_u64,
         Some(val) => val as u64,
     };
     let date = block_time / 86400 * 86400;
     let mut reward_val = 0_u64;
-    for reward in &block.block.rewards {
+    for reward in &block.rewards {
         if Some(RewardType::Fee) == reward.reward_type {
             reward_val = reward.lamports as u64;
             break;
@@ -85,7 +93,6 @@ fn create_stat_block_entity(network: &str, block_slot: u64, block: Arc<SolanaBlo
     //Sum success transactions' fee and count success transaction
 
     let success_trans = block
-        .block
         .transactions
         .iter()
         .filter_map(|tran| {
@@ -108,7 +115,7 @@ fn create_stat_block_entity(network: &str, block_slot: u64, block: Arc<SolanaBlo
         "min_block_slot" => block_slot,
         "max_block_slot" => block_slot,
         "block_counter" => 1_u64,
-        "total_tx" => block.block.transactions.len() as u64,
+        "total_tx" => block.transactions.len() as u64,
         "success_tx" => counter,
         "total_reward" => reward_val,
         "total_fee" => total_fee,

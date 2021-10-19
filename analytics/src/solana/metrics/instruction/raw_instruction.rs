@@ -7,8 +7,11 @@ use massbit::prelude::{Attribute, Entity, Value};
 use massbit_chain_solana::data_type::Pubkey;
 use massbit_common::prelude::bs58;
 use solana_sdk::instruction::CompiledInstruction;
+use solana_sdk::transaction::Transaction;
 use solana_transaction_status::parse_instruction::{ParsableProgram, ParsedInstruction};
-use solana_transaction_status::{ConfirmedBlock, TransactionWithStatusMeta};
+use solana_transaction_status::{
+    ConfirmedBlock, EncodedTransactionWithStatusMeta, TransactionWithStatusMeta,
+};
 use std::collections::HashMap;
 
 pub fn create_unparsed_instruction_table<'a>() -> Table<'a> {
@@ -31,13 +34,12 @@ pub fn create_unparsed_instruction(
     block_time: u64,
     inst_index: i32,
     program_name: String,
-    trans: &TransactionWithStatusMeta,
+    trans: &Transaction,
     inst: &CompiledInstruction,
 ) -> Entity {
     let mut accounts = Vec::default();
     let mut work = |unique_ind: usize, acc_ind: usize| {
         match trans
-            .transaction
             .message
             .account_keys
             .get(acc_ind)
