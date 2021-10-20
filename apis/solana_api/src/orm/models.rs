@@ -248,7 +248,7 @@ pub struct SolanaTokenBalance {
     pub post_amount: Option<i64>,
 }
 
-#[derive(Queryable, Debug, Identifiable)]
+#[derive(Queryable, Debug, Identifiable, Serialize, Deserialize)]
 #[primary_key(signatures)]
 pub struct SolanaTransaction {
     pub block_slot: Option<i64>,

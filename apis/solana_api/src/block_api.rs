@@ -19,7 +19,7 @@ pub trait RpcBlocks {
     #[rpc(name = "block/lasts")]
     fn get_last_blocks(&self, limit: i64) -> JsonRpcResult<String>;
     #[rpc(name = "block/detail_db")]
-    fn get_dbblock_detail(&self, block_slot: Slot) -> JsonRpcResult<String>;
+    fn get_dbblock_detail(&self, block_slot: i64) -> JsonRpcResult<String>;
     #[rpc(name = "block/detail_net")]
     fn get_netblock_detail(&self, block_slot: Slot) -> JsonRpcResult<String>;
 }
@@ -67,7 +67,7 @@ impl RpcBlocks for RpcBlocksImpl {
         })
     }
 
-    fn get_dbblock_detail(&self, block_slot: Slot) -> jsonrpc_core::Result<String> {
+    fn get_dbblock_detail(&self, block_slot: i64) -> jsonrpc_core::Result<String> {
         log::info!("Get detail of block {}", block_slot);
         let start = Instant::now();
 
@@ -76,7 +76,7 @@ impl RpcBlocks for RpcBlocksImpl {
             .map_err(|_err| jsonrpc_core::Error::internal_error())
             .and_then(|conn| {
                 dsl::solana_blocks
-                    .filter(dsl::block_slot.eq(block_slot as i64))
+                    .filter(dsl::block_slot.eq(block_slot))
                     .first::<SolanaBlock>(conn.deref())
                     .map_err(|err| {
                         log::error!("{:?}", &err);

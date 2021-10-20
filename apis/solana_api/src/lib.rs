@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate diesel;
 pub mod block_api;
+pub mod helper;
 pub mod orm;
 pub mod rpc_handler;
 pub mod transaction_api;
