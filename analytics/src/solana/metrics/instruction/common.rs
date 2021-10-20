@@ -1,4 +1,5 @@
 use crate::relational::Table;
+use crate::solana::metrics::instruction::spltoken_instruction::create_spltoken_inst_table;
 use crate::solana::metrics::instruction::system_instruction::create_system_inst_table;
 use core::str::FromStr;
 use lazy_static::lazy_static;
@@ -64,6 +65,7 @@ impl InstructionKey {
         let program_key = Pubkey::from_str(self.program_id.as_str()).unwrap();
         match PARSABLE_PROGRAM_IDS.get(&program_key) {
             Some(ParsableProgram::System) => create_system_inst_table(self.inst_type.as_str()),
+            Some(ParsableProgram::SplToken) => create_spltoken_inst_table(self.inst_type.as_str()),
             Some(ParsableProgram::Vote) => None,
             _ => None,
         }

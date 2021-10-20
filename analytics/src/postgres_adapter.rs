@@ -1,23 +1,34 @@
 use crate::storage_adapter::StorageAdapter;
 use diesel::PgConnection;
-use massbit_common::prelude::diesel::r2d2::{ConnectionManager, Pool};
+use massbit_common::prelude::diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
 use massbit_common::prelude::diesel::{r2d2, Connection, RunQueryDsl};
+use massbit_store_postgres::helper::create_r2d2_connection_pool;
 use std::cmp;
 
 use crate::models::CommandData;
 use crate::postgres_queries::{UpsertConflictFragment, UpsertQuery};
 use crate::relational::Table;
+use crate::MAX_POOL_SIZE;
 use core::ops::Deref;
+use massbit::data::store::Value;
 use massbit::prelude::Entity;
+use massbit_common::prelude::r2d2::Error;
+use std::collections::HashMap;
 use std::time::Instant;
-
-const MAX_POOL_SIZE: u32 = 10;
 
 pub struct PostgresAdapter {
     pool: Pool<ConnectionManager<PgConnection>>,
 }
 
 impl StorageAdapter for PostgresAdapter {
+    fn insert(
+        &self,
+        _table_name: &str,
+        _value: HashMap<&str, Value>,
+    ) -> Result<(), massbit::prelude::Error> {
+        todo!()
+    }
+
     fn upsert(
         &self,
         table: &Table,
@@ -93,6 +104,13 @@ impl StorageAdapter for PostgresAdapter {
     }
 }
 
+impl PostgresAdapter {
+    pub fn get_connection(
+        &self,
+    ) -> Result<PooledConnection<ConnectionManager<PgConnection>>, Error> {
+        self.pool.get()
+    }
+}
 #[derive(Default)]
 pub struct PostgresAdapterBuilder {
     url: Option<String>,
@@ -121,15 +139,4 @@ impl PostgresAdapterBuilder {
             create_r2d2_connection_pool::<PgConnection>(self.url.unwrap().as_str(), pool_size);
         PostgresAdapter { pool: conn_pool }
     }
-}
-
-pub fn create_r2d2_connection_pool<T: 'static + Connection>(
-    db_url: &str,
-    pool_size: u32,
-) -> r2d2::Pool<ConnectionManager<T>> {
-    let manager = ConnectionManager::<T>::new(db_url);
-    r2d2::Pool::builder()
-        .max_size(pool_size)
-        .build(manager)
-        .expect("Can not create connection pool")
 }

@@ -40,7 +40,7 @@ pub async fn process_ethereum_stream(
     client: &mut StreamClient<Timeout<Channel>>,
     storage_adapter: Arc<PostgresAdapter>,
     network: Option<NetworkType>,
-    block: i64,
+    block: Option<u64>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     let handler_manager = Arc::new(create_ethereum_handler_manager(&network, storage_adapter));
     //Todo: remove this simple connection
@@ -50,23 +50,15 @@ pub async fn process_ethereum_stream(
         CHAIN.clone(),
         network.clone().unwrap_or(String::from(DEFAULT_NETWORK)),
     );
-    let start_block = match current_state {
-        None => {
-            if block > 0 {
-                block
-            } else {
-                START_ETHEREUM_BLOCK
-            }
-        }
-        Some(state) => state.got_block + 1,
-    };
+    let start_block = current_state
+        .and_then(|state| Some(state.got_block as u64 + 1))
+        .or(block);
     let mut opt_stream: Option<Streaming<BlockResponse>> = None;
     loop {
         match opt_stream {
             None => {
                 opt_stream =
-                    try_create_stream(client, ChainType::Ethereum, start_block.clone(), &network)
-                        .await;
+                    try_create_stream(client, ChainType::Ethereum, start_block, &network).await;
                 if opt_stream.is_none() {
                     //Sleep for a while and reconnect
                     sleep(Duration::from_secs(GET_STREAM_TIMEOUT_SEC)).await;
@@ -92,17 +84,18 @@ pub async fn process_ethereum_stream(
                                 };
                             });
 
-                            match diesel::insert_into(network_state::table)
+                            match diesel::insert_into(network_states::table)
                                 .values((
-                                    network_state::chain.eq(CHAIN.clone()),
-                                    network_state::network
+                                    network_states::chain.eq(CHAIN.clone()),
+                                    network_states::network
                                         .eq(network.clone().unwrap_or(DEFAULT_NETWORK.to_string())),
-                                    network_state::got_block.eq(block_number.clone()),
+                                    network_states::got_block.eq(block_number.clone()),
                                 ))
-                                .on_conflict((network_state::chain, network_state::network))
+                                .on_conflict((network_states::chain, network_states::network))
                                 .do_update()
                                 .set(
-                                    network_state::got_block.eq(excluded(network_state::got_block)),
+                                    network_states::got_block
+                                        .eq(excluded(network_states::got_block)),
                                 )
                                 .execute(&conn)
                             {

@@ -127,7 +127,7 @@ fn process_swap_instruction(
         }
         SwapInstruction::WithdrawOne(with_draw_one) => {
             let with_draw_one_entity =
-                create_withdrawone_entity(block, tran, tx_ind, inst, inst_ind, with_draw_one);
+                create_withdraw_one_entity(block, tran, tx_ind, inst, inst_ind, with_draw_one);
             with_draw_one_entity.save();
         }
     }
@@ -475,6 +475,29 @@ fn create_withdraw_entity(
         .get(0)
         .and_then(|sig| Some(sig.to_string()))
         .unwrap_or_default();
+    let token_a = tran.transaction.message.account_keys.get(
+        inst.accounts
+            .get(7)
+            .and_then(|ind| Some(*ind as usize))
+            .unwrap(),
+    );
+    let token_b = tran.transaction.message.account_keys.get(
+        inst.accounts
+            .get(8)
+            .and_then(|ind| Some(*ind as usize))
+            .unwrap(),
+    );
+    let token_a_info = token_a.and_then(|key| get_account_info(key));
+    let token_b_info = token_b.and_then(|key| get_account_info(key));
+    let token_a_mint_account = token_a_info
+        .and_then(|info| Some(info.0.to_string()))
+        .unwrap_or_default();
+    let owner_account = token_a_info
+        .and_then(|info| Some(info.1.to_string()))
+        .unwrap_or_default();
+    let token_b_mint_account = token_b_info
+        .and_then(|info| Some(info.0.to_string()))
+        .unwrap_or_default();
     SaberWithdraw {
         block_slot: block.parent_slot as i64 + 1,
         parent_slot: block.parent_slot as i64,
@@ -482,7 +505,7 @@ fn create_withdraw_entity(
         tx_hash,
         instruction_index: inst_ind as i64,
         block_time: block.block_time.unwrap_or_default(),
-        owner_account: "".to_string(),
+        owner_account,
         id: tran
             .transaction
             .message
@@ -495,7 +518,7 @@ fn create_withdraw_entity(
             )
             .and_then(|key| Some(key.to_string()))
             .unwrap_or_default(),
-        authority: tran
+        base_authority: tran
             .transaction
             .message
             .account_keys
@@ -507,7 +530,7 @@ fn create_withdraw_entity(
             )
             .and_then(|key| Some(key.to_string()))
             .unwrap_or_default(),
-        mint_pool: tran
+        owner_authority: tran
             .transaction
             .message
             .account_keys
@@ -519,7 +542,7 @@ fn create_withdraw_entity(
             )
             .and_then(|key| Some(key.to_string()))
             .unwrap_or_default(),
-        source_pool: tran
+        pool_mint: tran
             .transaction
             .message
             .account_keys
@@ -531,7 +554,7 @@ fn create_withdraw_entity(
             )
             .and_then(|key| Some(key.to_string()))
             .unwrap_or_default(),
-        token_a_swap: tran
+        pool_account: tran
             .transaction
             .message
             .account_keys
@@ -543,7 +566,7 @@ fn create_withdraw_entity(
             )
             .and_then(|key| Some(key.to_string()))
             .unwrap_or_default(),
-        token_b_swap: tran
+        token_a_swap: tran
             .transaction
             .message
             .account_keys
@@ -555,7 +578,7 @@ fn create_withdraw_entity(
             )
             .and_then(|key| Some(key.to_string()))
             .unwrap_or_default(),
-        token_a_user: tran
+        token_b_swap: tran
             .transaction
             .message
             .account_keys
@@ -567,31 +590,15 @@ fn create_withdraw_entity(
             )
             .and_then(|key| Some(key.to_string()))
             .unwrap_or_default(),
-        token_b_user: tran
-            .transaction
-            .message
-            .account_keys
-            .get(
-                inst.accounts
-                    .get(7)
-                    .and_then(|ind| Some(*ind as usize))
-                    .unwrap(),
-            )
+        token_a_user: token_a
             .and_then(|key| Some(key.to_string()))
             .unwrap_or_default(),
+        token_b_user: token_b
+            .and_then(|key| Some(key.to_string()))
+            .unwrap_or_default(),
+        token_a_mint_account,
+        token_b_mint_account,
         admin_fee_a_account: tran
-            .transaction
-            .message
-            .account_keys
-            .get(
-                inst.accounts
-                    .get(8)
-                    .and_then(|ind| Some(*ind as usize))
-                    .unwrap(),
-            )
-            .and_then(|key| Some(key.to_string()))
-            .unwrap_or_default(),
-        admin_fee_b_account: tran
             .transaction
             .message
             .account_keys
@@ -603,7 +610,7 @@ fn create_withdraw_entity(
             )
             .and_then(|key| Some(key.to_string()))
             .unwrap_or_default(),
-        program_id: tran
+        admin_fee_b_account: tran
             .transaction
             .message
             .account_keys
@@ -615,12 +622,24 @@ fn create_withdraw_entity(
             )
             .and_then(|key| Some(key.to_string()))
             .unwrap_or_default(),
+        program_id: tran
+            .transaction
+            .message
+            .account_keys
+            .get(
+                inst.accounts
+                    .get(11)
+                    .and_then(|ind| Some(*ind as usize))
+                    .unwrap(),
+            )
+            .and_then(|key| Some(key.to_string()))
+            .unwrap_or_default(),
         pool_token_amount: withdraw.pool_token_amount as i64,
         minimum_token_a_amount: withdraw.minimum_token_a_amount as i64,
         minimum_token_b_amount: withdraw.minimum_token_b_amount as i64,
     }
 }
-fn create_withdrawone_entity(
+fn create_withdraw_one_entity(
     block: &ConfirmedBlock,
     tran: &TransactionWithStatusMeta,
     tx_ind: usize,
@@ -634,6 +653,19 @@ fn create_withdrawone_entity(
         .get(0)
         .and_then(|sig| Some(sig.to_string()))
         .unwrap_or_default();
+    let user_account = tran.transaction.message.account_keys.get(
+        inst.accounts
+            .get(7)
+            .and_then(|ind| Some(*ind as usize))
+            .unwrap(),
+    );
+    let user_account_info = user_account.and_then(|key| get_account_info(key));
+    let owner_account = user_account_info
+        .and_then(|info| Some(info.1.to_string()))
+        .unwrap_or_default();
+    let user_mint_account = user_account_info
+        .and_then(|info| Some(info.0.to_string()))
+        .unwrap_or_default();
     SaberWithdrawOne {
         block_slot: block.parent_slot as i64 + 1,
         parent_slot: block.parent_slot as i64,
@@ -641,7 +673,7 @@ fn create_withdrawone_entity(
         tx_hash,
         instruction_index: inst_ind as i64,
         block_time: block.block_time.unwrap_or_default(),
-        owner_account: "".to_string(),
+        owner_account,
         id: tran
             .transaction
             .message
@@ -654,7 +686,7 @@ fn create_withdrawone_entity(
             )
             .and_then(|key| Some(key.to_string()))
             .unwrap_or_default(),
-        authority: tran
+        swap_authority: tran
             .transaction
             .message
             .account_keys
@@ -666,7 +698,7 @@ fn create_withdrawone_entity(
             )
             .and_then(|key| Some(key.to_string()))
             .unwrap_or_default(),
-        mint_pool: tran
+        pool_authority: tran
             .transaction
             .message
             .account_keys
@@ -678,7 +710,7 @@ fn create_withdrawone_entity(
             )
             .and_then(|key| Some(key.to_string()))
             .unwrap_or_default(),
-        source_pool: tran
+        pool_mint: tran
             .transaction
             .message
             .account_keys
@@ -690,7 +722,7 @@ fn create_withdrawone_entity(
             )
             .and_then(|key| Some(key.to_string()))
             .unwrap_or_default(),
-        base_token_from: tran
+        pool_account: tran
             .transaction
             .message
             .account_keys
@@ -702,7 +734,7 @@ fn create_withdrawone_entity(
             )
             .and_then(|key| Some(key.to_string()))
             .unwrap_or_default(),
-        quote_token: tran
+        swap_base_account: tran
             .transaction
             .message
             .account_keys
@@ -714,7 +746,7 @@ fn create_withdrawone_entity(
             )
             .and_then(|key| Some(key.to_string()))
             .unwrap_or_default(),
-        base_token_to: tran
+        swap_quote_account: tran
             .transaction
             .message
             .account_keys
@@ -726,19 +758,11 @@ fn create_withdrawone_entity(
             )
             .and_then(|key| Some(key.to_string()))
             .unwrap_or_default(),
-        admin_fee_account: tran
-            .transaction
-            .message
-            .account_keys
-            .get(
-                inst.accounts
-                    .get(7)
-                    .and_then(|ind| Some(*ind as usize))
-                    .unwrap(),
-            )
+        user_account: user_account
             .and_then(|key| Some(key.to_string()))
             .unwrap_or_default(),
-        program_id: tran
+        user_mint_account,
+        admin_fee_account: tran
             .transaction
             .message
             .account_keys
@@ -750,13 +774,25 @@ fn create_withdrawone_entity(
             )
             .and_then(|key| Some(key.to_string()))
             .unwrap_or_default(),
-        clock_sysvar: tran
+        program_id: tran
             .transaction
             .message
             .account_keys
             .get(
                 inst.accounts
                     .get(9)
+                    .and_then(|ind| Some(*ind as usize))
+                    .unwrap(),
+            )
+            .and_then(|key| Some(key.to_string()))
+            .unwrap_or_default(),
+        clock_sysvar: tran
+            .transaction
+            .message
+            .account_keys
+            .get(
+                inst.accounts
+                    .get(10)
                     .and_then(|ind| Some(*ind as usize))
                     .unwrap(),
             )

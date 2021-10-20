@@ -4,12 +4,16 @@ use crate::relational::{Column, ColumnType, Table};
 use crate::solana::handler::SolanaHandler;
 use crate::storage_adapter::StorageAdapter;
 use crate::{create_columns, create_entity};
-use massbit::prelude::{Attribute, Entity, Value};
+use massbit::prelude::{Attribute, Entity, Error, Value};
 use massbit_chain_solana::data_type::SolanaBlock;
 use massbit_common::NetworkType;
-use solana_transaction_status::{ConfirmedBlock, TransactionWithStatusMeta};
+use solana_sdk::transaction::Transaction;
+use solana_transaction_status::{
+    ConfirmedBlock, EncodedConfirmedBlock, TransactionWithStatusMeta, UiTransactionStatusMeta,
+};
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Instant;
 
 pub struct SolanaRawTransactionHandler {
     pub network: Option<NetworkType>,
@@ -26,33 +30,52 @@ impl SolanaRawTransactionHandler {
 }
 
 impl SolanaHandler for SolanaRawTransactionHandler {
-    fn handle_block(&self, block: Arc<SolanaBlock>) -> Result<(), anyhow::Error> {
+    fn handle_block(
+        &self,
+        block_slot: u64,
+        block: Arc<EncodedConfirmedBlock>,
+    ) -> Result<(), Error> {
         let tran_table = create_trans_table();
         let acc_tran_table = create_acc_trans_table();
         //maximum rows allowed in a query.
         let max_rows = 65535 / acc_tran_table.columns.len();
         let mut tran_entities = Vec::default();
         let mut vec_entities = Vec::default();
-        for tran in &block.block.transactions {
-            tran_entities.push(create_entity(&block.block, tran));
-            //Create account trans list
-            let tx_hash = tran
-                .transaction
-                .signatures
-                .get(0)
-                .and_then(|sig| Some(sig.to_string()));
-            let entities = create_transaction_account(&tx_hash, tran);
-            if entities.len() > 0 {
-                match vec_entities.last_mut() {
-                    None => vec_entities.push(entities),
-                    Some(last) => {
-                        if last.len() + entities.len() <= max_rows {
-                            last.extend(entities);
-                        } else {
-                            vec_entities.push(entities);
+        let start = Instant::now();
+        for (ind, tran) in block.transactions.iter().enumerate() {
+            let decoded_tran = tran.transaction.decode();
+            if decoded_tran.is_some() {
+                tran_entities.push(create_entity(
+                    block_slot,
+                    block.clone(),
+                    decoded_tran.as_ref().unwrap(),
+                    &tran.meta,
+                    ind as i32,
+                ));
+                //Create account trans list
+                // let tx_hash = tran
+                //     .transaction
+                //     .signatures
+                //     .get(0)
+                //     .and_then(|sig| Some(sig.to_string()));
+                let entities = create_transaction_account(
+                    block_slot,
+                    decoded_tran.as_ref().unwrap(),
+                    &tran.meta,
+                    ind as i32,
+                );
+                if entities.len() > 0 {
+                    match vec_entities.last_mut() {
+                        None => vec_entities.push(entities),
+                        Some(last) => {
+                            if last.len() + entities.len() <= max_rows {
+                                last.extend(entities);
+                            } else {
+                                vec_entities.push(entities);
+                            }
                         }
-                    }
-                };
+                    };
+                }
             }
         }
         let mut vec_commands = vec_entities
@@ -63,6 +86,11 @@ impl SolanaHandler for SolanaRawTransactionHandler {
             let trans_data = CommandData::new(&tran_table, &tran_entities, &None);
             vec_commands.push(trans_data);
         }
+        log::info!(
+            "Parsing {} transactions in {:?}",
+            tran_entities.len(),
+            start.elapsed()
+        );
         if vec_commands.len() > 0 {
             self.storage_adapter.transact_upserts(vec_commands)
         } else {
@@ -72,12 +100,10 @@ impl SolanaHandler for SolanaRawTransactionHandler {
 }
 fn create_trans_table<'a>() -> Table<'a> {
     let columns = create_columns!(
+        "block_slot" => ColumnType::BigInt,
+        "tx_index" => ColumnType::Int,
         "signatures" => ColumnType::String,
-        "block_number" => ColumnType::BigInt,
-        "parent_slot" => ColumnType::BigInt,
-        "block_hash" => ColumnType::String,
         "signers" => ColumnType::String,
-        "block_time" => ColumnType::BigInt,
         "reward" => ColumnType::BigInt,
         "fee" => ColumnType::BigInt,
         "status" => ColumnType::String
@@ -86,14 +112,21 @@ fn create_trans_table<'a>() -> Table<'a> {
 }
 fn create_acc_trans_table<'a>() -> Table<'a> {
     let columns = create_columns!(
-        "tx_hash" => ColumnType::String,
+        "block_slot" => ColumnType::BigInt,
+        "tx_index" => ColumnType::Int,
         "account" => ColumnType::String,
         "pre_balance" => ColumnType::BigInt,
         "post_balance" => ColumnType::BigInt
     );
     Table::new("solana_account_transactions", columns, Some("t"))
 }
-fn create_entity(block: &ConfirmedBlock, tran: &TransactionWithStatusMeta) -> Entity {
+fn create_entity(
+    block_slot: u64,
+    block: Arc<EncodedConfirmedBlock>,
+    tran: &Transaction,
+    tran_meta: &Option<UiTransactionStatusMeta>,
+    ind: i32,
+) -> Entity {
     let timestamp = match block.block_time {
         None => 0_u64,
         Some(val) => val as u64,
@@ -101,33 +134,29 @@ fn create_entity(block: &ConfirmedBlock, tran: &TransactionWithStatusMeta) -> En
     // let signatures = tran.transaction.signatures.iter().map(|sig|{
     //     format!("{:?}", sig)
     // }).collect::<Vec<String>>();
-    let mut tx_hash = String::from("");
-    if let Some(sig) = tran.transaction.signatures.get(0) {
-        tx_hash = format!("{:?}", sig);
-    }
+    let tx_hash = tran.signatures.get(0).and_then(|sig| Some(sig.to_string()));
+
     let mut signers: Vec<String> = Vec::default();
-    for i in 0..tran.transaction.signatures.len() {
-        if let Some(key) = tran.transaction.message.account_keys.get(i) {
+    for i in 0..tran.signatures.len() {
+        if let Some(key) = tran.message.account_keys.get(i) {
             signers.push(format!("{:?}", key));
         }
     }
 
     let mut tran_fee = 0_u64;
     let mut tran_status = String::default();
-    if let Some(meta) = &tran.meta {
+    if let Some(meta) = tran_meta {
         tran_fee = meta.fee;
         tran_status = match meta.status {
-            Ok(_) => "Success".to_string(),
-            Err(_) => "Error".to_string(),
+            Ok(_) => "1".to_string(),
+            Err(_) => "0".to_string(),
         }
     }
     create_entity!(
+        "block_slot" => block_slot,
+        "tx_index" => ind,
         "signatures" => tx_hash,
-        "block_number" => block.block_height,
-        "parent_slot" => block.parent_slot,
-        "block_hash" => block.blockhash.clone(),
         "signers" => signers.join(","),
-        "block_time" => timestamp,
         "status" => tran_status,
         "reward" => 0_u64,
         "fee" => tran_fee
@@ -135,28 +164,28 @@ fn create_entity(block: &ConfirmedBlock, tran: &TransactionWithStatusMeta) -> En
 }
 
 fn create_transaction_account(
-    tx_hash: &Option<String>,
-    tran: &TransactionWithStatusMeta,
+    block_slot: u64,
+    tran: &Transaction,
+    tran_meta: &Option<UiTransactionStatusMeta>,
+    tran_index: i32,
 ) -> Vec<Entity> {
-    let hash = tx_hash.clone().unwrap_or_default();
-    tran.transaction
-        .message
+    //let hash = tx_hash.clone().unwrap_or_default();
+    tran.message
         .account_keys
         .iter()
         .enumerate()
         .map(|(ind, key)| {
-            let pre_balance = tran
-                .meta
+            let pre_balance = tran_meta
                 .as_ref()
                 .and_then(|meta| meta.pre_balances.get(ind))
                 .unwrap_or(&0_u64);
-            let post_balance = tran
-                .meta
+            let post_balance = tran_meta
                 .as_ref()
                 .and_then(|meta| meta.post_balances.get(ind))
                 .unwrap_or(&0_u64);
             create_entity!(
-                "tx_hash" => hash.clone(),
+                "block_slot" => block_slot,
+                "tx_index" => tran_index,
                 "account" => format!("{:?}", key),
                 "pre_balance" => *pre_balance,
                 "post_balance" => *post_balance

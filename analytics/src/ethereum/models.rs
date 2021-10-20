@@ -5,7 +5,7 @@ use massbit::prelude::web3::types::Transaction;
 
 //https://kotiri.com/2018/01/31/postgresql-diesel-rust-types.html
 #[derive(Debug, Clone, Insertable, Queryable)]
-#[table_name = "ethereum_block"]
+#[table_name = "ethereum_blocks"]
 pub struct EthereumBlock {
     pub block_hash: String,
     pub block_number: Option<i64>,
@@ -22,7 +22,7 @@ pub struct EthereumBlock {
 }
 
 #[derive(Debug, Clone, Insertable, Queryable)]
-#[table_name = "ethereum_transaction"]
+#[table_name = "ethereum_transactions"]
 pub struct EthereumTransaction {
     pub transaction_hash: String,
     pub block_hash: Option<String>,

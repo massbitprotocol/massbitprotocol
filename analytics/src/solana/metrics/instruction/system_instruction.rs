@@ -177,13 +177,14 @@ pub fn create_system_inst_table(inst_type: &str) -> Option<Table> {
 }
 
 pub fn create_system_entity(
+    block_slot: u64,
     tx_hash: String,
     block_time: u64,
     inst_order: i32,
     inst: &ParsedInstruction,
 ) -> Option<Entity> {
-    match inst.parsed["type"].as_str() {
-        a @ Some("createAccount") | a @ Some("createAccountWithSeed") => {
+    inst.parsed["type"].as_str().and_then(|inst_type| match inst_type {
+        a @ "createAccount" | a @ "createAccountWithSeed" => {
             let mut entity = create_entity!(
                 "tx_hash" => tx_hash,
                 "block_time" => block_time,
@@ -194,7 +195,7 @@ pub fn create_system_entity(
                 "space" => inst.parsed["info"]["space"].as_u64().unwrap_or_default(),
                 "owner" => inst.parsed["info"]["owner"].as_str().unwrap_or("")
             );
-            if Some("createAccountWithSeed") == a {
+            if "createAccountWithSeed" == a {
                 entity.insert(
                     Attribute::from("base"),
                     Value::from(inst.parsed["info"]["base"].as_str().unwrap_or_default()),
@@ -206,7 +207,7 @@ pub fn create_system_entity(
             }
             Some(entity)
         }
-        a @ Some("assign") | a @ Some("assignWithSeed") => {
+        a @ "assign" | a @ "assignWithSeed" => {
             let mut entity = create_entity!(
                 "tx_hash" => tx_hash,
                 "block_time" => block_time,
@@ -214,7 +215,7 @@ pub fn create_system_entity(
                 "account" => inst.parsed["info"]["account"].as_str().unwrap_or(""),
                 "owner" => inst.parsed["info"]["owner"].as_str().unwrap_or("")
             );
-            if Some("assignWithSeed") == a {
+            if "assignWithSeed" == a {
                 entity.insert(
                     Attribute::from("base"),
                     Value::from(inst.parsed["info"]["base"].as_str().unwrap_or_default()),
@@ -226,7 +227,7 @@ pub fn create_system_entity(
             }
             Some(entity)
         }
-        a @ Some("transfer") | a @ Some("transferWithSeed") => {
+        a @ "transfer" | a @ "transferWithSeed" => {
             let mut entity = create_entity!(
                 "tx_hash" => tx_hash,
                 "block_time" => block_time,
@@ -235,7 +236,7 @@ pub fn create_system_entity(
                 "destination" => inst.parsed["info"]["destination"].as_str().unwrap_or(""),
                 "lamports" => inst.parsed["info"]["lamports"].as_u64().unwrap_or_default()
             );
-            if Some("transferWithSeed") == a {
+            if "transferWithSeed" == a {
                 entity.insert(
                     Attribute::from("source_base"),
                     Value::from(
@@ -263,7 +264,7 @@ pub fn create_system_entity(
             }
             Some(entity)
         }
-        a @ Some("allocate") | a @ Some("allocateWithSeed") => {
+        a @ "allocate" | a @ "allocateWithSeed" => {
             let mut entity = create_entity!(
                 "tx_hash" => tx_hash,
                 "block_time" => block_time,
@@ -271,7 +272,7 @@ pub fn create_system_entity(
                 "account" => inst.parsed["info"]["account"].as_str().unwrap_or(""),
                 "space" => inst.parsed["info"]["space"].as_u64().unwrap_or_default()
             );
-            if Some("allocateWithSeed") == a {
+            if "allocateWithSeed" == a {
                 entity.insert(
                     Attribute::from("base"),
                     Value::from(inst.parsed["info"]["base"].as_str().unwrap_or_default()),
@@ -287,7 +288,7 @@ pub fn create_system_entity(
             }
             Some(entity)
         }
-        Some("advanceNonce") => Some(create_entity!(
+        "advanceNonce" => Some(create_entity!(
             "tx_hash" => tx_hash,
             "block_time" => block_time,
             "inst_order" => inst_order,
@@ -295,7 +296,7 @@ pub fn create_system_entity(
             "recent_block_hashes_sysvar" => inst.parsed["info"]["recentBlockhashesSysvar"].as_str().unwrap_or(""),
             "nonce_authority" => inst.parsed["info"]["nonceAuthority"].as_str().unwrap_or("")
         )),
-        Some("withdrawFromNonce") => Some(create_entity!(
+        "withdrawFromNonce" => Some(create_entity!(
             "tx_hash" => tx_hash,
             "block_time" => block_time,
             "inst_order" => inst_order,
@@ -306,7 +307,7 @@ pub fn create_system_entity(
             "nonce_authority" => inst.parsed["info"]["nonceAuthority"].as_str().unwrap_or(""),
             "lamports" => inst.parsed["info"]["lamports"].as_u64().unwrap_or_default()
         )),
-        Some("initializeNonce") => Some(create_entity!(
+        "initializeNonce" => Some(create_entity!(
             "tx_hash" => tx_hash,
             "block_time" => block_time,
             "inst_order" => inst_order,
@@ -315,7 +316,7 @@ pub fn create_system_entity(
             "rent_sysvar" => inst.parsed["info"]["rentSysvar"].as_str().unwrap_or(""),
             "nonce_authority" => inst.parsed["info"]["nonceAuthority"].as_str().unwrap_or("")
         )),
-        Some("authorizeNonce") => Some(create_entity!(
+        "authorizeNonce" => Some(create_entity!(
             "tx_hash" => tx_hash,
             "block_time" => block_time,
             "inst_order" => inst_order,
@@ -324,5 +325,5 @@ pub fn create_system_entity(
             "new_authorized" => inst.parsed["info"]["newAuthorized"].as_str().unwrap_or("")
         )),
         _ => None,
-    }
+    })
 }

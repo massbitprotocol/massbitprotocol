@@ -32,6 +32,7 @@ use massbit_common::NetworkType;
 
 pub const GET_STREAM_TIMEOUT_SEC: u64 = 60;
 pub const GET_BLOCK_TIMEOUT_SEC: u64 = 600;
+pub const MAX_POOL_SIZE: u32 = 50;
 pub const DEFAULT_DATABASE_URL: &str = "postgres://graph-node:let-me-in@localhost/analytic";
 pub const MAX_POOL_SIZE: u32 = 50;
 
@@ -50,13 +51,13 @@ pub fn establish_connection() -> PgConnection {
 pub async fn try_create_stream(
     client: &mut StreamClient<Timeout<Channel>>,
     chain_type: ChainType,
-    start_block: i64,
+    start_block: Option<u64>,
     network: &Option<NetworkType>,
 ) -> Option<Streaming<BlockResponse>> {
-    log::info!("Create new stream from block {}", start_block);
+    log::info!("Create new stream from block {:?}", start_block);
     let filter = vec![];
     let get_blocks_request = BlocksRequest {
-        start_block_number: Some(start_block as u64),
+        start_block_number: start_block,
         chain_type: chain_type as i32,
         network: network.clone().unwrap_or_default(),
         filter,
@@ -80,8 +81,8 @@ pub fn get_block_number(
     chain_value: String,
     network_value: String,
 ) -> Option<NetworkState> {
-    use crate::schema::network_state::dsl::*;
-    let results = network_state
+    use crate::schema::network_states::dsl::*;
+    let results = network_states
         .filter(chain.eq(chain_value))
         .filter(network.eq(network_value))
         .limit(1)

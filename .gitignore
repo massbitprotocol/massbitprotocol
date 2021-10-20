@@ -44,3 +44,8 @@ report.html
 e2e-test/robot*
 e2e-test/bin*
 *.log
+
+/tests/integration-tests/**/build
+/tests/integration-tests/**/generated
+/tests/integration-tests/**/node_modules
+/tests/integration-tests/**/yarn.lock

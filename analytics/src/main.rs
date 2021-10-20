@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate diesel_migrations;
 use analytics::ethereum::process_ethereum_stream;
-use analytics::solana::process_solana_stream;
 use clap::{App, Arg};
 use diesel_migrations::embed_migrations;
 use lazy_static::lazy_static;
@@ -73,8 +72,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     }
     let chain_type = matches.value_of("chain").unwrap_or("ethereum");
     let network = matches.value_of("network").unwrap_or("matic");
-    let block = matches.value_of("block").unwrap_or("0");
-    let start_block: i64 = block.parse().unwrap_or_default();
+    let block: Option<u64> = matches.value_of("block").and_then(|val| val.parse().ok());
     info!(
         "Start client for chain {} and network {}",
         chain_type, network
@@ -95,17 +93,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
                 };
                 match chain_type {
                     "solana" => {
-                        match process_solana_stream(
-                            &mut client,
-                            storage_adapter.clone(),
-                            network,
-                            start_block.clone(),
-                        )
-                        .await
-                        {
-                            Err(err) => log::error!("{:?}", &err),
-                            Ok(_) => {}
-                        }
+                        // match process_solana_stream(
+                        //     &mut client,
+                        //     storage_adapter.clone(),
+                        //     network,
+                        //     block,
+                        // )
+                        // .await
+                        // {
+                        //     Err(err) => log::error!("{:?}", &err),
+                        //     Ok(_) => {}
+                        // }
                     }
                     "substrate" => {
                         //process_substrate_stream(&mut client).await;
@@ -115,7 +113,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
                             &mut client,
                             storage_adapter.clone(),
                             network,
-                            start_block.clone(),
+                            block,
                         )
                         .await
                         {

@@ -7,38 +7,39 @@ use massbit::prelude::{Attribute, Entity, Value};
 use massbit_chain_solana::data_type::Pubkey;
 use massbit_common::prelude::bs58;
 use solana_sdk::instruction::CompiledInstruction;
+use solana_sdk::transaction::Transaction;
 use solana_transaction_status::parse_instruction::{ParsableProgram, ParsedInstruction};
-use solana_transaction_status::{ConfirmedBlock, TransactionWithStatusMeta};
+use solana_transaction_status::{
+    ConfirmedBlock, EncodedTransactionWithStatusMeta, TransactionWithStatusMeta,
+};
 use std::collections::HashMap;
 
 pub fn create_unparsed_instruction_table<'a>() -> Table<'a> {
     let columns = create_columns!(
-        "block_hash" => ColumnType::String,
-        "tx_hash" => ColumnType::String,
+        "block_slot" => ColumnType::BigInt,
+        "tx_index" => ColumnType::Int,
         "block_time" => ColumnType::BigInt,
         //Index of instruction in transaction
-        "inst_order" => ColumnType::Int,
+        "inst_index" => ColumnType::Int,
         "program_name" => ColumnType::String,
         "accounts" => ColumnType::TextArray,
-        "data" => ColumnType::Bytes,
-        "encoded_data" => ColumnType::String
+        "data" => ColumnType::Bytes
     );
     Table::new("solana_instructions", columns, Some("t"))
 }
 
 pub fn create_unparsed_instruction(
-    block_hash: String,
-    tx_hash: String,
+    block_slot: u64,
+    tx_index: i32,
     block_time: u64,
-    inst_order: i32,
+    inst_index: i32,
     program_name: String,
-    trans: &TransactionWithStatusMeta,
+    trans: &Transaction,
     inst: &CompiledInstruction,
 ) -> Entity {
     let mut accounts = Vec::default();
     let mut work = |unique_ind: usize, acc_ind: usize| {
         match trans
-            .transaction
             .message
             .account_keys
             .get(acc_ind)
@@ -52,14 +53,13 @@ pub fn create_unparsed_instruction(
 
     inst.visit_each_account(&mut work);
     create_entity!(
-        "block_hash" => block_hash,
-        "tx_hash" => tx_hash,
+        "block_slot" => block_slot,
+        "tx_index" => tx_index,
         "block_time" => block_time,
-        "inst_order" => inst_order,
+        "inst_index" => inst_index,
         "program_name" => program_name,
         "accounts" => accounts,
-        "data" => Bytes::from(inst.data.as_slice()),
-        "encoded_data" => bs58::encode(&inst.data).into_string()
+        "data" => Bytes::from(inst.data.as_slice())
     )
 }
 fn create_inner_instructions(
