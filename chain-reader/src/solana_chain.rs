@@ -1,6 +1,8 @@
 use crate::CONFIG;
+use futures::future::err;
 use log::{debug, info, warn};
 use massbit::firehose::bstream::{BlockResponse, ChainType};
+use massbit::prelude::serde_json::{json, Value};
 use massbit::prelude::tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use massbit::prelude::tokio::time::sleep;
 use massbit_chain_solana::data_type::{
@@ -10,11 +12,19 @@ use massbit_chain_solana::data_type::{
 use massbit_common::prelude::tokio::time::{timeout, Duration};
 use massbit_common::NetworkType;
 use solana_client::client_error::{ClientError, ClientErrorKind, Result as ClientResult};
+use solana_client::rpc_client::GetConfirmedSignaturesForAddress2Config;
+use solana_client::rpc_request::RpcRequest;
+use solana_client::rpc_response::RpcConfirmedTransactionStatusWithSignature;
 use solana_client::{pubsub_client::PubsubClient, rpc_client::RpcClient};
 use solana_program::account_info::{Account as _, AccountInfo};
 use solana_sdk::account::Account;
-use solana_transaction_status::{EncodedConfirmedBlock, UiTransactionEncoding};
+use solana_sdk::clock::Slot;
+use solana_sdk::signature::Signature;
+use solana_transaction_status::{
+    EncodedConfirmedBlock, EncodedConfirmedTransaction, UiTransactionEncoding,
+};
 use std::error::Error;
+use std::str::FromStr;
 use std::{sync::Arc, time::Instant};
 use tokio::sync::mpsc;
 use tonic::Status;
@@ -27,6 +37,137 @@ const RPC_BLOCK_ENCODING: UiTransactionEncoding = UiTransactionEncoding::Base64;
 const GET_BLOCK_TIMEOUT_SEC: u64 = 60;
 const BLOCK_BATCH_SIZE: u64 = 10;
 const GET_NEW_SLOT_DELAY_MS: u64 = 500;
+const TRANSACTION_BATCH_SIZE: u32 = 3;
+// The max value is 1000
+const LIMIT_FILTER_RESULT: usize = 1000;
+
+#[derive(Debug)]
+struct ResultFilterTransaction {
+    txs: Vec<RpcConfirmedTransactionStatusWithSignature>,
+    last_tx_signature: Option<Signature>,
+    is_done: bool,
+}
+
+// pub fn sendbatch(client: &Arc<RpcClient>, request: RpcRequest, params: Value) -> ClientResult<T>
+//     where
+//         T: serde::de::DeserializeOwned,
+// {
+//     assert!(params.is_array() || params.is_null());
+//     let sender = client
+//     let response = client
+//         .sender
+//         .send(request, params)
+//         .map_err(|err| err.into_with_request(request))?;
+//     serde_json::from_value(response)
+//         .map_err(|err| ClientError::new_with_request(err.into(), request))
+// }
+
+fn createBatchJsonRequest(method: &str, params: &Vec<String>) -> Vec<Value> {
+    /*
+      [
+    {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "getTransaction",
+      "params": [
+        "5JNE26BL1FGGNdjSFXDmVrVYLv7oayUYNErSE4KqMuDTiX4rSeUC9yFtLFMwpkqFAEQNm22AvUanfd8PXAH4pukm",
+        "json"
+      ]
+    },
+      {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "getTransaction",
+      "params": [
+        "5JNE26BL1FGGNdjSFXDmVrVYLv7oayUYNErSE4KqMuDTiX4rSeUC9yFtLFMwpkqFAEQNm22AvUanfd8PXAH4pukm",
+        "json"
+      ]
+    }
+    ]
+     */
+
+    let rpc_requests: Vec<Value> = vec![];
+    params
+        .into_iter()
+        .map(|param| {
+            json!(format!(
+                "{{\"jsonrpc\": \"2.0\",\"id\": 1,\"method\": \"{}\",\"params\": [\"{}\",\"json\"]}}",
+                method, param
+            ))
+        })
+        .collect()
+}
+
+fn getTransactions(
+    client: &Arc<RpcClient>,
+    mut txs: &Vec<RpcConfirmedTransactionStatusWithSignature>,
+) -> ClientResult<Vec<ClientResult<EncodedConfirmedTransaction>>> {
+    //[
+    //     "5JNE26BL1FGGNdjSFXDmVrVYLv7oayUYNErSE4KqMuDTiX4rSeUC9yFtLFMwpkqFAEQNm22AvUanfd8PXAH4pukm",
+    //     "json"
+    //]
+    let (call_txs, txs) = txs.split_at(TRANSACTION_BATCH_SIZE as usize);
+    let params = call_txs
+        .iter()
+        .map(|tx| {
+            let param_str = json!([tx.signature, "json"]);
+            json!(param_str)
+        })
+        .collect();
+
+    //    let res: ClientResult<Vec<EncodedConfirmedTransaction>> =
+    let res: ClientResult<Vec<ClientResult<EncodedConfirmedTransaction>>> =
+        client.send_batch(RpcRequest::GetTransaction, params);
+    debug!("res: {:?}", res);
+    res
+}
+
+fn getFilterConfirmedTransactionStatus(
+    filter: &SolanaFilter,
+    client: &Arc<RpcClient>,
+    before_tx_signature: &Option<Signature>,
+    first_slot: &Option<Slot>,
+) -> ResultFilterTransaction {
+    let mut txs: Vec<RpcConfirmedTransactionStatusWithSignature> = vec![];
+    let is_done = false;
+    for address in &filter.keys {
+        let config = GetConfirmedSignaturesForAddress2Config {
+            before: before_tx_signature.clone(),
+            until: None,
+            limit: Some(LIMIT_FILTER_RESULT),
+            commitment: None,
+        };
+        let res = client.get_signatures_for_address_with_config(address, config);
+        txs.append(&mut res.unwrap_or(vec![]));
+    }
+
+    // Fixme: Cover the case that multi addresses are in filter, now the logic is correct for filter 1 address only
+    let last_tx_signature = txs
+        .last()
+        .map(|tx| Signature::from_str(&tx.signature).unwrap());
+
+    // last_tx_signature.is_none: when we cannot found any result
+    // txs.last().unwrap().slot < first_slot.unwrap(): when searching is out of range
+    let is_done = last_tx_signature.is_none()
+        || (!first_slot.is_none() && txs.last().unwrap().slot < first_slot.unwrap());
+
+    let mut txs: Vec<RpcConfirmedTransactionStatusWithSignature> = txs
+        .into_iter()
+        .filter(|tx| {
+            // Block is out of range or error
+            if !tx.err.is_none() {
+                debug!("Confirmed Transaction Error: {:?}", tx.err)
+            }
+            (first_slot.is_some() && tx.slot < first_slot.unwrap()) || tx.err.is_none()
+        })
+        .collect();
+
+    ResultFilterTransaction {
+        txs,
+        last_tx_signature,
+        is_done,
+    }
+}
 
 pub async fn loop_get_block(
     chan: mpsc::Sender<Result<BlockResponse, Status>>,
@@ -43,11 +184,50 @@ pub async fn loop_get_block(
     let mut last_indexed_slot: Option<u64> = start_block.map(|start_block| start_block + 1);
     //fix_one_thread_not_receive(&chan);
     let sem = Arc::new(Semaphore::new(2 * BLOCK_BATCH_SIZE as usize));
+
+    let mut before_tx_signature = None;
+
+    let mut filter_txs = vec![];
+    // Backward run
+    loop {
+        let now = Instant::now();
+        let mut res =
+            getFilterConfirmedTransactionStatus(&filter, client, &before_tx_signature, start_block);
+        debug!("res: {:?}", res);
+        before_tx_signature = res.last_tx_signature;
+        filter_txs.append(res.txs.as_mut());
+
+        info!("Time to get filter transactions: {:?}. Got {:?} filtered addresses, last address: {:?}",now.elapsed(), filter_txs.len(),
+        filter_txs.last());
+        // No record in txs
+        if res.is_done {
+            break;
+        }
+    }
+
+    // Forward run
+    while !filter_txs.is_empty() {
+        let transactions = getTransactions(client, &mut filter_txs);
+        match transactions {
+            Ok(transactions) => {
+                for transaction in transactions {
+                    match transaction {
+                        Ok(transaction) => {}
+                        Err(e) => info!("Transaction error: {:?}", e),
+                    }
+                }
+            }
+            Err(e) => {
+                warn!("Call batch transaction error: {:?}", e);
+            }
+        }
+    }
+
+    // Forward run
     loop {
         if chan.is_closed() {
             return Err("Stream is closed!".into());
         }
-        //match receiver.recv() {
         match client.get_slot() {
             Ok(new_slot) => {
                 // Root is finalized block in Solana
@@ -69,6 +249,7 @@ pub async fn loop_get_block(
                             (current_root - value_last_indexed_slot).min(BLOCK_BATCH_SIZE);
                         let block_range =
                             value_last_indexed_slot..(value_last_indexed_slot + number_get_slot);
+
                         for block_slot in block_range {
                             let new_client = client.clone();
                             let permit = Arc::clone(&sem).acquire_owned().await.unwrap();

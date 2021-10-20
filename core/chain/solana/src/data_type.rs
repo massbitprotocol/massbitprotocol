@@ -30,7 +30,7 @@ type Block = solana_transaction_status::ConfirmedBlock;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct SolanaFilter {
-    keys: Vec<Pubkey>,
+    pub keys: Vec<Pubkey>,
 }
 impl SolanaFilter {
     pub fn new(keys: Vec<&str>) -> Self {
@@ -90,6 +90,7 @@ fn to_transaction_token_balance(ui_ttb: &UiTransactionTokenBalance) -> Transacti
         account_index: ui_ttb.account_index.clone(),
         mint: ui_ttb.mint.clone(),
         ui_token_amount: ui_ttb.ui_token_amount.clone(),
+        owner: "".to_string(),
     }
 }
 
