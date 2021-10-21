@@ -108,6 +108,7 @@ dependencies = [
  "env_logger 0.9.0",
  "frame-system",
  "futures 0.1.31",
+ "futures 0.3.17",
  "futures-core",
  "futures-util",
  "hex",
@@ -122,6 +123,7 @@ dependencies = [
  "massbit-chain-solana",
  "massbit-chain-substrate",
  "massbit-common",
+ "massbit-store-postgres",
  "multiqueue",
  "primitive-types 0.6.2",
  "prost 0.7.0",
@@ -130,6 +132,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "solana-account-decoder",
+ "solana-client",
  "solana-program 1.8.0",
  "solana-sdk 1.8.0",
  "solana-transaction-status",
@@ -4444,8 +4447,10 @@ dependencies = [
 name = "massbit-chain-solana"
 version = "0.1.0"
 dependencies = [
+ "arrayref",
  "bs58 0.4.0",
  "env_logger 0.9.0",
+ "lazy_static",
  "log 0.4.14",
  "serde",
  "serde_json",
