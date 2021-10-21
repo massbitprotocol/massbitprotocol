@@ -227,7 +227,9 @@ fn parse_encoded_confirmed_transaction(
         if let UiMessage::Parsed(message) = &transaction.message {
             message.instructions.iter().for_each(|inst| match inst {
                 UiInstruction::Parsed(parsed) => match parsed {
-                    UiParsedInstruction::Parsed(instruction) => {}
+                    UiParsedInstruction::Parsed(instruction) => {
+                        println!("Program {:?}", instruction.program);
+                    }
                     UiParsedInstruction::PartiallyDecoded(instruction) => {
                         println!("{:?}", bs58::decode(&instruction.data).into_vec().unwrap());
                         parse_partially_decoded_instruction(rpc_client.clone(), instruction)
