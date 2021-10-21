@@ -1,6 +1,6 @@
 [store]
 [store.primary]
-connection = "postgresql://postgres:postgres@localhost:5432/massbit"
+connection = "postgresql://graph-node:let-me-in@localhost:5432/graph-node"
 pool_size = 10
 
 [chains.harmony]
