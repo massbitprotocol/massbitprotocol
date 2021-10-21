@@ -1,0 +1,1 @@
+alter table solana_transactions drop column instructions;

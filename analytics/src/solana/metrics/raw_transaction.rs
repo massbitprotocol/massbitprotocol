@@ -104,11 +104,12 @@ fn create_trans_table<'a>() -> Table<'a> {
         "tx_index" => ColumnType::Int,
         "signatures" => ColumnType::String,
         "signers" => ColumnType::String,
+        "instructions" => ColumnType::TextArray,
         "reward" => ColumnType::BigInt,
         "fee" => ColumnType::BigInt,
         "status" => ColumnType::String
     );
-    Table::new("solana_transactions", columns, Some("t"))
+    Table::new("solana_transactions", columns)
 }
 fn create_acc_trans_table<'a>() -> Table<'a> {
     let columns = create_columns!(
@@ -118,7 +119,7 @@ fn create_acc_trans_table<'a>() -> Table<'a> {
         "pre_balance" => ColumnType::BigInt,
         "post_balance" => ColumnType::BigInt
     );
-    Table::new("solana_account_transactions", columns, Some("t"))
+    Table::new("solana_account_transactions", columns)
 }
 fn create_entity(
     block_slot: u64,
@@ -134,6 +135,16 @@ fn create_entity(
     // let signatures = tran.transaction.signatures.iter().map(|sig|{
     //     format!("{:?}", sig)
     // }).collect::<Vec<String>>();
+    let instructions = tran
+        .message
+        .instructions
+        .iter()
+        .map(|inst| {
+            let program_key = inst.program_id(tran.message.account_keys.as_slice());
+            program_key.to_string()
+        })
+        .collect::<Vec<String>>();
+    //println!("{:?}", &instructions);
     let tx_hash = tran.signatures.get(0).and_then(|sig| Some(sig.to_string()));
 
     let mut signers: Vec<String> = Vec::default();
@@ -157,6 +168,7 @@ fn create_entity(
         "tx_index" => ind,
         "signatures" => tx_hash,
         "signers" => signers.join(","),
+        "instructions" => instructions,
         "status" => tran_status,
         "reward" => 0_u64,
         "fee" => tran_fee

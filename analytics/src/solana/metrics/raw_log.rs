@@ -57,7 +57,7 @@ fn create_table<'a>() -> Table<'a> {
         "log_messages" => ColumnType::TextArray,
         "block_time" => ColumnType::BigInt
     );
-    Table::new("solana_logs", columns, Some("t"))
+    Table::new("solana_logs", columns)
 }
 fn create_entity(
     block_slot: u64,

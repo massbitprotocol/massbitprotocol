@@ -44,7 +44,7 @@ lazy_static! {
     pub static ref SOLANA_URL: String = env::var("SOLANA_URL").unwrap_or(String::from("http://194.163.156.242:8899"));
 }
 //const START_SOLANA_BLOCK: i64 = 80_000_000_i64;
-const DEFAULT_NETWORK: &str = "mainnet";
+pub const DEFAULT_NETWORK: &str = "mainnet";
 
 // pub async fn process_solana_stream(
 //     client: &mut StreamClient<Timeout<Channel>>,

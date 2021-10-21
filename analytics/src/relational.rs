@@ -69,11 +69,18 @@ pub struct Table<'a> {
 }
 
 impl<'a> Table<'a> {
-    pub fn new(name: &'a str, columns: Vec<Column>, alias: Option<&'a str>) -> Self {
+    pub fn new_with_alias(name: &'a str, columns: Vec<Column>, alias: Option<&'a str>) -> Self {
         Table {
             name: SqlName::from(name),
             columns,
             alias,
+        }
+    }
+    pub fn new(name: &'a str, columns: Vec<Column>) -> Self {
+        Table {
+            name: SqlName::from(name),
+            columns,
+            alias: Some("t"),
         }
     }
 }

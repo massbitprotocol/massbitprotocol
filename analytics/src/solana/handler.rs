@@ -13,7 +13,7 @@ pub trait SolanaHandler: Sync + Send {
         block_slot: u64,
         _block: Arc<EncodedConfirmedBlock>,
     ) -> Result<(), anyhow::Error>;
-    //fn handle_blocks(&self, _vec_blocks: Arc<Vec<SolanaBlock>>) -> Result<(), anyhow::Error>;
+    //fn handle_blocks(&self, _blocks: Arc<Vec<EncodedConfirmedBlock>>) -> Result<(), anyhow::Error>;
 }
 
 #[derive(Default)]
@@ -77,6 +77,4 @@ pub fn create_solana_handler_manager(
             network,
             storate_adapter.clone(),
         )))
-    //.add_handler(Box::new(SolanaDailyTransactionHandler::new(network, storate_adapter.clone())))
-    //.add_handler(Box::new(SolanaDailyAddressTransactionHandler::new(network, storate_adapter.clone())))
 }

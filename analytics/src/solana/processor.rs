@@ -16,30 +16,18 @@ use std::time::Instant;
 use tokio::sync::mpsc::Receiver;
 use tonic::Status;
 
-const DEFAULT_NETWORK: &str = "mainnet";
-
 pub async fn process_solana_channel(
     rx: &mut Receiver<EncodedConfirmedBlockWithSlot>,
     storage_adapter: Arc<PostgresAdapter>,
     network_name: &NetworkType,
-    block: Option<u64>,
+    block: &Option<u64>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     let network = Some(network_name.clone());
     let handler_manager = Arc::new(create_solana_handler_manager(
         &network,
         storage_adapter.clone(),
     ));
-    let current_state = storage_adapter.get_connection().ok().and_then(|conn| {
-        get_block_number(
-            conn.deref(),
-            super::CHAIN.clone(),
-            network.clone().unwrap_or(String::from(DEFAULT_NETWORK)),
-        )
-    });
-    let start_block = current_state
-        .and_then(|state| Some(state.got_block as u64 + 1))
-        .or(block);
-    let mut last_block = Arc::new(Mutex::new(0_u64));
+    let mut last_block = Arc::new(Mutex::new(block.unwrap_or_default()));
     while let Some(mut data) = rx.recv().await {
         let block_slot = data.block_slot;
         let handler = handler_manager.clone();

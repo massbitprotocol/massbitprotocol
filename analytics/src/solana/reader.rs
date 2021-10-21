@@ -17,8 +17,6 @@ use tokio::sync::mpsc;
 use tonic::Status;
 
 // Check https://github.com/tokio-rs/prost for enum converting in rust protobuf
-const CHAIN_TYPE: ChainType = ChainType::Solana;
-const VERSION: &str = "1.6.16";
 const BLOCK_AVAILABLE_MARGIN: u64 = 100;
 const RPC_BLOCK_ENCODING: UiTransactionEncoding = UiTransactionEncoding::Base64;
 const GET_BLOCK_TIMEOUT_SEC: u64 = 60;
@@ -30,13 +28,8 @@ pub async fn loop_get_block(
     start_block: &Option<u64>,
     network: &NetworkType,
     client: &Arc<RpcClient>,
-    filter: &SolanaFilter,
 ) -> Result<(), Box<dyn Error>> {
     info!("Start get block Solana from: {:?}", start_block);
-    //let config = CONFIG.get_chain_config(&CHAIN_TYPE, &network).unwrap();
-    // let websocket_url = config.ws.clone();
-    // let (mut _subscription_client, receiver) =
-    //     PubsubClient::slot_subscribe(&websocket_url).unwrap();
     let mut last_indexed_slot: Option<u64> = start_block.map(|start_block| start_block + 1);
     //fix_one_thread_not_receive(&chan);
     let sem = Arc::new(Semaphore::new(2 * BLOCK_BATCH_SIZE as usize));
@@ -44,7 +37,6 @@ pub async fn loop_get_block(
         if chan.is_closed() {
             return Err("Stream is closed!".into());
         }
-        //match receiver.recv() {
         match client.get_slot() {
             Ok(new_slot) => {
                 // Root is finalized block in Solana
@@ -91,6 +83,22 @@ pub async fn loop_get_block(
                             .filter_map(|res_block| res_block.ok().and_then(|res| res.ok()))
                             .collect();
                         blocks.sort_by(|a, b| a.block_slot.cmp(&b.block_slot));
+                        //Send all got blocks
+                        // if !chan.is_closed() {
+                        //     let start = Instant::now();
+                        //     let send_res = chan.send(blocks).await;
+                        //     if send_res.is_ok() {
+                        //         info!(
+                        //             "gRPC successfully sending block {} blocks in {:?}",
+                        //             blocks.len(),
+                        //             start.elapsed()
+                        //         );
+                        //     } else {
+                        //         warn!("gRPC unsuccessfully sending blocks");
+                        //     }
+                        // } else {
+                        //     return Err("Stream is closed!".into());
+                        // }
                         //info!("Finished get blocks");
                         for block in blocks.into_iter() {
                             let block_slot = block.block_slot;
