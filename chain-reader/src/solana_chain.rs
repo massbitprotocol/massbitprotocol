@@ -49,56 +49,6 @@ struct ResultFilterTransaction {
     is_done: bool,
 }
 
-// pub fn sendbatch(client: &Arc<RpcClient>, request: RpcRequest, params: Value) -> ClientResult<T>
-//     where
-//         T: serde::de::DeserializeOwned,
-// {
-//     assert!(params.is_array() || params.is_null());
-//     let sender = client
-//     let response = client
-//         .sender
-//         .send(request, params)
-//         .map_err(|err| err.into_with_request(request))?;
-//     serde_json::from_value(response)
-//         .map_err(|err| ClientError::new_with_request(err.into(), request))
-// }
-
-fn createBatchJsonRequest(method: &str, params: &Vec<String>) -> Vec<Value> {
-    /*
-      [
-    {
-      "jsonrpc": "2.0",
-      "id": 1,
-      "method": "getTransaction",
-      "params": [
-        "5JNE26BL1FGGNdjSFXDmVrVYLv7oayUYNErSE4KqMuDTiX4rSeUC9yFtLFMwpkqFAEQNm22AvUanfd8PXAH4pukm",
-        "json"
-      ]
-    },
-      {
-      "jsonrpc": "2.0",
-      "id": 1,
-      "method": "getTransaction",
-      "params": [
-        "5JNE26BL1FGGNdjSFXDmVrVYLv7oayUYNErSE4KqMuDTiX4rSeUC9yFtLFMwpkqFAEQNm22AvUanfd8PXAH4pukm",
-        "json"
-      ]
-    }
-    ]
-     */
-
-    let rpc_requests: Vec<Value> = vec![];
-    params
-        .into_iter()
-        .map(|param| {
-            json!(format!(
-                "{{\"jsonrpc\": \"2.0\",\"id\": 1,\"method\": \"{}\",\"params\": [\"{}\",\"base64\"]}}",
-                method, param
-            ))
-        })
-        .collect()
-}
-
 fn getTransactions(
     client: &Arc<RpcClient>,
     mut txs: &Vec<RpcConfirmedTransactionStatusWithSignature>,
@@ -111,13 +61,14 @@ fn getTransactions(
     //     "5JNE26BL1FGGNdjSFXDmVrVYLv7oayUYNErSE4KqMuDTiX4rSeUC9yFtLFMwpkqFAEQNm22AvUanfd8PXAH4pukm",
     //     "json"
     //]
-    let (call_txs, txs) = txs.split_at(TRANSACTION_BATCH_SIZE as usize);
+    let (call_txs, remand_txs) = txs.split_at(TRANSACTION_BATCH_SIZE as usize);
+    println!(
+        "getTransactions: {} remand transactions for getting",
+        txs.len()
+    );
     let params = call_txs
         .iter()
-        .map(|tx| {
-            let param_str = json!([tx.signature, "jsonParsed"]);
-            json!(param_str)
-        })
+        .map(|tx| json!([tx.signature, "base64"]))
         .collect();
 
     //    let res: ClientResult<Vec<EncodedConfirmedTransaction>> =
@@ -231,6 +182,7 @@ pub async fn loop_get_block(
 
     // Forward run
     while !filter_txs.is_empty() {
+        println!("{} remand transactions for getting", filter_txs.len());
         let (transactions, called_txs) = getTransactions(client, &mut filter_txs);
         match transactions {
             Ok(transactions) => {
@@ -241,9 +193,9 @@ pub async fn loop_get_block(
                                 match decode_transaction(&transaction.transaction) {
                                     Some(transaction) => vec![transaction],
                                     None => {
-                                        debug!(
-                                            "transaction.transaction: {:#?}",
-                                            &transaction.transaction
+                                        warn!(
+                                            "transaction in block {:#?} cannot decode!",
+                                            &transaction.slot
                                         );
                                         vec![]
                                     }
