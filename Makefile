@@ -193,6 +193,7 @@ kill-all-tmux:
 tmux-code-compiler:
 	@echo "Run code-compiler in tmux"
 	tmux new -d -s code-compiler scripts/tmux-code-compiler.sh
+	tmux ls
 
 tmux-indexer-v2-binary:
 	@echo "Starting indexer v2 in binary mode"
