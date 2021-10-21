@@ -1,13 +1,14 @@
 use crate::CONFIG;
 use futures::future::err;
+use itertools::izip;
 use log::{debug, info, warn};
 use massbit::firehose::bstream::{BlockResponse, ChainType};
 use massbit::prelude::serde_json::{json, Value};
 use massbit::prelude::tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use massbit::prelude::tokio::time::sleep;
 use massbit_chain_solana::data_type::{
-    decode_encoded_block, get_list_log_messages_from_encoded_block, Pubkey, SolanaBlock as Block,
-    SolanaFilter,
+    decode_encoded_block, decode_transaction, get_list_log_messages_from_encoded_block, Pubkey,
+    SolanaBlock as Block, SolanaFilter,
 };
 use massbit_common::prelude::tokio::time::{timeout, Duration};
 use massbit_common::NetworkType;
@@ -21,7 +22,7 @@ use solana_sdk::account::Account;
 use solana_sdk::clock::Slot;
 use solana_sdk::signature::Signature;
 use solana_transaction_status::{
-    EncodedConfirmedBlock, EncodedConfirmedTransaction, UiTransactionEncoding,
+    ConfirmedBlock, EncodedConfirmedBlock, EncodedConfirmedTransaction, UiTransactionEncoding,
 };
 use std::error::Error;
 use std::str::FromStr;
@@ -31,7 +32,7 @@ use tonic::Status;
 
 // Check https://github.com/tokio-rs/prost for enum converting in rust protobuf
 const CHAIN_TYPE: ChainType = ChainType::Solana;
-const VERSION: &str = "1.6.16";
+const VERSION: &str = "1.7.0";
 const BLOCK_AVAILABLE_MARGIN: u64 = 100;
 const RPC_BLOCK_ENCODING: UiTransactionEncoding = UiTransactionEncoding::Base64;
 const GET_BLOCK_TIMEOUT_SEC: u64 = 60;
@@ -101,8 +102,12 @@ fn createBatchJsonRequest(method: &str, params: &Vec<String>) -> Vec<Value> {
 fn getTransactions(
     client: &Arc<RpcClient>,
     mut txs: &Vec<RpcConfirmedTransactionStatusWithSignature>,
-) -> ClientResult<Vec<ClientResult<EncodedConfirmedTransaction>>> {
-    //[
+) -> (
+    ClientResult<Vec<ClientResult<EncodedConfirmedTransaction>>>,
+    Vec<RpcConfirmedTransactionStatusWithSignature>,
+) {
+    // Param:
+    // [
     //     "5JNE26BL1FGGNdjSFXDmVrVYLv7oayUYNErSE4KqMuDTiX4rSeUC9yFtLFMwpkqFAEQNm22AvUanfd8PXAH4pukm",
     //     "json"
     //]
@@ -110,7 +115,7 @@ fn getTransactions(
     let params = call_txs
         .iter()
         .map(|tx| {
-            let param_str = json!([tx.signature, "json"]);
+            let param_str = json!([tx.signature, "jsonParsed"]);
             json!(param_str)
         })
         .collect();
@@ -119,7 +124,7 @@ fn getTransactions(
     let res: ClientResult<Vec<ClientResult<EncodedConfirmedTransaction>>> =
         client.send_batch(RpcRequest::GetTransaction, params);
     debug!("res: {:?}", res);
-    res
+    (res, Vec::from(call_txs))
 }
 
 fn getFilterConfirmedTransactionStatus(
@@ -169,6 +174,25 @@ fn getFilterConfirmedTransactionStatus(
     }
 }
 
+async fn grpc_send_block(
+    block: BlockResponse,
+    chan: &mpsc::Sender<Result<BlockResponse, Status>>,
+) -> Result<(), Box<dyn Error>> {
+    let block_number = block.block_number;
+    debug!("gRPC sending block {}", &block_number);
+    if !chan.is_closed() {
+        let send_res = chan.send(Ok(block)).await;
+        if send_res.is_ok() {
+            info!("gRPC successfully sending block {}", &block_number);
+        } else {
+            warn!("gRPC unsuccessfully sending block {}", &block_number);
+        }
+    } else {
+        return Err("Stream is closed!".into());
+    }
+    Ok(())
+}
+
 pub async fn loop_get_block(
     chan: mpsc::Sender<Result<BlockResponse, Status>>,
     start_block: &Option<u64>,
@@ -193,7 +217,7 @@ pub async fn loop_get_block(
         let now = Instant::now();
         let mut res =
             getFilterConfirmedTransactionStatus(&filter, client, &before_tx_signature, start_block);
-        debug!("res: {:?}", res);
+        info!("res: {:?}", res);
         before_tx_signature = res.last_tx_signature;
         filter_txs.append(res.txs.as_mut());
 
@@ -207,12 +231,29 @@ pub async fn loop_get_block(
 
     // Forward run
     while !filter_txs.is_empty() {
-        let transactions = getTransactions(client, &mut filter_txs);
+        let (transactions, called_txs) = getTransactions(client, &mut filter_txs);
         match transactions {
             Ok(transactions) => {
-                for transaction in transactions {
+                for (transaction, tx) in izip!(transactions, called_txs) {
                     match transaction {
-                        Ok(transaction) => {}
+                        Ok(transaction) => {
+                            let decode_transactions =
+                                match decode_transaction(transaction.transaction) {
+                                    Some(transaction) => vec![transaction],
+                                    None => vec![],
+                                };
+                            let filtered_confirmed_block = ConfirmedBlock {
+                                previous_blockhash: "".to_string(),
+                                blockhash: "".to_string(),
+                                parent_slot: transaction.slot - 1,
+                                transactions: decode_transactions,
+                                rewards: vec![],
+                                block_time: transaction.block_time,
+                                block_height: None,
+                            };
+                            let generic_block = _to_generic_block(filtered_confirmed_block);
+                            grpc_send_block(generic_block, &chan).await?
+                        }
                         Err(e) => info!("Transaction error: {:?}", e),
                     }
                 }
@@ -223,7 +264,7 @@ pub async fn loop_get_block(
         }
     }
 
-    // Forward run
+    // from current block run
     loop {
         if chan.is_closed() {
             return Err("Stream is closed!".into());
@@ -297,18 +338,7 @@ pub async fn loop_get_block(
                         blocks.sort_by(|a, b| a.block_number.cmp(&b.block_number));
                         info!("Finished get blocks");
                         for block in blocks.into_iter() {
-                            let block_number = block.block_number;
-                            debug!("gRPC sending block {}", &block_number);
-                            if !chan.is_closed() {
-                                let send_res = chan.send(Ok(block as BlockResponse)).await;
-                                if send_res.is_ok() {
-                                    info!("gRPC successfully sending block {}", &block_number);
-                                } else {
-                                    warn!("gRPC unsuccessfully sending block {}", &block_number);
-                                }
-                            } else {
-                                return Err("Stream is closed!".into());
-                            }
+                            grpc_send_block(block, &chan).await?
                         }
                         last_indexed_slot = last_indexed_slot
                             .map(|last_indexed_slot| last_indexed_slot + number_get_slot);

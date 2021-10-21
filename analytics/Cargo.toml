@@ -59,7 +59,7 @@ logger = { path = "../core/logger" }
 [dependencies.solana-client]
 package = "solana-client"
 git = "https://github.com/massbitprotocol/solana.git"
-branch = "main"
+branch = "massbit"
 
 [dependencies.solana-transaction-status]
 package = "solana-transaction-status"

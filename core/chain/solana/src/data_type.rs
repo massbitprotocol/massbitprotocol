@@ -5,8 +5,9 @@ use serde_json;
 use solana_transaction_status;
 use solana_transaction_status::UiInstruction::{Compiled, Parsed};
 use solana_transaction_status::{
-    InnerInstructions, TransactionStatusMeta, TransactionTokenBalance, TransactionWithStatusMeta,
-    UiInnerInstructions, UiTransactionTokenBalance,
+    EncodedTransactionWithStatusMeta, InnerInstructions, TransactionStatusMeta,
+    TransactionTokenBalance, TransactionWithStatusMeta, UiInnerInstructions,
+    UiTransactionTokenBalance,
 };
 use std::error::Error;
 use std::str::FromStr;
@@ -124,6 +125,55 @@ fn to_ui_instructions(ui_inner_instruction: UiInnerInstructions) -> InnerInstruc
             })
             .collect(),
     }
+}
+
+pub fn decode_transaction(
+    encode_txs: EncodedTransactionWithStatusMeta,
+) -> Option<TransactionWithStatusMeta> {
+    let meta = &encode_txs.meta.as_ref().unwrap();
+    let decoded_transaction = encode_txs.transaction.decode()?;
+    let post_token_balances: Option<Vec<TransactionTokenBalance>> = match &meta.post_token_balances
+    {
+        Some(post_token_balances) => Some(
+            post_token_balances
+                .into_iter()
+                .map(|ui_ttb| to_transaction_token_balance(ui_ttb))
+                .collect(),
+        ),
+        None => None,
+    };
+    let pre_token_balances: Option<Vec<TransactionTokenBalance>> = match &meta.pre_token_balances {
+        Some(pre_token_balances) => Some(
+            pre_token_balances
+                .into_iter()
+                .map(|ui_ttb| to_transaction_token_balance(ui_ttb))
+                .collect(),
+        ),
+        None => None,
+    };
+    let inner_instructions: Option<Vec<InnerInstructions>> = Some(
+        meta.inner_instructions
+            .clone()
+            .unwrap()
+            .iter()
+            .map(|ui_inner_instruction| to_ui_instructions(ui_inner_instruction.clone()))
+            .collect(),
+    );
+
+    Some(solana_transaction_status::TransactionWithStatusMeta {
+        meta: Some(TransactionStatusMeta {
+            status: meta.status.clone(),
+            rewards: meta.rewards.clone(),
+            log_messages: meta.log_messages.clone(),
+            fee: meta.fee,
+            post_balances: meta.post_balances.clone(),
+            pre_balances: meta.pre_balances.clone(),
+            inner_instructions: inner_instructions,
+            post_token_balances,
+            pre_token_balances,
+        }),
+        transaction: decoded_transaction,
+    })
 }
 
 pub fn decode_encoded_block(encoded_block: EncodedBlock) -> Block {
