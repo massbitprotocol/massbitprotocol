@@ -29,11 +29,7 @@ impl EthereumDailyAddressTransactionHandler {
 impl EthereumHandler for EthereumDailyAddressTransactionHandler {
     fn handle_block(&self, block: Arc<LightEthereumBlock>) -> Result<(), anyhow::Error> {
         let values = create_entities(block.as_ref());
-        let table = Table::new(
-            "ethereum_daily_address_transactions",
-            create_columns(),
-            Some("t"),
-        );
+        let table = Table::new("ethereum_daily_address_transactions", create_columns());
         let mut conflict_frag =
             UpsertConflictFragment::new("ethereum_daily_address_transaction_date_uindex");
         conflict_frag

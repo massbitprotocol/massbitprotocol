@@ -1,8 +1,10 @@
+use crate::create_entity;
 use crate::relational::Table;
 use crate::solana::metrics::instruction::spltoken_instruction::create_spltoken_inst_table;
 use crate::solana::metrics::instruction::system_instruction::create_system_inst_table;
 use core::str::FromStr;
 use lazy_static::lazy_static;
+use massbit::prelude::{Attribute, Entity, Value};
 use massbit_chain_solana::data_type::Pubkey;
 use solana_account_decoder::parse_token::spl_token_id_v2_0;
 use solana_sdk::{stake, system_program};
@@ -69,5 +71,15 @@ impl InstructionKey {
             Some(ParsableProgram::Vote) => None,
             _ => None,
         }
+    }
+    ///
+    /// Create entity for each program
+    ///
+    pub fn create_program_entity(&self) -> Entity {
+        create_entity!(
+            "program_name" => &self.program,
+            "program_id" => &self.program_id,
+            "type" => &self.inst_type
+        )
     }
 }

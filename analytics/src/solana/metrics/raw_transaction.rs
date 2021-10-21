@@ -109,7 +109,7 @@ fn create_trans_table<'a>() -> Table<'a> {
         "fee" => ColumnType::BigInt,
         "status" => ColumnType::String
     );
-    Table::new("solana_transactions", columns, Some("t"))
+    Table::new("solana_transactions", columns)
 }
 fn create_acc_trans_table<'a>() -> Table<'a> {
     let columns = create_columns!(
@@ -119,7 +119,7 @@ fn create_acc_trans_table<'a>() -> Table<'a> {
         "pre_balance" => ColumnType::BigInt,
         "post_balance" => ColumnType::BigInt
     );
-    Table::new("solana_account_transactions", columns, Some("t"))
+    Table::new("solana_account_transactions", columns)
 }
 fn create_entity(
     block_slot: u64,

@@ -17,11 +17,7 @@ pub fn create_system_inst_table(inst_type: &str) -> Option<Table> {
                 "space" => ColumnType::BigInt,
                 "owner" => ColumnType::String
             );
-            Some(Table::new(
-                "solana_inst_create_accounts",
-                columns,
-                Some("t"),
-            ))
+            Some(Table::new("solana_inst_create_accounts", columns))
         }
         "createAccountWithSeed" => {
             let columns = create_columns!(
@@ -36,11 +32,7 @@ pub fn create_system_inst_table(inst_type: &str) -> Option<Table> {
                 "base" => ColumnType::String,
                 "seed" => ColumnType::String
             );
-            Some(Table::new(
-                "solana_inst_create_accounts",
-                columns,
-                Some("t"),
-            ))
+            Some(Table::new("solana_inst_create_accounts", columns))
         }
         "assign" => {
             let columns = create_columns!(
@@ -50,7 +42,7 @@ pub fn create_system_inst_table(inst_type: &str) -> Option<Table> {
                 "account" => ColumnType::String,
                 "owner" => ColumnType::String
             );
-            Some(Table::new("solana_inst_assigns", columns, Some("t")))
+            Some(Table::new("solana_inst_assigns", columns))
         }
         "assignWithSeed" => {
             let columns = create_columns!(
@@ -62,7 +54,7 @@ pub fn create_system_inst_table(inst_type: &str) -> Option<Table> {
                 "base" => ColumnType::String,
                 "seed" => ColumnType::String
             );
-            Some(Table::new("solana_inst_assigns", columns, Some("t")))
+            Some(Table::new("solana_inst_assigns", columns))
         }
         "transfer" => {
             let columns = create_columns!(
@@ -73,7 +65,7 @@ pub fn create_system_inst_table(inst_type: &str) -> Option<Table> {
                 "destination" => ColumnType::String,
                 "lamports" => ColumnType::BigInt
             );
-            Some(Table::new("solana_inst_transfers", columns, Some("t")))
+            Some(Table::new("solana_inst_transfers", columns))
         }
         "transferWithSeed" => {
             let columns = create_columns!(
@@ -87,7 +79,7 @@ pub fn create_system_inst_table(inst_type: &str) -> Option<Table> {
                 "source_seed" => ColumnType::String,
                 "source_owner" => ColumnType::String
             );
-            Some(Table::new("solana_inst_transfers", columns, Some("t")))
+            Some(Table::new("solana_inst_transfers", columns))
         }
         "allocate" => {
             let columns = create_columns!(
@@ -97,7 +89,7 @@ pub fn create_system_inst_table(inst_type: &str) -> Option<Table> {
                 "account" => ColumnType::String,
                 "space" => ColumnType::BigInt
             );
-            Some(Table::new("solana_inst_allocates", columns, Some("t")))
+            Some(Table::new("solana_inst_allocates", columns))
         }
         "allocateWithSeed" => {
             let columns = create_columns!(
@@ -110,7 +102,7 @@ pub fn create_system_inst_table(inst_type: &str) -> Option<Table> {
                 "base" => ColumnType::String,
                 "seed" => ColumnType::String
             );
-            Some(Table::new("solana_inst_allocates", columns, Some("t")))
+            Some(Table::new("solana_inst_allocates", columns))
         }
         "advanceNonce" => {
             let columns = create_columns!(
@@ -121,7 +113,7 @@ pub fn create_system_inst_table(inst_type: &str) -> Option<Table> {
                 "recent_block_hashes_sysvar" => ColumnType::String,
                 "nonce_authority" => ColumnType::String
             );
-            Some(Table::new("solana_inst_advance_nonces", columns, Some("t")))
+            Some(Table::new("solana_inst_advance_nonces", columns))
         }
         "withdrawFromNonce" => {
             let columns = create_columns!(
@@ -135,11 +127,7 @@ pub fn create_system_inst_table(inst_type: &str) -> Option<Table> {
                 "nonce_authority" => ColumnType::String,
                 "lamports" => ColumnType::BigInt
             );
-            Some(Table::new(
-                "solana_inst_withdraw_from_nonces",
-                columns,
-                Some("t"),
-            ))
+            Some(Table::new("solana_inst_withdraw_from_nonces", columns))
         }
         "initializeNonce" => {
             let columns = create_columns!(
@@ -151,11 +139,7 @@ pub fn create_system_inst_table(inst_type: &str) -> Option<Table> {
                 "rent_sysvar" => ColumnType::String,
                 "nonce_authority" => ColumnType::String
             );
-            Some(Table::new(
-                "solana_inst_initialize_nonces",
-                columns,
-                Some("t"),
-            ))
+            Some(Table::new("solana_inst_initialize_nonces", columns))
         }
         "authorizeNonce" => {
             let columns = create_columns!(
@@ -166,11 +150,7 @@ pub fn create_system_inst_table(inst_type: &str) -> Option<Table> {
                 "nonce_authority" => ColumnType::String,
                 "new_authorized" => ColumnType::String
             );
-            Some(Table::new(
-                "solana_inst_authorize_nonces",
-                columns,
-                Some("t"),
-            ))
+            Some(Table::new("solana_inst_authorize_nonces", columns))
         }
         _ => None,
     }

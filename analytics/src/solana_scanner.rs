@@ -7,7 +7,6 @@ use clap::{App, Arg};
 use log::{error, info};
 use logger::core::init_logger;
 use massbit::prelude::Arc;
-use massbit_chain_solana::data_type::SolanaFilter;
 use solana_client::rpc_client::RpcClient;
 use tokio::sync::mpsc;
 use tokio::task;

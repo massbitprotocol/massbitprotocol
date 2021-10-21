@@ -45,7 +45,7 @@ fn create_table<'a>() -> Table<'a> {
         "leader" => ColumnType::String,
         "reward" => ColumnType::BigInt
     );
-    Table::new("solana_blocks", columns, Some("t"))
+    Table::new("solana_blocks", columns)
 }
 fn create_entity(block_slot: u64, block: Arc<EncodedConfirmedBlock>) -> Entity {
     let timestamp = match block.block_time {
