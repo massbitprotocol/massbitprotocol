@@ -190,6 +190,10 @@ kill-all-tmux:
 	@echo "Kill all tmux services"
 	tmux list-sessions | awk 'BEGIN{FS=":"}{print $1}' | xargs -n 1 tmux kill-session -t
 
+tmux-code-compiler:
+	@echo "Run code-compiler in tmux"
+	tmux new -d -s code-compiler scripts/tmux-code-compiler.sh
+
 tmux-indexer-v2-binary:
 	@echo "Starting indexer v2 in binary mode"
 	tmux new -d -s indexer-v2 scripts/tmux-indexer-v2-binary.sh
