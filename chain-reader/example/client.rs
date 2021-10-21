@@ -40,6 +40,7 @@ pub async fn print_blocks(
         SABER_STABLE_SWAP_PROGRAM,
         // SABER_ROUTER_PROGRAM,
     ]);
+
     let encoded_filter = serde_json::to_vec(&filter).unwrap();
     // Not use start_block_number start_block_number yet
     let get_blocks_request = BlocksRequest {
@@ -48,7 +49,7 @@ pub async fn print_blocks(
         network,
         filter: encoded_filter,
     };
-    println!("Creating Stream ...");
+    println!("Creating Stream with {:?}", &get_blocks_request);
     let mut stream = Some(
         client
             .blocks(Request::new(get_blocks_request))
@@ -283,10 +284,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
         )
         .get_matches();
 
-    let chain_type = matches.value_of("type").unwrap_or("ethereum");
-    let start_block: Option<u64> = matches
-        .value_of("start-block")
-        .map(|start_block| start_block.parse().unwrap());
+    let chain_type = matches.value_of("type").unwrap_or("solana");
+    let start_block: Option<u64> = matches.value_of("start-block").map(|start_block| {
+        println!("start_block: {:?}", start_block);
+        let start_block: u64 = start_block.parse().unwrap();
+        start_block
+    });
+
     let client = StreamClient::connect(URL).await.unwrap();
     println!("Match {:?}", matches);
     match chain_type {
