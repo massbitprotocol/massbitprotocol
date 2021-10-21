@@ -190,6 +190,15 @@ kill-all-tmux:
 	@echo "Kill all tmux services"
 	tmux list-sessions | awk 'BEGIN{FS=":"}{print $1}' | xargs -n 1 tmux kill-session -t
 
+tmux-indexer-v2-binary:
+	@echo "Starting indexer v2 in binary mode"
+	tmux new -d -s indexer-v2 scripts/tmux-indexer-v2-binary.sh
+	tmux ls
+
+tmux-chain-reader-binary:
+	@echo "Starting chain-reader in binary mode"
+	tmux new -d -s chain-reader scripts/tmux-chain-reader-binary.sh
+	tmux ls
 
 #################### Long running test commands ##################
 test-long-running-quickswap:
