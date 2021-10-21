@@ -5,8 +5,7 @@ use crate::orm::models::SolanaTransaction;
 use core::ops::Deref;
 use jsonrpc_core::{Params, Result as JsonRpcResult};
 use jsonrpc_derive::rpc;
-use massbit::prelude::serde_json;
-use massbit::prelude::serde_json::Value;
+use massbit::prelude::serde_json::{self, json, Value};
 use massbit_common::prelude::diesel::r2d2::ConnectionManager;
 use massbit_common::prelude::diesel::{
     r2d2, ExpressionMethods, JoinOnDsl, PgConnection, QueryDsl, RunQueryDsl,
@@ -168,6 +167,11 @@ impl RpcTransactions for RpcTransactionsImpl {
                     .map_err(|_err| jsonrpc_core::Error::invalid_request())
                     .and_then(|res| {
                         println!("{:?}", &res);
+                        let params = res
+                            .iter()
+                            .map(|tx| json!([tx.signature, UiTransactionEncoding::JsonParsed]))
+                            .collect();
+                        //self.rpc_client.send_batch();
                         //Todo: get all transactions from network and parse to get instructions
                         Ok(serde_json::json!(res))
                     })
