@@ -3,6 +3,7 @@ use super::orm::schema::solana_transactions::dsl as tx;
 use crate::helper::parse_partially_decoded_instruction;
 use crate::orm::models::SolanaTransaction;
 use core::ops::Deref;
+use itertools::Itertools;
 use jsonrpc_core::{Params, Result as JsonRpcResult};
 use jsonrpc_derive::rpc;
 use massbit::prelude::serde_json::{self, json, Value};
@@ -10,10 +11,12 @@ use massbit_common::prelude::diesel::r2d2::ConnectionManager;
 use massbit_common::prelude::diesel::{
     r2d2, ExpressionMethods, JoinOnDsl, PgConnection, QueryDsl, RunQueryDsl,
 };
-use solana_client::client_error::ClientError;
+use solana_client::client_error::{ClientError, ClientErrorKind, Result as ClientResult};
 use solana_client::rpc_client::{GetConfirmedSignaturesForAddress2Config, RpcClient};
+use solana_client::rpc_request::RpcRequest;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Signature;
+use solana_sdk::transaction::{Transaction, TransactionError};
 use solana_transaction_status::{
     EncodedConfirmedTransaction, EncodedTransaction, UiInstruction, UiMessage, UiParsedInstruction,
     UiTransactionEncoding,
@@ -166,14 +169,32 @@ impl RpcTransactions for RpcTransactionsImpl {
                     .get_signatures_for_address_with_config(&key, config)
                     .map_err(|_err| jsonrpc_core::Error::invalid_request())
                     .and_then(|res| {
-                        println!("{:?}", &res);
                         let params = res
                             .iter()
                             .map(|tx| json!([tx.signature, UiTransactionEncoding::JsonParsed]))
                             .collect();
-                        //self.rpc_client.send_batch();
-                        //Todo: get all transactions from network and parse to get instructions
-                        Ok(serde_json::json!(res))
+                        let tx_list: ClientResult<Vec<ClientResult<EncodedConfirmedTransaction>>> =
+                            self.rpc_client
+                                .send_batch(RpcRequest::GetTransaction, params);
+                        // if let Ok(txns) = tx_list {
+                        //     let vec: Vec<serde_json::Value> = txns
+                        //         .iter()
+                        //         .filter_map(|elm| elm.as_ref().ok())
+                        //         .map(|elm| self.parse_encoded_confirmed_transaction(elm))
+                        //         .collect();
+                        //     println!("{:?}", &vec);
+                        // }
+                        tx_list
+                            .map_err(|err| jsonrpc_core::Error::invalid_request())
+                            .and_then(|txns| {
+                                let vec_values: Vec<Value> = txns
+                                    .iter()
+                                    .filter_map(|elm| elm.as_ref().ok())
+                                    .map(|elm| self.parse_encoded_confirmed_transaction(elm))
+                                    .collect();
+                                Ok(json!(vec_values))
+                            })
+                        //Ok(serde_json::json!(res))
                     })
             })
     }
@@ -204,7 +225,7 @@ impl RpcTransactions for RpcTransactionsImpl {
                 let result = self
                     .rpc_client
                     .get_transaction(&signature, UiTransactionEncoding::JsonParsed)
-                    .map_err(|err| jsonrpc_core::Error::invalid_request())
+                    .map_err(|_err| jsonrpc_core::Error::invalid_request())
                     .and_then(|tran| {
                         Ok(parse_encoded_confirmed_transaction(
                             self.rpc_client.clone(),
@@ -219,6 +240,83 @@ impl RpcTransactions for RpcTransactionsImpl {
     }
 }
 
+impl RpcTransactionsImpl {
+    pub fn parse_encoded_confirmed_transaction(
+        &self,
+        tran: &EncodedConfirmedTransaction,
+    ) -> serde_json::Value {
+        let mut value = serde_json::json!({"slot": tran.slot, "block_time" : tran.block_time.unwrap_or_default()});
+        let map = value.as_object_mut().unwrap();
+        if let Some(meta) = &tran.transaction.meta {
+            map.insert("fee".to_string(), json!(meta.fee));
+            map.insert(
+                "status".to_string(),
+                json!(meta
+                    .status
+                    .as_ref()
+                    .ok()
+                    .and_then(|_| Some("1"))
+                    .unwrap_or("0")),
+            );
+        }
+        if let EncodedTransaction::Json(transaction) = &tran.transaction.transaction {
+            map.insert(
+                "signature".to_string(),
+                json!(transaction.signatures.get(0).unwrap_or(&String::from(""))),
+            );
+            match &transaction.message {
+                UiMessage::Parsed(message) => {
+                    map.insert(
+                        "signer".to_string(),
+                        json!(message
+                            .account_keys
+                            .get(0)
+                            .and_then(|acc| Some(&acc.pubkey))
+                            .unwrap_or(&String::from(""))),
+                    );
+                    let instructions = message
+                        .instructions
+                        .iter()
+                        .map(|inst| match inst {
+                            UiInstruction::Parsed(parsed) => match parsed {
+                                UiParsedInstruction::Parsed(instruction) => instruction.parsed
+                                    ["type"]
+                                    .as_str()
+                                    .unwrap_or_default()
+                                    .to_string(),
+                                UiParsedInstruction::PartiallyDecoded(instruction) => {
+                                    instruction.program_id.clone()
+                                    //println!("{:?}", bs58::decode(&instruction.data).into_vec().unwrap());
+                                    //parse_partially_decoded_instruction(rpc_client.clone(), instruction)
+                                }
+                            },
+                            UiInstruction::Compiled(compiled) => {
+                                String::from("unknown")
+                                //println!("Compiled instruction {:?}", compiled);
+                            }
+                        })
+                        .collect::<Vec<String>>();
+                    map.insert("instructions".to_string(), json!(instructions));
+                }
+                UiMessage::Raw(message) => {
+                    map.insert(
+                        "signer".to_string(),
+                        json!(message
+                            .account_keys
+                            .get(0)
+                            .and_then(|acc| Some(acc))
+                            .unwrap_or(&String::from(""))),
+                    );
+                }
+            };
+            // if let UiMessage::Parsed(message) = &transaction.message {
+            //
+            //     println!("Parsed message {:?}", message);
+            // }
+        }
+        value
+    }
+}
 fn parse_encoded_confirmed_transaction(
     rpc_client: Arc<RpcClient>,
     tran: &EncodedConfirmedTransaction,

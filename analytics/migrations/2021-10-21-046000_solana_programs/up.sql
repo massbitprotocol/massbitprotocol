@@ -5,6 +5,6 @@ create table solana_programs
     program_name        text,
     type                varchar(100),
     owner               varchar(88),
-    constraint ssolana_programs_type_uindex
+    constraint solana_programs_type_uindex
         unique (program_id, type)
 );

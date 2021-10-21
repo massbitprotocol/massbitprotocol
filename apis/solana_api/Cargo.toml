@@ -21,7 +21,7 @@ jsonrpc-core = "18.0.0"
 jsonrpc-core-client = "18.0.0"
 jsonrpc-derive      = "18.0.0"
 jsonrpc-http-server = "18.0.0"
-
+itertools = "0.10.1"
 lazy_static     = "1.4.0"
 serde           = { version = "1.0", optional = false }
 tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "sync", "time"] }
