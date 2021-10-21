@@ -4,7 +4,7 @@ schema:
 dataSources:
   - name: Viper
     kind: ethereum/contract
-    network: harmony
+    network: mainnet
     source:
       address: "0x7EAD95508a07f11F0eA72503D84E589A756082CD"
       startBlock: 10082346
@@ -25,7 +25,7 @@ dataSources:
           handler: handleTransfer
   - name: ViperBurnable
     kind: ethereum/contract
-    network: harmony
+    network: mainnet
     source:
       address: "0x7EAD95508a07f11F0eA72503D84E589A756082CD"
       startBlock: 10082346
@@ -46,7 +46,7 @@ dataSources:
           handler: handleBurn
   - name: ViperMintable
     kind: ethereum/contract
-    network: harmony
+    network: mainnet
     source:
       address: "0x7EAD95508a07f11F0eA72503D84E589A756082CD"
       startBlock: 10082346
@@ -67,7 +67,7 @@ dataSources:
           handler: handleMint
   - name: BUSD
     kind: ethereum/contract
-    network: harmony
+    network: mainnet
     source:
       address: "0xE176EBE47d621b984a73036B9DA5d834411ef734"
       startBlock: 5336370
@@ -88,7 +88,7 @@ dataSources:
           handler: handleTransfer
   - name: BUSDBurnable
     kind: ethereum/contract
-    network: harmony
+    network: mainnet
     source:
       address: "0xE176EBE47d621b984a73036B9DA5d834411ef734"
       startBlock: 5336370
@@ -109,7 +109,7 @@ dataSources:
           handler: handleBurn
   - name: BUSDMintable
     kind: ethereum/contract
-    network: harmony
+    network: mainnet
     source:
       address: "0xE176EBE47d621b984a73036B9DA5d834411ef734"
       startBlock: 5336370
@@ -130,7 +130,7 @@ dataSources:
           handler: handleMint
   - name: Swoop
     kind: ethereum/contract
-    network: harmony
+    network: mainnet
     source:
       address: "0xAcCB7b802CF485eDa7bCa49960FEA57059Dee83D"
       startBlock: 10140633
@@ -151,7 +151,7 @@ dataSources:
           handler: handleTransfer
   - name: SwoopBurnable
     kind: ethereum/contract
-    network: harmony
+    network: mainnet
     source:
       address: "0xAcCB7b802CF485eDa7bCa49960FEA57059Dee83D"
       startBlock: 10140633
@@ -172,7 +172,7 @@ dataSources:
           handler: handleBurn
   - name: SwoopMintable
     kind: ethereum/contract
-    network: harmony
+    network: mainnet
     source:
       address: "0xAcCB7b802CF485eDa7bCa49960FEA57059Dee83D"
       startBlock: 10140633
@@ -193,7 +193,7 @@ dataSources:
           handler: handleMint
   - name: MochiSwap Token
     kind: ethereum/contract
-    network: harmony
+    network: mainnet
     source:
       address: "0x0dD740Db89B9fDA3Baadf7396DdAD702b6E8D6f5"
       startBlock: 10326189
@@ -214,7 +214,7 @@ dataSources:
           handler: handleTransfer
   - name: MochiSwap TokenBurnable
     kind: ethereum/contract
-    network: harmony
+    network: mainnet
     source:
       address: "0x0dD740Db89B9fDA3Baadf7396DdAD702b6E8D6f5"
       startBlock: 10326189
@@ -235,7 +235,7 @@ dataSources:
           handler: handleBurn
   - name: MochiSwap TokenMintable
     kind: ethereum/contract
-    network: harmony
+    network: mainnet
     source:
       address: "0x0dD740Db89B9fDA3Baadf7396DdAD702b6E8D6f5"
       startBlock: 10326189
@@ -256,7 +256,7 @@ dataSources:
           handler: handleMint
   - name: MochiSwap Token BSC
     kind: ethereum/contract
-    network: harmony
+    network: mainnet
     source:
       address: "0xda73f5C25C0D644Afd20dA5535558956B192b262"
       startBlock: 10804090
@@ -277,7 +277,7 @@ dataSources:
           handler: handleTransfer
   - name: MochiSwap Token BSCBurnable
     kind: ethereum/contract
-    network: harmony
+    network: mainnet
     source:
       address: "0xda73f5C25C0D644Afd20dA5535558956B192b262"
       startBlock: 10804090
@@ -298,7 +298,7 @@ dataSources:
           handler: handleBurn
   - name: MochiSwap Token BSCMintable
     kind: ethereum/contract
-    network: harmony
+    network: mainnet
     source:
       address: "0xda73f5C25C0D644Afd20dA5535558956B192b262"
       startBlock: 10804090
@@ -320,7 +320,7 @@ dataSources:
 
   - name: BQUH
     kind: ethereum/contract
-    network: harmony
+    network: mainnet
     source:
       address: "0xd45F2890AFc159f96702DE015B414C7d1cdA3DbA"
       startBlock: 7946209
@@ -343,7 +343,7 @@ dataSources:
           handler: handleTransfer
   - name: Blits
     kind: ethereum/contract
-    network: harmony
+    network: mainnet
     source:
       address: "0x95bC9226f3d656c7Ae3BF820D19Af38e8c18B4B1"
       startBlock: 7497360
@@ -368,7 +368,7 @@ templates:
   # These data sources templates exist to support the different flags that a token could specify
   - name: StandardToken
     kind: ethereum/contract
-    network: harmony
+    network: mainnet
     source:
       abi: ERC20
     mapping:
@@ -386,7 +386,7 @@ templates:
           handler: handleTransfer
   - name: BurnableToken
     kind: ethereum/contract
-    network: harmony
+    network: mainnet
     source:
       abi: Burnable
     mapping:
@@ -404,7 +404,7 @@ templates:
           handler: handleBurn
   - name: MintableToken
     kind: ethereum/contract
-    network: harmony
+    network: mainnet
     source:
       abi: Mintable
     mapping:
@@ -422,7 +422,7 @@ templates:
           handler: handleMint
   - name: NFT
     kind: ethereum/contract
-    network: harmony
+    network: mainnet
     source:
       abi: ERC721
     mapping:
