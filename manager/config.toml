@@ -3,7 +3,7 @@
 connection = "postgresql://graph-node:let-me-in@localhost:5432/graph-node"
 pool_size = 10
 
-[chains.harmony]
+[chains.mainnet]
 provider = [
     { label = "harmony-0", url = "https://polygon-rpc.com", features = [] },
     { label = "firehose", details = { type = "firehose", url = "http://localhost:50051" } } # Chain reader
