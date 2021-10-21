@@ -92,7 +92,7 @@ fn createBatchJsonRequest(method: &str, params: &Vec<String>) -> Vec<Value> {
         .into_iter()
         .map(|param| {
             json!(format!(
-                "{{\"jsonrpc\": \"2.0\",\"id\": 1,\"method\": \"{}\",\"params\": [\"{}\",\"json\"]}}",
+                "{{\"jsonrpc\": \"2.0\",\"id\": 1,\"method\": \"{}\",\"params\": [\"{}\",\"base64\"]}}",
                 method, param
             ))
         })
@@ -217,7 +217,7 @@ pub async fn loop_get_block(
         let now = Instant::now();
         let mut res =
             getFilterConfirmedTransactionStatus(&filter, client, &before_tx_signature, start_block);
-        info!("res: {:?}", res);
+        debug!("res: {:?}", res);
         before_tx_signature = res.last_tx_signature;
         filter_txs.append(res.txs.as_mut());
 
@@ -238,9 +238,15 @@ pub async fn loop_get_block(
                     match transaction {
                         Ok(transaction) => {
                             let decode_transactions =
-                                match decode_transaction(transaction.transaction) {
+                                match decode_transaction(&transaction.transaction) {
                                     Some(transaction) => vec![transaction],
-                                    None => vec![],
+                                    None => {
+                                        debug!(
+                                            "transaction.transaction: {:#?}",
+                                            &transaction.transaction
+                                        );
+                                        vec![]
+                                    }
                                 };
                             let filtered_confirmed_block = ConfirmedBlock {
                                 previous_blockhash: "".to_string(),

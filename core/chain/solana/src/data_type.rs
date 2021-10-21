@@ -128,9 +128,9 @@ fn to_ui_instructions(ui_inner_instruction: UiInnerInstructions) -> InnerInstruc
 }
 
 pub fn decode_transaction(
-    encode_txs: EncodedTransactionWithStatusMeta,
+    encode_txs: &EncodedTransactionWithStatusMeta,
 ) -> Option<TransactionWithStatusMeta> {
-    let meta = &encode_txs.meta.as_ref().unwrap();
+    let meta = encode_txs.meta.as_ref().unwrap();
     let decoded_transaction = encode_txs.transaction.decode()?;
     let post_token_balances: Option<Vec<TransactionTokenBalance>> = match &meta.post_token_balances
     {
