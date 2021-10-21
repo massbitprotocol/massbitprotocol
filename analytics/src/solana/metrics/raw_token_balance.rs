@@ -72,7 +72,7 @@ fn create_table<'a>() -> Table<'a> {
         "pre_amount" => ColumnType::BigInt,
         "post_amount" => ColumnType::BigInt
     );
-    Table::new("solana_token_balances", columns, Some("t"))
+    Table::new("solana_token_balances", columns)
 }
 
 fn create_token_balances(

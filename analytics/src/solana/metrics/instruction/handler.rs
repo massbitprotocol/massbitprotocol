@@ -1,13 +1,14 @@
 use super::common::PARSABLE_PROGRAM_IDS;
+use crate::postgres_queries::UpsertConflictFragment;
+use crate::relational::{Column, ColumnType, Table};
 use crate::solana::handler::SolanaHandler;
 use crate::solana::metrics::instruction::common::InstructionKey;
-use crate::solana::metrics::instruction::raw_instruction::{
-    create_unparsed_instruction, create_unparsed_instruction_table,
-};
+use crate::solana::metrics::instruction::raw_instruction::create_unparsed_instruction;
 use crate::solana::metrics::instruction::spltoken_instruction::create_spltoken_entity;
 use crate::solana::metrics::instruction::system_instruction::create_system_entity;
 use crate::solana::metrics::instruction::vote_instruction::create_vote_entity;
 use crate::storage_adapter::StorageAdapter;
+use crate::{create_columns, create_entity};
 use massbit::prelude::Entity;
 use massbit_chain_solana::data_type::{Pubkey, SolanaBlock};
 use massbit_common::NetworkType;
@@ -41,7 +42,7 @@ impl SolanaHandler for SolanaInstructionHandler {
         block_slot: u64,
         block: Arc<EncodedConfirmedBlock>,
     ) -> Result<(), anyhow::Error> {
-        let table = create_unparsed_instruction_table();
+        //log::info!("Handle block instructions");
         let mut parsed_entities: HashMap<InstructionKey, Vec<Entity>> = HashMap::default();
         let mut unparsed_entities = Vec::default();
         let start = Instant::now();
@@ -56,33 +57,58 @@ impl SolanaHandler for SolanaInstructionHandler {
             }
             //create_inner_instructions(&block.block, tran);
         }
-        let arc_map_entities = Arc::new(parsed_entities);
-        arc_map_entities.iter().for_each(|(key, _)| {
+
+        let mut program_entities = Vec::default();
+        parsed_entities.into_iter().for_each(|(key, entities)| {
+            //Store program info from InstructionKey
+            program_entities.push(key.create_program_entity());
             let adapter = self.storage_adapter.clone();
-            let cloned_map = arc_map_entities.clone();
-            let cloned_key = key.clone();
             tokio::spawn(async move {
-                match cloned_key.create_table() {
+                match key.create_table() {
                     Some(table) => {
-                        adapter.upsert(&table, cloned_map.get(&cloned_key).unwrap(), &None);
+                        adapter.upsert(&table, &entities, &None);
                     }
                     None => {}
                 }
             });
         });
-
+        if program_entities.len() > 0 {
+            log::info!("Store instruction programs info");
+            let prog_columns = create_columns!(
+                "program_id" => ColumnType::String,
+                "program_name" => ColumnType::String,
+                "type" => ColumnType::String
+            );
+            let table = Table::new("solana_programs", prog_columns);
+            let conflict_frag = Some(UpsertConflictFragment::new("solana_programs_type_uindex"));
+            self.storage_adapter
+                .upsert(&table, &program_entities, &conflict_frag);
+        }
         log::info!(
             "Parsing {} instructions in {:?}",
             total_instruction,
             start.elapsed()
         );
+        Ok(())
         //Don't store unpased instruction due to huge amount of data
-        if unparsed_entities.len() > 0 {
-            self.storage_adapter
-                .upsert(&table, &unparsed_entities, &None)
-        } else {
-            Ok(())
-        }
+        // if unparsed_entities.len() > 0 {
+        //     let columns = create_columns!(
+        //         "block_slot" => ColumnType::BigInt,
+        //         "tx_index" => ColumnType::Int,
+        //         "block_time" => ColumnType::BigInt,
+        //         //Index of instruction in transaction
+        //         "inst_index" => ColumnType::Int,
+        //         "program_name" => ColumnType::String,
+        //         "accounts" => ColumnType::TextArray,
+        //         "data" => ColumnType::Bytes
+        //     );
+        //     let table = Table::new("solana_instructions", columns);
+        //     //let table = create_unparsed_instruction_table();
+        //     self.storage_adapter
+        //         .upsert(&table, &unparsed_entities, &None)
+        // } else {
+        //     Ok(())
+        // }
     }
 }
 

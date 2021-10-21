@@ -1,6 +1,6 @@
-create table solana_spl_token_initialize_mint
+create table solana_spl_token_initialize_mints
 (
-    id                  bigserial constraint solana_spl_token_initialize_mint_pk primary key,
+    id                  bigserial constraint solana_spl_token_initialize_mints_pk primary key,
     block_slot          bigint,
     block_time          bigint,
     tx_index            int,    --Index of transaction in block
@@ -12,9 +12,9 @@ create table solana_spl_token_initialize_mint
     freeze_authority    varchar(88)
 );
 
-create table solana_spl_token_initialize_account
+create table solana_spl_token_initialize_accounts
 (
-    id                  bigserial constraint solana_spl_token_initialize_account_pk primary key,
+    id                  bigserial constraint solana_spl_token_initialize_accounts_pk primary key,
     block_slot          bigint,
     block_time          bigint,
     tx_index            int,    --Index of transaction in block
@@ -25,7 +25,7 @@ create table solana_spl_token_initialize_account
     rent_sysvar         varchar(88)
 );
 
-create table solana_spl_token_initialize_account2
+create table solana_spl_token_initialize_account2s
 (
     id                  bigserial constraint solana_spl_token_initialize_account2_pk primary key,
     block_slot          bigint,
@@ -38,9 +38,9 @@ create table solana_spl_token_initialize_account2
     rent_sysvar         varchar(88)
 );
 
-create table solana_spl_token_initialize_multisig
+create table solana_spl_token_initialize_multisigs
 (
-    id                  bigserial constraint solana_spl_token_initialize_multisig_pk primary key,
+    id                  bigserial constraint solana_spl_token_initialize_multisigs_pk primary key,
     block_slot          bigint,
     block_time          bigint,
     tx_index            int,    --Index of transaction in block
@@ -52,9 +52,9 @@ create table solana_spl_token_initialize_multisig
 
 );
 
-create table solana_spl_token_transfer
+create table solana_spl_token_transfers
 (
-    id                  bigserial constraint solana_spl_token_transfer_pk primary key,
+    id                  bigserial constraint solana_spl_token_transfers_pk primary key,
     block_slot          bigint,
     block_time          bigint,
     tx_index            int,    --Index of transaction in block
@@ -66,9 +66,9 @@ create table solana_spl_token_transfer
     multisig_authority  varchar(88),
     signers             text
 );
-create table solana_spl_token_transfer_checked
+create table solana_spl_token_transfer_checkeds
 (
-    id                          bigserial constraint solana_spl_token_transfer_checked_pk primary key,
+    id                          bigserial constraint solana_spl_token_transfer_checkeds_pk primary key,
     block_slot                  bigint,
     block_time                  bigint,
     tx_index                    int,    --Index of transaction in block
@@ -81,9 +81,9 @@ create table solana_spl_token_transfer_checked
     multisig_fauthority         text,
     signers                     text
 );
-create table solana_spl_token_approve
+create table solana_spl_token_approves
 (
-    id                  bigserial constraint solana_spl_token_approve_pk primary key,
+    id                  bigserial constraint solana_spl_token_approves_pk primary key,
     block_slot          bigint,
     block_time          bigint,
     tx_index            int,    --Index of transaction in block
@@ -97,9 +97,9 @@ create table solana_spl_token_approve
 );
 
 
-create table solana_spl_token_approve_checked
+create table solana_spl_token_approve_checkeds
 (
-    id                          bigserial constraint solana_spl_token_approve_checked_pk primary key,
+    id                          bigserial constraint solana_spl_token_approve_checkeds_pk primary key,
     block_slot                  bigint,
     block_time                  bigint,
     tx_index                    int,    --Index of transaction in block
@@ -113,9 +113,9 @@ create table solana_spl_token_approve_checked
     signers                     text
 );
 
-create table solana_spl_token_revoke
+create table solana_spl_token_revokes
 (
-    id                  bigserial constraint solana_spl_token_revoke_pk primary key,
+    id                  bigserial constraint solana_spl_token_revokes_pk primary key,
     block_slot          bigint,
     block_time          bigint,
     tx_index            int,    --Index of transaction in block
@@ -126,9 +126,9 @@ create table solana_spl_token_revoke
     multisig_owner      text
 );
 
-create table solana_spl_token_set_authority
+create table solana_spl_token_set_authorities
 (
-    id                  bigserial constraint solana_spl_token_set_authority_pk primary key,
+    id                  bigserial constraint solana_spl_token_set_authorities_pk primary key,
     block_slot          bigint,
     block_time          bigint,
     tx_index            int,    --Index of transaction in block
@@ -140,9 +140,9 @@ create table solana_spl_token_set_authority
     multisig_authority  text
 );
 
-create table solana_spl_token_mint_to
+create table solana_spl_token_mint_tos
 (
-    id                  bigserial constraint solana_spl_token_mint_to_pk primary key,
+    id                  bigserial constraint solana_spl_token_mint_tos_pk primary key,
     block_slot          bigint,
     block_time          bigint,
     tx_index            int,    --Index of transaction in block
@@ -155,9 +155,9 @@ create table solana_spl_token_mint_to
     signers             text
 );
 
-create table solana_spl_token_min_to_checked
+create table solana_spl_token_min_to_checkeds
 (
-    id                          bigserial constraint solana_spl_token_min_to_checked_pk primary key,
+    id                          bigserial constraint solana_spl_token_min_to_checkeds_pk primary key,
     block_slot                  bigint,
     block_time                  bigint,
     tx_index                    int,    --Index of transaction in block
@@ -170,9 +170,9 @@ create table solana_spl_token_min_to_checked
     signers                     text
 );
 
-create table solana_spl_token_burn
+create table solana_spl_token_burns
 (
-    id                  bigserial constraint solana_spl_token_burn_pk primary key,
+    id                  bigserial constraint solana_spl_token_burns_pk primary key,
     block_slot          bigint,
     block_time          bigint,
     tx_index            int,    --Index of transaction in block
@@ -185,9 +185,9 @@ create table solana_spl_token_burn
     multisig_authority  text
 );
 
-create table solana_spl_token_burn_checked
+create table solana_spl_token_burn_checkeds
 (
-    id                          bigserial constraint solana_spl_token_burn_checked_pk primary key,
+    id                          bigserial constraint solana_spl_token_burn_checkeds_pk primary key,
     block_slot                  bigint,
     block_time                  bigint,
     tx_index                    int,    --Index of transaction in block
@@ -200,9 +200,9 @@ create table solana_spl_token_burn_checked
     signers                     text
 );
 
-create table solana_spl_token_close_account
+create table solana_spl_token_close_accounts
 (
-    id                  bigserial constraint solana_spl_token_close_account_pk primary key,
+    id                  bigserial constraint solana_spl_token_close_accounts_pk primary key,
     block_slot          bigint,
     block_time          bigint,
     tx_index            int,    --Index of transaction in block
@@ -214,9 +214,9 @@ create table solana_spl_token_close_account
     multisig_owner      text
 );
 
-create table solana_spl_token_freeze_account
+create table solana_spl_token_freeze_accounts
 (
-    id                          bigserial constraint solana_spl_token_freeze_account_pk primary key,
+    id                          bigserial constraint solana_spl_token_freeze_accounts_pk primary key,
     block_slot                  bigint,
     block_time                  bigint,
     tx_index                    int,    --Index of transaction in block
@@ -228,9 +228,9 @@ create table solana_spl_token_freeze_account
     multisig_freeze_authority   text
 );
 
-create table solana_spl_token_thaw_account
+create table solana_spl_token_thaw_accounts
 (
-    id                          bigserial constraint solana_spl_token_thaw_account_pk primary key,
+    id                          bigserial constraint solana_spl_token_thaw_accounts_pk primary key,
     block_slot                  bigint,
     block_time                  bigint,
     tx_index                    int,    --Index of transaction in block
@@ -242,9 +242,9 @@ create table solana_spl_token_thaw_account
     multisig_freeze_authority   text
 );
 
-create table solana_spl_token_sync_native
+create table solana_spl_token_sync_natives
 (
-    id                          bigserial constraint solana_spl_token_sync_native_pk primary key,
+    id                          bigserial constraint solana_spl_token_sync_natives_pk primary key,
     block_slot                  bigint,
     block_time                  bigint,
     tx_index                    int,    --Index of transaction in block
