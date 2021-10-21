@@ -70,7 +70,7 @@ fn create_table<'a>() -> Table<'a> {
         "fist_block_time" => ColumnType::BigInt,
         "last_block_time" => ColumnType::BigInt
     );
-    Table::new("solana_daily_stat_blocks", columns, Some("t"))
+    Table::new("solana_daily_stat_blocks", columns)
 }
 fn create_stat_block_entity(
     network: &str,
