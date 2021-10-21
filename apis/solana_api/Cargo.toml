@@ -29,22 +29,22 @@ tokio = { version = "1.0", features = ["rt-multi-thread", "macros", "sync", "tim
 [dependencies.solana-client]
 package = "solana-client"
 git = "https://github.com/massbitprotocol/solana.git"
-branch = "main"
+branch = "massbit"
 
 [dependencies.solana-program]
 package = "solana-program"
 git = "https://github.com/massbitprotocol/solana.git"
-branch = "main"
+branch = "massbit"
 
 [dependencies.solana-sdk]
 package = "solana-sdk"
 git = "https://github.com/massbitprotocol/solana.git"
-branch = "main"
+branch = "massbit"
 
 [dependencies.solana-transaction-status]
 package = "solana-transaction-status"
 git = "https://github.com/massbitprotocol/solana.git"
-branch = "main"
+branch = "massbit"
 
 [build-dependencies]
 tonic-build = "0.5"
