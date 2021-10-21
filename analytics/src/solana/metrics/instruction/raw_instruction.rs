@@ -14,20 +14,6 @@ use solana_transaction_status::{
 };
 use std::collections::HashMap;
 
-pub fn create_unparsed_instruction_table<'a>() -> Table<'a> {
-    let columns = create_columns!(
-        "block_slot" => ColumnType::BigInt,
-        "tx_index" => ColumnType::Int,
-        "block_time" => ColumnType::BigInt,
-        //Index of instruction in transaction
-        "inst_index" => ColumnType::Int,
-        "program_name" => ColumnType::String,
-        "accounts" => ColumnType::TextArray,
-        "data" => ColumnType::Bytes
-    );
-    Table::new("solana_instructions", columns, Some("t"))
-}
-
 pub fn create_unparsed_instruction(
     block_slot: u64,
     tx_index: i32,
@@ -71,7 +57,7 @@ fn create_inner_instructions(
         .and_then(|meta| meta.inner_instructions.as_ref())
         .and_then(|vec| {
             vec.iter().map(|inner| {
-                println!("{:?}", inner);
+                //println!("{:?}", inner);
             });
             Some(0_u64)
         });

@@ -1,9 +1,9 @@
 use super::common::PARSABLE_PROGRAM_IDS;
+use crate::create_columns;
+use crate::relational::{Column, ColumnType, Table};
 use crate::solana::handler::SolanaHandler;
 use crate::solana::metrics::instruction::common::InstructionKey;
-use crate::solana::metrics::instruction::raw_instruction::{
-    create_unparsed_instruction, create_unparsed_instruction_table,
-};
+use crate::solana::metrics::instruction::raw_instruction::create_unparsed_instruction;
 use crate::solana::metrics::instruction::spltoken_instruction::create_spltoken_entity;
 use crate::solana::metrics::instruction::system_instruction::create_system_entity;
 use crate::solana::metrics::instruction::vote_instruction::create_vote_entity;
@@ -41,7 +41,7 @@ impl SolanaHandler for SolanaInstructionHandler {
         block_slot: u64,
         block: Arc<EncodedConfirmedBlock>,
     ) -> Result<(), anyhow::Error> {
-        let table = create_unparsed_instruction_table();
+        //log::info!("Handle block instructions");
         let mut parsed_entities: HashMap<InstructionKey, Vec<Entity>> = HashMap::default();
         let mut unparsed_entities = Vec::default();
         let start = Instant::now();
@@ -78,6 +78,18 @@ impl SolanaHandler for SolanaInstructionHandler {
         );
         //Don't store unpased instruction due to huge amount of data
         if unparsed_entities.len() > 0 {
+            let columns = create_columns!(
+                "block_slot" => ColumnType::BigInt,
+                "tx_index" => ColumnType::Int,
+                "block_time" => ColumnType::BigInt,
+                //Index of instruction in transaction
+                "inst_index" => ColumnType::Int,
+                "program_name" => ColumnType::String,
+                "accounts" => ColumnType::TextArray,
+                "data" => ColumnType::Bytes
+            );
+            let table = Table::new("solana_instructions", columns, Some("t"));
+            //let table = create_unparsed_instruction_table();
             self.storage_adapter
                 .upsert(&table, &unparsed_entities, &None)
         } else {
