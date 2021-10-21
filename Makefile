@@ -240,6 +240,9 @@ index-pancakeswap:
 	tmux new -d -s report_email_pancakeswap "cd e2e-test && python check_log.py"
 	tmux ls
 
+index-harmony:
+	@echo "Start indexing Harmony ..."
+	cd e2e-test/harmony && robot -t "Index Harmony" contract.robot
 
 test-long-running-quickswap-run-test-only:
 	@echo "Running only the quickswap Polygon test ..."
