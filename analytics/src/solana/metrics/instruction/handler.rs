@@ -80,7 +80,7 @@ impl SolanaHandler for SolanaInstructionHandler {
                 "type" => ColumnType::String
             );
             let table = Table::new("solana_programs", prog_columns);
-            let conflict_frag = Some(UpsertConflictFragment::new("ssolana_programs_type_uindex"));
+            let conflict_frag = Some(UpsertConflictFragment::new("solana_programs_type_uindex"));
             self.storage_adapter
                 .upsert(&table, &program_entities, &conflict_frag);
         }
@@ -89,25 +89,26 @@ impl SolanaHandler for SolanaInstructionHandler {
             total_instruction,
             start.elapsed()
         );
+        Ok(())
         //Don't store unpased instruction due to huge amount of data
-        if unparsed_entities.len() > 0 {
-            let columns = create_columns!(
-                "block_slot" => ColumnType::BigInt,
-                "tx_index" => ColumnType::Int,
-                "block_time" => ColumnType::BigInt,
-                //Index of instruction in transaction
-                "inst_index" => ColumnType::Int,
-                "program_name" => ColumnType::String,
-                "accounts" => ColumnType::TextArray,
-                "data" => ColumnType::Bytes
-            );
-            let table = Table::new("solana_instructions", columns);
-            //let table = create_unparsed_instruction_table();
-            self.storage_adapter
-                .upsert(&table, &unparsed_entities, &None)
-        } else {
-            Ok(())
-        }
+        // if unparsed_entities.len() > 0 {
+        //     let columns = create_columns!(
+        //         "block_slot" => ColumnType::BigInt,
+        //         "tx_index" => ColumnType::Int,
+        //         "block_time" => ColumnType::BigInt,
+        //         //Index of instruction in transaction
+        //         "inst_index" => ColumnType::Int,
+        //         "program_name" => ColumnType::String,
+        //         "accounts" => ColumnType::TextArray,
+        //         "data" => ColumnType::Bytes
+        //     );
+        //     let table = Table::new("solana_instructions", columns);
+        //     //let table = create_unparsed_instruction_table();
+        //     self.storage_adapter
+        //         .upsert(&table, &unparsed_entities, &None)
+        // } else {
+        //     Ok(())
+        // }
     }
 }
 
