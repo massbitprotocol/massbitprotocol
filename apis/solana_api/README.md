@@ -1,5 +1,9 @@
 ## Solana apis 
-
+Diesel commands
+```
+diesel print-schema > src/schema.rs
+diesel_ext -m > src/models.rs,
+```
 ## Usage
 Set environment variables: 
 ```

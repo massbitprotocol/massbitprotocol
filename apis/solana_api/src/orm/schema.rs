@@ -266,6 +266,7 @@ table! {
         reward -> Nullable<Int8>,
         fee -> Nullable<Int8>,
         status -> Nullable<Bpchar>,
+        instructions -> Nullable<Array<Text>>,
     }
 }
 

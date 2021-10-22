@@ -2,9 +2,9 @@
 
 #![allow(unused)]
 #![allow(clippy::all)]
-use super::schema::*;
+
+
 use bigdecimal::BigDecimal;
-use serde::{Deserialize, Serialize};
 #[derive(Queryable, Debug, Identifiable)]
 #[primary_key(block_hash)]
 pub struct EthereumBlock {
@@ -79,7 +79,7 @@ pub struct SolanaAccountTransaction {
     pub id: i64,
 }
 
-#[derive(Queryable, Debug, Identifiable, Serialize)]
+#[derive(Queryable, Debug, Identifiable)]
 #[primary_key(block_hash)]
 pub struct SolanaBlock {
     pub block_slot: Option<i64>,
@@ -92,7 +92,7 @@ pub struct SolanaBlock {
     pub reward: Option<i64>,
 }
 
-#[derive(Queryable, Debug, Identifiable, Deserialize, Serialize)]
+#[derive(Queryable, Debug, Identifiable)]
 pub struct SolanaDailyStatBlock {
     pub id: i64,
     pub network: Option<String>,
@@ -248,7 +248,7 @@ pub struct SolanaTokenBalance {
     pub post_amount: Option<i64>,
 }
 
-#[derive(Queryable, Debug, Identifiable, Serialize, Deserialize)]
+#[derive(Queryable, Debug, Identifiable)]
 #[primary_key(signatures)]
 pub struct SolanaTransaction {
     pub block_slot: Option<i64>,
@@ -257,6 +257,7 @@ pub struct SolanaTransaction {
     pub signers: Option<String>,
     pub reward: Option<i64>,
     pub fee: Option<i64>,
-    pub status: Option<String>,
+    pub status: Option</* TODO: unknown type Nullable<Bpchar> */>,
     pub instructions: Option<Vec<String>>,
 }
+

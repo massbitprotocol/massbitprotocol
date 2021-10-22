@@ -18,8 +18,11 @@ lazy_static! {
         .unwrap_or(20);
     pub static ref API_ENDPOINT: String =
         env::var("API_ENDPOINT").unwrap_or(String::from("0.0.0.0:9090"));
+    // pub static ref SOLANA_CLIENT: Arc<RpcClient> = Arc::new(RpcClient::new(
+    //     env::var("SOLANA_RPC_URL").unwrap_or(String::from("http://194.163.156.242:8899"))
+    // ));
     pub static ref SOLANA_CLIENT: Arc<RpcClient> = Arc::new(RpcClient::new(
-        env::var("SOLANA_RPC_URL").unwrap_or(String::from("http://194.163.156.242:8899"))
+        env::var("SOLANA_RPC_URL").unwrap_or(String::from("https://api.mainnet-beta.solana.com"))
     ));
     pub static ref DATABASE_URL: String = env::var("DATABASE_URL").unwrap_or(String::from(
         "postgres://graph-node:let-me-in@localhost/analytic"

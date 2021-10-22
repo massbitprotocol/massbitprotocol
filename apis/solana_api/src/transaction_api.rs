@@ -45,10 +45,10 @@ pub trait RpcTransactions {
         before_address: Option<String>,
         limit: usize,
     ) -> JsonRpcResult<serde_json::Value>;
+    #[rpc(name = "txns/detaildb")]
+    fn get_txns_detail_db(&self, tx_hash: String) -> JsonRpcResult<serde_json::Value>;
     #[rpc(name = "txns/detail")]
     fn get_txns_detail(&self, tx_hash: String) -> JsonRpcResult<serde_json::Value>;
-    #[rpc(name = "txns/detail_net")]
-    fn get_txns_detail_net(&self, tx_hash: String) -> JsonRpcResult<serde_json::Value>;
 }
 pub struct ViewSolanaTransaction {}
 pub struct RpcTransactionsImpl {
@@ -74,33 +74,65 @@ impl RpcTransactions for RpcTransactionsImpl {
         offset: i64,
         limit: i64,
     ) -> JsonRpcResult<serde_json::Value> {
+        let headers = vec![
+            "block_slot",
+            "timestamp",
+            "signature",
+            "signers",
+            "instructions",
+            "fee",
+            "status",
+        ];
         ///Get transactions from db
-        let vec_transactions = self
-            .connection_pool
+        self.connection_pool
             .get()
             .map_err(|_err| jsonrpc_core::Error::internal_error())
             .and_then(|conn| {
-                let txns: JsonRpcResult<Vec<SolanaTransaction>> = tx::solana_transactions
+                let txns: JsonRpcResult<
+                    Vec<(
+                        Option<i64>,
+                        Option<i64>,
+                        String,
+                        Option<String>,
+                        Option<Vec<String>>,
+                        Option<i64>,
+                        Option<String>,
+                    )>,
+                > = tx::solana_transactions
+                    .inner_join(bl::solana_blocks.on(tx::block_slot.eq(bl::block_slot)))
+                    .select((
+                        tx::block_slot,
+                        bl::timestamp,
+                        tx::signatures,
+                        tx::signers,
+                        tx::instructions,
+                        tx::fee,
+                        tx::status,
+                    ))
                     .filter(tx::block_slot.eq(block_slot))
                     .order(tx::tx_index.asc())
                     .offset(offset)
                     .limit(limit)
-                    .load::<SolanaTransaction>(conn.deref())
+                    .load(conn.deref())
                     .map_err(|err| {
                         log::error!("{:?}", &err);
                         jsonrpc_core::Error::invalid_request()
                     });
-                txns
-            });
-        /// Then get transactions from network
-        vec_transactions.and_then(|val| Ok(serde_json::json!(val)))
+                txns.and_then(|values| {
+                    Ok(serde_json::json!({
+                        "headers": headers,
+                        "values": values
+                    }))
+                })
+            })
     }
     fn get_list_transactions(&self, offset: i64, limit: i64) -> JsonRpcResult<serde_json::Value> {
         let headers = vec![
             "block_slot",
             "timestamp",
-            "signatures",
+            "signature",
             "signers",
+            "instructions",
             "fee",
             "status",
         ];
@@ -114,6 +146,7 @@ impl RpcTransactions for RpcTransactionsImpl {
                         Option<i64>,
                         String,
                         Option<String>,
+                        Option<Vec<String>>,
                         Option<i64>,
                         Option<String>,
                     )>,
@@ -127,6 +160,7 @@ impl RpcTransactions for RpcTransactionsImpl {
                         bl::timestamp,
                         tx::signatures,
                         tx::signers,
+                        tx::instructions,
                         tx::fee,
                         tx::status,
                     ))
@@ -135,7 +169,6 @@ impl RpcTransactions for RpcTransactionsImpl {
                         log::error!("{:?}", &err);
                         jsonrpc_core::Error::invalid_request()
                     });
-                //Todo: add instruction infos to transaction
                 txns.and_then(|values| {
                     Ok(serde_json::json!({
                         "headers": headers,
@@ -151,6 +184,15 @@ impl RpcTransactions for RpcTransactionsImpl {
         before_address: Option<String>,
         limit: usize,
     ) -> JsonRpcResult<Value> {
+        let headers = vec![
+            "block_slot",
+            "timestamp",
+            "signature",
+            "signers",
+            "instructions",
+            "fee",
+            "status",
+        ];
         Pubkey::from_str(address.as_str())
             .map_err(|_err| jsonrpc_core::Error::invalid_request())
             .and_then(|key| {
@@ -176,30 +218,24 @@ impl RpcTransactions for RpcTransactionsImpl {
                         let tx_list: ClientResult<Vec<ClientResult<EncodedConfirmedTransaction>>> =
                             self.rpc_client
                                 .send_batch(RpcRequest::GetTransaction, params);
-                        // if let Ok(txns) = tx_list {
-                        //     let vec: Vec<serde_json::Value> = txns
-                        //         .iter()
-                        //         .filter_map(|elm| elm.as_ref().ok())
-                        //         .map(|elm| self.parse_encoded_confirmed_transaction(elm))
-                        //         .collect();
-                        //     println!("{:?}", &vec);
-                        // }
                         tx_list
                             .map_err(|err| jsonrpc_core::Error::invalid_request())
                             .and_then(|txns| {
                                 let vec_values: Vec<Value> = txns
                                     .iter()
                                     .filter_map(|elm| elm.as_ref().ok())
-                                    .map(|elm| self.parse_encoded_confirmed_transaction(elm))
+                                    .map(|elm| self.parse_encoded_confirmed_transaction_values(elm))
                                     .collect();
-                                Ok(json!(vec_values))
+                                Ok(json!({
+                                    "headers": headers,
+                                    "values": vec_values
+                                }))
                             })
-                        //Ok(serde_json::json!(res))
                     })
             })
     }
 
-    fn get_txns_detail(&self, tx_hash: String) -> JsonRpcResult<serde_json::Value> {
+    fn get_txns_detail_db(&self, tx_hash: String) -> JsonRpcResult<serde_json::Value> {
         log::info!("Get transaction detail for {:?}", &tx_hash);
         self.connection_pool
             .get()
@@ -216,31 +252,42 @@ impl RpcTransactions for RpcTransactionsImpl {
             })
     }
 
-    fn get_txns_detail_net(&self, tx_hash: String) -> JsonRpcResult<serde_json::Value> {
+    fn get_txns_detail(&self, tx_hash: String) -> JsonRpcResult<serde_json::Value> {
         log::info!("Get transaction detail for {:?}", &tx_hash);
         let start = Instant::now();
-        match bs58::decode(tx_hash).into_vec() {
-            Ok(slide) => {
+        bs58::decode(tx_hash.clone())
+            .into_vec()
+            .map_err(|_err| jsonrpc_core::Error::invalid_request())
+            .and_then(|slide| {
                 let signature = Signature::new(slide.as_slice());
                 let result = self
                     .rpc_client
                     .get_transaction(&signature, UiTransactionEncoding::JsonParsed)
                     .map_err(|_err| jsonrpc_core::Error::invalid_request())
                     .and_then(|tran| {
-                        Ok(parse_encoded_confirmed_transaction(
-                            self.rpc_client.clone(),
-                            &tran,
-                        ))
+                        // self.rpc_client.get_block(tran.slot).and_then(|block| {
+                        //     for t in &block.transactions {
+                        //         if let EncodedTransaction::Json(val) = &t.transaction {
+                        //             if val.signatures.get(0).unwrap().clone() == tx_hash {
+                        //                 println!("{:?}", t);
+                        //                 break;
+                        //             }
+                        //         }
+                        //     }
+                        //     Ok(())
+                        // });
+                        Ok(self.parse_encoded_confirmed_transaction(&tran))
                     });
                 log::info!("Get transaction from network in {:?}", start.elapsed());
                 result
-            }
-            Err(_err) => Err(jsonrpc_core::Error::invalid_request()),
-        }
+            })
     }
 }
 
 impl RpcTransactionsImpl {
+    ///
+    /// Return transaction values as a json object
+    ///
     pub fn parse_encoded_confirmed_transaction(
         &self,
         tran: &EncodedConfirmedTransaction,
@@ -249,15 +296,17 @@ impl RpcTransactionsImpl {
         let map = value.as_object_mut().unwrap();
         if let Some(meta) = &tran.transaction.meta {
             map.insert("fee".to_string(), json!(meta.fee));
-            map.insert(
-                "status".to_string(),
-                json!(meta
-                    .status
-                    .as_ref()
-                    .ok()
-                    .and_then(|_| Some("1"))
-                    .unwrap_or("0")),
-            );
+            if meta.status.is_ok() {
+                map.insert("status".to_string(), json!("1"));
+            } else {
+                map.insert("status".to_string(), json!("0"));
+            }
+            if meta.log_messages.is_some() {
+                map.insert(
+                    "logs".to_string(),
+                    json!(meta.log_messages.as_ref().unwrap()),
+                );
+            }
         }
         if let EncodedTransaction::Json(transaction) = &tran.transaction.transaction {
             map.insert(
@@ -274,6 +323,59 @@ impl RpcTransactionsImpl {
                             .and_then(|acc| Some(&acc.pubkey))
                             .unwrap_or(&String::from(""))),
                     );
+                    map.insert(
+                        "recent_blockhash".to_string(),
+                        json!(message.recent_blockhash),
+                    );
+                    map.insert("instructions".to_string(), json!(message.instructions));
+                }
+                UiMessage::Raw(message) => {
+                    map.insert(
+                        "signer".to_string(),
+                        json!(message
+                            .account_keys
+                            .get(0)
+                            .and_then(|acc| Some(acc))
+                            .unwrap_or(&String::from(""))),
+                    );
+                    map.insert(
+                        "recent_blockhash".to_string(),
+                        json!(message.recent_blockhash),
+                    );
+                    map.insert("instructions".to_string(), json!(message.instructions));
+                }
+            };
+        }
+        value
+    }
+    ///
+    /// Return transaction values as a json array of values
+    /// "block_slot",
+    /// "timestamp",
+    /// "signature",
+    /// "signers",
+    /// "instructions",
+    /// "fee",
+    /// "status",
+    ///
+    pub fn parse_encoded_confirmed_transaction_values(
+        &self,
+        tran: &EncodedConfirmedTransaction,
+    ) -> serde_json::Value {
+        let mut value = serde_json::json!([tran.slot, tran.block_time.unwrap_or_default()]);
+        let arr_values = value.as_array_mut().unwrap();
+        if let EncodedTransaction::Json(transaction) = &tran.transaction.transaction {
+            arr_values.push(json!(transaction
+                .signatures
+                .get(0)
+                .unwrap_or(&String::from(""))));
+            match &transaction.message {
+                UiMessage::Parsed(message) => {
+                    arr_values.push(json!(message
+                        .account_keys
+                        .get(0)
+                        .and_then(|acc| Some(&acc.pubkey))
+                        .unwrap_or(&String::from(""))));
                     let instructions = message
                         .instructions
                         .iter()
@@ -296,23 +398,30 @@ impl RpcTransactionsImpl {
                             }
                         })
                         .collect::<Vec<String>>();
-                    map.insert("instructions".to_string(), json!(instructions));
+                    arr_values.push(json!(instructions));
                 }
                 UiMessage::Raw(message) => {
-                    map.insert(
-                        "signer".to_string(),
-                        json!(message
-                            .account_keys
-                            .get(0)
-                            .and_then(|acc| Some(acc))
-                            .unwrap_or(&String::from(""))),
-                    );
+                    arr_values.push(json!(message
+                        .account_keys
+                        .get(0)
+                        .and_then(|acc| Some(acc))
+                        .unwrap_or(&String::from(""))));
+                    let instructions = message
+                        .instructions
+                        .iter()
+                        .filter_map(|inst| message.account_keys.get(inst.program_id_index as usize))
+                        .collect::<Vec<&String>>();
+                    arr_values.push(json!(instructions));
                 }
             };
-            // if let UiMessage::Parsed(message) = &transaction.message {
-            //
-            //     println!("Parsed message {:?}", message);
-            // }
+            if let Some(meta) = &tran.transaction.meta {
+                arr_values.push(json!(meta.fee));
+                if meta.status.is_ok() {
+                    arr_values.push(json!("1"))
+                } else {
+                    arr_values.push(json!("0"))
+                }
+            }
         }
         value
     }
