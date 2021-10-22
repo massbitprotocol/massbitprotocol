@@ -100,10 +100,6 @@ pub async fn print_blocks(
                     &block.block.transactions.len(),
                     block.block.block_height
                 );
-                info!(
-                    "Recieved SOLANA TRANSACTIONS details: {:#?}",
-                    &block.block.transactions,
-                );
 
                 // for origin_transaction in block.clone().block.transactions {
                 //     let log_messages = origin_transaction
