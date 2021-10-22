@@ -183,7 +183,7 @@ tmux-start-all:
 	tmux new -d -s indexer-v1 scripts/tmux-indexer-v1.sh
 
 	@echo "Run indexer-v2 in tmux"
-	tmux new -d -s indexer-v2 scripts/tmux-indexer-v1.sh
+	tmux new -d -s indexer-v2 scripts/tmux-indexer-v2.sh
 
 	@echo "Run chain-reader in tmux"
 	tmux new -d -s chain-reader scripts/tmux-chain-reader.sh
@@ -209,6 +209,11 @@ tmux-indexer-v1:
 tmux-indexer-v2:
 	@echo "Run Indexer V2 in tmux"
 	tmux new -d -s indexer-v2 scripts/tmux-indexer-v2.sh
+	tmux ls
+
+tmux-chain-reader:
+	@echo "Run Chain Reader in tmux"
+	tmux new -d -s chain-reader scripts/tmux-chain-reader.sh
 	tmux ls
 
 tmux-indexer-v2-binary:
