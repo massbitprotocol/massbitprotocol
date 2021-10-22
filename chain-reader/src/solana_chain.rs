@@ -38,7 +38,7 @@ const RPC_BLOCK_ENCODING: UiTransactionEncoding = UiTransactionEncoding::Base64;
 const GET_BLOCK_TIMEOUT_SEC: u64 = 60;
 const BLOCK_BATCH_SIZE: u64 = 10;
 const GET_NEW_SLOT_DELAY_MS: u64 = 500;
-const TRANSACTION_BATCH_SIZE: u32 = 3;
+const TRANSACTION_BATCH_SIZE: usize = 100;
 // The max value is 1000
 const LIMIT_FILTER_RESULT: usize = 1000;
 
@@ -51,23 +51,31 @@ struct ResultFilterTransaction {
 
 fn getTransactions(
     client: &Arc<RpcClient>,
-    mut txs: &Vec<RpcConfirmedTransactionStatusWithSignature>,
-) -> (
-    ClientResult<Vec<ClientResult<EncodedConfirmedTransaction>>>,
-    Vec<RpcConfirmedTransactionStatusWithSignature>,
-) {
+    txs: &Vec<RpcConfirmedTransactionStatusWithSignature>,
+    start_tx: &mut usize,
+) -> ClientResult<Vec<ClientResult<EncodedConfirmedTransaction>>> {
     // Param:
     // [
     //     "5JNE26BL1FGGNdjSFXDmVrVYLv7oayUYNErSE4KqMuDTiX4rSeUC9yFtLFMwpkqFAEQNm22AvUanfd8PXAH4pukm",
     //     "json"
     //]
-    let (call_txs, remand_txs) = txs.split_at(TRANSACTION_BATCH_SIZE as usize);
+
+    //Get transaction invert direction from the txs
+    let end_tx = match *start_tx >= TRANSACTION_BATCH_SIZE {
+        true => *start_tx - TRANSACTION_BATCH_SIZE,
+        false => 0,
+    };
+
+    let call_txs = &txs[end_tx..*start_tx];
+    *start_tx = end_tx;
+
     println!(
         "getTransactions: {} remand transactions for getting",
-        txs.len()
+        start_tx
     );
     let params = call_txs
         .iter()
+        .rev()
         .map(|tx| json!([tx.signature, "base64"]))
         .collect();
 
@@ -75,7 +83,7 @@ fn getTransactions(
     let res: ClientResult<Vec<ClientResult<EncodedConfirmedTransaction>>> =
         client.send_batch(RpcRequest::GetTransaction, params);
     debug!("res: {:?}", res);
-    (res, Vec::from(call_txs))
+    res
 }
 
 fn getFilterConfirmedTransactionStatus(
@@ -156,7 +164,7 @@ pub async fn loop_get_block(
     // let websocket_url = config.ws.clone();
     // let (mut _subscription_client, receiver) =
     //     PubsubClient::slot_subscribe(&websocket_url).unwrap();
-    let mut last_indexed_slot: Option<u64> = start_block.map(|start_block| start_block + 1);
+
     //fix_one_thread_not_receive(&chan);
     let sem = Arc::new(Semaphore::new(2 * BLOCK_BATCH_SIZE as usize));
 
@@ -164,6 +172,10 @@ pub async fn loop_get_block(
 
     let mut filter_txs = vec![];
     // Backward run
+    info!(
+        "Start get transaction backward with filter address: {:?}",
+        &filter
+    );
     loop {
         let now = Instant::now();
         let mut res =
@@ -179,14 +191,14 @@ pub async fn loop_get_block(
             break;
         }
     }
-
+    info!("Start get {} transaction forward.", filter_txs.len());
     // Forward run
-    while !filter_txs.is_empty() {
-        println!("{} remand transactions for getting", filter_txs.len());
-        let (transactions, called_txs) = getTransactions(client, &mut filter_txs);
+    let mut start_tx: usize = filter_txs.len();
+    while start_tx > 0 {
+        let transactions = getTransactions(client, &filter_txs, &mut start_tx);
         match transactions {
             Ok(transactions) => {
-                for (transaction, tx) in izip!(transactions, called_txs) {
+                for transaction in transactions {
                     match transaction {
                         Ok(transaction) => {
                             let decode_transactions =
@@ -222,6 +234,13 @@ pub async fn loop_get_block(
         }
     }
 
+    // start from the last indexed block
+    let mut last_indexed_slot: Option<u64> = filter_txs.last().map(|tx| tx.slot);
+
+    info!(
+        "Start getting forward at the block {:?} .",
+        &last_indexed_slot
+    );
     // from current block run
     loop {
         if chan.is_closed() {
