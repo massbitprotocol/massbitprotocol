@@ -27,7 +27,7 @@ impl MessageHandler for SolanaHandlerProxy {
         log::info!(
             "{} Received SOLANA BLOCK with block height: {:?}, hash: {:?}",
             &*COMPONENT_NAME,
-            &block.block.block_height.unwrap(),
+            &block.block.block_height,
             &block.block.blockhash
         );
         self.handler.handle_block(&block);
@@ -35,13 +35,13 @@ impl MessageHandler for SolanaHandlerProxy {
         for origin_transaction in block.clone().block.transactions {
             let origin_log_messages = origin_transaction.meta.clone().unwrap().log_messages;
             let transaction = SolanaTransaction {
-                block_number: ((&block).block.block_height.unwrap() as u32),
+                block_number: ((&block).block.block_height.unwrap_or_default() as u32),
                 transaction: origin_transaction.clone(),
                 log_messages: origin_log_messages.clone(),
                 success: false,
             };
             let log_messages = SolanaLogMessages {
-                block_number: ((&block).block.block_height.unwrap() as u32),
+                block_number: ((&block).block.block_height.unwrap_or_default() as u32),
                 log_messages: origin_log_messages.clone(),
                 transaction: origin_transaction.clone(),
             };

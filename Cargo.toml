@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "analytics",
+    "apis/solana_api",
     "chain-reader",
     "core/chain/substrate",
     "core/chain/solana",
