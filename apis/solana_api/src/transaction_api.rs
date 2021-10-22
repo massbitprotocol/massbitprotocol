@@ -27,28 +27,28 @@ use std::time::Instant;
 
 #[rpc]
 pub trait RpcTransactions {
-    #[rpc(name = "txns/block")]
-    fn get_block_transactions(
+    #[rpc(name = "txns_block")]
+    fn get_transactions_by_block(
         &self,
         block_slot: i64,
         offset: i64,
         limit: i64,
     ) -> JsonRpcResult<serde_json::Value>;
-    #[rpc(name = "txns/list")]
-    fn get_list_transactions(&self, offset: i64, limit: i64) -> JsonRpcResult<serde_json::Value>;
+    #[rpc(name = "txns_list")]
+    fn get_transactions_list(&self, offset: i64, limit: i64) -> JsonRpcResult<serde_json::Value>;
 
     ///Get list transaction by address
-    #[rpc(name = "txns/address")]
-    fn get_address_transactions(
+    #[rpc(name = "txns_address")]
+    fn get_transactions_by_address(
         &self,
         address: String,
         before_address: Option<String>,
         limit: usize,
     ) -> JsonRpcResult<serde_json::Value>;
-    #[rpc(name = "txns/detaildb")]
+    #[rpc(name = "txns_detail_db")]
     fn get_txns_detail_db(&self, tx_hash: String) -> JsonRpcResult<serde_json::Value>;
-    #[rpc(name = "txns/detail")]
-    fn get_txns_detail(&self, tx_hash: String) -> JsonRpcResult<serde_json::Value>;
+    #[rpc(name = "txns_detail_chain")]
+    fn get_txns_detail_chain(&self, tx_hash: String) -> JsonRpcResult<serde_json::Value>;
 }
 pub struct ViewSolanaTransaction {}
 pub struct RpcTransactionsImpl {
@@ -68,7 +68,7 @@ impl RpcTransactionsImpl {
 }
 
 impl RpcTransactions for RpcTransactionsImpl {
-    fn get_block_transactions(
+    fn get_transactions_by_block(
         &self,
         block_slot: i64,
         offset: i64,
@@ -126,7 +126,7 @@ impl RpcTransactions for RpcTransactionsImpl {
                 })
             })
     }
-    fn get_list_transactions(&self, offset: i64, limit: i64) -> JsonRpcResult<serde_json::Value> {
+    fn get_transactions_list(&self, offset: i64, limit: i64) -> JsonRpcResult<serde_json::Value> {
         let headers = vec![
             "block_slot",
             "timestamp",
@@ -178,7 +178,7 @@ impl RpcTransactions for RpcTransactionsImpl {
             })
     }
 
-    fn get_address_transactions(
+    fn get_transactions_by_address(
         &self,
         address: String,
         before_address: Option<String>,
@@ -252,7 +252,7 @@ impl RpcTransactions for RpcTransactionsImpl {
             })
     }
 
-    fn get_txns_detail(&self, tx_hash: String) -> JsonRpcResult<serde_json::Value> {
+    fn get_txns_detail_chain(&self, tx_hash: String) -> JsonRpcResult<serde_json::Value> {
         log::info!("Get transaction detail for {:?}", &tx_hash);
         let start = Instant::now();
         bs58::decode(tx_hash.clone())
@@ -425,33 +425,4 @@ impl RpcTransactionsImpl {
         }
         value
     }
-}
-fn parse_encoded_confirmed_transaction(
-    rpc_client: Arc<RpcClient>,
-    tran: &EncodedConfirmedTransaction,
-) -> serde_json::Value {
-    // tran.transaction.transaction.decode().and_then(|tran| {
-    //     println!("Transaction {:?}", &tran);
-    //     Some(serde_json::json!(&tran))
-    // });
-    if let EncodedTransaction::Json(transaction) = &tran.transaction.transaction {
-        if let UiMessage::Parsed(message) = &transaction.message {
-            message.instructions.iter().for_each(|inst| match inst {
-                UiInstruction::Parsed(parsed) => match parsed {
-                    UiParsedInstruction::Parsed(instruction) => {
-                        println!("Program {:?}", instruction.program);
-                    }
-                    UiParsedInstruction::PartiallyDecoded(instruction) => {
-                        println!("{:?}", bs58::decode(&instruction.data).into_vec().unwrap());
-                        parse_partially_decoded_instruction(rpc_client.clone(), instruction)
-                    }
-                },
-                UiInstruction::Compiled(compiled) => {
-                    println!("Compiled instruction {:?}", compiled);
-                }
-            });
-            println!("Parsed message {:?}", message);
-        }
-    }
-    serde_json::json!(tran)
 }

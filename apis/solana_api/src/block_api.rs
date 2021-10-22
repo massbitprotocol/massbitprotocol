@@ -17,14 +17,14 @@ use tokio::time::Instant;
 
 #[rpc]
 pub trait RpcBlocks {
-    #[rpc(name = "block/statistic")]
+    #[rpc(name = "block_statistic")]
     fn get_block_statistic(&self, limit: i64) -> JsonRpcResult<Value>;
-    #[rpc(name = "block/lasts")]
-    fn get_last_blocks(&self, limit: i64) -> JsonRpcResult<Value>;
-    #[rpc(name = "block/detail_db")]
-    fn get_dbblock_detail(&self, block_slot: i64) -> JsonRpcResult<Value>;
-    #[rpc(name = "block/detail_net")]
-    fn get_netblock_detail(&self, block_slot: Slot) -> JsonRpcResult<Value>;
+    #[rpc(name = "block_list")]
+    fn get_block_list(&self, limit: i64) -> JsonRpcResult<Value>;
+    #[rpc(name = "block_detail_db")]
+    fn get_block_detail_db(&self, block_slot: i64) -> JsonRpcResult<Value>;
+    #[rpc(name = "block_detail_chain")]
+    fn get_block_detail_chain(&self, block_slot: Slot) -> JsonRpcResult<Value>;
 }
 
 pub struct RpcBlocksImpl {
@@ -67,7 +67,7 @@ impl RpcBlocks for RpcBlocksImpl {
             })
     }
 
-    fn get_last_blocks(&self, limit: i64) -> jsonrpc_core::Result<Value> {
+    fn get_block_list(&self, limit: i64) -> jsonrpc_core::Result<Value> {
         let block_res = self
             .get_connection()
             .map_err(|_err| jsonrpc_core::Error::internal_error())
@@ -84,7 +84,7 @@ impl RpcBlocks for RpcBlocksImpl {
         block_res.and_then(|blocks| Ok(json!(&blocks)))
     }
 
-    fn get_dbblock_detail(&self, block_slot: i64) -> jsonrpc_core::Result<Value> {
+    fn get_block_detail_db(&self, block_slot: i64) -> jsonrpc_core::Result<Value> {
         log::info!("Get detail of block {}", block_slot);
         let start = Instant::now();
 
@@ -103,7 +103,7 @@ impl RpcBlocks for RpcBlocksImpl {
         log::info!("Get block from database in {:?}", start.elapsed());
         block_res.and_then(|block| Ok(json!(block)))
     }
-    fn get_netblock_detail(&self, block_slot: Slot) -> jsonrpc_core::Result<Value> {
+    fn get_block_detail_chain(&self, block_slot: Slot) -> jsonrpc_core::Result<Value> {
         log::info!("Get detail of block {}", block_slot);
         let start = Instant::now();
         //Get block from net work

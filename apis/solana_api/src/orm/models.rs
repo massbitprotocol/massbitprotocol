@@ -5,61 +5,6 @@
 use super::schema::*;
 use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
-#[derive(Queryable, Debug, Identifiable)]
-#[primary_key(block_hash)]
-pub struct EthereumBlock {
-    pub block_hash: String,
-    pub block_number: Option<i64>,
-    pub transaction_number: Option<i64>,
-    pub timestamp: i64,
-    pub validated_by: Option<String>,
-    pub reward: Option<BigDecimal>,
-    pub difficulty: Option<BigDecimal>,
-    pub total_difficulty: Option<BigDecimal>,
-    pub size: Option<i64>,
-    pub gas_used: Option<BigDecimal>,
-    pub gas_limit: Option<BigDecimal>,
-    pub extra_data: Option<Vec<u8>>,
-    pub parent_hash: Option<String>,
-}
-
-#[derive(Queryable, Debug, Identifiable)]
-pub struct EthereumDailyAddressTransaction {
-    pub id: i32,
-    pub address: Option<String>,
-    pub transaction_date: String,
-    pub transaction_count: BigDecimal,
-    pub transaction_volume: BigDecimal,
-    pub gas: BigDecimal,
-    pub timestamp: Option<i64>,
-}
-
-#[derive(Queryable, Debug, Identifiable)]
-pub struct EthereumDailyTransaction {
-    pub id: i32,
-    pub network: String,
-    pub transaction_date: String,
-    pub transaction_count: BigDecimal,
-    pub transaction_volume: BigDecimal,
-    pub gas: BigDecimal,
-    pub average_gas_price: BigDecimal,
-    pub timestamp: Option<i64>,
-}
-
-#[derive(Queryable, Debug, Identifiable)]
-#[primary_key(transaction_hash)]
-pub struct EthereumTransaction {
-    pub transaction_hash: String,
-    pub block_hash: Option<String>,
-    pub block_number: Option<i64>,
-    pub nonce: Option<BigDecimal>,
-    pub sender: String,
-    pub receiver: Option<String>,
-    pub value: BigDecimal,
-    pub gas: BigDecimal,
-    pub gas_price: BigDecimal,
-    pub timestamp: i64,
-}
 
 #[derive(Queryable, Debug, Identifiable)]
 pub struct NetworkState {
