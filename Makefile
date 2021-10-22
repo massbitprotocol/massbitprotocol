@@ -12,9 +12,6 @@ init-docker:
 	sudo apt update
 	apt-cache policy docker-ce
 	sudo apt install -y docker-ce docker-compose
-	sudo groupadd docker || true
-	sudo gpasswd -a $USER docker
-	sudo setfacl -m user:$USER:rw /var/run/docker.sock
 
 init-python:
 	sudo apt install -y python3
@@ -132,17 +129,22 @@ restart-chain-reader-index-manager:
 	tmux kill-session -t chain-reader
 	tmux kill-session -t index-manager
 	@echo "Run index-manager in tmux"
-	tmux new -d -s index-manager scripts/tmux-index-manager.sh
+	tmux new -d -s index-manager scripts/tmux-indexer-v1.sh
 	@echo "Run chain-reader in tmux"
 	tmux new -d -s chain-reader scripts/tmux-chain-reader.sh
 
 #################### Dev commands ##########################
-
-deploy:
+deploy-wasm:
 	@echo "Deploy already build indexer $(id)"
 	curl --location --request POST 'localhost:5000/deploy/wasm' \
     --header 'Content-Type: application/json' \
-    --data-raw '{"configs": {"model": "Factory" }, "compilation_id": "$(id)" }'
+    --data-raw '{"compilation_id": "$(id)" }'
+
+deploy-so:
+	@echo "Deploy already build indexer $(id)"
+	curl --location --request POST 'localhost:5000/deploy/so' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{"compilation_id": "$(id)" }'
 
 run-index-manager:
 	@echo "Run index-manager"
@@ -173,20 +175,24 @@ services-prod-down:
 	docker-compose -f docker-compose.prod.yml down
 
 #################### Production commands ##################
-run-all-tmux:
+tmux-start-all:
 	@echo "A quick fix to bypass the not able to start tmux error"
 	export TERM=xterm
 
-	@echo "Run index-manager in tmux"
-	tmux new -d -s index-manager scripts/tmux-index-manager.sh
+	@echo "Run indexer-v1 in tmux"
+	tmux new -d -s indexer-v1 scripts/tmux-indexer-v1.sh
+
+	@echo "Run indexer-v2 in tmux"
+	tmux new -d -s indexer-v2 scripts/tmux-indexer-v1.sh
 
 	@echo "Run chain-reader in tmux"
 	tmux new -d -s chain-reader scripts/tmux-chain-reader.sh
 
 	@echo "Run code-compiler in tmux"
 	tmux new -d -s code-compiler scripts/tmux-code-compiler.sh
+	tmux ls
 
-kill-all-tmux:
+tmux-kill-all:
 	@echo "Kill all tmux services"
 	tmux list-sessions | awk 'BEGIN{FS=":"}{print $1}' | xargs -n 1 tmux kill-session -t
 
@@ -195,22 +201,32 @@ tmux-code-compiler:
 	tmux new -d -s code-compiler scripts/tmux-code-compiler.sh
 	tmux ls
 
+tmux-indexer-v1:
+	@echo "Run Indexer V1 in tmux"
+	tmux new -d -s indexer-v1 scripts/tmux-indexer-v1.sh
+	tmux ls
+
+tmux-indexer-v2:
+	@echo "Run Indexer V2 in tmux"
+	tmux new -d -s indexer-v2 scripts/tmux-indexer-v2.sh
+	tmux ls
+
 tmux-indexer-v2-binary:
-	@echo "Starting indexer v2 in binary mode"
+	@echo "Run Indexer V2 in tmux with binary"
 	tmux new -d -s indexer-v2 scripts/tmux-indexer-v2-binary.sh
 	tmux ls
 
 tmux-chain-reader-binary:
-	@echo "Starting chain-reader in binary mode"
+	@echo "Run Chain Reader in tmux with binary"
 	tmux new -d -s chain-reader scripts/tmux-chain-reader-binary.sh
 	tmux ls
 
 #################### Long running test commands ##################
-test-long-running-quickswap:
+index-quickswap-full:
 	@echo "A quick fix to bypass the not able to start tmux error"
 	export TERM=xterm
 	@echo "Run index-manager in tmux"
-	tmux new -d -s index-manager scripts/tmux-index-manager.sh
+	tmux new -d -s index-manager scripts/tmux-indexer-v1.sh
 	@echo "Run chain-reader in tmux"
 	tmux new -d -s chain-reader scripts/tmux-chain-reader.sh
 	@echo "Run code-compiler in tmux"
@@ -224,26 +240,14 @@ test-long-running-quickswap:
 	tmux new -d -s report_email "cd e2e-test && python check_log.py"
 	tmux ls
 
-
 index-quickswap:
-	@echo "Running only the quickswap Polygon test ..."
+	@echo "Start indexing Quickswap (Polygon) ..."
 	cd e2e-test/polygon && robot -t "Compile and Deploy WASM Test Quickswap" contract.robot
-	@echo "Running report email services"
-	tmux new -d -s report_email_quickswap "cd e2e-test && python check_log.py"
-	tmux ls
-
 
 index-pancakeswap:
-	@echo "Running only the pancakeswap BSC test ..."
+	@echo "Start indexing Pancakeswap (BSC) ..."
 	cd e2e-test/bsc && robot -t "Compile and Deploy Pancakeswap Exchange WASM" contract.robot
-	@echo "Running report email services"
-	tmux new -d -s report_email_pancakeswap "cd e2e-test && python check_log.py"
-	tmux ls
 
 index-harmony:
-	@echo "Start indexing Harmony ..."
+	@echo "Start indexing Harmony (Harmony) ..."
 	cd e2e-test/harmony && robot -t "Index Harmony" contract.robot
-
-test-long-running-quickswap-run-test-only:
-	@echo "Running only the quickswap Polygon test ..."
-	cd e2e-test/polygon && robot -t "Compile and Deploy WASM Test Quickswap" contract.robot
