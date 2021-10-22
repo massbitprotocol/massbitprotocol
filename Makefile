@@ -247,7 +247,7 @@ index-quickswap-full:
 
 index-quickswap:
 	@echo "Start indexing Quickswap (Polygon) ..."
-	cd e2e-test/polygon && robot -t "Compile and Deploy WASM Test Quickswap" contract.robot
+	cd e2e-test/polygon && robot -t "Index Quickswap" contract.robot
 
 index-pancakeswap:
 	@echo "Start indexing Pancakeswap (BSC) ..."
