@@ -45,7 +45,7 @@ fn create_table<'a>() -> Table<'a> {
         "gas_limit" => ColumnType::BigDecimal,
         "extra_data" => ColumnType::Bytes
     );
-    Table::new("ethereum_blocks", columns, Some("t"))
+    Table::new("ethereum_blocks", columns)
 }
 fn create_entity(block: Arc<LightEthereumBlock>) -> Entity {
     create_entity!(

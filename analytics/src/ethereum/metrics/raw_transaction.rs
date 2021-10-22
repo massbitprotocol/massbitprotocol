@@ -50,7 +50,7 @@ fn create_table<'a>() -> Table<'a> {
         "gas_price" => ColumnType::BigDecimal,
         "timestamp" => ColumnType::BigInt
     );
-    Table::new("ethereum_transactions", columns, Some("t"))
+    Table::new("ethereum_transactions", columns)
 }
 fn create_entity(block: Arc<LightEthereumBlock>, trans: &Transaction) -> Entity {
     //let _tran_receipt = block.receipts.get(&trans.hash);

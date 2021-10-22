@@ -52,7 +52,7 @@ fn create_table<'a>() -> Table<'a> {
         "gas" => ColumnType::BigInt,
         "average_gas_price" => ColumnType::BigDecimal
     );
-    Table::new("ethereum_daily_transactions", columns, Some("t"))
+    Table::new("ethereum_daily_transactions", columns)
 }
 fn create_entity(network_name: Option<NetworkType>, block: Arc<LightEthereumBlock>) -> Entity {
     let _timestamp = block.timestamp.as_u64() / 86400 * 86400;

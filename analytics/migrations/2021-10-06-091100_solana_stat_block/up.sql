@@ -1,6 +1,6 @@
-create table solana_daily_stat_block
+create table solana_daily_stat_blocks
 (
-    id                      bigserial constraint solana_daily_stat_block_pk primary key,
+    id                      bigserial constraint solana_daily_stat_blocks_pk primary key,
     network                 varchar(100),
     date                    bigint,
     min_block_slot          bigint,
@@ -13,6 +13,6 @@ create table solana_daily_stat_block
     average_block_time      bigint default 0,   -- average time  generated block in ms
     fist_block_time         bigint,
     last_block_time         bigint,
-    constraint solana_daily_stat_block_date_uindex
+    constraint solana_daily_stat_blocks_date_uindex
         unique (network, date)
 )

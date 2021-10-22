@@ -1,1 +1,1 @@
-drop table if exists solana_daily_stat_block;
+drop table if exists solana_daily_stat_blocks;

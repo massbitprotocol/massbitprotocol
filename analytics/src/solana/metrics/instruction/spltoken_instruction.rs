@@ -15,11 +15,7 @@ pub fn create_spltoken_inst_table(inst_type: &str) -> Option<Table> {
                 "space" => ColumnType::BigInt,
                 "owner" => ColumnType::String
             );
-            Some(Table::new(
-                "solana_spl_token_initialize_mints",
-                columns,
-                Some("t"),
-            ))
+            Some(Table::new("solana_spl_token_initialize_mints", columns))
         }
         _ => None,
     }
