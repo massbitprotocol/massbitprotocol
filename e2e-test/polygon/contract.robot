@@ -13,10 +13,10 @@ ${CODE_COMPILER}  http://localhost:5000
 ${INDEX_MANAGER}  http://localhost:3000
 
 *** Test Cases ***
-#######################
-# Test-quickswap WASM #
-#######################
-Compile and Deploy WASM Test Quickswap
+##################
+# Quickswap WASM #
+##################
+Index Quickswap
     # Configuration
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
@@ -35,7 +35,7 @@ Compile and Deploy WASM Test Quickswap
     ...  ${compile_res["payload"]}
 
     # Deploy
-    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}", "configs":{"model":"Factory"}}
+    ${json}=  Convert String to JSON  {"compilation_id": "${compile_res["payload"]}"}
     ${deploy_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/deploy/wasm
     ...  ${json}
