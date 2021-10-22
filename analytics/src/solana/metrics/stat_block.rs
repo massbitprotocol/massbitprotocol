@@ -36,7 +36,7 @@ impl SolanaHandler for SolanaStatBlockHandler {
             Some(val) => val.as_str(),
         };
         let entity = create_stat_block_entity(network, block_slot, block);
-        let mut conflict_frag = UpsertConflictFragment::new("solana_daily_stat_block_date_uindex");
+        let mut conflict_frag = UpsertConflictFragment::new("solana_daily_stat_blocks_date_uindex");
         conflict_frag.add_expression("min_block_slot", "LEAST(t.min_block_slot, EXCLUDED.min_block_slot)")
             .add_expression("max_block_slot", "GREATEST(t.max_block_slot, EXCLUDED.max_block_slot)")
             .add_expression("block_counter","t.block_counter + EXCLUDED.block_counter")
