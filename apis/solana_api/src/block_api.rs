@@ -18,10 +18,11 @@ use tokio::time::Instant;
 #[rpc]
 pub trait RpcBlocks {
     #[rpc(name = "block_statistic")]
-    fn get_block_statistic(&self, limit: i64) -> JsonRpcResult<Value>;
+    fn get_block_statistic(&self, offset: i64, limit: i64) -> JsonRpcResult<Value>;
     #[rpc(name = "block_list")]
-    fn get_block_list(&self, limit: i64) -> JsonRpcResult<Value>;
-    #[rpc(name = "block_detail_db")]
+    fn get_block_list(&self, offset: i64, limit: i64) -> JsonRpcResult<Value>;
+    //Get block list from analytic database
+    #[rpc(name = "block_detail")]
     fn get_block_detail_db(&self, block_slot: i64) -> JsonRpcResult<Value>;
     #[rpc(name = "block_detail_chain")]
     fn get_block_detail_chain(&self, block_slot: Slot) -> JsonRpcResult<Value>;
@@ -51,12 +52,13 @@ impl RpcBlocksImpl {
     }
 }
 impl RpcBlocks for RpcBlocksImpl {
-    fn get_block_statistic(&self, limit: i64) -> JsonRpcResult<Value> {
+    fn get_block_statistic(&self, offset: i64, limit: i64) -> JsonRpcResult<Value> {
         self.get_connection()
             .map_err(|_err| jsonrpc_core::Error::internal_error())
             .and_then(|conn| {
                 bl_stat::solana_daily_stat_blocks
-                    .order(bl_stat::date)
+                    .order(bl_stat::date.desc())
+                    .offset(offset)
                     .limit(limit)
                     .load::<SolanaDailyStatBlock>(conn.deref())
                     .map_err(|err| {
@@ -67,13 +69,14 @@ impl RpcBlocks for RpcBlocksImpl {
             })
     }
 
-    fn get_block_list(&self, limit: i64) -> jsonrpc_core::Result<Value> {
+    fn get_block_list(&self, offset: i64, limit: i64) -> jsonrpc_core::Result<Value> {
         let block_res = self
             .get_connection()
             .map_err(|_err| jsonrpc_core::Error::internal_error())
             .and_then(|conn| {
                 bl::solana_blocks
                     .order(bl::timestamp.desc())
+                    .offset(offset)
                     .limit(limit)
                     .load::<SolanaBlock>(conn.deref())
                     .map_err(|err| {

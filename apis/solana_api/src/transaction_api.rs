@@ -47,7 +47,8 @@ pub trait RpcTransactions {
     ) -> JsonRpcResult<serde_json::Value>;
     #[rpc(name = "txns_detail_db")]
     fn get_txns_detail_db(&self, tx_hash: String) -> JsonRpcResult<serde_json::Value>;
-    #[rpc(name = "txns_detail_chain")]
+    //Get transaction detail
+    #[rpc(name = "txns_detail")]
     fn get_txns_detail_chain(&self, tx_hash: String) -> JsonRpcResult<serde_json::Value>;
 }
 pub struct ViewSolanaTransaction {}
