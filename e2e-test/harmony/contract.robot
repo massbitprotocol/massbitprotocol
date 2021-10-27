@@ -13,15 +13,15 @@ ${CODE_COMPILER}  http://localhost:5000
 ${INDEX_MANAGER}  http://localhost:3000
 
 *** Test Cases ***
-##################
-# Quickswap WASM #
-##################
-Index Quickswap
+################
+# Harmony WASM #
+################
+Index Harmony
     # Configuration
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
     # Compile request
-    ${object} =  Read Wasm Example  ../../user-example/polygon/wasm/quickswap
+    ${object} =  Read Wasm Example  ../../user-example/harmony/wasm/harmony
     ${compile_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/compile/wasm
     ...  ${object}
@@ -40,6 +40,7 @@ Index Quickswap
     ...  ${CODE_COMPILER}/deploy/wasm
     ...  ${json}
     Should be equal  ${deploy_res["status"]}  success
+
 
 ###################
 # Helper Function #
