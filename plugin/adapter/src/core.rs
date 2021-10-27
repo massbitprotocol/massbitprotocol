@@ -39,6 +39,7 @@ lazy_static! {
     static ref COMPONENT_NAME: String = String::from("[Adapter-Manager]");
 }
 const SABER_STABLE_SWAP_PROGRAM: &str = "SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ";
+const SERUM_DEX_PROGRAM: &str = "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin";
 const GET_BLOCK_TIMEOUT_SEC: u64 = 600;
 const GET_STREAM_TIMEOUT_SEC: u64 = 30;
 #[global_allocator]
@@ -130,20 +131,29 @@ impl AdapterManager {
                 let timeout_channel =
                     Timeout::new(channel, Duration::from_secs(GET_BLOCK_TIMEOUT_SEC));
                 let mut client = StreamClient::new(timeout_channel);
-                match data_source.mapping.language.as_str() {
-                    //Default use rust
-                    _ => {
-                        self.handle_rust_mapping(
-                            hash,
-                            data_source,
-                            start_block,
-                            mapping,
-                            schema,
-                            &mut client,
-                        )
-                        .await
-                    }
-                }
+                self.handle_rust_mapping(
+                    hash,
+                    data_source,
+                    start_block,
+                    mapping,
+                    schema,
+                    &mut client,
+                )
+                .await
+                // match data_source.mapping.language.as_str() {
+                //     //Default use rust
+                //     _ => {
+                //         self.handle_rust_mapping(
+                //             hash,
+                //             data_source,
+                //             start_block,
+                //             mapping,
+                //             schema,
+                //             &mut client,
+                //         )
+                //         .await
+                //     }
+                // }
             }
             _ => Ok(()),
         }
@@ -196,13 +206,9 @@ impl AdapterManager {
                 loop {
                     match opt_stream {
                         None => {
-                            opt_stream = try_create_stream(
-                                client,
-                                &chain_type,
-                                start_block,
-                                &data_source.network,
-                            )
-                            .await;
+                            opt_stream =
+                                try_create_stream(client, &chain_type, start_block, data_source)
+                                    .await;
                             if opt_stream.is_none() {
                                 //Sleep for a while and reconnect
                                 sleep(Duration::from_secs(GET_STREAM_TIMEOUT_SEC)).await;
@@ -304,15 +310,19 @@ async fn try_create_stream(
     client: &mut StreamClient<Timeout<Channel>>,
     chain_type: &ChainType,
     start_block: u64,
-    network: &Option<NetworkType>,
+    datasource: &DataSource,
 ) -> Option<Streaming<BlockResponse>> {
     log::info!("Create new stream from block {}", start_block);
     //Todo: if remove this line, debug will be broken
     let filter =
         <chain_ethereum::Chain as Blockchain>::TriggerFilter::from_data_sources(vec![].iter());
-    let filter = SolanaFilter::new(vec![SABER_STABLE_SWAP_PROGRAM]);
+    let filter = match datasource.name.as_str() {
+        "Saber-Indexer" => SolanaFilter::new(vec![SABER_STABLE_SWAP_PROGRAM]),
+        "Serum-Indexer" => SolanaFilter::new(vec![SERUM_DEX_PROGRAM]),
+        _ => SolanaFilter::new(vec![]),
+    };
     let encoded_filter = serde_json::to_vec(&filter).unwrap();
-
+    let network = &datasource.network;
     let get_blocks_request = BlocksRequest {
         start_block_number: if start_block > 0 {
             Some(start_block)

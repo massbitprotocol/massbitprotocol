@@ -159,7 +159,10 @@ pub async fn loop_get_block(
     client: &Arc<RpcClient>,
     filter: &SolanaFilter,
 ) -> Result<(), Box<dyn Error>> {
-    info!("Start get block Solana from: {:?}", start_block);
+    info!(
+        "Start get block Solana from: {:?} with filter {:?}",
+        start_block, filter
+    );
     let config = CONFIG.get_chain_config(&CHAIN_TYPE, &network).unwrap();
     // let websocket_url = config.ws.clone();
     // let (mut _subscription_client, receiver) =
@@ -176,19 +179,25 @@ pub async fn loop_get_block(
         "Start get transaction backward with filter address: {:?}",
         &filter
     );
-    loop {
-        let now = Instant::now();
-        let mut res =
-            getFilterConfirmedTransactionStatus(&filter, client, &before_tx_signature, start_block);
-        debug!("res: {:?}", res);
-        before_tx_signature = res.last_tx_signature;
-        filter_txs.append(res.txs.as_mut());
+    if start_block.is_some() {
+        loop {
+            let now = Instant::now();
+            let mut res = getFilterConfirmedTransactionStatus(
+                &filter,
+                client,
+                &before_tx_signature,
+                start_block,
+            );
+            debug!("res: {:?}", res);
+            before_tx_signature = res.last_tx_signature;
+            filter_txs.append(res.txs.as_mut());
 
-        info!("Time to get filter transactions: {:?}. Got {:?} filtered addresses, last address: {:?}",now.elapsed(), filter_txs.len(),
+            info!("Time to get filter transactions: {:?}. Got {:?} filtered addresses, last address: {:?}",now.elapsed(), filter_txs.len(),
         filter_txs.last());
-        // No record in txs
-        if res.is_done {
-            break;
+            // No record in txs
+            if res.is_done {
+                break;
+            }
         }
     }
     info!("Start get {} transaction forward.", filter_txs.len());
