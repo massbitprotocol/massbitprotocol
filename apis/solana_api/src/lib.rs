@@ -1,10 +1,12 @@
 #[macro_use]
 extern crate diesel;
+pub mod account_api;
 pub mod block_api;
 pub mod helper;
 pub mod orm;
 pub mod rpc_handler;
 pub mod transaction_api;
+
 use lazy_static::lazy_static;
 use solana_client::rpc_client::RpcClient;
 use std::env;

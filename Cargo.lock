@@ -106,7 +106,7 @@ dependencies = [
  "Inflector",
  "anyhow",
  "async-stream 0.2.1",
- "bigdecimal",
+ "bigdecimal 0.1.2",
  "broadcaster",
  "chain-ethereum",
  "chrono",
@@ -536,10 +536,21 @@ version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1374191e2dd25f9ae02e3aa95041ed5d747fc77b3c102b49fe2dd9a8117a6244"
 dependencies = [
- "num-bigint",
+ "num-bigint 0.2.6",
  "num-integer",
  "num-traits",
  "serde",
+]
+
+[[package]]
+name = "bigdecimal"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6aaf33151a6429fe9211d1b276eafdf70cdff28b071e76c0b0e1503221ea3744"
+dependencies = [
+ "num-bigint 0.4.2",
+ "num-integer",
+ "num-traits",
 ]
 
 [[package]]
@@ -1715,12 +1726,12 @@ version = "1.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b28135ecf6b7d446b43e27e225622a038cc4e2930a1022f51cdb97ada19b8e4d"
 dependencies = [
- "bigdecimal",
+ "bigdecimal 0.1.2",
  "bitflags 1.3.2",
  "byteorder",
  "chrono",
  "diesel_derives",
- "num-bigint",
+ "num-bigint 0.2.6",
  "num-integer",
  "num-traits",
  "pq-sys",
@@ -2754,7 +2765,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "atomic_refcell",
- "bigdecimal",
+ "bigdecimal 0.1.2",
  "bytes 0.5.6",
  "chrono",
  "diesel",
@@ -2770,7 +2781,7 @@ dependencies = [
  "itertools 0.10.1",
  "lazy_static",
  "mockall 0.8.3",
- "num-bigint",
+ "num-bigint 0.2.6",
  "num-traits",
  "num_cpus",
  "parking_lot 0.11.2",
@@ -2810,7 +2821,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "atomic_refcell",
- "bigdecimal",
+ "bigdecimal 0.1.2",
  "bytes 1.1.0",
  "chrono",
  "diesel",
@@ -2826,7 +2837,7 @@ dependencies = [
  "itertools 0.10.1",
  "lazy_static",
  "mockall 0.8.3",
- "num-bigint",
+ "num-bigint 0.2.6",
  "num-traits",
  "num_cpus",
  "parking_lot 0.11.2",
@@ -3045,7 +3056,7 @@ version = "0.24.0"
 source = "git+https://github.com/massbitprotocol/massbit-graph-node?branch=main#3db60d7ed69bbee00170ecf0b7b029f42cb61f45"
 dependencies = [
  "graph 0.24.0",
- "jsonrpc-http-server",
+ "jsonrpc-http-server 14.2.0",
  "lazy_static",
  "serde",
 ]
@@ -3736,7 +3747,7 @@ dependencies = [
  "graph-core",
  "index-store",
  "ipfs-client",
- "jsonrpc-http-server",
+ "jsonrpc-http-server 14.2.0",
  "lazy_static",
  "log 0.4.14",
  "massbit",
@@ -3949,6 +3960,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "jsonrpc-client-transports"
+version = "18.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2b99d4207e2a04fb4581746903c2bb7eb376f88de9c699d0f3e10feeac0cd3a"
+dependencies = [
+ "derive_more",
+ "futures 0.3.17",
+ "jsonrpc-core 18.0.0",
+ "jsonrpc-pubsub",
+ "log 0.4.14",
+ "serde",
+ "serde_json",
+ "url 1.7.2",
+]
+
+[[package]]
 name = "jsonrpc-core"
 version = "14.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3977,6 +4004,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "jsonrpc-core-client"
+version = "18.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b51da17abecbdab3e3d4f26b01c5ec075e88d3abe3ab3b05dc9aa69392764ec0"
+dependencies = [
+ "futures 0.3.17",
+ "jsonrpc-client-transports",
+]
+
+[[package]]
+name = "jsonrpc-derive"
+version = "18.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5b939a78fa820cdfcb7ee7484466746a7377760970f6f9c6fe19f9edcc8a38d2"
+dependencies = [
+ "proc-macro-crate 0.1.5",
+ "proc-macro2 1.0.30",
+ "quote 1.0.10",
+ "syn 1.0.80",
+]
+
+[[package]]
 name = "jsonrpc-http-server"
 version = "14.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3984,11 +4033,42 @@ checksum = "0da906d682799df05754480dac1b9e70ec92e12c19ebafd2662a5ea1c9fd6522"
 dependencies = [
  "hyper 0.12.36",
  "jsonrpc-core 14.2.0",
- "jsonrpc-server-utils",
+ "jsonrpc-server-utils 14.2.0",
  "log 0.4.14",
  "net2",
  "parking_lot 0.10.2",
  "unicase 2.6.0",
+]
+
+[[package]]
+name = "jsonrpc-http-server"
+version = "18.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1dea6e07251d9ce6a552abfb5d7ad6bc290a4596c8dcc3d795fae2bbdc1f3ff"
+dependencies = [
+ "futures 0.3.17",
+ "hyper 0.14.13",
+ "jsonrpc-core 18.0.0",
+ "jsonrpc-server-utils 18.0.0",
+ "log 0.4.14",
+ "net2",
+ "parking_lot 0.11.2",
+ "unicase 2.6.0",
+]
+
+[[package]]
+name = "jsonrpc-pubsub"
+version = "18.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "240f87695e6c6f62fb37f05c02c04953cf68d6408b8c1c89de85c7a0125b1011"
+dependencies = [
+ "futures 0.3.17",
+ "jsonrpc-core 18.0.0",
+ "lazy_static",
+ "log 0.4.14",
+ "parking_lot 0.11.2",
+ "rand 0.7.3",
+ "serde",
 ]
 
 [[package]]
@@ -4004,6 +4084,24 @@ dependencies = [
  "log 0.4.14",
  "tokio 0.1.22",
  "tokio-codec",
+ "unicase 2.6.0",
+]
+
+[[package]]
+name = "jsonrpc-server-utils"
+version = "18.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa4fdea130485b572c39a460d50888beb00afb3e35de23ccd7fad8ff19f0e0d4"
+dependencies = [
+ "bytes 1.1.0",
+ "futures 0.3.17",
+ "globset",
+ "jsonrpc-core 18.0.0",
+ "lazy_static",
+ "log 0.4.14",
+ "tokio 1.12.0",
+ "tokio-stream",
+ "tokio-util 0.6.8",
  "unicase 2.6.0",
 ]
 
@@ -4412,7 +4510,7 @@ dependencies = [
  "graphql-parser",
  "hex",
  "http 0.1.21",
- "jsonrpc-http-server",
+ "jsonrpc-http-server 14.2.0",
  "lazy_static",
  "logger",
  "lru_time_cache",
@@ -4446,7 +4544,7 @@ dependencies = [
  "Inflector",
  "anyhow",
  "async-trait",
- "bigdecimal",
+ "bigdecimal 0.1.2",
  "bytes 1.1.0",
  "diesel",
  "diesel_derives",
@@ -4461,7 +4559,7 @@ dependencies = [
  "itertools 0.10.1",
  "lazy_static",
  "log 0.4.14",
- "num-bigint",
+ "num-bigint 0.2.6",
  "num-traits",
  "num_cpus",
  "parking_lot 0.11.2",
@@ -4531,7 +4629,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "bigdecimal",
+ "bigdecimal 0.1.2",
  "bs58 0.4.0",
  "diesel",
  "diesel_derives",
@@ -5171,6 +5269,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "num-bigint"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "74e768dff5fb39a41b3bcd30bb25cf989706c90d028d1ad71971987aa309d535"
+dependencies = [
+ "autocfg 1.0.1",
+ "num-integer",
+ "num-traits",
+]
+
+[[package]]
 name = "num-complex"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5207,7 +5316,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c000134b5dbf44adc5cb772486d335293351644b801551abe8f75c84cfa4aef"
 dependencies = [
  "autocfg 1.0.1",
- "num-bigint",
+ "num-bigint 0.2.6",
  "num-integer",
  "num-traits",
 ]
@@ -8400,6 +8509,36 @@ dependencies = [
  "solana-metrics",
  "solana-sdk 1.9.0",
  "thiserror",
+]
+
+[[package]]
+name = "solana_api"
+version = "0.1.0"
+dependencies = [
+ "base64 0.13.0",
+ "bigdecimal 0.3.0",
+ "bs58 0.4.0",
+ "diesel",
+ "diesel-derive-enum",
+ "itertools 0.10.1",
+ "jsonrpc-core 18.0.0",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "jsonrpc-http-server 18.0.0",
+ "lazy_static",
+ "log 0.4.14",
+ "logger",
+ "massbit",
+ "massbit-chain-solana",
+ "massbit-common",
+ "massbit-store-postgres",
+ "serde",
+ "solana-client",
+ "solana-program 1.9.0",
+ "solana-sdk 1.9.0",
+ "solana-transaction-status",
+ "tokio 1.12.0",
+ "tonic-build",
 ]
 
 [[package]]

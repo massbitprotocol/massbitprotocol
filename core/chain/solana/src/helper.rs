@@ -27,6 +27,7 @@ pub fn get_mint_account(account: &Pubkey) -> Option<String> {
 }
 
 pub fn get_account_info(pubkey: &Pubkey) -> Option<(Pubkey, Pubkey, u64)> {
+    // Todo: fix 2 versions of solana_program::pubkey::Pubkey
     let res = SOLANA_CLIENT.get_account(
         &solana_program::pubkey::Pubkey::from_str(&pubkey.to_string()).unwrap_or_default(),
     );
