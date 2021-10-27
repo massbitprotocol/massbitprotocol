@@ -77,13 +77,6 @@ services:
       # Pointing to our Index Manager container
       INDEX_MANAGER_URL: http://indexer:3030
 
-  substrate-node:
-    image: sprise/substrate-node:0.1
-    ports:
-      - "9944:9944"
-    restart: always
-    command: bash -c "./target/release/node-template --dev --ws-external"
-
   chain-reader:
     image: sprise/chain-reader:latest
     ports:
