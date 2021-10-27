@@ -22,6 +22,13 @@ pub type SolanaLogMessages = ExtLogMessages;
 pub type Pubkey = solana_program::pubkey::Pubkey;
 //***************** End solana data type *****************
 
+pub const SYSTEM_PROGRAM_ID: &str = "11111111111111111111111111111111";
+pub const SYSVAR_RENT_ID: &str = "SysvarRent111111111111111111111111111111111";
+pub const ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID: &str =
+    "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
+pub const TOKEN_PROGRAM_ID: &str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+pub const BINARY_OPTION_PROGRAM_ID: &str = "betw959P4WToez4DkuXwNsJszqbpe3HuY56AcG5yevx";
+
 type Number = u32;
 type Date = i64;
 type LogMessages = Option<Vec<String>>;

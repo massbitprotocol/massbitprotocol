@@ -1,3 +1,4 @@
+use crate::account_api::{RpcAccounts, RpcAccountsImpl};
 use crate::block_api::{RpcBlocks, RpcBlocksImpl};
 use crate::transaction_api::{RpcTransactions, RpcTransactionsImpl};
 use crate::{CONNECTION_POOL_SIZE, DATABASE_URL};
@@ -50,5 +51,7 @@ pub fn create_solana_api_io(solana_client: Arc<RpcClient>) -> IoHandler {
     io.extend_with(rpc_block.to_delegate());
     let rpc_transaction = RpcTransactionsImpl::new(solana_client.clone(), connection_pool.clone());
     io.extend_with(rpc_transaction.to_delegate());
+    let rpc_account = RpcAccountsImpl::new(solana_client.clone(), connection_pool.clone());
+    io.extend_with(rpc_account.to_delegate());
     io
 }

@@ -27,28 +27,28 @@ use std::time::Instant;
 
 #[rpc]
 pub trait RpcTransactions {
-    #[rpc(name = "txns_block")]
+    #[rpc(name = "getTransactionByBlock")]
     fn get_transactions_by_block(
         &self,
         block_slot: i64,
         offset: i64,
         limit: i64,
     ) -> JsonRpcResult<serde_json::Value>;
-    #[rpc(name = "txns_list")]
+    #[rpc(name = "getTransactionList")]
     fn get_transactions_list(&self, offset: i64, limit: i64) -> JsonRpcResult<serde_json::Value>;
 
     ///Get list transaction by address
-    #[rpc(name = "txns_address")]
+    #[rpc(name = "getTransactionByAddress")]
     fn get_transactions_by_address(
         &self,
         address: String,
         before_address: Option<String>,
         limit: usize,
     ) -> JsonRpcResult<serde_json::Value>;
-    #[rpc(name = "txns_detail_db")]
+    #[rpc(name = "getTransactionDetailDb")]
     fn get_txns_detail_db(&self, tx_hash: String) -> JsonRpcResult<serde_json::Value>;
     //Get transaction detail
-    #[rpc(name = "txns_detail")]
+    #[rpc(name = "getTransactionDetail")]
     fn get_txns_detail_chain(&self, tx_hash: String) -> JsonRpcResult<serde_json::Value>;
 }
 pub struct ViewSolanaTransaction {}
