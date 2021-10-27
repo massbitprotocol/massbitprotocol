@@ -27,7 +27,7 @@ use tokio::time::Instant;
 
 #[rpc]
 pub trait RpcAccounts {
-    #[rpc(name = "get_account_data")]
+    #[rpc(name = "getAccountInfo")]
     fn get_account_data(&self, pubkey: String, encode_type: String) -> JsonRpcResult<Value>;
 }
 
@@ -65,7 +65,7 @@ pub enum AccountType {
     MintAccount,
 }
 
-fn getAccountType(res_account: &Value) -> AccountType {
+fn get_account_type(res_account: &Value) -> AccountType {
     println!("res_account: {:?}", res_account);
 
     if let Some(value) = res_account.get("value") {
@@ -100,7 +100,7 @@ impl RpcAccounts for RpcAccountsImpl {
             .map_err(|err| jsonrpc_core::Error::invalid_params(format!("{:?}", err)));
 
         if let Ok(ref mut res) = res {
-            let account_type = getAccountType(res);
+            let account_type = get_account_type(res);
             println!("account_type: {:?}", &account_type);
             res["accountType"] = json!(account_type);
         }

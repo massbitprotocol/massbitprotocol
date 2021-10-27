@@ -1,4 +1,4 @@
-# General Account
+### General Account
 - Call
 ```json
   {
@@ -37,12 +37,12 @@
 }
 ```
 
-# Program account
+### Program account
 - Link
 https://solscan.io/account/SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ/
 - Call
 ```json
-{"jsonrpc": "2.0", "method": "get_account_data", "params": ["SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ","jsonParsed"], "id":1 }
+{"jsonrpc": "2.0", "method": "getAccountInfo", "params": ["SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ","jsonParsed"], "id":1 }
 ```
 - Return
 ```json
@@ -74,7 +74,7 @@ https://solscan.io/account/SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ/
 }
 ```
 
-# Token Account
+### Token Account
 - Call
 ```json
   {
@@ -128,7 +128,7 @@ https://solscan.io/account/SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ/
 }
 ```
 
-# Mint account
+### Mint account
 - Call
 ```json
   {
@@ -176,7 +176,7 @@ https://solscan.io/account/SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ/
   "id": 1
 }
 ```
-# Invalid address
+### Invalid address
 - Response
 ```json
 {
