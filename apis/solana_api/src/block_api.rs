@@ -17,14 +17,14 @@ use tokio::time::Instant;
 
 #[rpc]
 pub trait RpcBlocks {
-    #[rpc(name = "block_statistic")]
+    #[rpc(name = "getBlockStatistic")]
     fn get_block_statistic(&self, offset: i64, limit: i64) -> JsonRpcResult<Value>;
-    #[rpc(name = "block_list")]
+    #[rpc(name = "getBlockList")]
     fn get_block_list(&self, offset: i64, limit: i64) -> JsonRpcResult<Value>;
     //Get block list from analytic database
-    #[rpc(name = "block_detail")]
+    #[rpc(name = "getBlockDetail")]
     fn get_block_detail_db(&self, block_slot: i64) -> JsonRpcResult<Value>;
-    #[rpc(name = "block_detail_chain")]
+    #[rpc(name = "getBlockDetailChain")]
     fn get_block_detail_chain(&self, block_slot: Slot) -> JsonRpcResult<Value>;
 }
 

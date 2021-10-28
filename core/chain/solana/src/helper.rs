@@ -26,16 +26,16 @@ pub fn get_mint_account(account: &Pubkey) -> Option<String> {
     Some(String::from(""))
 }
 
-pub fn get_account_info(pubkey: &Pubkey) -> Option<(Pubkey, Pubkey, u64)> {
+pub fn get_account_info(pubkey: String) -> Option<(String, String, u64)> {
     let res = SOLANA_CLIENT.get_account(
-        &solana_program::pubkey::Pubkey::from_str(&pubkey.to_string()).unwrap_or_default(),
+        &solana_program::pubkey::Pubkey::from_str(pubkey.as_str()).unwrap_or_default(),
     );
     res.ok().and_then(|acc| {
         let token_account = TokenAccount::unpack_from_slice(acc.data.as_slice()).ok();
         token_account.map(|token_account| {
             (
-                token_account.mint,
-                token_account.owner,
+                token_account.mint.to_string(),
+                token_account.owner.to_string(),
                 token_account.amount,
             )
         })

@@ -155,20 +155,22 @@ fn create_swap_entity(
             .unwrap(),
     );
 
-    let account_info = source_account.and_then(|key| get_account_info(key.to_string()));
-    let (source_mint_account, owner_account, _) = match account_info {
-        None => (Default::default(), Default::default(), Default::default()),
-        Some(val) => val,
-    };
+    let account_info = source_account.and_then(|key| get_account_info(key));
+    let source_mint_account = account_info
+        .and_then(|info| Some(info.0.to_string()))
+        .unwrap_or_default(); //get_mint_account(&source_account).unwrap_or_default();
+    let owner_account = account_info
+        .and_then(|info| Some(info.1.to_string()))
+        .unwrap_or_default();
     let destination = tran.transaction.message.account_keys.get(
         inst.accounts
             .get(6)
             .and_then(|ind| Some(*ind as usize))
             .unwrap(),
     );
-    let account_info = destination.and_then(|key| get_account_info(key.to_string()));
+    let account_info = destination.and_then(|key| get_account_info(key));
     let destination_mint_account = account_info
-        .and_then(|info| Some(info.0.clone()))
+        .and_then(|info| Some(info.0.to_string()))
         .unwrap_or_default();
     SaberSwap {
         block_slot: block.parent_slot as i64 + 1,
@@ -317,14 +319,16 @@ fn create_deposit_entity(
     );
     //.and_then(|key| Some(key.to_string()))
     //.unwrap_or_default();
-    let token_a_info = token_a.and_then(|key| get_account_info(key.to_string()));
-    let token_b_info = token_b.and_then(|key| get_account_info(key.to_string()));
-    let (token_a_mint_account, owner_account, _) = match token_a_info {
-        None => (Default::default(), Default::default(), Default::default()),
-        Some(val) => val,
-    };
+    let token_a_info = token_a.and_then(|key| get_account_info(key));
+    let token_b_info = token_b.and_then(|key| get_account_info(key));
+    let token_a_mint_account = token_a_info
+        .and_then(|info| Some(info.0.to_string()))
+        .unwrap_or_default();
+    let owner_account = token_a_info
+        .and_then(|info| Some(info.1.to_string()))
+        .unwrap_or_default();
     let token_b_mint_account = token_b_info
-        .and_then(|info| Some(info.0.clone()))
+        .and_then(|info| Some(info.0.to_string()))
         .unwrap_or_default();
     // let token_a_mint_account = get_mint_account(&token_a).unwrap_or_default();
     // let token_b_mint_account = get_mint_account(&token_b).unwrap_or_default();
@@ -483,14 +487,16 @@ fn create_withdraw_entity(
             .and_then(|ind| Some(*ind as usize))
             .unwrap(),
     );
-    let token_a_info = token_a.and_then(|key| get_account_info(key.to_string()));
-    let token_b_info = token_b.and_then(|key| get_account_info(key.to_string()));
-    let (token_a_mint_account, owner_account, _) = match token_a_info {
-        None => (Default::default(), Default::default(), Default::default()),
-        Some(val) => val,
-    };
+    let token_a_info = token_a.and_then(|key| get_account_info(key));
+    let token_b_info = token_b.and_then(|key| get_account_info(key));
+    let token_a_mint_account = token_a_info
+        .and_then(|info| Some(info.0.to_string()))
+        .unwrap_or_default();
+    let owner_account = token_a_info
+        .and_then(|info| Some(info.1.to_string()))
+        .unwrap_or_default();
     let token_b_mint_account = token_b_info
-        .and_then(|info| Some(info.0.clone()))
+        .and_then(|info| Some(info.0.to_string()))
         .unwrap_or_default();
     SaberWithdraw {
         block_slot: block.parent_slot as i64 + 1,
@@ -653,11 +659,13 @@ fn create_withdraw_one_entity(
             .and_then(|ind| Some(*ind as usize))
             .unwrap(),
     );
-    let user_account_info = user_account.and_then(|key| get_account_info(key.to_string()));
-    let (owner_account, user_mint_account, _) = match user_account_info {
-        None => (Default::default(), Default::default(), Default::default()),
-        Some(val) => val,
-    };
+    let user_account_info = user_account.and_then(|key| get_account_info(key));
+    let owner_account = user_account_info
+        .and_then(|info| Some(info.1.to_string()))
+        .unwrap_or_default();
+    let user_mint_account = user_account_info
+        .and_then(|info| Some(info.0.to_string()))
+        .unwrap_or_default();
     SaberWithdrawOne {
         block_slot: block.parent_slot as i64 + 1,
         parent_slot: block.parent_slot as i64,
