@@ -5,7 +5,6 @@ pub mod command;
 pub mod ethereum_chain;
 pub mod grpc_stream;
 pub mod solana_chain;
-pub mod substrate_chain;
 pub mod transport;
 pub use self::transport::Transport;
 

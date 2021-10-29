@@ -9,17 +9,6 @@ use graph_chain_ethereum::DataSource;
 use massbit::firehose::bstream::ChainType;
 
 //use massbit_runtime_wasm::chain::ethereum::data_source::DataSource;
-/*
-pub fn get_chain_type(config: &Value) -> ChainType {
-    let chain_type = match config["dataSources"][0]["kind"].as_str().unwrap() {
-        "substrate" => ChainType::Substrate,
-        "solana" => ChainType::Solana,
-        "ethereum" => ChainType::Ethereum,
-        _ => ChainType::Substrate, // If not provided, assume it's substrate network
-    };
-    chain_type
-}
-*/
 pub fn get_chain_type(datasource: &DataSource) -> ChainType {
     let ds_kind = datasource.kind.split('/').next().unwrap();
     match ds_kind {

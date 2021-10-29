@@ -33,14 +33,9 @@ async-stream = "0.2"
 rand = "0.7"
 serde_yaml = "0.8"
 hex-literal = "0.3"
-sp-core = { default-features = false, version = "3.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.2", features = ["full_crypto"] }
-sp-keyring = { version = "3.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.2" }
-frame-system = { default-features = false,  version = "3.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.2" }
 clap = { version = "2.33.3", features = ["yaml"] }
 
-massbit-chain-substrate = { path = "../core/chain/substrate" }
 massbit-chain-solana = { path = "../core/chain/solana" }
-#massbit-chain-ethereum = { path = "../core/chain/ethereum" }
 massbit-common = {path = "../core/common" }
 massbit = {path = "../massbit" }
 chain-ethereum = {path = "../chain/ethereum" }
@@ -50,16 +45,6 @@ logger = { path = "../core/logger" }
 
 tonic = "0.5"
 prost-types = "0.8.0"
-
-[dependencies.substrate-api-client]
-git = "https://github.com/scs/substrate-api-client.git"
-branch = "polkadot-v0.9.2"
-package = "substrate-api-client"
-default-features = true
-
-[dependencies.node-template-runtime]
-git = "https://github.com/scs/substrate-api-client-test-node"
-branch = "polkadot-v0.9.2"
 
 [dependencies.codec]
 package = "parity-scale-codec"
@@ -94,12 +79,6 @@ branch = "master"
 
 
 
-[features]
-default = ["std"]
-std = [
-    "sp-core/std",
-    "node-template-runtime/std",
-]
 # need to add this for the app_crypto macro
 full_crypto = []
 

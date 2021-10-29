@@ -16,7 +16,6 @@ paste           =   "1.0.5"
 libloading      =   "0.7.0"
 lazy_static     = "1.2.0"
 log             = "0.4.0"
-#massbit-chain-substrate = { path = "../../core/chain/substrate" }
 massbit-chain-solana    = { path = "../../core/chain/solana" }
 index-store             = { path = "../../core/index-store" }
 massbit-common          = { path = "../../core/common"}
@@ -56,16 +55,7 @@ package = "graph-mock"
 git = "https://github.com/massbitprotocol/massbit-graph-node"
 branch = "main"
 
-#rev =   "428b3d0"
-#[dependencies.node-template-runtime]
-#git = "https://github.com/scs/substrate-api-client-test-node"
-#branch = "bump-to-polkadot-v0.9.2"
 
-#[dependencies.sp-runtime]
-#git = "https://github.com/paritytech/substrate.git"
-#branch = "master"
-#package = "sp-runtime"
-#default-features=false
 [build-dependencies]
 tonic-build = "0.5" # Chain Reader Client
 #[workspace]

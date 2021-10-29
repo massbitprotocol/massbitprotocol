@@ -1,5 +1,4 @@
 use crate::grpc_stream::StreamService;
-use crate::substrate_chain;
 use crate::CONFIG;
 use chain_ethereum::network::{EthereumNetworkAdapter, EthereumNetworkAdapters};
 use chain_ethereum::{Chain, EthereumAdapter, Transport};
@@ -99,42 +98,6 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
         let logger_factory = LoggerFactory::new(logger.clone());
         match chain_type {
             // Spawn Substrate get_data
-            ChainType::Substrate => {
-                // Spawn task
-                tokio::spawn(async move {
-                    //fix_one_thread_not_receive(&chan_sender);
-                    // Todo: add start at save block after restart
-                    let mut count = 1;
-                    loop {
-                        let resp =
-                            substrate_chain::loop_get_block_and_extrinsic(chan_sender.clone())
-                                .await;
-                        error!(
-                            "Restart {:?} response {:?}, {} time",
-                            &chain_type, resp, count
-                        );
-                        sleep(Duration::from_secs(1));
-                        count = count + 1;
-                    }
-                });
-                let chan_sender = chan.clone();
-                // Spawn task
-                tokio::spawn(async move {
-                    //fix_one_thread_not_receive(&chan_sender);
-                    let mut count = 1;
-                    loop {
-                        let resp = substrate_chain::loop_get_event(chan_sender.clone()).await;
-                        error!(
-                            "Restart {:?} response {:?}, {} time",
-                            &chain_type, resp, count
-                        );
-                        sleep(Duration::from_secs(1));
-                        count = count + 1;
-                    }
-                });
-                // add chan to chans
-                //chans.insert((ChainType::Substrate,), chan);
-            }
             ChainType::Solana => {
                 // Get Solana adapter
                 let config = CONFIG.get_chain_config(&chain_type, &network).unwrap();
@@ -179,6 +142,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'stat
                     Arc::new(chain),
                 );
             }
+            _ => {}
         }
         // add chan to chans
         chans.insert((chain_type, network), chan);
