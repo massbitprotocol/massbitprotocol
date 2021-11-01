@@ -157,7 +157,7 @@ pub fn create_system_inst_table(inst_type: &str) -> Option<Table> {
 }
 
 pub fn create_system_entity(
-    block_slot: u64,
+    _block_slot: u64,
     tx_hash: String,
     block_time: u64,
     inst_order: i32,

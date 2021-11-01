@@ -5,7 +5,7 @@ use crate::schema::indexers;
 use diesel::prelude::*;
 use diesel::sql_types::BigInt;
 use diesel::QueryableByName;
-use diesel_migrations::embed_migrations;
+
 use graph::cheap_clone::CheapClone;
 use graph::data::schema::Schema;
 use graph::log::logger;
@@ -35,7 +35,7 @@ use massbit_common::prelude::{
     anyhow::{self, anyhow},
     slog::{self, Logger},
 };
-use std::env;
+
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;

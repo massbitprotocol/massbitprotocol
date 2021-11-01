@@ -16,7 +16,7 @@ use massbit_common::prelude::diesel::{Connection, PgConnection, RunQueryDsl};
 use massbit_common::prelude::serde_json;
 use massbit_common::prelude::anyhow;
 use std::collections::HashSet;
-use std::time::Instant;
+
 
 /// The name for the primary key column of a table; hardcoded for now
 pub(crate) const PRIMARY_KEY_COLUMN: &str = "id";
@@ -340,7 +340,7 @@ impl LayoutExt for Layout {
     /// order is a tuple (attribute, value_type, direction)
     fn filter<T: relational_queries::FromEntityData>(
         &self,
-        logger: &Logger,
+        _logger: &Logger,
         conn: &PgConnection,
         entity_type: EntityType,
         filter: Option<EntityFilter>,

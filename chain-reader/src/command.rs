@@ -2,7 +2,7 @@ use crate::grpc_stream::StreamService;
 use crate::CONFIG;
 use chain_ethereum::network::{EthereumNetworkAdapter, EthereumNetworkAdapters};
 use chain_ethereum::{Chain, EthereumAdapter, Transport};
-use log::{error, info};
+use log::{info};
 use massbit::firehose::bstream::{stream_server::StreamServer, BlockResponse, ChainType};
 use massbit::firehose::endpoints::FirehoseNetworkEndpoints;
 use massbit::log::logger;
@@ -11,8 +11,8 @@ use massbit_common::NetworkType;
 use solana_client::rpc_client::RpcClient;
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::thread::sleep;
-use std::time::Duration;
+
+
 use tokio::sync::broadcast;
 use tonic::transport::Server;
 

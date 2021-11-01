@@ -2,17 +2,15 @@ use crate::account_api::{RpcAccounts, RpcAccountsImpl};
 use crate::block_api::{RpcBlocks, RpcBlocksImpl};
 use crate::transaction_api::{RpcTransactions, RpcTransactionsImpl};
 use crate::{CONNECTION_POOL_SIZE, DATABASE_URL};
-use core::sync::atomic;
-use jsonrpc_core::futures_util::{future::Either, FutureExt};
-use jsonrpc_core::{
-    middleware, FutureResponse, MetaIoHandler, Metadata, Middleware, Request, Response,
-};
+
+
+
 use jsonrpc_http_server::jsonrpc_core::IoHandler;
-use massbit::prelude::tokio::time::Instant;
+
 use massbit_common::prelude::diesel::PgConnection;
 use massbit_store_postgres::helper::create_r2d2_connection_pool;
 use solana_client::rpc_client::RpcClient;
-use std::future::Future;
+
 use std::sync::Arc;
 
 // Todo: try to add response header

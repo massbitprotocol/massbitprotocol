@@ -32,7 +32,7 @@ pub async fn print_blocks(
     start_block: Option<u64>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     // Debug
-    let mut count = 0;
+    let _count = 0;
     let filter = SolanaFilter::new(vec![
         SABER_STABLE_SWAP_PROGRAM,
         // SABER_ROUTER_PROGRAM,

@@ -269,7 +269,7 @@ impl IndexerStoreInner {
 impl IndexerStoreTrait for IndexerStore {
     fn create_indexer_deployment(
         &self,
-        name: IndexerName,
+        _name: IndexerName,
         schema: &Schema,
         deployment: IndexerDeploymentEntity,
         network: String,
@@ -295,7 +295,7 @@ impl IndexerStoreTrait for IndexerStore {
         primary.indexer_exists(name)
     }
 
-    fn input_schema(&self, indexer_id: &DeploymentHash) -> Result<Arc<Schema>, StoreError> {
+    fn input_schema(&self, _indexer_id: &DeploymentHash) -> Result<Arc<Schema>, StoreError> {
         todo!()
     }
 
