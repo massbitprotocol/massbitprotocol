@@ -1,6 +1,5 @@
 use crate::models::*;
 use massbit_chain_solana::data_type as solana_types;
-use massbit_chain_substrate::data_type as substrate_types;
 use std::error::Error;
 use uuid::Uuid;
 pub fn handle_block(block: &solana_types::SolanaBlock) -> Result<(), Box<dyn Error>> {

@@ -1,20 +1,17 @@
 use crate::solana::model::EncodedConfirmedBlockWithSlot;
 use log::{debug, info, warn};
-use massbit::firehose::bstream::{BlockResponse, ChainType};
+
 use massbit::prelude::tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use massbit::prelude::tokio::time::sleep;
-use massbit_chain_solana::data_type::{
-    decode_encoded_block, get_list_log_messages_from_encoded_block, SolanaBlock as Block,
-    SolanaFilter,
-};
+
 use massbit_common::prelude::tokio::time::{timeout, Duration};
 use massbit_common::NetworkType;
-use solana_client::{pubsub_client::PubsubClient, rpc_client::RpcClient};
-use solana_transaction_status::{EncodedConfirmedBlock, UiTransactionEncoding};
+use solana_client::{rpc_client::RpcClient};
+use solana_transaction_status::{UiTransactionEncoding};
 use std::error::Error;
 use std::{sync::Arc, time::Instant};
 use tokio::sync::mpsc;
-use tonic::Status;
+
 
 // Check https://github.com/tokio-rs/prost for enum converting in rust protobuf
 const BLOCK_AVAILABLE_MARGIN: u64 = 100;
@@ -26,7 +23,7 @@ const GET_NEW_SLOT_DELAY_MS: u64 = 500;
 pub async fn loop_get_block(
     chan: mpsc::Sender<EncodedConfirmedBlockWithSlot>,
     start_block: &Option<u64>,
-    network: &NetworkType,
+    _network: &NetworkType,
     client: &Arc<RpcClient>,
 ) -> Result<(), Box<dyn Error>> {
     info!("Start get block Solana from: {:?}", start_block);

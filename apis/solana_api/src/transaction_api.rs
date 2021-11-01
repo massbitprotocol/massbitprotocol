@@ -1,22 +1,22 @@
 use super::orm::schema::solana_blocks::dsl as bl;
 use super::orm::schema::solana_transactions::dsl as tx;
-use crate::helper::parse_partially_decoded_instruction;
+
 use crate::orm::models::SolanaTransaction;
 use core::ops::Deref;
 use itertools::Itertools;
-use jsonrpc_core::{Params, Result as JsonRpcResult};
+use jsonrpc_core::{Result as JsonRpcResult};
 use jsonrpc_derive::rpc;
 use massbit::prelude::serde_json::{self, json, Value};
 use massbit_common::prelude::diesel::r2d2::ConnectionManager;
 use massbit_common::prelude::diesel::{
     r2d2, ExpressionMethods, JoinOnDsl, PgConnection, QueryDsl, RunQueryDsl,
 };
-use solana_client::client_error::{ClientError, ClientErrorKind, Result as ClientResult};
+use solana_client::client_error::{Result as ClientResult};
 use solana_client::rpc_client::{GetConfirmedSignaturesForAddress2Config, RpcClient};
 use solana_client::rpc_request::RpcRequest;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::Signature;
-use solana_sdk::transaction::{Transaction, TransactionError};
+
 use solana_transaction_status::{
     EncodedConfirmedTransaction, EncodedTransaction, UiInstruction, UiMessage, UiParsedInstruction,
     UiTransactionEncoding,
@@ -220,7 +220,7 @@ impl RpcTransactions for RpcTransactionsImpl {
                             self.rpc_client
                                 .send_batch(RpcRequest::GetTransaction, params);
                         tx_list
-                            .map_err(|err| jsonrpc_core::Error::invalid_request())
+                            .map_err(|_err| jsonrpc_core::Error::invalid_request())
                             .and_then(|txns| {
                                 let vec_values: Vec<Value> = txns
                                     .iter()
@@ -393,7 +393,7 @@ impl RpcTransactionsImpl {
                                     //parse_partially_decoded_instruction(rpc_client.clone(), instruction)
                                 }
                             },
-                            UiInstruction::Compiled(compiled) => {
+                            UiInstruction::Compiled(_compiled) => {
                                 String::from("unknown")
                                 //println!("Compiled instruction {:?}", compiled);
                             }

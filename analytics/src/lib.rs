@@ -7,12 +7,11 @@ use dotenv::dotenv;
 use std::env;
 pub mod ethereum;
 pub mod models;
-pub mod schema;
-pub mod solana;
-//pub mod substrate;
 pub mod postgres_adapter;
 pub mod postgres_queries;
 pub mod relational;
+pub mod schema;
+pub mod solana;
 pub mod sql_value;
 pub mod storage_adapter;
 

@@ -3,9 +3,9 @@ use super::orm::schema::solana_daily_stat_blocks::dsl as bl_stat;
 use crate::orm::models::{SolanaBlock, SolanaDailyStatBlock};
 use core::ops::Deref;
 use diesel::r2d2::PooledConnection;
-use jsonrpc_core::{Error, Params, Result as JsonRpcResult};
+use jsonrpc_core::{Error, Result as JsonRpcResult};
 use jsonrpc_derive::rpc;
-use massbit::prelude::serde_json::{self, json, Value};
+use massbit::prelude::serde_json::{json, Value};
 use massbit_common::prelude::diesel::r2d2::ConnectionManager;
 use massbit_common::prelude::diesel::{
     r2d2, ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl,
@@ -115,7 +115,7 @@ impl RpcBlocks for RpcBlocksImpl {
                 log::info!("Get block from network in {:?}", start.elapsed());
                 Ok(json!(block))
             }
-            Err(e) => Err(Error::invalid_params("Block not found")),
+            Err(_e) => Err(Error::invalid_params("Block not found")),
         }
     }
 }

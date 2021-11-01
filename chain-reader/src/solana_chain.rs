@@ -1,9 +1,9 @@
 use crate::CONFIG;
-use futures::future::err;
-use itertools::izip;
+
+
 use log::{debug, info, warn};
 use massbit::firehose::bstream::{BlockResponse, ChainType};
-use massbit::prelude::serde_json::{json, Value};
+use massbit::prelude::serde_json::{json};
 use massbit::prelude::tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use massbit::prelude::tokio::time::sleep;
 use massbit_chain_solana::data_type::{
@@ -12,12 +12,12 @@ use massbit_chain_solana::data_type::{
 };
 use massbit_common::prelude::tokio::time::{timeout, Duration};
 use massbit_common::NetworkType;
-use solana_client::client_error::{ClientError, ClientErrorKind, Result as ClientResult};
+use solana_client::client_error::{Result as ClientResult};
 use solana_client::rpc_client::GetConfirmedSignaturesForAddress2Config;
 use solana_client::rpc_request::RpcRequest;
 use solana_client::rpc_response::RpcConfirmedTransactionStatusWithSignature;
-use solana_client::{pubsub_client::PubsubClient, rpc_client::RpcClient};
-use solana_program::account_info::{Account as _, AccountInfo};
+use solana_client::{rpc_client::RpcClient};
+
 use solana_sdk::account::Account;
 use solana_sdk::clock::Slot;
 use solana_sdk::signature::Signature;
@@ -93,7 +93,7 @@ fn getFilterConfirmedTransactionStatus(
     first_slot: &Option<Slot>,
 ) -> ResultFilterTransaction {
     let mut txs: Vec<RpcConfirmedTransactionStatusWithSignature> = vec![];
-    let is_done = false;
+    let _is_done = false;
     for address in &filter.keys {
         let config = GetConfirmedSignaturesForAddress2Config {
             before: before_tx_signature.clone(),
@@ -115,7 +115,7 @@ fn getFilterConfirmedTransactionStatus(
     let is_done = last_tx_signature.is_none()
         || (!first_slot.is_none() && txs.last().unwrap().slot < first_slot.unwrap());
 
-    let mut txs: Vec<RpcConfirmedTransactionStatusWithSignature> = txs
+    let txs: Vec<RpcConfirmedTransactionStatusWithSignature> = txs
         .into_iter()
         .filter(|tx| {
             // Block is out of range or error
@@ -163,7 +163,7 @@ pub async fn loop_get_block(
         "Start get block Solana from: {:?} with filter {:?}",
         start_block, filter
     );
-    let config = CONFIG.get_chain_config(&CHAIN_TYPE, &network).unwrap();
+    let _config = CONFIG.get_chain_config(&CHAIN_TYPE, &network).unwrap();
     // let websocket_url = config.ws.clone();
     // let (mut _subscription_client, receiver) =
     //     PubsubClient::slot_subscribe(&websocket_url).unwrap();

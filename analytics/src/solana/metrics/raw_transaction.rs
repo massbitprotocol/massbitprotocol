@@ -5,12 +5,10 @@ use crate::solana::handler::SolanaHandler;
 use crate::storage_adapter::StorageAdapter;
 use crate::{create_columns, create_entity};
 use massbit::prelude::{Attribute, Entity, Error, Value};
-use massbit_chain_solana::data_type::SolanaBlock;
+
 use massbit_common::NetworkType;
 use solana_sdk::transaction::Transaction;
-use solana_transaction_status::{
-    ConfirmedBlock, EncodedConfirmedBlock, TransactionWithStatusMeta, UiTransactionStatusMeta,
-};
+use solana_transaction_status::{EncodedConfirmedBlock, UiTransactionStatusMeta};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
@@ -128,7 +126,7 @@ fn create_entity(
     tran_meta: &Option<UiTransactionStatusMeta>,
     ind: i32,
 ) -> Entity {
-    let timestamp = match block.block_time {
+    let _timestamp = match block.block_time {
         None => 0_u64,
         Some(val) => val as u64,
     };

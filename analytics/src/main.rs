@@ -105,9 +105,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
                         //     Ok(_) => {}
                         // }
                     }
-                    "substrate" => {
-                        //process_substrate_stream(&mut client).await;
-                    }
                     _ => {
                         match process_ethereum_stream(
                             &mut client,

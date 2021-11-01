@@ -96,7 +96,7 @@ async fn main() -> Result<(), Error> {
             );
 
             match chain_type {
-                ChainType::Substrate => {}
+                _ => {}
                 ChainType::Solana => {}
                 ChainType::Ethereum => match DataType::from_i32(data.data_type) {
                     Some(DataType::Block) => {

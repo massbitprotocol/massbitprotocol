@@ -73,5 +73,5 @@ impl MessageHandler for SolanaHandlerProxy {
 ```
 ................
 //Add new chain name in CamelCase here
-crate::create_adapters!(Matic, Bsc, Ethereum, Solana, Substrate);
+crate::create_adapters!(Matic, Bsc, Ethereum, Solana);
 ................

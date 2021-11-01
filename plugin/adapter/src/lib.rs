@@ -8,10 +8,10 @@ use crate::core::{AdapterHandler, MessageHandler};
 use quote::quote;
 use std::{error::Error, sync::Arc};
 pub mod solana;
-use graph::blockchain::HostFn;
-use graph::components::store::WritableStore;
+
+
 use index_store::Store;
-use std::collections::HashMap;
+
 
 crate::create_adapters!(Solana);
 

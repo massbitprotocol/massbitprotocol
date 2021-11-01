@@ -4,7 +4,7 @@
  *** After the creation of IndexConfig, this shouldn't be used anymore
  **/
 // Generic dependencies
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize};
 
 // The order of params is important to correctly map the API request to this struct
 #[derive(Clone, Debug, Deserialize)]

@@ -4,11 +4,10 @@ use crate::storage_adapter::StorageAdapter;
 use crate::{create_columns, create_entity};
 use massbit::data::store::scalar::BigInt;
 use massbit::prelude::{Attribute, Entity, Error, Value};
-use massbit_chain_solana::data_type::SolanaBlock;
+
 use massbit_common::NetworkType;
 use solana_transaction_status::{
-    EncodedConfirmedBlock, EncodedTransactionWithStatusMeta, TransactionStatusMeta,
-    TransactionWithStatusMeta, UiTransactionStatusMeta,
+    EncodedConfirmedBlock, EncodedTransactionWithStatusMeta, UiTransactionStatusMeta,
 };
 use std::collections::HashMap;
 use std::str::FromStr;

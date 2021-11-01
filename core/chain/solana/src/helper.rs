@@ -1,10 +1,10 @@
 //use crate::data_type::Pubkey;
-use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
+
 use lazy_static::lazy_static;
-use solana_client::client_error::{ClientError, ClientErrorKind, Result as ClientResult};
+
 use solana_client::rpc_client::RpcClient;
-use solana_program::account_info::{Account as _, AccountInfo};
-use solana_sdk::account::Account;
+use solana_program::account_info::{Account as _};
+
 use spl_token::solana_program::{program_pack::Pack, pubkey::Pubkey};
 // use solana_program::pubkey::Pubkey;
 // use solana_sdk::program_pack::Pack;
@@ -18,11 +18,11 @@ lazy_static! {
     ));
 }
 
-pub fn get_owner_account(account: &Pubkey) -> Option<String> {
+pub fn get_owner_account(_account: &Pubkey) -> Option<String> {
     Some(String::from(""))
 }
 
-pub fn get_mint_account(account: &Pubkey) -> Option<String> {
+pub fn get_mint_account(_account: &Pubkey) -> Option<String> {
     Some(String::from(""))
 }
 

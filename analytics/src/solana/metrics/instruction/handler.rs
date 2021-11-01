@@ -1,4 +1,5 @@
 use super::common::PARSABLE_PROGRAM_IDS;
+use crate::create_columns;
 use crate::postgres_queries::UpsertConflictFragment;
 use crate::relational::{Column, ColumnType, Table};
 use crate::solana::handler::SolanaHandler;
@@ -8,16 +9,12 @@ use crate::solana::metrics::instruction::spltoken_instruction::create_spltoken_e
 use crate::solana::metrics::instruction::system_instruction::create_system_entity;
 use crate::solana::metrics::instruction::vote_instruction::create_vote_entity;
 use crate::storage_adapter::StorageAdapter;
-use crate::{create_columns, create_entity};
 use massbit::prelude::Entity;
-use massbit_chain_solana::data_type::{Pubkey, SolanaBlock};
+use massbit_chain_solana::data_type::Pubkey;
 use massbit_common::NetworkType;
 use solana_sdk::transaction::Transaction;
 use solana_transaction_status::parse_instruction::{ParsableProgram, ParsedInstruction};
-use solana_transaction_status::{
-    parse_instruction, ConfirmedBlock, EncodedConfirmedBlock, EncodedTransactionWithStatusMeta,
-    TransactionWithStatusMeta, UiTransactionStatusMeta,
-};
+use solana_transaction_status::{parse_instruction, EncodedConfirmedBlock};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;

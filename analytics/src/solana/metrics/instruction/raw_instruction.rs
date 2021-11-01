@@ -1,16 +1,16 @@
-use crate::relational::{Column, ColumnType, Table};
-use crate::solana::metrics::instruction::common::InstructionKey;
-use crate::solana::metrics::instruction::system_instruction::create_system_entity;
-use crate::{create_columns, create_entity};
+
+
+
+use crate::{create_entity};
 use massbit::data::store::scalar::Bytes;
 use massbit::prelude::{Attribute, Entity, Value};
-use massbit_chain_solana::data_type::Pubkey;
-use massbit_common::prelude::bs58;
+
+
 use solana_sdk::instruction::CompiledInstruction;
 use solana_sdk::transaction::Transaction;
-use solana_transaction_status::parse_instruction::{ParsableProgram, ParsedInstruction};
+
 use solana_transaction_status::{
-    ConfirmedBlock, EncodedTransactionWithStatusMeta, TransactionWithStatusMeta,
+    ConfirmedBlock, TransactionWithStatusMeta,
 };
 use std::collections::HashMap;
 
@@ -24,7 +24,7 @@ pub fn create_unparsed_instruction(
     inst: &CompiledInstruction,
 ) -> Entity {
     let mut accounts = Vec::default();
-    let mut work = |unique_ind: usize, acc_ind: usize| {
+    let mut work = |_unique_ind: usize, acc_ind: usize| {
         match trans
             .message
             .account_keys
@@ -56,7 +56,7 @@ fn create_inner_instructions(
         .as_ref()
         .and_then(|meta| meta.inner_instructions.as_ref())
         .and_then(|vec| {
-            vec.iter().map(|inner| {
+            vec.iter().map(|_inner| {
                 //println!("{:?}", inner);
             });
             Some(0_u64)

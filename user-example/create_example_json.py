@@ -32,18 +32,18 @@ def read_file_content(path):
 if __name__ == '__main__':
     dir_json = {}
     chains = get_dirs(os.path.join('.'))
-    for chain in chains:  # substrate
+    for chain in chains:  # solana
         dir_json[chain] = {}
         types = get_dirs(os.path.join('.', chain))
-        for type in types:  # substrate/so
+        for type in types:  # solana/so
             dir_json[chain][type] = {}
             chain_and_type = os.path.join('.', chain, type)
-            for example in get_dirs(chain_and_type):  # substrate/so/test-block
+            for example in get_dirs(chain_and_type):  # solana/so/test-block
                 dir_json[chain][type][example] = {}
                 chain_and_type_and_example = os.path.join(chain_and_type, example)
 
                 # Find folders (src, abis,...) in the example
-                for folder in get_dirs(chain_and_type_and_example):  # substrate/so/test-block/src or substrate/so/test-block/abis  ...
+                for folder in get_dirs(chain_and_type_and_example):  # solana/so/test-block/src or solana/so/test-block/abis  ...
                     dir_json[chain][type][example][folder] = {}
                     dir_json[chain][type][example]["src"] = {}  # Set this up for quickswap
                     dir_json[chain][type][example]["configs"] = {}  # Set this up to put the package.json, schema.graphql. project.yaml inside
@@ -60,7 +60,7 @@ if __name__ == '__main__':
                         for quickswap_file in get_file(quickswap_mappings_path):
                             dir_json[chain][type][example]["src"]["mappings/" + quickswap_file] = read_file_content(os.path.join(quickswap_mappings_path, quickswap_file))
 
-                    for file in get_file(chain_and_type_and_example_and_folder):  # substrate/so/test-block/src/mapping.rs or substrate/so/test-block/abis/abi.json ....
+                    for file in get_file(chain_and_type_and_example_and_folder):  # solana/so/test-block/src/mapping.rs or solana/so/test-block/abis/abi.json ....
                         chain_and_type_and_example_and_folder_and_file = os.path.join(chain_and_type_and_example_and_folder, file)
                         dir_json[chain][type][example][folder][file] = read_file_content(chain_and_type_and_example_and_folder_and_file)
 

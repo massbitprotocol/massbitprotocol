@@ -15,13 +15,13 @@ use libloading::Library;
 use massbit::blockchain::Blockchain;
 use massbit::blockchain::TriggerFilter;
 use massbit::prelude::*;
-use massbit_chain_solana::data_type::{Pubkey, SolanaFilter};
+use massbit_chain_solana::data_type::{SolanaFilter};
 use massbit_common::prelude::serde_json;
 use massbit_common::prelude::tokio::time::{sleep, timeout, Duration};
-use massbit_common::NetworkType;
+
 use serde_yaml::Value;
 use std::path::Path;
-use std::str::FromStr;
+
 use std::{
     alloc::System, collections::HashMap, env, error::Error, ffi::OsStr, fmt, path::PathBuf,
     sync::Arc,
@@ -82,7 +82,7 @@ impl AdapterManager {
     pub async fn init(
         &mut self,
         hash: &String,
-        config: &Value,
+        _config: &Value,
         mapping: &PathBuf,
         schema: &PathBuf,
         manifest: &Option<SubgraphManifest<Chain>>,
@@ -103,7 +103,7 @@ impl AdapterManager {
                 .collect::<Vec<DataSourceTemplate>>();
         }
 
-        let arc_templates = Arc::new(templates);
+        let _arc_templates = Arc::new(templates);
         //Todo: Currently adapter only works with one datasource
         assert_eq!(
             data_sources.len(),
@@ -112,7 +112,7 @@ impl AdapterManager {
             data_sources.len()
         );
         match data_sources.get(0) {
-            Some(mut data_source) => {
+            Some(data_source) => {
                 let start_block = match got_block {
                     None => data_source.source.start_block as u64,
                     Some(val) => val as u64 + 1,
@@ -314,7 +314,7 @@ async fn try_create_stream(
 ) -> Option<Streaming<BlockResponse>> {
     log::info!("Create new stream from block {}", start_block);
     //Todo: if remove this line, debug will be broken
-    let filter =
+    let _filter =
         <chain_ethereum::Chain as Blockchain>::TriggerFilter::from_data_sources(vec![].iter());
     let filter = match datasource.name.as_str() {
         "Saber-Indexer" => SolanaFilter::new(vec![SABER_STABLE_SWAP_PROGRAM]),
@@ -351,8 +351,8 @@ async fn try_create_stream(
 pub trait MessageHandler {
     fn handle_rust_mapping(
         &self,
-        message: &mut BlockResponse,
-        store: &mut dyn Store,
+        _message: &mut BlockResponse,
+        _store: &mut dyn Store,
     ) -> Result<(), Box<dyn Error>> {
         Ok(())
     }

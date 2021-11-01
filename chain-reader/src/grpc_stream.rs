@@ -39,36 +39,7 @@ impl Stream for StreamService {
         let (tx, rx) = mpsc::channel(QUEUE_BUFFER);
         let encoded_filter: Vec<u8> = request.get_ref().filter.clone();
         match chain_type {
-            ChainType::Substrate => {
-                // tx, rx for out stream gRPC
-                // let (tx, rx) = mpsc::channel(1024);
-
-                // Create new channel for connect between input and output stream
-                println!(
-                    "chains: {:?}, chain_type: {:?}, network: {}",
-                    &self.chans, chain_type, network
-                );
-                let sender = self.chans.get(&(chain_type, network));
-                assert!(
-                    sender.is_some(),
-                    "Error: No channel for {:?}, check config value",
-                    chain_type
-                );
-
-                let mut rx_chan = sender.unwrap().subscribe();
-
-                tokio::spawn(async move {
-                    loop {
-                        // Getting generic_data
-                        let generic_data = rx_chan.recv().await.unwrap();
-                        // Send generic_data to queue"
-                        let res = tx.send(Ok(generic_data)).await;
-                        if res.is_err() {
-                            error!("Cannot send data to RPC client queue, error: {:?}", res);
-                        }
-                    }
-                });
-            }
+            _ => {}
             ChainType::Solana => {
                 // Decode filter
                 let filter: SolanaFilter =
