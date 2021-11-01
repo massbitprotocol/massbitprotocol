@@ -5,10 +5,7 @@ use massbit::firehose::bstream::{
     stream_client::StreamClient, BlockResponse, BlocksRequest, ChainType,
 };
 use massbit::ipfs_client::IpfsClient;
-// use massbit_chain_ethereum::data_type::{decode as ethereum_decode, EthereumBlock};
 use massbit_chain_solana::data_type::{decode as solana_decode, SolanaBlock, SolanaFilter};
-use massbit_chain_substrate::data_type::SubstrateBlock;
-use massbit_chain_substrate::data_type::{decode, get_extrinsics_from_block};
 use std::time::Instant;
 
 use massbit_common::NetworkType;
@@ -35,7 +32,7 @@ pub async fn print_blocks(
     start_block: Option<u64>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     // Debug
-    let mut count = 0;
+    let _count = 0;
     let filter = SolanaFilter::new(vec![
         SABER_STABLE_SWAP_PROGRAM,
         // SABER_ROUTER_PROGRAM,
@@ -76,19 +73,6 @@ pub async fn print_blocks(
             data.block_hash,
         );
         match chain_type {
-            ChainType::Substrate => {
-                let now = Instant::now();
-                let block: SubstrateBlock = decode(&mut data.payload).unwrap();
-                info!("Received BLOCK: {:?}", &block.block.header.number);
-                let extrinsics = get_extrinsics_from_block(&block);
-                for extrinsic in extrinsics {
-                    //info!("Recieved EXTRINSIC: {:?}", extrinsic);
-                    let string_extrinsic = format!("Recieved EXTRINSIC:{:?}", extrinsic);
-                    info!("{}", string_extrinsic);
-                }
-                let elapsed = now.elapsed();
-                debug!("Elapsed processing solana block: {:.2?}", elapsed);
-            }
             ChainType::Solana => {
                 let now = Instant::now();
                 let block: SolanaBlock = solana_decode(&mut data.payload).unwrap();
@@ -101,57 +85,10 @@ pub async fn print_blocks(
                     block.block.block_height
                 );
 
-                // for origin_transaction in block.clone().block.transactions {
-                //     let log_messages = origin_transaction
-                //         .clone()
-                //         .meta
-                //         .unwrap()
-                //         .log_messages
-                //         .clone();
-                //     let transaction = SolanaTransaction {
-                //         block_number: ((&block).block.block_height.unwrap() as u32),
-                //         transaction: origin_transaction.clone(),
-                //         log_messages: log_messages.clone(),
-                //         success: false,
-                //     };
-                //     let log_messages = SolanaLogMessages {
-                //         block_number: ((&block).block.block_height.unwrap() as u32),
-                //         log_messages: log_messages.clone(),
-                //         transaction: origin_transaction.clone(),
-                //     };
-                //
-                //     // Print first data only bc it too many.
-                //     if print_flag {
-                //         debug!("Recieved SOLANA TRANSACTION with Block number: {:?}, trainsation: {:?}", &transaction.block_number, &transaction.transaction.transaction.signatures);
-                //         debug!("Recieved SOLANA {} LOG_MESSAGES in first transaction with Block number: {:?}, log_message: {:?}", &log_messages.log_messages.clone().unwrap_or(vec![]).len(), &log_messages.block_number, &log_messages.log_messages.unwrap().get(0));
-                //
-                //         print_flag = false;
-                //     }
-                // }
                 let elapsed = now.elapsed();
                 debug!("Elapsed processing solana block: {:.2?}", elapsed);
             }
-            ChainType::Ethereum => {
-                // let block: EthereumBlock = ethereum_decode(&mut data.payload).unwrap();
-                // info!(
-                //     "Recieved ETHREUM BLOCK with Block number: {}",
-                //     &block.block.number.unwrap().as_u64()
-                // );
-                //
-                // count += 1;
-                // if count >= MAX_COUNT {
-                //     break;
-                // }
-                //
-                // // for data_source in &data_sources {
-                // //     //println!("data_source: {:#?}", &data_source);
-                // //     let events = get_events(&block, data_source);
-                // //
-                // //     // for event in events {
-                // //     //     println!("Ethereum Event address: {:?}", &event.event.address);
-                // //     // }
-                // // }
-            }
+            _ => {}
         }
     }
     //drop(stream);
@@ -290,16 +227,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     let client = StreamClient::connect(URL).await.unwrap();
     println!("Match {:?}", matches);
     match chain_type {
-        "substrate" => {
-            info!("Run client: {}", chain_type);
-            print_blocks(
-                client,
-                ChainType::Substrate,
-                "mainnet".to_string(),
-                start_block,
-            )
-            .await?;
-        }
         "solana" => {
             info!("Run client: {}", chain_type);
             print_blocks(
@@ -312,13 +239,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
         }
         _ => {
             info!("Run client: {}", chain_type);
-            print_blocks(
-                client,
-                ChainType::Ethereum,
-                "matic".to_string(),
-                start_block,
-            )
-            .await?;
+            print_blocks(client, ChainType::Solana, "matic".to_string(), start_block).await?;
         }
     };
 

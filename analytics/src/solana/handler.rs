@@ -1,10 +1,10 @@
 //Public trait for ethereum metric
 use super::metrics::*;
 use crate::storage_adapter::StorageAdapter;
-use massbit_chain_solana::data_type::SolanaBlock;
+
 use massbit_common::prelude::anyhow;
 use massbit_common::NetworkType;
-use solana_transaction_status::{ConfirmedBlock, EncodedConfirmedBlock};
+use solana_transaction_status::{EncodedConfirmedBlock};
 use std::sync::Arc;
 
 pub trait SolanaHandler: Sync + Send {

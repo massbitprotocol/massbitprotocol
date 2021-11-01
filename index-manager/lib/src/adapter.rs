@@ -2,18 +2,18 @@ use crate::ipfs::read_config_file;
 use crate::type_index::IndexConfig;
 use adapter::core::AdapterManager;
 use std::error::Error;
-use std::fs::File;
-use std::io::Read;
-use std::path::PathBuf;
 
-use log::{debug, info, warn, Level};
 
-use crate::config::get_mapping_language;
+
+
+
+
+
 use graph::prelude::SubgraphManifest;
-use graph_chain_ethereum::{Chain, DataSource};
-use std::rc::Rc;
-use std::sync::Arc;
-use std::time::Instant;
+use graph_chain_ethereum::{Chain};
+
+
+
 
 pub async fn adapter_init(
     index_config: &IndexConfig,

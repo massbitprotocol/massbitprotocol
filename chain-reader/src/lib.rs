@@ -5,7 +5,6 @@ pub mod command;
 pub mod ethereum_chain;
 pub mod grpc_stream;
 pub mod solana_chain;
-pub mod substrate_chain;
 pub mod transport;
 pub use self::transport::Transport;
 
@@ -30,14 +29,6 @@ lazy_static! {
     static ref HAMONY_URL: String = env::var("HAMONY_WS").unwrap_or(String::from("https://a.api.s0.t.hmny.io/"));
     pub static ref CONFIG: Config = Config{
         chains: [
-            //  ChainConfig{
-            //     url: "".to_string(),
-            //     ws: "".to_string(),
-            //     start_block: None,
-            //     chain_type: ChainType::Substrate,
-            //     network: "mainnet".to_string(),
-            //     supports_eip_1898: true,
-            // },
             ChainConfig{
                 ws: SOLANA_WS.to_string(),
                 url: SOLANA_URL.to_string(),

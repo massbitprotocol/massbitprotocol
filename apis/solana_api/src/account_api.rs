@@ -1,27 +1,19 @@
-use super::orm::schema::solana_blocks::dsl as bl;
-use super::orm::schema::solana_daily_stat_blocks::dsl as bl_stat;
-use crate::orm::models::{SolanaBlock, SolanaDailyStatBlock};
 //use crate::orm::schema::solana_inst_assigns::columns::account;
-use core::ops::Deref;
+
 use diesel::r2d2::PooledConnection;
-use jsonrpc_core::{Error, ErrorCode, Params, Result as JsonRpcResult};
+use jsonrpc_core::Result as JsonRpcResult;
 use jsonrpc_derive::rpc;
 use massbit::prelude::{
     serde::Serialize,
-    serde_json::{self, json, Value},
+    serde_json::{json, Value},
 };
 
 use massbit_chain_solana::data_type::TOKEN_PROGRAM_ID;
 use massbit_common::prelude::diesel::r2d2::ConnectionManager;
-use massbit_common::prelude::diesel::{
-    r2d2, ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl,
-};
+use massbit_common::prelude::diesel::{r2d2, PgConnection};
 use solana_client::rpc_client::RpcClient;
 use solana_client::rpc_request::RpcRequest;
-use solana_program::clock::Slot;
-use solana_program::pubkey::Pubkey;
-use solana_sdk::account;
-use std::str::FromStr;
+
 use std::sync::Arc;
 use tokio::time::Instant;
 
@@ -90,7 +82,7 @@ fn get_account_type(res_account: &Value) -> AccountType {
 impl RpcAccounts for RpcAccountsImpl {
     fn get_account_data(&self, pubkey: String, encode_type: String) -> JsonRpcResult<Value> {
         log::info!("Get account detail for {:?}", &pubkey);
-        let start = Instant::now();
+        let _start = Instant::now();
         let params = json!([pubkey, { "encoding": encode_type }]);
 
         println!("params: {:?}", params);

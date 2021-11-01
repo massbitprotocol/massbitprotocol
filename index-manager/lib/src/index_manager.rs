@@ -14,12 +14,12 @@ use jsonrpc_http_server::{
 };
 
 // Massbit dependencies
-use crate::adapter::adapter_init;
-use crate::config_builder::IndexConfigIpfsBuilder;
+
+
 use crate::index_manager_helper::{
     list_handler_helper, restart_all_existing_index_helper, start_new_index,
 };
-use crate::type_index::IndexStore;
+
 use crate::type_request::DeployParams;
 use tokio02_spawn::core::abort_on_panic;
 use tokio02_spawn::core::tokio02_spawn;

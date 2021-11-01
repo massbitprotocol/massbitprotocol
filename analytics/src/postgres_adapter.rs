@@ -1,7 +1,7 @@
 use crate::storage_adapter::StorageAdapter;
 use diesel::PgConnection;
 use massbit_common::prelude::diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
-use massbit_common::prelude::diesel::{r2d2, Connection, RunQueryDsl};
+use massbit_common::prelude::diesel::{Connection, RunQueryDsl};
 use massbit_store_postgres::helper::create_r2d2_connection_pool;
 use std::cmp;
 

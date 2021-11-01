@@ -8,14 +8,13 @@ use rand::{thread_rng, Rng};
 use serde_yaml::Value;
 use std::iter;
 // Massbit dependencies
-use crate::ipfs::{download_ipfs_file_by_hash, read_config_file};
+
 use massbit::firehose::bstream::ChainType;
 
 pub fn get_chain_type(config: &Value) -> ChainType {
     let chain_type = match config["dataSources"][0]["kind"].as_str().unwrap() {
-        "substrate" => ChainType::Substrate,
         "solana" => ChainType::Solana,
-        _ => ChainType::Substrate, // If not provided, assume it's substrate network
+        _ => ChainType::Solana, // If not provided, assume it's Solana network
     };
     chain_type
 }

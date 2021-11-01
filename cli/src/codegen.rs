@@ -2,7 +2,7 @@ use crate::graphql::relational::Layout;
 use crate::graphql::schema::Schema;
 
 use clap::ArgMatches;
-use inflector::cases::snakecase::to_snake_case;
+
 use inflector::Inflector;
 use serde::Serialize;
 use std::collections::HashMap;

@@ -13,7 +13,6 @@ Valid Homepage
     Open Browser            ${DASHBOARD}    ${BROWSER}
     Title Should Be         Massbit Dashboard
     Click Element           css:li.nav-item:nth-of-type(2)
-    Page Should Contain     Substrate
     Page Should Contain     Solana
     Page Should Contain     Ethereum
     Page Should Contain     BSC

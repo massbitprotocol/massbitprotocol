@@ -14,7 +14,7 @@ hex = "0.4.3"
 uuid = { version = "0.8", features = ["serde", "v4"] }
 # Massbit dependencies
 adapter = { path = "../../../plugin/adapter" }
-massbit-chain-substrate = { path = "../../../core/chain/substrate" }
+
 massbit-chain-solana = { path = "../../../core/chain/solana" }
 index-store = { path = "../../../core/index-store" }
 massbit-drive = {path = "../../../core/drive" }

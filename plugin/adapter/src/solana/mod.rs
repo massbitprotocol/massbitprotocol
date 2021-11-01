@@ -1,13 +1,10 @@
-use crate::core::{AdapterError, MessageHandler};
+use crate::core::MessageHandler;
 use index_store::Store;
 use libloading::Library;
 pub use massbit::firehose::bstream::BlockResponse;
-use massbit_chain_solana::data_type::{
-    convert_solana_encoded_block_to_solana_block, decode, SolanaBlock, SolanaEncodedBlock,
-    SolanaLogMessages, SolanaTransaction,
-};
+use massbit_chain_solana::data_type::{decode, SolanaBlock, SolanaLogMessages, SolanaTransaction};
 use paste::paste;
-use std::result::Result::Err;
+
 use std::{error::Error, sync::Arc};
 
 crate::prepare_adapter!(Solana, {

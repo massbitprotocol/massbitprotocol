@@ -3,12 +3,9 @@ use crate::solana::handler::SolanaHandler;
 use crate::storage_adapter::StorageAdapter;
 use crate::{create_columns, create_entity};
 use massbit::prelude::{Attribute, Entity, Error, Value};
-use massbit_chain_solana::data_type::SolanaBlock;
+
 use massbit_common::NetworkType;
-use solana_transaction_status::{
-    ConfirmedBlock, EncodedConfirmedBlock, EncodedTransactionWithStatusMeta,
-    TransactionWithStatusMeta, UiTransactionStatusMeta,
-};
+use solana_transaction_status::{EncodedConfirmedBlock, EncodedTransactionWithStatusMeta};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -60,7 +57,7 @@ fn create_table<'a>() -> Table<'a> {
     Table::new("solana_logs", columns)
 }
 fn create_entity(
-    block_slot: u64,
+    _block_slot: u64,
     block: &EncodedConfirmedBlock,
     tran: &EncodedTransactionWithStatusMeta,
     logs: &Vec<String>,

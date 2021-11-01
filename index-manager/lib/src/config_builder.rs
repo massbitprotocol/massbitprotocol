@@ -5,20 +5,20 @@
 // Generic dependencies
 use std::path::PathBuf;
 use lazy_static::lazy_static;
-use serde::Deserialize;
+
 
 // Massbit dependencies
 use crate::config::{
-    generate_mapping_name_and_type, generate_random_hash, get_index_name, get_mapping_language,
+    generate_mapping_name_and_type, generate_random_hash, get_index_name,
 };
 use crate::ipfs::{download_ipfs_file_by_hash, read_config_file};
 use crate::type_index::{IndexConfig, IndexIdentifier, Abi};
-use crate::type_request::{DeployAbi, DeployParams};
-use std::fs;
-use serde_yaml::{Value};
-use std::collections::BTreeMap;
-use std::fs::File;
-use std::io::Read;
+use crate::type_request::{DeployAbi};
+
+
+
+
+
 
 lazy_static! {
     static ref GENERATED_FOLDER: String = String::from("index-manager/generated");

@@ -2,7 +2,7 @@ use crate::establish_connection;
 use crate::models::Indexer;
 use crate::schema::indexers;
 use massbit_common::prelude::diesel::prelude::*;
-use massbit_common::prelude::diesel::result::Error;
+
 use strum::AsStaticRef;
 use strum_macros::AsStaticStr;
 

@@ -271,7 +271,7 @@ pub struct FirehoseMapper {}
 impl FirehoseMapperTrait<Chain> for FirehoseMapper {
     fn to_block_stream_event(
         &self,
-        logger: &Logger,
+        _logger: &Logger,
         response: &BlockResponse,
     ) -> Result<BlockStreamEvent<Chain>, Error> {
         let block: BlockWithTriggers<Chain> = serde_json::from_slice(&response.payload)?;

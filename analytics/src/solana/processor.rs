@@ -1,20 +1,20 @@
 use super::CHAIN;
-use crate::get_block_number;
+
 use crate::postgres_adapter::PostgresAdapter;
 use crate::schema::network_states;
 use crate::solana::handler::create_solana_handler_manager;
 use crate::solana::model::EncodedConfirmedBlockWithSlot;
 use core::ops::Deref;
-use massbit::firehose::bstream::BlockResponse;
-use massbit_chain_solana::data_type::{decode_encoded_block, SolanaBlock};
+
+
 use massbit_common::prelude::diesel::pg::upsert::excluded;
 use massbit_common::prelude::diesel::{ExpressionMethods, RunQueryDsl};
 use massbit_common::NetworkType;
-use solana_transaction_status::EncodedConfirmedBlock;
+
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use tokio::sync::mpsc::Receiver;
-use tonic::Status;
+
 
 pub async fn process_solana_channel(
     rx: &mut Receiver<EncodedConfirmedBlockWithSlot>,
@@ -27,8 +27,8 @@ pub async fn process_solana_channel(
         &network,
         storage_adapter.clone(),
     ));
-    let mut last_block = Arc::new(Mutex::new(block.unwrap_or_default()));
-    while let Some(mut data) = rx.recv().await {
+    let last_block = Arc::new(Mutex::new(block.unwrap_or_default()));
+    while let Some(data) = rx.recv().await {
         let block_slot = data.block_slot;
         let handler = handler_manager.clone();
         let storage_adapter = storage_adapter.clone();

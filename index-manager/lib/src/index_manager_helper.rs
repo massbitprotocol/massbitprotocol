@@ -7,24 +7,24 @@ use std::error::Error;
  **/
 // Generic dependencies
 use diesel::{Connection, PgConnection};
-use diesel_migrations::embed_migrations;
+
 use lazy_static::lazy_static;
-use log::{debug, info, warn};
+use log::{debug};
 use serde_yaml::Value;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::{Duration};
 use tokio_compat_02::FutureExt;
 
 // Massbit dependencies
 use crate::adapter::adapter_init;
-use crate::config::{generate_random_hash, get_index_name};
+
 use crate::config_builder::{IndexConfigIpfsBuilder, IndexConfigLocalBuilder};
-use crate::ddl_gen::run_ddl_gen;
-use crate::hasura::track_hasura_with_ddl_gen_plugin;
-use crate::ipfs::{download_ipfs_file_by_hash, read_config_file};
+
+
+use crate::ipfs::{read_config_file};
 use crate::type_index::{IndexStore, Indexer};
 use crate::type_request::DeployParams;
-use adapter::core::AdapterManager;
+
 
 // Graph dependencies
 use graph::data::subgraph::UnresolvedSubgraphManifest;
@@ -32,7 +32,7 @@ use graph::data::subgraph::SPEC_VERSION_0_0_4;
 use graph::data::subgraph::{SubgraphAssignmentProviderError, SubgraphManifest};
 use graph::ipfs_client::IpfsClient;
 use graph::log::logger;
-use graph_chain_ethereum::{Chain, DataSource};
+use graph_chain_ethereum::{Chain};
 use graph_core::LinkResolver;
 use index_store::indexer::IndexerStore;
 
@@ -91,7 +91,7 @@ pub async fn start_new_index(params: DeployParams) -> Result<(), Box<dyn Error>>
 
 pub async fn restart_all_existing_index_helper() -> Result<(), Box<dyn Error>> {
     let database_url = crate::DATABASE_CONNECTION_STRING.as_str();
-    let conn = PgConnection::establish(database_url)
+    let _conn = PgConnection::establish(database_url)
         .expect(&format!("Error connecting to {}", database_url));
     //let indexers = IndexStore::get_indexer_list();
     let indexers = IndexerStore::get_active_indexers();

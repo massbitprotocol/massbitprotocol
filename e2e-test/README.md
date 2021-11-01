@@ -1,4 +1,4 @@
-# E2E Test for Substrate and Solana template
+# E2E Test for Solana template
 
 ## Testing coverage
 Core tests:
@@ -6,7 +6,6 @@ Core tests:
 - Ethereum has 3 basic tests (block, transaction, event)
 - Polygon has 1 contract test (quickswap), 1 chain test (transaction metrics)
 - Solana has 3 basic tests (block, transaction, log messages), 2 advanced tests (serum, five tables to test compound type)
-- Substrate has 3 basic tests (block, transaction, event)
 - Cardano has none tests yet.
 
 Health check tests:

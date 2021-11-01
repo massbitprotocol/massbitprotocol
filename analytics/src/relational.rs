@@ -1,8 +1,8 @@
-use inflector::Inflector;
+
 use massbit::prelude::s::EnumType;
-use massbit::prelude::StoreError;
+
 use massbit_store_postgres::relational::SqlName;
-use std::fmt;
+
 
 /// This is almost the same as graph::data::store::ValueType, but without
 /// ID and List; with this type, we only care about scalar types that directly
