@@ -81,12 +81,8 @@ services:
     image: sprise/chain-reader:latest
     ports:
       - "50051:50051"
-    depends_on:
-      - "substrate-node"
     restart: always
     environment:
-      # Pointing to our substrate container
-      NODE_SERVER: ws://substrate-node
       # Log config
       RUST_LOG_TYPE: file
       RUST_LOG: debug

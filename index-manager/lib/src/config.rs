@@ -13,9 +13,8 @@ use massbit::firehose::bstream::ChainType;
 
 pub fn get_chain_type(config: &Value) -> ChainType {
     let chain_type = match config["dataSources"][0]["kind"].as_str().unwrap() {
-        "substrate" => ChainType::Substrate,
         "solana" => ChainType::Solana,
-        _ => ChainType::Substrate, // If not provided, assume it's substrate network
+        _ => ChainType::Solana, // If not provided, assume it's Solana network
     };
     chain_type
 }

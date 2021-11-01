@@ -7,18 +7,14 @@ schema:
   file: ./schema.graphql
 
 dataSources:
-  - kind: substrate
+  - kind: solana
     name: Index
     network: https://data-seed-prebsc-1-s1.binance.org:8545/
     mapping:
       language: rust
       handlers:
         - handler: handleBlock
-          kind: substrate/BlockHandler
-        - handler: handleCall
-          kind: substrate/CallHandler
-        - handler: handleEvent
-          kind: substrate/EventHandler
+          kind: solana/BlockHandler
 ```
 
 - a schema (schema.graphql / rust model)
@@ -32,28 +28,15 @@ type IndexSchema @entity{
 
 - a mapping file (mapping.rs)
 ```
-use SubstrateBlock;
-use SubstrateEvent;
-use SubstrateCall;
+use SolanaBlock;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-fn handleBlock(block: SubstrateBlock) {
+fn handleBlock(block: SolanaBlock) {
     // Add user logic here
     block.date = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
     block.save();
 }
 
-fn handleEvent(event: SubstrateEvent) {
-    // Add user logic here
-    event.date = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
-    event.save();
-}
-
-fn handleCall(call: SubstrateCall) {
-    // Add user logic here
-    call.date = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
-    call.save();
-}
 ```
 
 ## API

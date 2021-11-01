@@ -31,19 +31,7 @@ pub struct {{ chain_type|title }}HandlerAdapter;
 
 impl {{ chain_type|title }}Handler for {{ chain_type|title }}HandlerAdapter {
 {%- for handler in handlers -%}
-{%- if handler.kind == "substrate/BlockHandler" and chain_type == "substrate" %}
-    fn handle_block(&self, block: &substrate_types::SubstrateBlock) -> Result<(), Box<dyn Error>> {
-        mapping::{{ handler.name }}(block)
-    }
-{% elif handler.kind == "substrate/ExtrinsicHandler" and chain_type == "substrate" %}
-    fn handle_extrinsic(&self, extrinsic: &substrate_types::SubstrateUncheckedExtrinsic) -> Result<(), Box<dyn Error>> {
-        mapping::{{ handler.name }}(extrinsic)
-    }
-{% elif handler.kind == "substrate/EventHandler" and chain_type == "substrate" %}
-    fn handle_event(&self, event: &substrate_types::SubstrateEventRecord) -> Result<(), Box<dyn Error>> {
-        mapping::{{ handler.name }}(event)
-    }
-{% elif handler.kind == "solana/BlockHandler" and chain_type == "solana" %}
+{%- if handler.kind == "solana/BlockHandler" and chain_type == "solana" %}
     fn handle_block(&self, block: &solana_types::SolanaBlock) -> Result<(), Box<dyn Error>> {
         mapping::{{ handler.name }}(block)
     }

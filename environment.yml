@@ -1,4 +1,4 @@
-name: py-substrate
+name: py-massbit
 channels:
   - defaults
 dependencies:
@@ -44,7 +44,6 @@ dependencies:
     - requests==2.25.1
     - scalecodec==0.10.87
     - six==1.16.0
-    - substrate-interface==0.12.7
     - toolz==0.11.1
     - tzlocal==2.1
     - urllib3==1.26.4

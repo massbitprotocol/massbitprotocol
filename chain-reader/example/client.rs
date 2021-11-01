@@ -227,16 +227,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     let client = StreamClient::connect(URL).await.unwrap();
     println!("Match {:?}", matches);
     match chain_type {
-        "substrate" => {
-            info!("Run client: {}", chain_type);
-            print_blocks(
-                client,
-                ChainType::Substrate,
-                "mainnet".to_string(),
-                start_block,
-            )
-            .await?;
-        }
         "solana" => {
             info!("Run client: {}", chain_type);
             print_blocks(
@@ -249,13 +239,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
         }
         _ => {
             info!("Run client: {}", chain_type);
-            print_blocks(
-                client,
-                ChainType::Ethereum,
-                "matic".to_string(),
-                start_block,
-            )
-            .await?;
+            print_blocks(client, ChainType::Solana, "matic".to_string(), start_block).await?;
         }
     };
 

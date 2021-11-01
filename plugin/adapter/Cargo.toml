@@ -58,4 +58,3 @@ branch = "main"
 
 [build-dependencies]
 tonic-build = "0.5" # Chain Reader Client
-#[workspace]

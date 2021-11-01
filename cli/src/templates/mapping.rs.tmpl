@@ -1,22 +1,9 @@
 use crate::models::*;
-use massbit_chain_substrate::data_type as substrate_types;
 use massbit_chain_solana::data_type as solana_types;
 use massbit_chain_ethereum::data_type as ethereum_types;
 use std::error::Error;
 {% for handler in handlers -%}
-{%- if handler.kind == "substrate/BlockHandler" %}
-pub fn {{handler.name}}(block: &substrate_types::SubstrateBlock) -> Result<(), Box<dyn Error>> {
-    unimplemented!();
-}
-{% elif handler.kind == "substrate/ExtrinsicHandler" %}
-pub fn {{handler.name}}(extrinsic: &substrate_types::SubstrateExtrinsic) -> Result<(), Box<dyn Error>> {
-    todo!();
-}
-{% elif handler.kind == "substrate/EventHandler" %}
-pub fn {{handler.name}}(event: &substrate_types::SubstrateEventRecord) -> Result<(), Box<dyn Error>> {
-    todo!();
-}
-{% elif handler.kind == "solana/BlockHandler" %}
+{%- if handler.kind == "solana/BlockHandler" %}
 pub fn {{handler.name}}(block: &solana_types::SolanaBlock) -> Result<(), Box<dyn Error>> {
     todo!();
 }

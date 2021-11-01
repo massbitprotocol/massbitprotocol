@@ -71,10 +71,6 @@ test-run-basic:
 	@echo "Running health check tests ..."
 	cd e2e-test/health-check && robot health-check.robot || true
 
-	@echo "Running basic substrate tests ..."
-	cd e2e-test/substrate && robot basic.robot
-	make restart-chain-reader-index-manager
-
 	@echo "Running basic solana tests ..."
 	cd e2e-test/solana && robot basic.robot
 	make restart-chain-reader-index-manager
@@ -100,10 +96,6 @@ test-run-basic-and-up:
 
 	@echo "Running health check tests ..."
 	cd e2e-test/health-check && robot health-check.robot || true
-
-	@echo "Running basic substrate tests ..."
-	cd e2e-test/substrate && robot basic.robot || true
-	make restart-chain-reader-index-manager
 
 	@echo "Running basic solana tests ..."
 	cd e2e-test/solana && robot basic.robot || true

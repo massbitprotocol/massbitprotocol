@@ -2,18 +2,18 @@ schema:
   file: ./schema.graphql
 
 dataSources:
-  - kind: substrate
+  - kind: solana
     name: Index
     network: https://data-seed-prebsc-1-s1.binance.org:8545/
     mapping:
       language: rust
       handlers:
         - handler: handleBlock
-          kind: substrate/BlockHandler
+          kind: solana/BlockHandler
         - handler: handleExtrinsic
-          kind: substrate/ExtrinsicHandler
+          kind: solana/ExtrinsicHandler
         - handler: handleEvent
-          kind: substrate/EventHandler
+          kind: solana/EventHandler
   - kind: solana
     name: Index
     network: https://data-seed-prebsc-1-s1.binance.org:8545/
