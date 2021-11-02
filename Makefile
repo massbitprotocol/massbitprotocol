@@ -243,7 +243,7 @@ index-quickswap:
 
 index-pancakeswap:
 	@echo "Start indexing Pancakeswap (BSC) ..."
-	cd e2e-test/bsc && robot -t "Compile and Deploy Pancakeswap Exchange WASM" contract.robot
+	cd e2e-test/bsc && robot -t "Index Pancakeswap" contract.robot
 
 index-harmony:
 	@echo "Start indexing Harmony (Harmony) ..."
