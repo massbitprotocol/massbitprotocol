@@ -15,12 +15,12 @@ ${INDEX_MANAGER}  http://localhost:3000
 #############################
 # Pancakeswap Exchange WASM #
 #############################
-Compile and Deploy Pancakeswap Exchange WASM
+Index Pancakeswap
     # Configuration
     Connect To Database  psycopg2  graph-node  graph-node  let-me-in  localhost  5432
 
     # Compile request
-    ${object} =  Read Wasm Example  ../../user-example/bsc/wasm/pancakeswap-exchange
+    ${object} =  Read Wasm Example  ../../user-example/bsc/wasm/pancakeswap
     ${compile_res}=  Request.Post Request
     ...  ${CODE_COMPILER}/compile/wasm
     ...  ${object}
