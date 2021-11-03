@@ -4,6 +4,7 @@ package bstream;
 
 service Stream {
   rpc Blocks(BlocksRequest) returns (stream BlockResponse);
+  rpc SolanaTransactions(SolanaTransactionsRequest) returns (stream SolanaTransactionsResponse);
 }
 
 message BlocksRequest {
@@ -16,9 +17,22 @@ message BlocksRequest {
 message BlockResponse {
   ChainType chain_type = 1;
   string version = 2;
+  uint64 block_slot = 4;
   string block_hash = 3;
-  uint64 block_number = 4;
   bytes payload = 5;
+}
+
+message SolanaTransactionsRequest {
+  optional uint64 start_block_number = 1;
+  string network = 2;
+  bytes filter = 3;
+}
+
+message SolanaTransactionsResponse {
+  string version = 1;
+  uint64 block_slot = 2;
+  string block_hash = 3;
+  bytes payload = 4;
 }
 
 enum ChainType {

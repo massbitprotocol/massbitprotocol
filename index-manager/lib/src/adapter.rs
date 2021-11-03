@@ -3,22 +3,12 @@ use crate::type_index::IndexConfig;
 use adapter::core::AdapterManager;
 use std::error::Error;
 
-
-
-
-
-
-
-use graph::prelude::SubgraphManifest;
-use graph_chain_ethereum::{Chain};
-
-
-
+use chain_solana::chain::Chain;
+use massbit::prelude::IndexerManifest;
 
 pub async fn adapter_init(
     index_config: &IndexConfig,
-    manifest: &Option<SubgraphManifest<Chain>>,
-    got_block: Option<i64>
+    manifest: &Option<IndexerManifest<Chain>>,
 ) -> Result<(), Box<dyn Error>> {
     log::info!("Load library from {:?}", &index_config.mapping);
     let config_value = read_config_file(&index_config.config);
@@ -33,7 +23,6 @@ pub async fn adapter_init(
             &index_config.mapping,
             &index_config.schema,
             manifest,
-            got_block
         )
         .await?;
     Ok(())
