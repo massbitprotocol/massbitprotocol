@@ -79,6 +79,10 @@ pub async fn loop_get_block(
                                 );
                                 let res = res.unwrap();
                                 if let Ok(block) = res {
+                                    info!(
+                                        "Available channel capacity {:?}",
+                                        cloned_chan.capacity()
+                                    );
                                     cloned_chan.send(block).await;
                                 }
                             });
