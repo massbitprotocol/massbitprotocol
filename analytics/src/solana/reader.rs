@@ -6,12 +6,11 @@ use massbit::prelude::tokio::time::sleep;
 
 use massbit_common::prelude::tokio::time::{timeout, Duration};
 use massbit_common::NetworkType;
-use solana_client::{rpc_client::RpcClient};
-use solana_transaction_status::{UiTransactionEncoding};
+use solana_client::rpc_client::RpcClient;
+use solana_transaction_status::UiTransactionEncoding;
 use std::error::Error;
 use std::{sync::Arc, time::Instant};
 use tokio::sync::mpsc;
-
 
 // Check https://github.com/tokio-rs/prost for enum converting in rust protobuf
 const BLOCK_AVAILABLE_MARGIN: u64 = 100;
@@ -50,15 +49,22 @@ pub async fn loop_get_block(
                             current_root,
                             current_root - value_last_indexed_slot
                         );
-                        let mut tasks = vec![];
+                        //let mut tasks = vec![];
                         let number_get_slot =
                             (current_root - value_last_indexed_slot).min(BLOCK_BATCH_SIZE);
                         let block_range =
                             value_last_indexed_slot..(value_last_indexed_slot + number_get_slot);
                         for block_slot in block_range {
                             let new_client = client.clone();
+                            info!(
+                                "Require permit for block_slot {}. Available permits: {}",
+                                block_slot,
+                                sem.available_permits()
+                            );
                             let permit = Arc::clone(&sem).acquire_owned().await.unwrap();
-                            tasks.push(tokio::spawn(async move {
+                            let cloned_chan = chan.clone();
+                            info!("Spawn thread for block_slot {}", block_slot);
+                            tokio::spawn(async move {
                                 let res = timeout(
                                     Duration::from_secs(GET_BLOCK_TIMEOUT_SEC),
                                     get_block(new_client, permit, block_slot),
@@ -71,15 +77,19 @@ pub async fn loop_get_block(
                                     "Finish tokio::spawn for getting block height: {:?}",
                                     &block_slot
                                 );
-                                res.unwrap()
-                            }));
+                                let res = res.unwrap();
+                                if let Ok(block) = res {
+                                    cloned_chan.send(block).await;
+                                }
+                            });
                         }
-                        let blocks: Vec<Result<_, _>> = futures03::future::join_all(tasks).await;
-                        let mut blocks: Vec<EncodedConfirmedBlockWithSlot> = blocks
-                            .into_iter()
-                            .filter_map(|res_block| res_block.ok().and_then(|res| res.ok()))
-                            .collect();
-                        blocks.sort_by(|a, b| a.block_slot.cmp(&b.block_slot));
+                        // let blocks: Vec<Result<_, _>> = futures03::future::join_all(tasks).await;
+                        // let mut blocks: Vec<EncodedConfirmedBlockWithSlot> = blocks
+                        //     .into_iter()
+                        //     .filter_map(|res_block| res_block.ok().and_then(|res| res.ok()))
+                        //     .collect();
+                        // blocks.sort_by(|a, b| a.block_slot.cmp(&b.block_slot));
+
                         //Send all got blocks
                         // if !chan.is_closed() {
                         //     let start = Instant::now();
@@ -97,6 +107,7 @@ pub async fn loop_get_block(
                         //     return Err("Stream is closed!".into());
                         // }
                         //info!("Finished get blocks");
+                        /*
                         for block in blocks.into_iter() {
                             let block_slot = block.block_slot;
                             debug!("gRPC sending block {}", &block_slot);
@@ -116,6 +127,7 @@ pub async fn loop_get_block(
                                 return Err("Stream is closed!".into());
                             }
                         }
+                         */
                         last_indexed_slot = last_indexed_slot
                             .map(|last_indexed_slot| last_indexed_slot + number_get_slot);
                     }
