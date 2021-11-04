@@ -11,7 +11,7 @@ pub mod solana;
 
 use crate::solana::SolanaHandlerProxy;
 use index_store::Store;
-use massbit::firehose::bstream::SolanaTransactionsResponse;
+use massbit::firehose::bstream::BlockResponse;
 
 //crate::create_adapters!(Solana);
 
@@ -21,11 +21,20 @@ pub enum HandlerProxyType {
 impl MessageHandler for HandlerProxyType {
     fn handle_transaction_mapping(
         &self,
-        message: &mut SolanaTransactionsResponse,
+        message: &mut BlockResponse,
         store: &mut dyn Store,
     ) -> Result<(), Box<dyn Error>> {
         match self {
             HandlerProxyType::Solana(proxy) => proxy.handle_transaction_mapping(message, store),
+        }
+    }
+    fn handle_block_mapping(
+        &self,
+        message: &mut BlockResponse,
+        store: &mut dyn Store,
+    ) -> Result<(), Box<dyn Error>> {
+        match self {
+            HandlerProxyType::Solana(proxy) => proxy.handle_block_mapping(message, store),
         }
     }
 }

@@ -2,7 +2,6 @@ use crate::core::{AdapterManager, BlockResponse, MessageHandler};
 use crate::solana::SolanaHandler;
 use index_store::Store;
 use libloading::Library;
-use massbit::firehose::bstream::SolanaTransactionsResponse;
 use massbit::prelude::serde_json;
 use massbit_chain_solana::data_type::{decode, SolanaBlock, SolanaLogMessages, SolanaTransaction};
 use std::sync::Arc;
@@ -43,61 +42,65 @@ impl MessageHandler for SolanaHandlerProxy {
         data: &mut BlockResponse,
         store: &mut dyn Store,
     ) -> Result<(), Box<dyn Error>> {
-        let block: SolanaBlock = decode(&mut data.payload).unwrap();
-        //let block = convert_solana_encoded_block_to_solana_block(encoded_block); // Decoding
-        log::info!(
-            "{} Received SOLANA BLOCK with block height: {:?}, hash: {:?}",
-            &*COMPONENT_NAME,
-            &block.block.block_height,
-            &block.block.blockhash
-        );
-        self.handler.handle_block(&block);
-        let mut print_flag = true;
-        for origin_transaction in block.clone().block.transactions {
-            let origin_log_messages = origin_transaction.meta.clone().unwrap().log_messages;
-            let transaction = SolanaTransaction {
-                block_number: ((&block).block.block_height.unwrap_or_default() as u32),
-                transaction: origin_transaction.clone(),
-                log_messages: origin_log_messages.clone(),
-                success: false,
-            };
-            let log_messages = SolanaLogMessages {
-                block_number: ((&block).block.block_height.unwrap_or_default() as u32),
-                log_messages: origin_log_messages.clone(),
-                transaction: origin_transaction.clone(),
-            };
-            if print_flag {
-                log::info!(
-                    "{} Recieved SOLANA TRANSACTION with Block number: {:?}, transaction: {:?}",
-                    &*COMPONENT_NAME,
-                    &transaction.block_number,
-                    &transaction.transaction.transaction.signatures
-                );
-                log::info!(
+        //log::info!("handle_block_mapping data: {:?}", data);
+        let blocks: Vec<SolanaBlock> = decode(&mut data.payload).unwrap();
+        // Todo: Rewrite the flush so it will flush after finish the array of blocks for better performance. For now, we flush after each block.
+        for block in blocks {
+            log::info!(
+                "{} Received SOLANA BLOCK with block height: {:?}, hash: {:?}",
+                &*COMPONENT_NAME,
+                &block.block.block_height,
+                &block.block.blockhash
+            );
+            self.handler.handle_block(&block);
+            let mut print_flag = true;
+            for origin_transaction in block.clone().block.transactions {
+                let origin_log_messages = origin_transaction.meta.clone().unwrap().log_messages;
+                let transaction = SolanaTransaction {
+                    block_number: ((&block).block.block_height.unwrap_or_default() as u32),
+                    transaction: origin_transaction.clone(),
+                    log_messages: origin_log_messages.clone(),
+                    success: false,
+                };
+                let log_messages = SolanaLogMessages {
+                    block_number: ((&block).block.block_height.unwrap_or_default() as u32),
+                    log_messages: origin_log_messages.clone(),
+                    transaction: origin_transaction.clone(),
+                };
+                if print_flag {
+                    log::info!(
+                        "{} Recieved SOLANA TRANSACTION with Block number: {:?}, transaction: {:?}",
+                        &*COMPONENT_NAME,
+                        &transaction.block_number,
+                        &transaction.transaction.transaction.signatures
+                    );
+                    log::info!(
                     "{} Recieved SOLANA LOG_MESSAGES with Block number: {:?}, log_messages: {:?}",
                     &*COMPONENT_NAME,
                     &log_messages.block_number,
                     &log_messages.log_messages.clone().unwrap().get(0)
                 );
-                print_flag = false;
+                    print_flag = false;
+                }
+                // self.handler.handle_transaction(&transaction);
+                // self.handler.handle_log_messages(&log_messages);
             }
-            self.handler.handle_transaction(&transaction);
-            self.handler.handle_log_messages(&log_messages);
+            store.flush(&block.block.blockhash, block.block_number);
         }
-        store.flush(&data.block_hash, data.block_slot)
+        Ok(())
     }
-    fn handle_transaction_mapping(
-        &self,
-        transaction: &mut SolanaTransactionsResponse,
-        store: &mut dyn Store,
-    ) -> Result<(), Box<dyn Error>> {
-        let transaction: SolanaTransaction =
-            serde_json::from_slice(&mut transaction.payload).unwrap();
-        log::info!(
-            "{} Received SOLANA Transaction with block slot: {:?}",
-            &*COMPONENT_NAME,
-            &transaction.block_number,
-        );
-        self.handler.handle_transaction(&transaction)
-    }
+    // fn handle_transaction_mapping(
+    //     &self,
+    //     transaction: &mut BlockResponse,
+    //     store: &mut dyn Store,
+    // ) -> Result<(), Box<dyn Error>> {
+    //     let transaction: SolanaTransaction =
+    //         serde_json::from_slice(&mut transaction.payload).unwrap();
+    //     log::info!(
+    //         "{} Received SOLANA Transaction with block slot: {:?}",
+    //         &*COMPONENT_NAME,
+    //         &transaction.block_number,
+    //     );
+    //     self.handler.handle_transaction(&transaction)
+    // }
 }

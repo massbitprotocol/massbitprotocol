@@ -57,7 +57,7 @@ impl FirehoseEndpoint {
 
     pub async fn stream_blocks(
         self: Arc<Self>,
-        request: bstream::BlocksRequest,
+        request: bstream::BlockRequest,
     ) -> Result<tonic::Streaming<bstream::BlockResponse>, anyhow::Error> {
         let token_metadata_opt = match self.token.clone() {
             Some(token) => Some(MetadataValue::from_str(token.as_str())?),

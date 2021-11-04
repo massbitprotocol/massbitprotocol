@@ -1,5 +1,5 @@
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct BlocksRequest {
+pub struct BlockRequest {
     #[prost(uint64, optional, tag = "1")]
     pub start_block_number: ::core::option::Option<u64>,
     #[prost(enumeration = "ChainType", tag = "2")]
@@ -11,43 +11,19 @@ pub struct BlocksRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BlockResponse {
-    #[prost(enumeration = "ChainType", tag = "1")]
-    pub chain_type: i32,
+    ///  ChainType chain_type = 1;
     #[prost(string, tag = "2")]
     pub version: ::prost::alloc::string::String,
-    #[prost(uint64, tag = "4")]
-    pub block_slot: u64,
-    #[prost(string, tag = "3")]
-    pub block_hash: ::prost::alloc::string::String,
+    ///  string block_hash = 3;
+    ///  uint64 block_slot = 4;
     #[prost(bytes = "vec", tag = "5")]
-    pub payload: ::prost::alloc::vec::Vec<u8>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SolanaTransactionsRequest {
-    #[prost(uint64, optional, tag = "1")]
-    pub start_block_number: ::core::option::Option<u64>,
-    #[prost(string, tag = "2")]
-    pub network: ::prost::alloc::string::String,
-    #[prost(bytes = "vec", tag = "3")]
-    pub filter: ::prost::alloc::vec::Vec<u8>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SolanaTransactionsResponse {
-    #[prost(string, tag = "1")]
-    pub version: ::prost::alloc::string::String,
-    #[prost(uint64, tag = "2")]
-    pub block_slot: u64,
-    #[prost(string, tag = "3")]
-    pub block_hash: ::prost::alloc::string::String,
-    #[prost(bytes = "vec", tag = "4")]
     pub payload: ::prost::alloc::vec::Vec<u8>,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum ChainType {
-    Substrate = 0,
+    Solana = 0,
     Ethereum = 1,
-    Solana = 2,
 }
 #[doc = r" Generated client implementations."]
 pub mod stream_client {
@@ -111,7 +87,7 @@ pub mod stream_client {
         }
         pub async fn blocks(
             &mut self,
-            request: impl tonic::IntoRequest<super::BlocksRequest>,
+            request: impl tonic::IntoRequest<super::BlockRequest>,
         ) -> Result<tonic::Response<tonic::codec::Streaming<super::BlockResponse>>, tonic::Status>
         {
             self.inner.ready().await.map_err(|e| {
@@ -122,25 +98,6 @@ pub mod stream_client {
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static("/bstream.Stream/Blocks");
-            self.inner
-                .server_streaming(request.into_request(), path, codec)
-                .await
-        }
-        pub async fn solana_transactions(
-            &mut self,
-            request: impl tonic::IntoRequest<super::SolanaTransactionsRequest>,
-        ) -> Result<
-            tonic::Response<tonic::codec::Streaming<super::SolanaTransactionsResponse>>,
-            tonic::Status,
-        > {
-            self.inner.ready().await.map_err(|e| {
-                tonic::Status::new(
-                    tonic::Code::Unknown,
-                    format!("Service was not ready: {}", e.into()),
-                )
-            })?;
-            let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/bstream.Stream/SolanaTransactions");
             self.inner
                 .server_streaming(request.into_request(), path, codec)
                 .await
@@ -161,17 +118,8 @@ pub mod stream_server {
             + 'static;
         async fn blocks(
             &self,
-            request: tonic::Request<super::BlocksRequest>,
+            request: tonic::Request<super::BlockRequest>,
         ) -> Result<tonic::Response<Self::BlocksStream>, tonic::Status>;
-        #[doc = "Server streaming response type for the SolanaTransactions method."]
-        type SolanaTransactionsStream: futures_core::Stream<Item = Result<super::SolanaTransactionsResponse, tonic::Status>>
-            + Send
-            + Sync
-            + 'static;
-        async fn solana_transactions(
-            &self,
-            request: tonic::Request<super::SolanaTransactionsRequest>,
-        ) -> Result<tonic::Response<Self::SolanaTransactionsStream>, tonic::Status>;
     }
     #[derive(Debug)]
     pub struct StreamServer<T: Stream> {
@@ -215,14 +163,14 @@ pub mod stream_server {
                 "/bstream.Stream/Blocks" => {
                     #[allow(non_camel_case_types)]
                     struct BlocksSvc<T: Stream>(pub Arc<T>);
-                    impl<T: Stream> tonic::server::ServerStreamingService<super::BlocksRequest> for BlocksSvc<T> {
+                    impl<T: Stream> tonic::server::ServerStreamingService<super::BlockRequest> for BlocksSvc<T> {
                         type Response = super::BlockResponse;
                         type ResponseStream = T::BlocksStream;
                         type Future =
                             BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::BlocksRequest>,
+                            request: tonic::Request<super::BlockRequest>,
                         ) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move { (*inner).blocks(request).await };
@@ -235,42 +183,6 @@ pub mod stream_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = BlocksSvc(inner);
-                        let codec = tonic::codec::ProstCodec::default();
-                        let mut grpc = tonic::server::Grpc::new(codec).apply_compression_config(
-                            accept_compression_encodings,
-                            send_compression_encodings,
-                        );
-                        let res = grpc.server_streaming(method, req).await;
-                        Ok(res)
-                    };
-                    Box::pin(fut)
-                }
-                "/bstream.Stream/SolanaTransactions" => {
-                    #[allow(non_camel_case_types)]
-                    struct SolanaTransactionsSvc<T: Stream>(pub Arc<T>);
-                    impl<T: Stream>
-                        tonic::server::ServerStreamingService<super::SolanaTransactionsRequest>
-                        for SolanaTransactionsSvc<T>
-                    {
-                        type Response = super::SolanaTransactionsResponse;
-                        type ResponseStream = T::SolanaTransactionsStream;
-                        type Future =
-                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<super::SolanaTransactionsRequest>,
-                        ) -> Self::Future {
-                            let inner = self.0.clone();
-                            let fut = async move { (*inner).solana_transactions(request).await };
-                            Box::pin(fut)
-                        }
-                    }
-                    let accept_compression_encodings = self.accept_compression_encodings;
-                    let send_compression_encodings = self.send_compression_encodings;
-                    let inner = self.inner.clone();
-                    let fut = async move {
-                        let inner = inner.0;
-                        let method = SolanaTransactionsSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec).apply_compression_config(
                             accept_compression_encodings,

@@ -3,11 +3,10 @@ syntax = "proto3";
 package bstream;
 
 service Stream {
-  rpc Blocks(BlocksRequest) returns (stream BlockResponse);
-  rpc SolanaTransactions(SolanaTransactionsRequest) returns (stream SolanaTransactionsResponse);
+  rpc Blocks(BlockRequest) returns (stream BlockResponse);
 }
 
-message BlocksRequest {
+message BlockRequest {
   optional uint64 start_block_number = 1;
   ChainType chain_type = 2;
   string network = 3;
@@ -15,28 +14,15 @@ message BlocksRequest {
 }
 
 message BlockResponse {
-  ChainType chain_type = 1;
+//  ChainType chain_type = 1;
   string version = 2;
-  uint64 block_slot = 4;
-  string block_hash = 3;
+//  string block_hash = 3;
+//  uint64 block_slot = 4;
   bytes payload = 5;
 }
 
-message SolanaTransactionsRequest {
-  optional uint64 start_block_number = 1;
-  string network = 2;
-  bytes filter = 3;
-}
-
-message SolanaTransactionsResponse {
-  string version = 1;
-  uint64 block_slot = 2;
-  string block_hash = 3;
-  bytes payload = 4;
-}
 
 enum ChainType {
-  Substrate = 0;
+  Solana = 0;
   Ethereum = 1;
-  Solana = 2;
 }

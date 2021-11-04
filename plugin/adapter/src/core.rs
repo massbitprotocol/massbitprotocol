@@ -9,7 +9,7 @@ use libloading::Library;
 use massbit::blockchain::Blockchain;
 use massbit::blockchain::TriggerFilter;
 pub use massbit::firehose::bstream::{
-    stream_client::StreamClient, BlockResponse, BlocksRequest, ChainType,
+    stream_client::StreamClient, BlockRequest, BlockResponse, ChainType,
 };
 use massbit::prelude::*;
 use massbit_chain_solana::data_type::SolanaFilter;
@@ -22,7 +22,6 @@ use std::path::Path;
 use crate::solana::SolanaHandler;
 use chain_solana::data_source::{DataSource, DataSourceTemplate};
 use chain_solana::Chain;
-use massbit::firehose::bstream::{SolanaTransactionsRequest, SolanaTransactionsResponse};
 use std::{
     alloc::System, collections::HashMap, env, error::Error, ffi::OsStr, fmt, path::PathBuf,
     sync::Arc,
@@ -207,7 +206,7 @@ impl AdapterManager {
             if let Some(handler_proxy) = adapter_handler.handler_proxies.get(&adapter_name) {
                 let mut start_block = init_block;
                 let chain_type = get_chain_type(data_source);
-                let mut opt_stream: Option<Streaming<SolanaTransactionsResponse>> = None;
+                let mut opt_stream: Option<Streaming<BlockResponse>> = None;
                 log::info!(
                     "Rust mapping get new stream for chain {:?} from block {}.",
                     &chain_type,
@@ -233,10 +232,9 @@ impl AdapterManager {
                             match response {
                                 Ok(Ok(res)) => {
                                     if let Some(mut data) = res {
-                                        match handler_proxy.handle_transaction_mapping(
-                                            &mut data,
-                                            &mut indexer_state,
-                                        ) {
+                                        match handler_proxy
+                                            .handle_block_mapping(&mut data, &mut indexer_state)
+                                        {
                                             Err(err) => {
                                                 log::error!(
                                                     "{} Error while handle received message",
@@ -309,7 +307,7 @@ async fn try_create_transaction_stream(
     client: &mut StreamClient<Timeout<Channel>>,
     start_block: u64,
     datasource: &DataSource,
-) -> Option<Streaming<SolanaTransactionsResponse>> {
+) -> Option<Streaming<BlockResponse>> {
     log::info!("Create new stream from block {}", start_block);
     //Todo: if remove this line, debug will be broken
     let _filter =
@@ -321,17 +319,23 @@ async fn try_create_transaction_stream(
     let filter = SolanaFilter::new(addresses);
     let encoded_filter = serde_json::to_vec(&filter).unwrap();
     let network = &datasource.network;
-    let transaction_request = SolanaTransactionsRequest {
+    let chain_type = match datasource.kind.to_lowercase().as_str() {
+        "solana" => ChainType::Solana,
+        "ethereum" => ChainType::Ethereum,
+        _ => ChainType::Solana,
+    };
+    let transaction_request = BlockRequest {
         start_block_number: if start_block > 0 {
             Some(start_block)
         } else {
             None
         },
+        chain_type: chain_type as i32,
         network: network.clone().unwrap_or(Default::default()),
         filter: encoded_filter,
     };
     match client
-        .solana_transactions(Request::new(transaction_request.clone()))
+        .blocks(Request::new(transaction_request.clone()))
         .await
     {
         Ok(res) => {
@@ -361,7 +365,7 @@ async fn try_create_stream(
     let filter = SolanaFilter::new(addresses);
     let encoded_filter = serde_json::to_vec(&filter).unwrap();
     let network = &datasource.network;
-    let get_blocks_request = BlocksRequest {
+    let get_blocks_request = BlockRequest {
         start_block_number: if start_block > 0 {
             Some(start_block)
         } else {
@@ -391,14 +395,17 @@ pub trait MessageHandler {
         &self,
         _message: &mut BlockResponse,
         _store: &mut dyn Store,
-    ) -> Result<(), Box<dyn Error>> {
-        Ok(())
-    }
+    ) -> Result<(), Box<dyn Error>>;
+    // {
+    //     log::error!("Error! handle_block_mapping is not implemented!");
+    //     Ok(())
+    // }
     fn handle_transaction_mapping(
         &self,
-        _message: &mut SolanaTransactionsResponse,
+        _message: &mut BlockResponse,
         _store: &mut dyn Store,
     ) -> Result<(), Box<dyn Error>> {
+        log::error!("Error! handle_transaction_mapping is not implemented!");
         Ok(())
     }
 }

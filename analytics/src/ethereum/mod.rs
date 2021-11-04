@@ -25,6 +25,7 @@ use crate::schema::*;
 use chain_ethereum::chain::BlockFinality;
 use chain_ethereum::Chain;
 use massbit::blockchain::block_stream::BlockWithTriggers;
+use massbit::blockchain::Block;
 use massbit_common::prelude::diesel::pg::upsert::excluded;
 use massbit_common::prelude::diesel::ExpressionMethods;
 use std::sync::Arc;
@@ -73,7 +74,7 @@ pub async fn process_ethereum_stream(
                             let start = Instant::now();
                             let block: BlockWithTriggers<Chain> =
                                 serde_json::from_slice(&data.payload).unwrap();
-                            let block_number = data.block_number as i64;
+                            let block_number = block.block.number() as i64;
                             let BlockFinality::Final(light_block) = block.block;
                             let transaction_count = light_block.transactions.len();
                             let handler = handler_manager.clone();

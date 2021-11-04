@@ -2,7 +2,7 @@ use clap::{App, Arg};
 
 use log::{debug, info};
 use massbit::firehose::bstream::{
-    stream_client::StreamClient, BlockResponse, BlocksRequest, ChainType,
+    stream_client::StreamClient, BlockRequest, BlockResponse, ChainType,
 };
 use massbit::ipfs_client::IpfsClient;
 use massbit_chain_solana::data_type::{decode as solana_decode, SolanaBlock, SolanaFilter};
@@ -40,7 +40,7 @@ pub async fn print_blocks(
 
     let encoded_filter = serde_json::to_vec(&filter).unwrap();
     // Not use start_block_number start_block_number yet
-    let get_blocks_request = BlocksRequest {
+    let get_blocks_request = BlockRequest {
         start_block_number: start_block,
         chain_type: chain_type as i32,
         network,
@@ -54,36 +54,24 @@ pub async fn print_blocks(
             .into_inner(),
     );
 
-    // let mut file_hash = "".to_string();
-    // let mut data_sources: Vec<DataSource> = vec![];
-    // if chain_type == ChainType::Ethereum {
-    //     // For ethereum only
-    //     file_hash = "/ipfs/QmVVrXLPKJYiXQqmR5LVmPTJBbYEQp4vgwve3hqXroHDp5".to_string();
-    //     data_sources = get_data_source(&file_hash).await.unwrap();
-    //     // End For ethereum only
-    // }
-
     println!("Waitting for data...");
     while let Some(data) = stream.as_mut().unwrap().message().await? {
         let mut data = data as BlockResponse;
-        println!(
-            "Received chain: {:?}, data block = {:?}, hash = {:?}",
-            ChainType::from_i32(data.chain_type).unwrap(),
-            data.block_number,
-            data.block_hash,
-        );
         match chain_type {
             ChainType::Solana => {
                 let now = Instant::now();
-                let block: SolanaBlock = solana_decode(&mut data.payload).unwrap();
+                let blocks: Vec<SolanaBlock> = solana_decode(&mut data.payload).unwrap();
                 // Decode
                 // let block = convert_solana_encoded_block_to_solana_block(encoded_block);
                 // let mut print_flag = true;
-                info!(
-                    "Recieved SOLANA {} TRANSACTIONS in Block height: {:?}",
-                    &block.block.transactions.len(),
-                    block.block.block_height
-                );
+                info!("SOLANA: Recieved {} BLOCK.", blocks.len());
+                for block in blocks {
+                    info!(
+                        "SOLANA: Recieved {} TRANSACTIONS in Block slot: {:?}",
+                        &block.block.transactions.len(),
+                        (block.block.parent_slot + 1)
+                    );
+                }
 
                 let elapsed = now.elapsed();
                 debug!("Elapsed processing solana block: {:.2?}", elapsed);
@@ -91,8 +79,6 @@ pub async fn print_blocks(
             _ => {}
         }
     }
-    //drop(stream);
-    //stream = None;
     Ok(())
 }
 
