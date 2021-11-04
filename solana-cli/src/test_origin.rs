@@ -351,3 +351,252 @@ pub struct CancelOrderInstruction {
     pub owner: [u64; 4], // Unused
     pub owner_slot: u8,
 }
+
+impl MarketInstruction {
+    pub fn pack(&self) -> Vec<u8> {
+        bincode::serialize(&(0u8, self)).unwrap()
+    }
+
+    pub fn unpack(versioned_bytes: &[u8]) -> Option<Self> {
+        if versioned_bytes.len() < 5 || versioned_bytes.len() > 58 {
+            return None;
+        }
+        let (&[version], &discrim, data) = array_refs![versioned_bytes, 1, 4; ..;];
+        if version != 0 {
+            return None;
+        }
+        let discrim = u32::from_le_bytes(discrim);
+        Some(match (discrim, data.len()) {
+            (0, 34) => MarketInstruction::InitializeMarket({
+                let data_array = array_ref![data, 0, 34];
+                let fields = array_refs![data_array, 8, 8, 2, 8, 8];
+                InitializeMarketInstruction {
+                    coin_lot_size: u64::from_le_bytes(*fields.0),
+                    pc_lot_size: u64::from_le_bytes(*fields.1),
+                    fee_rate_bps: u16::from_le_bytes(*fields.2),
+                    vault_signer_nonce: u64::from_le_bytes(*fields.3),
+                    pc_dust_threshold: u64::from_le_bytes(*fields.4),
+                }
+            }),
+            (1, 32) => MarketInstruction::NewOrder({
+                let data_arr = array_ref![data, 0, 32];
+                NewOrderInstructionV1::unpack(data_arr)?
+            }),
+            (2, 2) => {
+                let limit = array_ref![data, 0, 2];
+                MarketInstruction::MatchOrders(u16::from_le_bytes(*limit))
+            }
+            (3, 2) => {
+                let limit = array_ref![data, 0, 2];
+                MarketInstruction::ConsumeEvents(u16::from_le_bytes(*limit))
+            }
+            (4, 53) => MarketInstruction::CancelOrder({
+                let data_array = array_ref![data, 0, 53];
+                let fields = array_refs![data_array, 4, 16, 32, 1];
+                let side = match u32::from_le_bytes(*fields.0) {
+                    0 => Side::Bid,
+                    1 => Side::Ask,
+                    _ => return None,
+                };
+                let order_id = u128::from_le_bytes(*fields.1);
+                let owner = cast(*fields.2);
+                let &[owner_slot] = fields.3;
+                CancelOrderInstruction {
+                    side,
+                    order_id,
+                    owner,
+                    owner_slot,
+                }
+            }),
+            (5, 0) => MarketInstruction::SettleFunds,
+            (6, 8) => {
+                let client_id = array_ref![data, 0, 8];
+                MarketInstruction::CancelOrderByClientId(u64::from_le_bytes(*client_id))
+            }
+            (7, 0) => MarketInstruction::DisableMarket,
+            (8, 0) => MarketInstruction::SweepFees,
+            (9, 36) => MarketInstruction::NewOrderV2({
+                let data_arr = array_ref![data, 0, 36];
+                let (v1_data_arr, v2_data_arr) = array_refs![data_arr, 32, 4];
+                let v1_instr = NewOrderInstructionV1::unpack(v1_data_arr)?;
+                let self_trade_behavior = SelfTradeBehavior::try_from_primitive(
+                    u32::from_le_bytes(*v2_data_arr).try_into().ok()?,
+                )
+                .ok()?;
+                v1_instr.add_self_trade_behavior(self_trade_behavior)
+            }),
+            (10, 46) => MarketInstruction::NewOrderV3({
+                let data_arr = array_ref![data, 0, 46];
+                NewOrderInstructionV3::unpack(data_arr)?
+            }),
+            (11, 20) => MarketInstruction::CancelOrderV2({
+                let data_arr = array_ref![data, 0, 20];
+                CancelOrderInstructionV2::unpack(data_arr)?
+            }),
+            (12, 8) => {
+                let client_id = array_ref![data, 0, 8];
+                MarketInstruction::CancelOrderByClientIdV2(u64::from_le_bytes(*client_id))
+            }
+            (13, 46) => MarketInstruction::SendTake({
+                let data_arr = array_ref![data, 0, 46];
+                SendTakeInstruction::unpack(data_arr)?
+            }),
+            (14, 0) => MarketInstruction::CloseOpenOrders,
+            (15, 0) => MarketInstruction::InitOpenOrders,
+            (16, 2) => {
+                let limit = array_ref![data, 0, 2];
+                MarketInstruction::Prune(u16::from_le_bytes(*limit))
+            }
+            (17, 2) => {
+                let limit = array_ref![data, 0, 2];
+                MarketInstruction::ConsumeEventsPermissioned(u16::from_le_bytes(*limit))
+            }
+            _ => return None,
+        })
+    }
+
+    #[cfg(test)]
+    #[inline]
+    pub fn unpack_serde(data: &[u8]) -> Result<Self, ()> {
+        match data.split_first() {
+            None => Err(()),
+            Some((&0u8, rest)) => bincode::deserialize(rest).map_err(|_| ()),
+            Some((_, _rest)) => Err(()),
+        }
+    }
+}
+
+impl SendTakeInstruction {
+    fn unpack(data: &[u8; 46]) -> Option<Self> {
+        let (
+            &side_arr,
+            &price_arr,
+            &max_coin_qty_arr,
+            &max_native_pc_qty_arr,
+            &min_coin_qty_arr,
+            &min_native_pc_qty_arr,
+            &limit_arr,
+        ) = array_refs![data, 4, 8, 8, 8, 8, 8, 2];
+
+        let side = Side::try_from_primitive(u32::from_le_bytes(side_arr).try_into().ok()?).ok()?;
+        let limit_price = NonZeroU64::new(u64::from_le_bytes(price_arr))?;
+        let max_coin_qty = NonZeroU64::new(u64::from_le_bytes(max_coin_qty_arr))?;
+        let max_native_pc_qty_including_fees =
+            NonZeroU64::new(u64::from_le_bytes(max_native_pc_qty_arr))?;
+        let min_coin_qty = u64::from_le_bytes(min_coin_qty_arr);
+        let min_native_pc_qty = u64::from_le_bytes(min_native_pc_qty_arr);
+        let limit = u16::from_le_bytes(limit_arr);
+
+        Some(SendTakeInstruction {
+            side,
+            limit_price,
+            max_coin_qty,
+            max_native_pc_qty_including_fees,
+            min_coin_qty,
+            min_native_pc_qty,
+            limit,
+        })
+    }
+}
+
+impl NewOrderInstructionV1 {
+    fn unpack(data: &[u8; 32]) -> Option<Self> {
+        let (&side_arr, &price_arr, &max_qty_arr, &otype_arr, &client_id_bytes) =
+            array_refs![data, 4, 8, 8, 4, 8];
+        let client_id = u64::from_le_bytes(client_id_bytes);
+        let side = match u32::from_le_bytes(side_arr) {
+            0 => Side::Bid,
+            1 => Side::Ask,
+            _ => return None,
+        };
+        let limit_price = NonZeroU64::new(u64::from_le_bytes(price_arr))?;
+        let max_qty = NonZeroU64::new(u64::from_le_bytes(max_qty_arr))?;
+        let order_type = match u32::from_le_bytes(otype_arr) {
+            0 => OrderType::Limit,
+            1 => OrderType::ImmediateOrCancel,
+            2 => OrderType::PostOnly,
+            _ => return None,
+        };
+        Some(NewOrderInstructionV1 {
+            side,
+            limit_price,
+            max_qty,
+            order_type,
+            client_id,
+        })
+    }
+}
+
+impl NewOrderInstructionV1 {
+    pub fn add_self_trade_behavior(
+        self,
+        self_trade_behavior: SelfTradeBehavior,
+    ) -> NewOrderInstructionV2 {
+        let NewOrderInstructionV1 {
+            side,
+            limit_price,
+            max_qty,
+            order_type,
+            client_id,
+        } = self;
+        NewOrderInstructionV2 {
+            side,
+            limit_price,
+            max_qty,
+            order_type,
+            client_id,
+            self_trade_behavior,
+        }
+    }
+}
+
+impl NewOrderInstructionV3 {
+    fn unpack(data: &[u8; 46]) -> Option<Self> {
+        let (
+            &side_arr,
+            &price_arr,
+            &max_coin_qty_arr,
+            &max_native_pc_qty_arr,
+            &self_trade_behavior_arr,
+            &otype_arr,
+            &client_order_id_bytes,
+            &limit_arr,
+        ) = array_refs![data, 4, 8, 8, 8, 4, 4, 8, 2];
+
+        let side = Side::try_from_primitive(u32::from_le_bytes(side_arr).try_into().ok()?).ok()?;
+        let limit_price = NonZeroU64::new(u64::from_le_bytes(price_arr))?;
+        let max_coin_qty = NonZeroU64::new(u64::from_le_bytes(max_coin_qty_arr))?;
+        let max_native_pc_qty_including_fees =
+            NonZeroU64::new(u64::from_le_bytes(max_native_pc_qty_arr))?;
+        let self_trade_behavior = SelfTradeBehavior::try_from_primitive(
+            u32::from_le_bytes(self_trade_behavior_arr)
+                .try_into()
+                .ok()?,
+        )
+        .ok()?;
+        let order_type =
+            OrderType::try_from_primitive(u32::from_le_bytes(otype_arr).try_into().ok()?).ok()?;
+        let client_order_id = u64::from_le_bytes(client_order_id_bytes);
+        let limit = u16::from_le_bytes(limit_arr);
+
+        Some(NewOrderInstructionV3 {
+            side,
+            limit_price,
+            max_coin_qty,
+            max_native_pc_qty_including_fees,
+            self_trade_behavior,
+            order_type,
+            client_order_id,
+            limit,
+        })
+    }
+}
+
+impl CancelOrderInstructionV2 {
+    fn unpack(data: &[u8; 20]) -> Option<Self> {
+        let (&side_arr, &oid_arr) = array_refs![data, 4, 16];
+        let side = Side::try_from_primitive(u32::from_le_bytes(side_arr).try_into().ok()?).ok()?;
+        let order_id = u128::from_le_bytes(oid_arr);
+        Some(CancelOrderInstructionV2 { side, order_id })
+    }
+}

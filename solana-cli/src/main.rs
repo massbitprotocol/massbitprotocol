@@ -18,4 +18,13 @@ fn main() {
         .build()
         .generate_to_file("solana-cli/src/test_new.rs")
         .unwrap();
+
+    // Create instruction
+    let market_intruction = MarketInstruction::CloseOpenOrders;
+    let pack_mi = market_intruction.pack();
+    let unpack_mi = MarketInstruction::unpack(pack_mi.as_slice());
+    println!(
+        "market_intruction: {:?}, endcode: {:?}, decode: {:?}",
+        market_intruction, pack_mi, unpack_mi
+    );
 }
