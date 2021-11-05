@@ -1,0 +1,120 @@
+{
+  "name": "MarketInstruction",
+  "type" : "enum",
+  "offset": 1,
+  "variantTagLength" : 4,
+  "variants": [
+    {
+      "name" : "InitializeMarket",
+      "innerType" : "InitializeMarketInstruction",
+      "variantTag" : 0
+    },
+    {
+      "name" : "NewOrder",
+      "innerType": "NewOrderInstructionV1",
+      "variantTag" : 1
+    }
+  ],
+  "definitions": {
+    "InitializeMarketInstruction" : {
+      "type": "struct",
+      "properties": [
+        {
+          "name": "coin_lot_size",
+          "dataType": "u64",
+          "length": 8,
+          "required": true
+        },
+        {
+          "name": "pc_lot_size",
+          "dataType": "u64",
+          "length": 8,
+          "required": true
+        },
+        {
+          "name": "fee_rate_bps",
+          "dataType": "u16",
+          "length": 2,
+          "required": true
+        },
+        {
+          "name": "vault_signer_nonce",
+          "dataType": "u64",
+          "length": 8,
+          "required": true
+        },
+        {
+          "name": "pc_dust_threshold",
+          "dataType": "u64",
+          "length": 8,
+          "required": true
+        }
+      ]
+    },
+    "NewOrderInstructionV1": {
+      "type": "struct",
+      "properties": [
+        {
+          "name":"side",
+          "dataType": "Side",
+          "length": 1,
+          "required": true
+        },
+        {
+          "name": "limit_price",
+          "dataType": "NonZeroU64",
+          "length": 8,
+          "required": true
+        },
+        {
+          "name": "max_qty",
+          "dataType": "NonZeroU64",
+          "length": 8,
+          "required": true
+        },
+        {
+          "name":"order_type",
+          "dataType": "OrderType",
+          "length": 4,
+          "required": true
+        },
+        {
+          "name":"client_id",
+          "dataType": "u64",
+          "length": 8,
+          "required": true
+        }
+      ]
+    },
+    "OrderType": {
+      "type": "enum",
+      "variants": [
+        {
+          "name": "Limit",
+          "variantTag" : 0
+        },
+        {
+          "name": "ImmediateOrCancel",
+          "variantTag" : 1
+        },
+        {
+          "name": "PostOnly",
+          "variantTag" : 2
+        }
+      ]
+    },
+    "Side": {
+      "type": "enum",
+      "variants": [
+        {
+          "name": "Bid",
+          "variantTag" : 0
+        },
+        {
+          "name": "Ask",
+          "variantTag" : 1
+        }
+      ]
+    }
+  }
+}
