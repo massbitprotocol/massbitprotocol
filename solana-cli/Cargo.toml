@@ -8,6 +8,8 @@ edition = "2018"
 [dependencies]
 #schemafy_core = { version = "0.6.0"} # VERSION_TAG
 #schemafy_lib = { version = "0.6.0"}   # VERSION_TAG
+anyhow = "1.0.45"
+clap = "2.33.3"
 proc-macro2 = "1.0"
 quote = "1.0"
 serde = "1.0"
@@ -27,6 +29,8 @@ Inflector = "0.11"
 uriparse = "0.6"
 proptest = "1.0.0"
 proptest-derive = "0.3.0"
+tera = "1.15.0"
+log = "0.4.14"
 #[[bin]] # Bin to run gRPC server
 #name = "test_origin"
 #path = "./src/test_origin.rs"

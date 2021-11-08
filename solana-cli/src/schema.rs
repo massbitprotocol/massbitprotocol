@@ -1,4 +1,3 @@
-use crate::instruction::one_or_many;
 pub type PositiveInteger = i64;
 pub type PositiveIntegerDefault0 = serde_json::Value;
 pub type SchemaArray = Vec<Schema>;
@@ -120,7 +119,11 @@ impl Schema {
     //Get size of struct type
     pub fn get_size(&self) -> Option<usize> {
         self.properties.as_ref().and_then(|properties| {
-            properties.
+            let mut size = 0usize;
+            for property in properties {
+                size = size + property.size();
+            }
+            Some(size)
         })
     }
 }
