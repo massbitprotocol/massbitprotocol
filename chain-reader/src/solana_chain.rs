@@ -22,8 +22,10 @@ use solana_sdk::account::Account;
 use solana_sdk::clock::Slot;
 use solana_sdk::signature::Signature;
 use solana_transaction_status::{
-    ConfirmedBlock, EncodedConfirmedBlock, EncodedConfirmedTransaction, UiTransactionEncoding,
+    ConfirmedBlock, EncodedConfirmedBlock, EncodedConfirmedTransaction, TransactionWithStatusMeta,
+    UiTransactionEncoding,
 };
+use std::collections::HashMap;
 use std::error::Error;
 use std::str::FromStr;
 use std::{sync::Arc, time::Instant};
@@ -198,39 +200,50 @@ pub async fn loop_get_block(
     let mut start_tx: usize = filter_txs.len();
     while start_tx > 0 {
         let transactions = getTransactions(client, &filter_txs, &mut start_tx);
+        // Check transactions
         match transactions {
             Ok(transactions) => {
+                // Decode and group transactions into the same block groups
+                let mut group_transactions: HashMap<Slot, Vec<TransactionWithStatusMeta>> =
+                    HashMap::new();
+                for transaction in transactions {
+                    match transaction {
+                        Ok(transaction) => {
+                            // Decode the transaction
+                            match decode_transaction(&transaction.transaction) {
+                                Some(decoded_transaction) => {
+                                    group_transactions
+                                        .entry(transaction.slot)
+                                        .or_insert(vec![])
+                                        .push(decoded_transaction);
+                                }
+                                None => {
+                                    warn!(
+                                        "transaction in block {:#?} cannot decode!",
+                                        &transaction.slot
+                                    );
+                                    continue;
+                                }
+                            };
+                        }
+                        Err(e) => continue,
+                    }
+                }
+
                 let filtered_confirmed_blocks_with_number: Vec<(ConfirmedBlock, u64)> =
-                    transactions
+                    group_transactions
                         .into_iter()
-                        .filter_map(|transaction| match transaction {
-                            Ok(transaction) => {
-                                let decode_transactions =
-                                    match decode_transaction(&transaction.transaction) {
-                                        Some(transaction) => vec![transaction],
-                                        None => {
-                                            warn!(
-                                                "transaction in block {:#?} cannot decode!",
-                                                &transaction.slot
-                                            );
-                                            vec![]
-                                        }
-                                    };
-                                let filtered_confirmed_block = ConfirmedBlock {
-                                    previous_blockhash: "".to_string(),
-                                    blockhash: "".to_string(),
-                                    parent_slot: Default::default(),
-                                    transactions: decode_transactions,
-                                    rewards: vec![],
-                                    block_time: transaction.block_time,
-                                    block_height: None,
-                                };
-                                Some((filtered_confirmed_block, transaction.slot))
-                            }
-                            Err(e) => {
-                                info!("Transaction error: {:?}", e);
-                                None
-                            }
+                        .map(|(block_number, transactions)| {
+                            let filtered_confirmed_block = ConfirmedBlock {
+                                previous_blockhash: Default::default(),
+                                blockhash: Default::default(),
+                                parent_slot: Default::default(),
+                                transactions,
+                                rewards: Default::default(),
+                                block_time: Default::default(),
+                                block_height: Default::default(),
+                            };
+                            (filtered_confirmed_block, block_number)
                         })
                         .collect();
                 if !filtered_confirmed_blocks_with_number.is_empty() {
@@ -292,10 +305,10 @@ pub async fn loop_get_block(
                                 )
                                 .await;
                                 if res.is_err() {
-                                    warn!("get_block timed out at block height {}", &block_slot);
+                                    warn!("get_block timed out at block number {}", &block_slot);
                                 };
                                 info!(
-                                    "Finish tokio::spawn for getting block height: {:?}",
+                                    "Finish tokio::spawn for getting block number: {:?}",
                                     &block_slot
                                 );
                                 res.unwrap()
@@ -360,7 +373,7 @@ fn _to_generic_block(
     let ext_blocks: Vec<Block> = blocks_with_number
         .into_iter()
         .map(|(block, block_number)| {
-            let timestamp = (&block).block_time.unwrap();
+            let timestamp = (&block).block_time.unwrap_or_default();
             let list_log_messages = get_list_log_messages_from_encoded_block(&block);
             Block {
                 version: VERSION.to_string(),

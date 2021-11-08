@@ -47,9 +47,10 @@ impl MessageHandler for SolanaHandlerProxy {
         // Todo: Rewrite the flush so it will flush after finish the array of blocks for better performance. For now, we flush after each block.
         for block in blocks {
             log::info!(
-                "{} Received SOLANA BLOCK with block height: {:?}, hash: {:?}",
+                "{} Received SOLANA BLOCK with block number: {:?}, with {} TRANSACTION: {:?}",
                 &*COMPONENT_NAME,
-                &block.block.block_height,
+                &block.block_number,
+                &block.block.transactions.len(),
                 &block.block.blockhash
             );
             self.handler.handle_block(&block);
@@ -68,13 +69,13 @@ impl MessageHandler for SolanaHandlerProxy {
                     transaction: origin_transaction.clone(),
                 };
                 if print_flag {
-                    log::info!(
+                    log::debug!(
                         "{} Recieved SOLANA TRANSACTION with Block number: {:?}, transaction: {:?}",
                         &*COMPONENT_NAME,
                         &transaction.block_number,
                         &transaction.transaction.transaction.signatures
                     );
-                    log::info!(
+                    log::debug!(
                     "{} Recieved SOLANA LOG_MESSAGES with Block number: {:?}, log_messages: {:?}",
                     &*COMPONENT_NAME,
                     &log_messages.block_number,

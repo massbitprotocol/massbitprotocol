@@ -1,4 +1,6 @@
 //use super::serum_dex::{instruction::MarketInstruction, state::State};
+use crate::generated::handler::SerumHandler;
+use crate::generated::instruction::MarketInstruction;
 use crate::models::*;
 use crate::SOLANA_CLIENT;
 use massbit_chain_solana::data_type::{SolanaBlock, SolanaLogMessages, SolanaTransaction};
@@ -15,8 +17,6 @@ use solana_program::pubkey::Pubkey;
 use solana_sdk::account::Account;
 use solana_transaction_status::{parse_instruction, ConfirmedBlock, TransactionWithStatusMeta};
 use uuid::Uuid;
-use crate::generated::instruction::MarketInstruction;
-use crate::generated::handler::SerumHandler;
 
 const ADDRESS: &str = "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin";
 
@@ -33,6 +33,7 @@ pub fn handle_block(block: &SolanaBlock) -> Result<(), Box<dyn std::error::Error
             .iter()
             .any(|key| key.to_string().as_str() == ADDRESS)
         {
+            //println!("parse_instructions");
             let entities = parse_instructions(&block.block, tran, tx_ind);
         }
     }
@@ -50,19 +51,29 @@ fn parse_instructions(block: &ConfirmedBlock, tran: &TransactionWithStatusMeta, 
                 Ok(())
             };
             inst.visit_each_account(&mut work);
-            if let Some(account_infos) = SOLANA_CLIENT
-                .get_multiple_accounts_with_config(
-                    accounts.as_slice(),
-                    RpcAccountInfoConfig {
-                        encoding: Some(UiAccountEncoding::JsonParsed),
-                        commitment: None,
-                        data_slice: None,
-                    },
-                ).map(|res| res.value.into_iter().filter_map(|elm| elm).collect::<Vec<Account>>()).ok() {
-                //println!("{:?}", &account_infos);
-                let serum_handler = SerumHandler{};
-                serum_handler.process(program_key, account_infos.as_slice(), inst.data.as_slice());
-            }
+            // if let Some(account_infos) = SOLANA_CLIENT
+            //     .get_multiple_accounts_with_config(
+            //         accounts.as_slice(),
+            //         RpcAccountInfoConfig {
+            //             encoding: Some(UiAccountEncoding::JsonParsed),
+            //             commitment: None,
+            //             data_slice: None,
+            //         },
+            //     )
+            //     .map(|res| {
+            //         res.value
+            //             .into_iter()
+            //             .filter_map(|elm| elm)
+            //             .collect::<Vec<Account>>()
+            //     })
+            //     .ok()
+            // {
+            //println!("account_infos {:?}", &account_infos);
+            let serum_handler = SerumHandler {};
+            // Fixme: Get account_infos from chain take a lot of time. For now, use empty vector.
+            serum_handler.process(program_key, vec![].as_slice(), inst.data.as_slice());
+            //serum_handler.process(program_key, account_infos.as_slice(), inst.data.as_slice());
+            // }
         }
     }
     let id = Uuid::new_v4().to_simple().to_string();
