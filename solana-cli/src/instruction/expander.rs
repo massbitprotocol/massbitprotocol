@@ -46,6 +46,7 @@
 //! let code = expander.expand(&schema);
 //! ```
 
+use std::collections::{BTreeMap, HashSet};
 /// Types from the JSON Schema meta-schema (draft 4).
 ///
 /// This module is itself generated from a JSON schema.
@@ -244,7 +245,26 @@ fn make_doc_comment(mut comment: &str, remaining_line: usize) -> TokenStream {
     out_comment.push('\n');
     out_comment.parse().unwrap()
 }
-
+pub fn expand_data_type(
+    field_name: &TokenStream,
+    data_type: &str,
+    user_defined: bool,
+) -> Option<TokenStream> {
+    let type_name = data_type.parse::<TokenStream>().unwrap();
+    match data_type {
+        "u8" | "i8" | "u16" | "i16" | "u32" | "i32" | "u64" | "i64" | "u128" | "i128" => {
+            Some(quote! {#type_name::from_le_bytes(#field_name)})
+        }
+        &_ => {
+            Some(quote! {#type_name::unpack(&*#field_name).unwrap()})
+            // if user_defined {
+            //     Some(quote! {#type_name::unpack(#field_name)})
+            // } else {
+            //     Some(quote! {#type_name::try_from_primitive(#field_name)})
+            // }
+        }
+    }
+}
 struct FieldExpander<'a, 'r: 'a> {
     default: bool,
     expander: &'a mut Expander<'r>,
@@ -306,6 +326,7 @@ pub struct Expander<'r> {
     current_type: String,
     current_field: String,
     types: Vec<(String, TokenStream)>,
+    definitions: BTreeMap<String, &'r Schema>,
 }
 
 struct FieldType {
@@ -340,6 +361,7 @@ impl<'r> Expander<'r> {
             current_field: "".into(),
             current_type: "".into(),
             types: Vec::new(),
+            definitions: Default::default(),
         }
     }
 
@@ -386,8 +408,9 @@ impl<'r> Expander<'r> {
             })
             .collect()
     }
-    fn expand_definitions(&mut self, schema: &Schema) {
+    fn expand_definitions(&mut self, schema: &'r Schema) {
         for (name, def) in &schema.definitions {
+            self.definitions.insert(name.clone(), def);
             let type_decl = self.expand_schema(name, def);
             let definition_tokens = match def.description {
                 Some(ref comment) => {
@@ -403,7 +426,7 @@ impl<'r> Expander<'r> {
         }
     }
 
-    fn expand_schema(&mut self, original_name: &str, schema: &Schema) -> TokenStream {
+    fn expand_schema(&mut self, original_name: &str, schema: &'r Schema) -> TokenStream {
         self.expand_definitions(schema);
 
         let pascal_case_name = replace_invalid_identifier_chars(&original_name.to_pascal_case());
@@ -424,7 +447,7 @@ impl<'r> Expander<'r> {
             let fields = field_expander.expand_fields(original_name, properties);
             let unpack = self.expand_unpack_struct(&name, schema);
             quote! {
-                #[derive(Clone, PartialEq, Debug, Default, Deserialize, Serialize)]
+                #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
                 #serde_rename
                 pub struct #name {
                     #(#fields),*
@@ -603,26 +626,53 @@ impl<'r> Expander<'r> {
         // };
         type_decl
     }
-    pub fn expand_unpack_struct(&mut self, name: &Ident, schema: &Schema) -> Some<TokenStream> {
-        let struct_size = schema.properties.and_then(|properties| {
-            let mut total_size = 0_u32;
+    pub fn expand_unpack_struct(&mut self, name: &Ident, schema: &Schema) -> TokenStream {
+        let struct_size = schema.properties.as_ref().and_then(|properties| {
+            let mut total_size = 0_usize;
             for property in properties {
-                total_size = total_size + property.length
+                total_size = total_size + property.size()
             }
             Some(total_size)
         });
+        let size_stream = struct_size.and_then(|val| Some(quote!(#val)));
         if let Some(val) = struct_size {
-            let properties = schema
-                .properties
-                .as_ref()
-                .unwrap()
-                .iter()
-                .map(|property| {})
-                .collect::<Vec<TokenStream>>();
-            quote! {
-                pub fn unpack(input: &[u8]) -> Option<Self> {
-                    #name {
-                        #(#properties),*
+            let mut offset = 0usize;
+            let mut ref_names: Vec<TokenStream> = Vec::default();
+            let mut lengths: Vec<usize> = Vec::default();
+            let mut properties: Vec<TokenStream> = Vec::default();
+            for property in schema.properties.as_ref().unwrap() {
+                let field_name = property.name.parse::<TokenStream>().unwrap();
+                ref_names.push(quote! {&#field_name});
+                lengths.push(property.size());
+                //Expand struct field's data type.
+                //Use unpack for user defined type other use try_from_primitive
+                let field_value = expand_data_type(
+                    &field_name,
+                    property.data_type.as_str(),
+                    self.definitions.contains_key(&property.name),
+                );
+                if field_value.is_some() {
+                    properties.push(quote! {
+                        #field_name: #field_value
+                    });
+                }
+            }
+            if size_stream.is_some() {
+                quote! {
+                    pub fn unpack(input: &[u8; #size_stream]) -> Option<Self> {
+                        let (#(#ref_names),*) = array_refs![input, #(#lengths),*];
+                        Some(#name {
+                            #(#properties),*
+                        })
+                    }
+                }
+            } else {
+                quote! {
+                    pub fn unpack(input: &[u8]) -> Option<Self> {
+                        let (#(#ref_names),*) = array_refs![input, #(#lengths),*];
+                        Some(#name {
+                            #(#properties),*
+                        })
                     }
                 }
             }
@@ -645,25 +695,48 @@ impl<'r> Expander<'r> {
                 let var_tag = variant.variant_tag;
                 match &variant.inner_type {
                     Some(inner_type) => {
-                        let inner = inner_type.parse::<TokenStream>().unwrap();
-                        quote! {
-                            #var_tag => #name::#var_token(#inner::unpack())
+                        let inner_schema = self.definitions.get(inner_type);
+                        println!("{:?}", inner_schema);
+                        //let inner = inner_type.parse::<TokenStream>().unwrap();
+                        match variant.get_size() {
+                            None => {
+                                let field_name = quote! { data_array };
+                                let inner_value =
+                                    expand_data_type(&field_name, inner_type.as_str(), true);
+                                quote! {
+                                    #var_tag => {
+                                        //let data_array = array_ref![data, 0, 34];
+                                        Some(#name::#var_token(#inner_value))
+                                    }
+                                }
+                            }
+                            Some(size) => {
+                                let field_name = quote! { field_slice };
+                                let inner_value =
+                                    expand_data_type(&field_name, inner_type.as_str(), true);
+                                quote! {
+                                    #var_tag => {
+                                        let (&field_slice, remain) = array_refs![data, #size; ..;];
+                                        Some(#name::#var_token(#inner_value))
+                                    }
+                                }
+                            }
                         }
                     }
                     None => {
                         quote! {
-                            #var_tag => #name::#var_token
+                            #var_tag => Some(#name::#var_token)
                         }
                     }
                 }
             })
             .collect();
-        let tag_len = schema.variant_tag_length.unwrap_or(1u8);
+        let tag_len = schema.variant_tag_length.unwrap_or(1usize);
         let tag_val = match tag_len {
-            1 => quote! {let tag_val = u8::from_le_bytes(tag_slice);},
-            2 => quote! {let tag_val = u16::from_le_bytes(tag_slice);},
-            4 => quote! {let tag_val = u32::from_le_bytes(tag_slice);},
-            _ => quote! {let tag_val = u64::from_le_bytes(tag_slice);},
+            1 => quote! {let tag_val = u8::from_le_bytes(tag_slice) as u32;},
+            2 => quote! {let tag_val = u16::from_le_bytes(tag_slice) as u32;},
+            _ => quote! {let tag_val = u32::from_le_bytes(tag_slice) as u32;},
+            //_ => quote! {let tag_val = u64::from_le_bytes(tag_slice);},
         };
         let separation = match schema.offset {
             None => {
@@ -681,13 +754,13 @@ impl<'r> Expander<'r> {
             pub fn unpack(input: &[u8]) -> Option<Self> {
                 #separation
                 #tag_val
-                Some(match tag_val {
+                match tag_val {
                     #(#variants),*
-                })
+                }
             }
         }
     }
-    pub fn expand(&mut self, schema: &Schema) -> TokenStream {
+    pub fn expand(&mut self, schema: &'r Schema) -> TokenStream {
         match self.root_name {
             Some(name) => {
                 let schema = self.expand_schema(name, schema);
@@ -697,8 +770,15 @@ impl<'r> Expander<'r> {
         }
 
         let types = self.types.iter().map(|t| &t.1);
-
+        //Includes used libraries
         quote! {
+            use bytemuck::cast;
+            use serde::{Deserialize, Serialize};
+            use std::convert::TryInto;
+
+            use arrayref::{array_ref, array_refs};
+            use num_enum::{IntoPrimitive, TryFromPrimitive};
+            use std::num::*;
             #( #types )*
         }
     }
