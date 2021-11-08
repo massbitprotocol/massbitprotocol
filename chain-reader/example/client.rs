@@ -69,7 +69,7 @@ pub async fn print_blocks(
                     info!(
                         "SOLANA: Recieved {} TRANSACTIONS in Block slot: {:?}",
                         &block.block.transactions.len(),
-                        (block.block.parent_slot + 1)
+                        block.block_number
                     );
                 }
 

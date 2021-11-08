@@ -219,7 +219,7 @@ pub async fn loop_get_block(
                                 let filtered_confirmed_block = ConfirmedBlock {
                                     previous_blockhash: "".to_string(),
                                     blockhash: "".to_string(),
-                                    parent_slot: transaction.slot - 1,
+                                    parent_slot: Default::default(),
                                     transactions: decode_transactions,
                                     rewards: vec![],
                                     block_time: transaction.block_time,
@@ -307,10 +307,7 @@ pub async fn loop_get_block(
                             .into_iter()
                             .filter_map(|res_block| {
                                 if let Ok(Ok((block, block_number))) = res_block {
-                                    info!(
-                                        "Got SOLANA block at slot : {:?}",
-                                        &block.parent_slot + 1
-                                    );
+                                    info!("Got SOLANA block at slot : {:?}", &block_number);
                                     let decode_block = decode_encoded_block(block);
                                     let filtered_block = filter.filter_block(decode_block);
                                     if filtered_block.transactions.is_empty() {
