@@ -20,23 +20,22 @@ impl<'a> Generator<'a> {
         GeneratorBuilder::default()
     }
     pub fn generate(&self) {
-        println!("{:?}", &self.tera);
-        self.generate_to_file("handler", "handler.rs");
-        self.generate_to_file("instruction", "instruction.rs");
-        self.generate_to_file("model", "model.rs");
+        //println!("{:?}", &self.tera);
+        //self.generate_to_file("handler", "handler.rs");
+        //self.generate_to_file("instruction", "instruction.rs");
+        //self.generate_to_file("model", "model.rs");
         self.generate_to_file("schema", "schema.graphql");
     }
     pub fn generate_to_file(&self, name: &str, output: &str) -> Result<(), anyhow::Error> {
         if self.context.is_some() {
             log::info!("Generate template {}", name);
-            println!("Generate template {}", name);
-            println!("{:?}", &self.tera);
+            //println!("{:?}", &self.tera);
             match self.tera.render(name, self.context.as_ref().unwrap()) {
                 Ok(data) => {
                     let path = format!("{}/{}", self.output_dir, output);
                     match fs::write(path.as_str(), &data) {
                         Ok(_) => {
-                            println!("{}", &data);
+                            //println!("{}", &data);
                             log::info!("Generate {} successfully", &path);
                         }
                         Err(err) => {
@@ -46,7 +45,7 @@ impl<'a> Generator<'a> {
                 }
                 Err(err) => {
                     log::error!("{:?}", &err);
-                    println!("{:?}", &err);
+                    //println!("{:?}", &err);
                 }
             }
         }
@@ -79,7 +78,7 @@ impl<'a> GeneratorBuilder<'a> {
 
         let schema: Schema = serde_json::from_str(&json)
             .unwrap_or_else(|err| panic!("Cannot parse `{}` as JSON: {}", path, err));
-        println!("{:?}", &schema.definitions);
+        //println!("{:?}", &schema.definitions);
         self.inner.context = Context::from_serialize(schema).ok();
         self
     }
