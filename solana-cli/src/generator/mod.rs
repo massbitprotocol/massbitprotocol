@@ -27,47 +27,27 @@ impl<'a> Generator<'a> {
         match &self.schema {
             None => {}
             Some(schema) => {
-                schema.gen_instruction();
-                let path = format!("{}/{}", self.output_dir, "instruction.rs");
-                match fs::write(path.as_str(), &data) {
-                    Ok(_) => {
-                        log::info!("Generate {} successfully", &path);
-                    }
-                    Err(err) => {
-                        log::info!("Generate {} fail. {:?}", &path, &err);
-                    }
-                };
+                let data = schema.gen_instruction();
+                self.write_to_file("generated/instruction.rs", &data);
+                let data = schema.gen_graphql_schema();
+                self.write_to_file("schema.graphql", &data);
+                let data = schema.gen_handler();
+                self.write_to_file("generated/handler.rs", &data);
+                let data = schema.gen_models();
+                self.write_to_file("models.rs", &data);
             }
         }
-        self.generate_handler("handler", "handler.rs");
-        self.generate_to_file("instruction", "instruction.rs");
-        self.generate_to_file("model", "model.rs");
-        self.generate_to_file("schema", "schema.graphql");
     }
-    pub fn generate_to_file(&self, name: &str, output: &str) -> Result<(), anyhow::Error> {
-        if self.context.is_some() {
-            log::info!("Generate template {}", name);
-            println!("Generate template {}", name);
-            //println!("{:?}", &self.tera);
-            match self.tera.render(name, self.context.as_ref().unwrap()) {
-                Ok(data) => {
-                    let path = format!("{}/{}", self.output_dir, output);
-                    match fs::write(path.as_str(), &data) {
-                        Ok(_) => {
-                            log::info!("Generate {} successfully", &path);
-                        }
-                        Err(err) => {
-                            log::info!("Generate {} fail. {:?}", &path, &err);
-                        }
-                    };
-                }
-                Err(err) => {
-                    log::error!("{:?}", &err);
-                    println!("{:?}", &err);
-                }
+    pub fn write_to_file(&self, file_name: &str, content: &String) {
+        let path = format!("{}/{}", self.output_dir, file_name);
+        match fs::write(path.as_str(), content) {
+            Ok(_) => {
+                log::info!("Write content to file {} successfully", path);
             }
-        }
-        Ok(())
+            Err(err) => {
+                log::info!("Write content to file {} fail. {:?}", path, &err);
+            }
+        };
     }
 }
 
