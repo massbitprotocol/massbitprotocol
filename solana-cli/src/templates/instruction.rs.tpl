@@ -5,6 +5,14 @@ use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::num::*;
 
-{%- for (name, schema) in definitions %}
-#[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
-{{ name }}
+{% for name, definition in definitions %}
+{% if definition.is_struct %}
+pub struct {{ name }} {
+
+}
+{% else %}
+pub enum {{ name }} {
+
+}
+{% endif %}
+{% endfor %}

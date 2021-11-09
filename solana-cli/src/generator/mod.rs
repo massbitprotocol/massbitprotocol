@@ -1,3 +1,8 @@
+pub mod graphql;
+pub mod handler;
+pub mod instruction;
+pub mod model;
+
 use crate::schema::Schema;
 use serde::ser::Serialize;
 use std::fs::DirEntry;
@@ -11,8 +16,7 @@ pub struct Generator<'a> {
     pub structure_path: &'a str,
     /// The output dir
     pub output_dir: &'a str,
-    context: Option<Context>,
-    tera: Tera,
+    pub schema: Option<Schema>,
 }
 
 impl<'a> Generator<'a> {
@@ -20,8 +24,22 @@ impl<'a> Generator<'a> {
         GeneratorBuilder::default()
     }
     pub fn generate(&self) {
-        println!("{:?}", &self.tera);
-        self.generate_to_file("handler", "handler.rs");
+        match &self.schema {
+            None => {}
+            Some(schema) => {
+                schema.gen_instruction();
+                let path = format!("{}/{}", self.output_dir, "instruction.rs");
+                match fs::write(path.as_str(), &data) {
+                    Ok(_) => {
+                        log::info!("Generate {} successfully", &path);
+                    }
+                    Err(err) => {
+                        log::info!("Generate {} fail. {:?}", &path, &err);
+                    }
+                };
+            }
+        }
+        self.generate_handler("handler", "handler.rs");
         self.generate_to_file("instruction", "instruction.rs");
         self.generate_to_file("model", "model.rs");
         self.generate_to_file("schema", "schema.graphql");
@@ -30,13 +48,12 @@ impl<'a> Generator<'a> {
         if self.context.is_some() {
             log::info!("Generate template {}", name);
             println!("Generate template {}", name);
-            println!("{:?}", &self.tera);
+            //println!("{:?}", &self.tera);
             match self.tera.render(name, self.context.as_ref().unwrap()) {
                 Ok(data) => {
                     let path = format!("{}/{}", self.output_dir, output);
                     match fs::write(path.as_str(), &data) {
                         Ok(_) => {
-                            println!("{}", &data);
                             log::info!("Generate {} successfully", &path);
                         }
                         Err(err) => {
@@ -64,8 +81,7 @@ impl<'a> Default for GeneratorBuilder<'a> {
             inner: Generator {
                 structure_path: "",
                 output_dir: "",
-                context: None,
-                tera: Tera::default(),
+                schema: None,
             },
         }
     }
@@ -79,8 +95,8 @@ impl<'a> GeneratorBuilder<'a> {
 
         let schema: Schema = serde_json::from_str(&json)
             .unwrap_or_else(|err| panic!("Cannot parse `{}` as JSON: {}", path, err));
-        println!("{:?}", &schema.definitions);
-        self.inner.context = Context::from_serialize(schema).ok();
+        //println!("{:?}", &schema.definitions);
+        self.inner.schema = Some(schema);
         self
     }
     pub fn with_output_dir(mut self, output_dir: &'a str) -> Self {
@@ -88,54 +104,6 @@ impl<'a> GeneratorBuilder<'a> {
         self
     }
     pub fn build(mut self) -> Generator<'a> {
-        match self
-            .inner
-            .tera
-            .add_raw_template("handler", include_str!("templates/handler.rs.tpl"))
-        {
-            Ok(val) => {
-                println!("Add template handler successfully");
-            }
-            Err(err) => {
-                println!("Error while parse template handler");
-            }
-        };
-        match self
-            .inner
-            .tera
-            .add_raw_template("instruction", include_str!("templates/instruction.rs.tpl"))
-        {
-            Ok(val) => {
-                println!("Add template instruction successfully");
-            }
-            Err(err) => {
-                println!("Error while parse template instruction");
-            }
-        };
-        match self
-            .inner
-            .tera
-            .add_raw_template("model", include_str!("templates/model.rs.tpl"))
-        {
-            Ok(val) => {
-                println!("Add template model successfully");
-            }
-            Err(err) => {
-                println!("Error while parse template model");
-            }
-        };
-        match self
-            .inner
-            .tera
-            .add_raw_template("schema", include_str!("templates/schema.graphql.tpl"))
-        {
-            Ok(val) => {
-                println!("Add template model successfully");
-            }
-            Err(err) => {
-                println!("Error while parse template model");
-            }
-        }
         self.inner
     }
 }
