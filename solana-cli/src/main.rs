@@ -2,15 +2,17 @@ use schemars::{schema_for, JsonSchema};
 use serde_json::{from_str, to_string_pretty};
 //use solana_cli::jsonschema::generator::Generator;
 use clap::{App, Arg};
+use logger::core::init_logger;
 use solana_cli::generator::Generator;
 use solana_cli::test_origin::{
     InitializeMarketInstruction, MarketInstruction, NewOrderInstructionV3, OrderType,
 };
 use std::fs;
-
 //const OUTPUT_PATH = "../solana-cli/src/serum.rs";
 const OUTPUT_PATH: &str = "code-compiler/generated/serum-index/src/generated/instruction.rs";
 fn main() {
+    let res = init_logger(&String::from("solana-cli"));
+    println!("Log output: {}", res); // Print log output type
     let matches = App::new("massbit-sol")
         .version("1.0")
         .about("Massbit Solana CLI")
@@ -32,7 +34,7 @@ fn main() {
         )
         .get_matches();
     let structure_path = matches.value_of("structure").unwrap_or("instruction.json");
-    let output = matches.value_of("output").unwrap_or("src/generated");
+    let output = matches.value_of("output").unwrap_or("src");
     let generator = Generator::builder()
         .with_structure_path(structure_path)
         .with_output_dir(output)
