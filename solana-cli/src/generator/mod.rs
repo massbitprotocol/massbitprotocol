@@ -1,13 +1,19 @@
 pub mod graphql;
 pub mod handler;
+pub mod helper;
 pub mod instruction;
 pub mod model;
 
 use crate::schema::Schema;
 use serde::ser::Serialize;
+use std::fs;
 use std::fs::DirEntry;
-use std::path::Path;
-use std::{fs, io};
+use std::io::Error;
+use std::{
+    io,
+    path::{Path, PathBuf},
+};
+
 use tera::{Context, Tera};
 
 #[derive(Debug)]
@@ -28,26 +34,51 @@ impl<'a> Generator<'a> {
             None => {}
             Some(schema) => {
                 let data = schema.gen_instruction();
-                self.write_to_file("generated/instruction.rs", &data);
+                let path = format!("{}/{}", self.output_dir, "generated/instruction.rs");
+                self.write_to_file(path.as_str(), &data, true);
                 let data = schema.gen_graphql_schema();
-                self.write_to_file("schema.graphql", &data);
+                self.write_to_file("schema.graphql", &data, false);
                 let data = schema.gen_handler();
-                self.write_to_file("generated/handler.rs", &data);
+                let path = format!("{}/{}", self.output_dir, "generated/handler.rs");
+                self.write_to_file(path.as_str(), &data, true);
                 let data = schema.gen_models();
-                self.write_to_file("models.rs", &data);
+                let path = format!("{}/{}", self.output_dir, "models.rs");
+                self.write_to_file(path.as_str(), &data, true);
             }
         }
     }
-    pub fn write_to_file(&self, file_name: &str, content: &String) {
-        let path = format!("{}/{}", self.output_dir, file_name);
-        match fs::write(path.as_str(), content) {
+
+    //pub fn generate_to_file<P: ?Sized + AsRef<Path>>(&self, output_file: &'b P) -> io::Result<()> {
+
+    pub fn write_to_file<P: ?Sized + AsRef<Path>>(
+        &self,
+        output_path: &P,
+        content: &String,
+        apply_format: bool,
+    ) -> io::Result<()> {
+        match fs::write(output_path, content) {
             Ok(_) => {
-                log::info!("Write content to file {} successfully", path);
+                if apply_format {
+                    use std::process::Command;
+                    Command::new("rustfmt")
+                        .arg(output_path.as_ref().as_os_str())
+                        .output();
+                }
+                log::info!(
+                    "Write content to file {:?} successfully",
+                    &output_path.as_ref().as_os_str()
+                );
+                Ok(())
             }
-            Err(err) => {
-                log::info!("Write content to file {} fail. {:?}", path, &err);
+            e @ Err(_) => {
+                log::info!(
+                    "Write content to file {:?} fail. {:?}",
+                    &output_path.as_ref().as_os_str(),
+                    &e
+                );
+                e
             }
-        };
+        }
     }
 }
 

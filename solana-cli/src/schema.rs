@@ -1,3 +1,5 @@
+use crate::generator::helper::replace_invalid_identifier_chars;
+use inflector::Inflector;
 pub type PositiveInteger = i64;
 pub type PositiveIntegerDefault0 = serde_json::Value;
 pub type SchemaArray = Vec<Schema>;
@@ -116,6 +118,9 @@ pub struct Schema {
 }
 
 impl Schema {
+    pub fn get_pascal_name(&self, name: &String) -> String {
+        replace_invalid_identifier_chars(&name.as_str().to_pascal_case())
+    }
     //Get size of struct type
     pub fn get_size(&self) -> Option<usize> {
         self.properties.as_ref().and_then(|properties| {
