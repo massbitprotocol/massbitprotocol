@@ -2,15 +2,14 @@ use crate::generator::helper::is_integer_type;
 use crate::schema::{PropertyArray, Schema, VariantArray};
 use std::fmt::Write;
 
-const modules: &str = r#"use bytemuck::cast;
+const modules: &str = r#"
+use bytemuck::cast;
 use serde::{{Deserialize, Serialize}};
 use solana_program::{{
-    instruction::{{AccountMeta, Instruction}},
     pubkey::Pubkey,
     sysvar::rent,
 }};
 use std::convert::TryInto;
-
 use arrayref::{{array_ref, array_refs}};
 use num_enum::{{IntoPrimitive, TryFromPrimitive}};
 use std::num::*;
@@ -97,7 +96,7 @@ impl Schema {
         let mut lengths: Vec<String> = Vec::default();
         let mut properties: Vec<String> = Vec::default();
         for property in self.properties.as_ref().unwrap() {
-            ref_names.push(format!("&{}", &property.name));
+            ref_names.push(format!("{}", &property.name));
             lengths.push(format!("{}", property.size()));
             //Expand struct field's data type.
             //Use unpack for user defined type other use try_from_primitive
@@ -172,7 +171,7 @@ impl Schema {
                         match variant.get_size() {
                             None => {
                                 let inner_value =
-                                    expand_data_type("data_array", inner_type.as_str(), true);
+                                    expand_data_type("data", inner_type.as_str(), true);
                                 format!(
                                     "{} => {{\
                                         Some({}::{}({}))\
@@ -218,9 +217,8 @@ impl Schema {
 }
 
 pub fn expand_data_type(field_name: &str, data_type: &str, user_defined: bool) -> String {
-    println!("{:?}:{:?}", data_type, data_type.starts_with("NoneZero"));
-    if data_type.starts_with("NoneZero") {
-        let inner_type = &data_type[8..];
+    if data_type.starts_with("NonZero") {
+        let inner_type = &data_type[7..data_type.len()];
         format!(
             "{}::new({}::from_le_bytes(*{})).unwrap()",
             data_type, inner_type, field_name
