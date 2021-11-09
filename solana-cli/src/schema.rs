@@ -98,7 +98,7 @@ pub enum SimpleTypes {
     String,
 }
 pub type StringArray = Vec<String>;
-#[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
+#[derive(Clone, PartialEq, Debug, Deserialize, Serialize, Default)]
 pub struct Schema {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,

@@ -32,7 +32,13 @@ impl<'a> Generator<'a> {
             //println!("{:?}", &self.tera);
             match self.tera.render(name, self.context.as_ref().unwrap()) {
                 Ok(data) => {
-                    let path = format!("{}/{}", self.output_dir, output);
+                    let path = format!(
+                        "{}",
+                        Path::new(self.output_dir)
+                            .join(output)
+                            .to_str()
+                            .unwrap_or_default()
+                    );
                     match fs::write(path.as_str(), &data) {
                         Ok(_) => {
                             log::info!("Generate {} successfully", &path);
