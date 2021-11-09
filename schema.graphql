@@ -1,0 +1,95 @@
+type InitializeMarket @entity {
+    id: ID!
+    coin_lot_size: BigInt
+    pc_lot_size: BigInt
+    fee_rate_bps: SmallInt
+    vault_signer_nonce: BigInt
+    pc_dust_threshold: BigInt
+ }
+ 
+type NewOrder @entity {
+    id: ID!
+    side: String
+    limit_price: BigInt
+    max_qty: BigInt
+    order_type: String
+    client_id: BigInt
+ }
+ 
+type MatchOrders @entity {
+    id: ID!
+    value: SmallInt
+ }
+ 
+type ConsumeEvents @entity {
+    id: ID!
+    value: SmallInt
+ }
+ 
+type CancelOrder @entity {
+    id: ID!
+    side: String
+    order_id: String
+    owner: String
+    owner_slot: SmallInt
+ }
+ 
+type CancelOrderByClientId @entity {
+    id: ID!
+    value: BigInt
+ }
+ 
+type NewOrderV2 @entity {
+    id: ID!
+    side: String
+    limit_price: BigInt
+    max_qty: BigInt
+    order_type: String
+    client_id: BigInt
+    self_trade_behavior: String
+ }
+ 
+type NewOrderV3 @entity {
+    id: ID!
+    side: String
+    limit_price: BigInt
+    max_coin_qty: BigInt
+    max_native_pc_qty_including_fees: BigInt
+    self_trade_behavior: String
+    order_type: String
+    client_order_id: BigInt
+    limit: SmallInt
+ }
+ 
+type CancelOrderV2 @entity {
+    id: ID!
+    side: String
+    order_id: String
+ }
+ 
+type CancelOrderByClientIdV2 @entity {
+    id: ID!
+    value: BigInt
+ }
+ 
+type SendTake @entity {
+    id: ID!
+    side: String
+    limit_price: BigInt
+    max_coin_qty: BigInt
+    max_native_pc_qty_including_fees: BigInt
+    min_coin_qty: BigInt
+    min_native_pc_qty: BigInt
+    limit: SmallInt
+ }
+ 
+type Prune @entity {
+    id: ID!
+    value: SmallInt
+ }
+ 
+type ConsumeEventsPermissioned @entity {
+    id: ID!
+    value: SmallInt
+ }
+ 
