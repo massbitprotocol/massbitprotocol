@@ -98,14 +98,28 @@ impl Schema {
                         let db_type = MAPPING_RUST_TYPES_TO_DB
                             .get(property.data_type.as_str())
                             .unwrap_or(&*DEFAULT_TYPE_DB);
-                        write!(
-                            out,
-                            r#"pub {}: {},"#,
-                            property.name,
-                            MAPPING_DB_TYPES_TO_RUST
-                                .get(db_type)
-                                .unwrap_or(&Default::default())
-                        );
+                        match property.array_length {
+                            Some(_array_length) => {
+                                write!(
+                                    out,
+                                    r#"pub {}: Vec<{}>,"#,
+                                    property.name,
+                                    MAPPING_DB_TYPES_TO_RUST
+                                        .get(db_type)
+                                        .unwrap_or(&Default::default())
+                                );
+                            }
+                            None => {
+                                write!(
+                                    out,
+                                    r#"pub {}: {},"#,
+                                    property.name,
+                                    MAPPING_DB_TYPES_TO_RUST
+                                        .get(db_type)
+                                        .unwrap_or(&Default::default())
+                                );
+                            }
+                        }
                     }
                 }
             }

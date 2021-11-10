@@ -194,32 +194,48 @@ impl Schema {
                         match db_type {
                             // If data_type is primitive (e.g. Enum, Struct)
                             Some(db_type) => {
-                                if property.data_type.starts_with("NonZero") {
-                                    write!(
-                                        out,
-                                        r#"{}: arg.{}.get() as {},"#,
-                                        property.name,
-                                        property.name,
-                                        MAPPING_DB_TYPES_TO_RUST
-                                            .get(db_type)
-                                            .unwrap_or(&Default::default())
-                                    );
-                                } else {
-                                    write!(
-                                        out,
-                                        r#"{}: arg.{} as {},"#,
-                                        property.name,
-                                        property.name,
-                                        MAPPING_DB_TYPES_TO_RUST
-                                            .get(db_type)
-                                            .unwrap_or(&Default::default())
-                                    );
+                                let property_name = match property.data_type.starts_with("NonZero")
+                                {
+                                    true => {
+                                        format!("{}.get()", property.name)
+                                    }
+                                    false => {
+                                        format!("{}", property.name)
+                                    }
+                                };
+
+                                match property.array_length {
+                                    Some(array_length) => {
+                                        // Todo: this code is tricky, should revise.
+                                        write!(
+                                            out,
+                                            r#"{}: arg.{}.iter().map(|&{}| {} as {}).collect(),"#,
+                                            property.name,
+                                            property.name,
+                                            property.name,
+                                            property_name,
+                                            MAPPING_DB_TYPES_TO_RUST
+                                                .get(db_type)
+                                                .unwrap_or(&Default::default())
+                                        );
+                                    }
+                                    None => {
+                                        write!(
+                                            out,
+                                            r#"{}: arg.{} as {},"#,
+                                            property.name,
+                                            property_name,
+                                            MAPPING_DB_TYPES_TO_RUST
+                                                .get(db_type)
+                                                .unwrap_or(&Default::default())
+                                        );
+                                    }
                                 }
                             }
                             None => {
                                 write!(
                                     out,
-                                    r#"{}: serde_json::to_string(arg.{}),"#,
+                                    r#"{}: serde_json::to_string(&arg.{}).unwrap_or(Default::default()),"#,
                                     property.name, property.name,
                                 );
                             }
