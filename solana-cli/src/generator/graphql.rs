@@ -16,15 +16,15 @@ lazy_static! {
     // https://kotiri.com/2018/01/31/postgresql-diesel-rust-types.html
     pub static ref MAPPING_RUST_TYPES_TO_DB: HashMap<&'static str, &'static str> = HashMap::from([
         ("bool", "Bool"),
-
-        ("i8", "SmallInt"),
-        ("u8", "SmallInt"),
-        ("i16", "SmallInt"),
-        ("u16", "SmallInt"),
-        ("NonZeroU8", "SmallInt"),
-        ("NonZeroU16", "SmallInt"),
-        ("NonZeroI8", "SmallInt"),
-        ("NonZeroI16", "SmallInt"),
+        //The graph generator postgres sql only handles with bigint
+        ("i8", "BigInt"),
+        ("u8", "BigInt"),
+        ("i16", "BigInt"),
+        ("u16", "BigInt"),
+        ("NonZeroU8", "BigInt"),
+        ("NonZeroU16", "BigInt"),
+        ("NonZeroI8", "BigInt"),
+        ("NonZeroI16", "BigInt"),
 
         ("i32", "Integer"),
         ("u32", "Integer"),
