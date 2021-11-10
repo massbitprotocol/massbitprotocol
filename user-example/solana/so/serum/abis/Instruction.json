@@ -1,0 +1,29 @@
+{
+  "instructions": {
+    "MarketInstruction": {
+      "root": true,
+      "type": "variant",
+      "offset": 1,
+      "variantLength": 4,
+      "variantType": "u32",
+      "variants": [
+        {
+          "name": "InitializeMarket",
+          "inner": "InitializeMarketInstruction",
+          "value": 0
+        }
+      ]
+    },
+    "InitializeMarketInstruction": {
+      "root": false,
+      "type": "struct",
+      "properties": [
+        {
+          "name": "id",
+          "type": "u8",
+          "length": 1
+        }
+      ]
+    }
+  }
+}

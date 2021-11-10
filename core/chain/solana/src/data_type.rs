@@ -80,8 +80,8 @@ impl SolanaFilter {
     }
 }
 
-pub fn decode(payload: &mut Vec<u8>) -> Result<SolanaBlock, Box<dyn Error>> {
-    let decode_block: SolanaBlock = serde_json::from_slice(&payload).unwrap();
+pub fn decode(payload: &mut Vec<u8>) -> Result<Vec<SolanaBlock>, Box<dyn Error>> {
+    let decode_block: Vec<SolanaBlock> = serde_json::from_slice(&payload).unwrap();
     Ok(decode_block)
 }
 
@@ -259,6 +259,7 @@ pub fn convert_solana_encoded_block_to_solana_block(
     SolanaBlock {
         version: encoded_block.version,
         timestamp: encoded_block.timestamp,
+        block_number: encoded_block.block_number,
         block: decode_encoded_block(encoded_block.block),
         list_log_messages: encoded_block.list_log_messages,
     }
@@ -270,6 +271,7 @@ pub fn convert_solana_encoded_block_to_solana_block(
 pub struct ExtEncodedBlock {
     pub version: String,
     pub timestamp: Date,
+    pub block_number: u64,
     pub block: EncodedBlock,
     pub list_log_messages: Vec<LogMessages>,
 }
@@ -278,6 +280,7 @@ pub struct ExtEncodedBlock {
 pub struct ExtBlock {
     pub version: String,
     pub timestamp: Date,
+    pub block_number: u64,
     pub block: Block,
     pub list_log_messages: Vec<LogMessages>,
 }

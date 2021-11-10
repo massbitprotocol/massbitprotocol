@@ -30,6 +30,7 @@ stable-hash = { git = "https://github.com/graphprotocol/stable-hash" }
 petgraph = "0.6.0"
 serde_plain = "1.0.0"
 log = "0.4.14"
+lru_time_cache = "0.11"
 diesel = { version = "1.4.8", features = ["postgres", "serde_json", "numeric", "r2d2", "chrono"] }
 diesel_derives = "1.4"
 num-bigint = { version = "^0.2.6", features = ["serde"] }

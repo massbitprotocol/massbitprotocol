@@ -1,12 +1,6 @@
 use crate::setting::*;
-pub use crate::{HandlerProxyType, PluginRegistrar};
-pub use massbit::firehose::bstream::{
-    stream_client::StreamClient, BlockResponse, BlocksRequest, ChainType,
-};
-//use graph::blockchain::Blockchain;
-use graph::data::subgraph::SubgraphManifest;
-use graph_chain_ethereum::Chain;
-use graph_chain_ethereum::{DataSource, DataSourceTemplate};
+use crate::solana::SolanaHandlerProxy;
+use crate::HandlerProxyType;
 use index_store::indexer::IndexerStore;
 use index_store::postgres::store_builder::*;
 use index_store::{IndexerState, Store};
@@ -14,14 +8,20 @@ use lazy_static::lazy_static;
 use libloading::Library;
 use massbit::blockchain::Blockchain;
 use massbit::blockchain::TriggerFilter;
+pub use massbit::firehose::bstream::{
+    stream_client::StreamClient, BlockRequest, BlockResponse, ChainType,
+};
 use massbit::prelude::*;
-use massbit_chain_solana::data_type::{SolanaFilter};
+use massbit_chain_solana::data_type::SolanaFilter;
 use massbit_common::prelude::serde_json;
 use massbit_common::prelude::tokio::time::{sleep, timeout, Duration};
 
 use serde_yaml::Value;
 use std::path::Path;
 
+use crate::solana::SolanaHandler;
+use chain_solana::data_source::{DataSource, DataSourceTemplate};
+use chain_solana::Chain;
 use std::{
     alloc::System, collections::HashMap, env, error::Error, ffi::OsStr, fmt, path::PathBuf,
     sync::Arc,
@@ -65,6 +65,19 @@ impl AdapterHandler {
     }
 }
 
+pub trait PluginRegistrar {
+    fn register_solana_handler(&mut self, handler: Box<dyn SolanaHandler + Send + Sync>);
+}
+
+impl PluginRegistrar for AdapterHandler {
+    fn register_solana_handler(&mut self, handler: Box<dyn SolanaHandler + Send + Sync>) {
+        self.handler_proxies.insert(
+            String::from("solana"),
+            HandlerProxyType::Solana(SolanaHandlerProxy::new(handler, Arc::clone(&self.lib))),
+        );
+    }
+}
+
 pub struct AdapterManager {
     //store: Option<dyn Store>,
     libs: HashMap<String, Arc<Library>>,
@@ -85,8 +98,7 @@ impl AdapterManager {
         _config: &Value,
         mapping: &PathBuf,
         schema: &PathBuf,
-        manifest: &Option<SubgraphManifest<Chain>>,
-        got_block: Option<i64>,
+        manifest: &Option<IndexerManifest<Chain>>,
     ) -> Result<(), Box<dyn Error>> {
         let mut data_sources: Vec<DataSource> = vec![];
         let mut templates: Vec<DataSourceTemplate> = vec![];
@@ -113,10 +125,7 @@ impl AdapterManager {
         );
         match data_sources.get(0) {
             Some(data_source) => {
-                let start_block = match got_block {
-                    None => data_source.source.start_block as u64,
-                    Some(val) => val as u64 + 1,
-                };
+                let start_block = data_source.source.start_block as u64;
                 log::info!(
                     "{} Init Streamout client for chain {} from block {} using language {}",
                     &*COMPONENT_NAME,
@@ -207,7 +216,7 @@ impl AdapterManager {
                     match opt_stream {
                         None => {
                             opt_stream =
-                                try_create_stream(client, &chain_type, start_block, data_source)
+                                try_create_transaction_stream(client, start_block, data_source)
                                     .await;
                             if opt_stream.is_none() {
                                 //Sleep for a while and reconnect
@@ -223,37 +232,24 @@ impl AdapterManager {
                             match response {
                                 Ok(Ok(res)) => {
                                     if let Some(mut data) = res {
-                                        let data_chain_type =
-                                            ChainType::from_i32(data.chain_type).unwrap();
-                                        log::info!(
-                                            "{} Chain {:?} received data block = {:?}, hash = {:?}",
-                                            &*COMPONENT_NAME,
-                                            &data_chain_type,
-                                            data.block_number,
-                                            data.block_hash,
-                                        );
-                                        if data_chain_type == chain_type {
-                                            match handler_proxy
-                                                .handle_rust_mapping(&mut data, &mut indexer_state)
-                                            {
-                                                Err(err) => {
-                                                    log::error!(
-                                                        "{} Error while handle received message",
-                                                        err
-                                                    );
-                                                    start_block = data.block_number;
-                                                }
-                                                Ok(_) => {
-                                                    start_block = data.block_number + 1;
-                                                    //Store got_block to db
-                                                    IndexerStore::store_got_block(
-                                                        indexer_hash,
-                                                        data.block_number as i64,
-                                                    );
-                                                }
+                                        match handler_proxy
+                                            .handle_block_mapping(&mut data, &mut indexer_state)
+                                        {
+                                            Err(err) => {
+                                                log::error!(
+                                                    "{} Error while handle received message",
+                                                    err
+                                                );
+                                                //start_block = data.block_number;
                                             }
-                                        } else {
-                                            log::error!("Chain type is not matched. Received {:?}, expected {:?}", data_chain_type, chain_type)
+                                            Ok(_) => {
+                                                // start_block = data.block_number + 1;
+                                                // //Store got_block to db
+                                                // IndexerStore::store_got_block(
+                                                //     indexer_hash,
+                                                //     data.block_number as i64,
+                                                // );
+                                            }
                                         }
                                     }
                                 }
@@ -306,6 +302,52 @@ impl AdapterManager {
         Ok(())
     }
 }
+
+async fn try_create_transaction_stream(
+    client: &mut StreamClient<Timeout<Channel>>,
+    start_block: u64,
+    datasource: &DataSource,
+) -> Option<Streaming<BlockResponse>> {
+    log::info!("Create new stream from block {}", start_block);
+    //Todo: if remove this line, debug will be broken
+    let _filter =
+        <chain_solana::Chain as Blockchain>::TriggerFilter::from_data_sources(vec![].iter());
+    let addresses = match &datasource.source.address {
+        Some(addr) => vec![addr.as_str()],
+        None => vec![],
+    };
+    let filter = SolanaFilter::new(addresses);
+    let encoded_filter = serde_json::to_vec(&filter).unwrap();
+    let network = &datasource.network;
+    let chain_type = match datasource.kind.to_lowercase().as_str() {
+        "solana" => ChainType::Solana,
+        "ethereum" => ChainType::Ethereum,
+        _ => ChainType::Solana,
+    };
+    let transaction_request = BlockRequest {
+        start_block_number: if start_block > 0 {
+            Some(start_block)
+        } else {
+            None
+        },
+        chain_type: chain_type as i32,
+        network: network.clone().unwrap_or(Default::default()),
+        filter: encoded_filter,
+    };
+    match client
+        .blocks(Request::new(transaction_request.clone()))
+        .await
+    {
+        Ok(res) => {
+            return Some(res.into_inner());
+        }
+        Err(err) => {
+            log::info!("Create new stream with error {:?}", &err);
+        }
+    }
+    return None;
+}
+
 async fn try_create_stream(
     client: &mut StreamClient<Timeout<Channel>>,
     chain_type: &ChainType,
@@ -315,15 +357,15 @@ async fn try_create_stream(
     log::info!("Create new stream from block {}", start_block);
     //Todo: if remove this line, debug will be broken
     let _filter =
-        <chain_ethereum::Chain as Blockchain>::TriggerFilter::from_data_sources(vec![].iter());
-    let filter = match datasource.name.as_str() {
-        "Saber-Indexer" => SolanaFilter::new(vec![SABER_STABLE_SWAP_PROGRAM]),
-        "Serum-Indexer" => SolanaFilter::new(vec![SERUM_DEX_PROGRAM]),
-        _ => SolanaFilter::new(vec![]),
+        <chain_solana::Chain as Blockchain>::TriggerFilter::from_data_sources(vec![].iter());
+    let addresses = match &datasource.source.address {
+        Some(addr) => vec![addr.as_str()],
+        None => vec![],
     };
+    let filter = SolanaFilter::new(addresses);
     let encoded_filter = serde_json::to_vec(&filter).unwrap();
     let network = &datasource.network;
-    let get_blocks_request = BlocksRequest {
+    let get_blocks_request = BlockRequest {
         start_block_number: if start_block > 0 {
             Some(start_block)
         } else {
@@ -349,11 +391,21 @@ async fn try_create_stream(
 // General trait for handling message,
 // every adapter proxies must implement this trait
 pub trait MessageHandler {
-    fn handle_rust_mapping(
+    fn handle_block_mapping(
+        &self,
+        _message: &mut BlockResponse,
+        _store: &mut dyn Store,
+    ) -> Result<(), Box<dyn Error>>;
+    // {
+    //     log::error!("Error! handle_block_mapping is not implemented!");
+    //     Ok(())
+    // }
+    fn handle_transaction_mapping(
         &self,
         _message: &mut BlockResponse,
         _store: &mut dyn Store,
     ) -> Result<(), Box<dyn Error>> {
+        log::error!("Error! handle_transaction_mapping is not implemented!");
         Ok(())
     }
 }
