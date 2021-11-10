@@ -1,9 +1,8 @@
 use crate::CONFIG;
 
-
 use log::{debug, info, warn};
 use massbit::firehose::bstream::{BlockResponse, ChainType};
-use massbit::prelude::serde_json::{json};
+use massbit::prelude::serde_json::json;
 use massbit::prelude::tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use massbit::prelude::tokio::time::sleep;
 use massbit_chain_solana::data_type::{
@@ -12,18 +11,21 @@ use massbit_chain_solana::data_type::{
 };
 use massbit_common::prelude::tokio::time::{timeout, Duration};
 use massbit_common::NetworkType;
-use solana_client::client_error::{Result as ClientResult};
+use solana_client::client_error::Result as ClientResult;
 use solana_client::rpc_client::GetConfirmedSignaturesForAddress2Config;
+use solana_client::rpc_client::RpcClient;
 use solana_client::rpc_request::RpcRequest;
 use solana_client::rpc_response::RpcConfirmedTransactionStatusWithSignature;
-use solana_client::{rpc_client::RpcClient};
 
+use massbit_common::prelude::diesel::serialize::IsNull::No;
 use solana_sdk::account::Account;
 use solana_sdk::clock::Slot;
 use solana_sdk::signature::Signature;
 use solana_transaction_status::{
-    ConfirmedBlock, EncodedConfirmedBlock, EncodedConfirmedTransaction, UiTransactionEncoding,
+    ConfirmedBlock, EncodedConfirmedBlock, EncodedConfirmedTransaction, TransactionWithStatusMeta,
+    UiTransactionEncoding,
 };
+use std::collections::HashMap;
 use std::error::Error;
 use std::str::FromStr;
 use std::{sync::Arc, time::Instant};
@@ -137,15 +139,8 @@ async fn grpc_send_block(
     block: BlockResponse,
     chan: &mpsc::Sender<Result<BlockResponse, Status>>,
 ) -> Result<(), Box<dyn Error>> {
-    let block_number = block.block_number;
-    debug!("gRPC sending block {}", &block_number);
     if !chan.is_closed() {
-        let send_res = chan.send(Ok(block)).await;
-        if send_res.is_ok() {
-            info!("gRPC successfully sending block {}", &block_number);
-        } else {
-            warn!("gRPC unsuccessfully sending block {}", &block_number);
-        }
+        chan.send(Ok(block)).await;
     } else {
         return Err("Stream is closed!".into());
     }
@@ -205,36 +200,59 @@ pub async fn loop_get_block(
     let mut start_tx: usize = filter_txs.len();
     while start_tx > 0 {
         let transactions = getTransactions(client, &filter_txs, &mut start_tx);
+        // Check transactions
         match transactions {
             Ok(transactions) => {
+                // Decode and group transactions into the same block groups
+                let mut group_transactions: HashMap<Slot, Vec<TransactionWithStatusMeta>> =
+                    HashMap::new();
                 for transaction in transactions {
                     match transaction {
                         Ok(transaction) => {
-                            let decode_transactions =
-                                match decode_transaction(&transaction.transaction) {
-                                    Some(transaction) => vec![transaction],
-                                    None => {
-                                        warn!(
-                                            "transaction in block {:#?} cannot decode!",
-                                            &transaction.slot
-                                        );
-                                        vec![]
-                                    }
-                                };
-                            let filtered_confirmed_block = ConfirmedBlock {
-                                previous_blockhash: "".to_string(),
-                                blockhash: "".to_string(),
-                                parent_slot: transaction.slot - 1,
-                                transactions: decode_transactions,
-                                rewards: vec![],
-                                block_time: transaction.block_time,
-                                block_height: None,
+                            // Decode the transaction
+                            match decode_transaction(&transaction.transaction) {
+                                Some(decoded_transaction) => {
+                                    group_transactions
+                                        .entry(transaction.slot)
+                                        .or_insert(vec![])
+                                        .push(decoded_transaction);
+                                }
+                                None => {
+                                    warn!(
+                                        "transaction in block {:#?} cannot decode!",
+                                        &transaction.slot
+                                    );
+                                    continue;
+                                }
                             };
-                            let generic_block = _to_generic_block(filtered_confirmed_block);
-                            grpc_send_block(generic_block, &chan).await?
                         }
-                        Err(e) => info!("Transaction error: {:?}", e),
+                        Err(e) => continue,
                     }
+                }
+
+                let filtered_confirmed_blocks_with_number: Vec<(ConfirmedBlock, u64)> =
+                    group_transactions
+                        .into_iter()
+                        .map(|(block_number, transactions)| {
+                            let filtered_confirmed_block = ConfirmedBlock {
+                                previous_blockhash: Default::default(),
+                                blockhash: Default::default(),
+                                parent_slot: Default::default(),
+                                transactions,
+                                rewards: Default::default(),
+                                block_time: Default::default(),
+                                block_height: Default::default(),
+                            };
+                            (filtered_confirmed_block, block_number)
+                        })
+                        .collect();
+                if !filtered_confirmed_blocks_with_number.is_empty() {
+                    info!(
+                        "There are {} filtered Block in array.",
+                        filtered_confirmed_blocks_with_number.len()
+                    );
+                    let generic_block = _to_generic_block(filtered_confirmed_blocks_with_number);
+                    grpc_send_block(generic_block, &chan).await?
                 }
             }
             Err(e) => {
@@ -287,44 +305,43 @@ pub async fn loop_get_block(
                                 )
                                 .await;
                                 if res.is_err() {
-                                    warn!("get_block timed out at block height {}", &block_slot);
+                                    warn!("get_block timed out at block number {}", &block_slot);
                                 };
                                 info!(
-                                    "Finish tokio::spawn for getting block height: {:?}",
+                                    "Finish tokio::spawn for getting block number: {:?}",
                                     &block_slot
                                 );
                                 res.unwrap()
                             }));
                         }
-                        let blocks: Vec<Result<_, _>> = futures03::future::join_all(tasks).await;
-                        let mut blocks: Vec<BlockResponse> = blocks
+                        let blocks_with_number: Vec<Result<_, _>> =
+                            futures03::future::join_all(tasks).await;
+                        let mut blocks_with_number: Vec<(ConfirmedBlock, u64)> = blocks_with_number
                             .into_iter()
                             .filter_map(|res_block| {
-                                if let Ok(Ok(block)) = res_block {
-                                    info!(
-                                        "Got SOLANA block at slot : {:?}",
-                                        &block.parent_slot + 1
-                                    );
+                                if let Ok(Ok((block, block_number))) = res_block {
+                                    info!("Got SOLANA block at slot : {:?}", &block_number);
                                     let decode_block = decode_encoded_block(block);
                                     let filtered_block = filter.filter_block(decode_block);
                                     if filtered_block.transactions.is_empty() {
                                         println!(
                                             "Block slot {} has no match Transaction",
-                                            filtered_block.parent_slot + 1
+                                            &block_number
                                         );
                                         None
                                     } else {
-                                        Some(_to_generic_block(filtered_block))
+                                        Some((filtered_block, block_number))
                                     }
                                 } else {
                                     None
                                 }
                             })
                             .collect();
-                        blocks.sort_by(|a, b| a.block_number.cmp(&b.block_number));
-                        info!("Finished get blocks");
-                        for block in blocks.into_iter() {
-                            grpc_send_block(block, &chan).await?
+                        blocks_with_number.sort_by(|a, b| a.1.cmp(&b.1));
+                        info!("Finished get {} filtered blocks", blocks_with_number.len());
+                        if !blocks_with_number.is_empty() {
+                            let block_response = _to_generic_block(blocks_with_number);
+                            grpc_send_block(block_response, &chan).await?;
                         }
                         last_indexed_slot = last_indexed_slot
                             .map(|last_indexed_slot| last_indexed_slot + number_get_slot);
@@ -342,56 +359,58 @@ pub async fn loop_get_block(
     Ok(())
 }
 
-fn _create_generic_block(block_hash: String, block_number: u64, block: &Block) -> BlockResponse {
+fn _create_generic_block(blocks: &Vec<Block>) -> BlockResponse {
     let generic_data = BlockResponse {
-        chain_type: CHAIN_TYPE as i32,
         version: VERSION.to_string(),
-        block_hash,
-        block_number,
-        payload: serde_json::to_vec(block).unwrap(),
+        payload: serde_json::to_vec(blocks).unwrap(),
     };
     generic_data
 }
 
-fn _to_generic_block(block: solana_transaction_status::ConfirmedBlock) -> BlockResponse {
-    let timestamp = (&block).block_time.unwrap();
-    let list_log_messages = get_list_log_messages_from_encoded_block(&block);
-    let ext_block = Block {
-        version: VERSION.to_string(),
-        block,
-        timestamp,
-        list_log_messages,
-    };
-    let generic_data_proto = _create_generic_block(
-        ext_block.block.blockhash.clone(),
-        &ext_block.block.parent_slot + 1,
-        &ext_block,
-    );
+fn _to_generic_block(
+    blocks_with_number: Vec<(solana_transaction_status::ConfirmedBlock, u64)>,
+) -> BlockResponse {
+    let ext_blocks: Vec<Block> = blocks_with_number
+        .into_iter()
+        .map(|(block, block_number)| {
+            let timestamp = (&block).block_time.unwrap_or_default();
+            let list_log_messages = get_list_log_messages_from_encoded_block(&block);
+            Block {
+                version: VERSION.to_string(),
+                block,
+                block_number,
+                timestamp,
+                list_log_messages,
+            }
+        })
+        .collect();
+
+    let generic_data_proto = _create_generic_block(&ext_blocks);
     generic_data_proto
 }
 
 async fn get_block(
     client: Arc<RpcClient>,
     permit: OwnedSemaphorePermit,
-    block_height: u64,
-) -> Result<EncodedConfirmedBlock, Box<dyn Error + Send + Sync + 'static>> {
+    block_number: u64,
+) -> Result<(EncodedConfirmedBlock, u64), Box<dyn Error + Send + Sync + 'static>> {
     let _permit = permit;
-    info!("Starting RPC get Block {}", block_height);
+    info!("Starting RPC get Block {}", block_number);
     let now = Instant::now();
-    let block = client.get_block_with_encoding(block_height, RPC_BLOCK_ENCODING);
+    let block = client.get_block_with_encoding(block_number, RPC_BLOCK_ENCODING);
     let elapsed = now.elapsed();
     match block {
         Ok(block) => {
             info!(
                 "Finished RPC get Block: {:?}, time: {:?}, hash: {}",
-                block_height, elapsed, &block.blockhash
+                block_number, elapsed, &block.blockhash
             );
-            Ok(block)
+            Ok((block, block_number))
         }
         _ => {
             info!(
                 "Cannot get RPC get Block: {:?}, Error:{:?}, time: {:?}",
-                block_height, block, elapsed
+                block_number, block, elapsed
             );
             Err(format!("Error cannot get block").into())
         }

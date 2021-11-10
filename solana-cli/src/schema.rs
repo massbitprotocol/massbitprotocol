@@ -46,7 +46,7 @@ pub struct Property {
     pub length: Option<usize>,
     #[serde(rename = "arrayLength")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub array_length: Option<u32>,
+    pub array_length: Option<usize>,
     pub required: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
@@ -60,7 +60,7 @@ impl Property {
                 "u32" | "i32" => 4_usize,
                 "u64" | "i64" => 8_usize,
                 "u128" | "i128" => 16_usize,
-                &_ => 0_usize,
+                &_ => 1_usize,
             },
             Some(len) => len,
         }

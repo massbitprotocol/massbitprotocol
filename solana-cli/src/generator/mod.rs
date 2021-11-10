@@ -36,14 +36,15 @@ impl<'a> Generator<'a> {
                 let data = schema.gen_instruction();
                 let path = format!("{}/{}", self.output_dir, "generated/instruction.rs");
                 self.write_to_file(path.as_str(), &data, true);
-                let data = schema.gen_graphql_schema();
-                self.write_to_file("schema.graphql", &data, false);
                 let data = schema.gen_handler();
                 let path = format!("{}/{}", self.output_dir, "generated/handler.rs");
                 self.write_to_file(path.as_str(), &data, true);
                 let data = schema.gen_models();
                 let path = format!("{}/{}", self.output_dir, "models.rs");
                 self.write_to_file(path.as_str(), &data, true);
+                let data = schema.gen_graphql_schema();
+                let path = format!("{}/{}", self.output_dir, "schema.graphql");
+                self.write_to_file(path.as_str(), &data, false);
             }
         }
     }

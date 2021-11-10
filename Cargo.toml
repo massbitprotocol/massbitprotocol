@@ -8,6 +8,7 @@ members = [
     "core/index-store",
     "cli",
     "chain/ethereum",
+    "chain/solana",
     "massbit",
     "runtime/wasm",
     "runtime/derive",

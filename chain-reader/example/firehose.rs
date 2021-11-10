@@ -8,7 +8,7 @@ use massbit::blockchain::Block as _;
 use massbit::blockchain::DataSource as _;
 use massbit::blockchain::{Blockchain, TriggerFilter};
 use massbit::firehose::dstream::{
-    streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlocksRequest,
+    streamout_client::StreamoutClient, ChainType, DataType, GenericDataProto, GetBlockRequest,
 };
 use massbit::log::logger;
 use massbit::{
@@ -58,7 +58,7 @@ async fn main() -> Result<(), Error> {
         .unwrap_or(0);
 
     loop {
-        let get_blocks_request = GetBlocksRequest {
+        let get_blocks_request = GetBlockRequest {
             start_block_number: start_block_number as u64,
             end_block_number: 1,
             chain_type: chain_type as i32,

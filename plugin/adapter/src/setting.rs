@@ -1,3 +1,4 @@
+use chain_solana::data_source::DataSource;
 /**
  *** Objective of this file is to parse the config project.yaml file to get
  *** information like: chain type, index name, ...
@@ -5,7 +6,6 @@
 // Generic dependencies
 use serde_yaml::Value;
 // Massbit dependencies
-use graph_chain_ethereum::DataSource;
 use massbit::firehose::bstream::ChainType;
 
 //use massbit_runtime_wasm::chain::ethereum::data_source::DataSource;

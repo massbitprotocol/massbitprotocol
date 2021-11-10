@@ -163,6 +163,7 @@
     },
     "OrderType": {
       "type": "enum",
+      "variantTagLength" : 4,
       "variants": [
         {
           "name": "Limit",
@@ -180,6 +181,7 @@
     },
     "Side": {
       "type": "enum",
+      "variantTagLength" : 4,
       "variants": [
         {
           "name": "Bid",
@@ -208,7 +210,8 @@
         },
         {
           "name": "owner",
-          "dataType": "[u64; 4]",
+          "dataType": "u64",
+          "arrayLength" : 4,
           "length": 32,
           "required": true
         },
@@ -243,6 +246,7 @@
         {
           "name": "order_type",
           "dataType": "OrderType",
+          "length": 4,
           "required": true
         },
         {
@@ -257,25 +261,9 @@
         }
       ]
     },
-    "OrderType": {
-      "type": "enum",
-      "variants": [
-        {
-          "name": "Limit",
-          "variantTag" : 0
-        },
-        {
-          "name": "ImmediateOrCancel",
-          "variantTag" : 1
-        },
-        {
-          "name": "PostOnly",
-          "variantTag" : 2
-        }
-      ]
-    },
     "SelfTradeBehavior": {
       "type": "enum",
+      "variantTagLength" : 4,
       "variants": [
         {
           "name": "DecrementTake",
@@ -297,7 +285,7 @@
         {
           "name": "side",
           "dataType": "Side",
-          "length": 1,
+          "length": 4,
           "required": true
         },
         {
@@ -321,12 +309,13 @@
         {
           "name": "self_trade_behavior",
           "dataType": "SelfTradeBehavior",
+          "length": 4,
           "required": true
         },
         {
           "name": "order_type",
           "dataType": "OrderType",
-          "length": 1,
+          "length": 4,
           "required": true
         },
         {

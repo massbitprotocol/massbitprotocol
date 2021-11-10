@@ -16,13 +16,8 @@ dependencies = [
 name = "adapter"
 version = "0.1.0"
 dependencies = [
- "chain-ethereum",
+ "chain-solana",
  "futures 0.1.31",
- "graph 0.24.0",
- "graph-chain-ethereum",
- "graph-core",
- "graph-mock",
- "graph-runtime-wasm",
  "index-store",
  "lazy_static",
  "libloading 0.7.1",
@@ -35,6 +30,7 @@ dependencies = [
  "quote 1.0.10",
  "serde_regex",
  "serde_yaml",
+ "solana-transaction-status",
  "structmap",
  "tonic",
  "tonic-build",
@@ -927,6 +923,25 @@ dependencies = [
  "tonic",
  "tonic-build",
  "web3",
+]
+
+[[package]]
+name = "chain-solana"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "futures 0.1.31",
+ "http 0.1.21",
+ "jsonrpc-core 14.2.0",
+ "massbit",
+ "mockall 0.10.2",
+ "semver 1.0.4",
+ "serde",
+ "solana-program 1.9.0",
+ "solana-transaction-status",
+ "tiny-keccak 1.5.0",
+ "tokio 1.12.0",
+ "url 2.2.2",
 ]
 
 [[package]]
@@ -3345,6 +3360,7 @@ dependencies = [
  "adapter",
  "anyhow",
  "async-std",
+ "chain-solana",
  "diesel",
  "diesel_migrations",
  "env_logger 0.8.4",
@@ -4019,6 +4035,7 @@ dependencies = [
  "itertools 0.10.1",
  "lazy_static",
  "log 0.4.14",
+ "lru_time_cache",
  "num-bigint 0.2.6",
  "num-traits",
  "num_cpus",

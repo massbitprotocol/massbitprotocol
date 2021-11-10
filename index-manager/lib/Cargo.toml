@@ -30,6 +30,7 @@ strum = "0.21.0"
 # Massbit dependencies
 ipfs-client = { path = "../../core/ipfs-client" }
 tokio02-spawn = { path = "../../core/tokio02-spawn" }
+chain-solana = { path = "../../chain/solana" }
 massbit-chain-solana = { path = "../../core/chain/solana" }
 massbit = { path = "../../massbit" }
 index-store = { path = "../../core/index-store" }
