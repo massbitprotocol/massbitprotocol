@@ -141,13 +141,13 @@ impl Schema {
         let separation = match self.offset {
             None => {
                 format!(
-                    "let (&tag_slice, data) = array_refs![input, {}; ..;];",
+                    "let (&tag_slice, data) = array_refs![input, {}, ..];",
                     tag_len
                 )
             }
             Some(offset) => {
                 format!(
-                    "let (&[offset], &tag_slice, data) = array_refs![input, {}, {}, ..;];",
+                    "let (&[offset], &tag_slice, data) = array_refs![input, {}, {}, ..];",
                     offset, tag_len
                 )
             }
@@ -166,9 +166,11 @@ impl Schema {
                 let var_tag = variant.variant_tag;
                 match &variant.inner_type {
                     Some(inner_type) => {
-                        //let inner_schema = self.definitions.get(inner_type);
-                        //println!("{:?}", inner_schema);
-                        match variant.get_size() {
+                        let inner_schema = self.definitions.get(inner_type);
+                        let variant_size = inner_schema
+                            .and_then(|schema| schema.get_size())
+                            .or(variant.get_size());
+                        match variant_size {
                             None => {
                                 let inner_value =
                                     expand_data_type("data", inner_type.as_str(), true);
@@ -184,7 +186,7 @@ impl Schema {
                                     expand_data_type("field_slice", inner_type.as_str(), true);
                                 format!(
                                     r#"{var_tag} => {{
-                                        let (field_slice, remain) = array_refs![data, {size}; ..;];
+                                        let (field_slice, remain) = array_refs![data, {size}, ..];
                                         Some({name}::{var_name}({inner_value}))
                                     }}"#,
                                     var_tag = var_tag,
@@ -218,7 +220,7 @@ impl Schema {
 
 pub fn expand_data_type(field_name: &str, data_type: &str, user_defined: bool) -> String {
     if data_type.starts_with("NonZero") {
-        let inner_type = &data_type[7..data_type.len()];
+        let inner_type = &data_type[7..data_type.len()].to_lowercase();
         format!(
             "{}::new({}::from_le_bytes(*{})).unwrap()",
             data_type, inner_type, field_name
