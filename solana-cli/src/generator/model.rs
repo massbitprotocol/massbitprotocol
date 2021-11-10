@@ -47,11 +47,12 @@ impl Schema {
         // Write entity name
         write!(
             out,
-            r#"use crate::STORE;
-use crate::{{Entity, EntityFilter, EntityOrder, EntityRange, Value}};
-use crate::{{EntityValue, FromEntity, FromValueTrait, ToMap, ValueFrom}};
-pub use massbit_drive::{{FromEntity, ToMap}};
-use std::collections::HashMap;
+            r#"
+            use crate::STORE;
+            use crate::{{Entity, EntityFilter, EntityOrder, EntityRange, Value}};
+            use crate::{{EntityValue, FromEntity, FromValueTrait, ToMap, ValueFrom}};
+            pub use massbit_drive::{{FromEntity, ToMap}};
+            use std::collections::HashMap;
         "#
         );
         out
@@ -73,7 +74,9 @@ use std::collections::HashMap;
         write!(
             out,
             r#"
-pub struct {} {{"#,
+                pub struct {} {{
+                    pub id: String,
+            "#,
             &entity_name
         );
 
@@ -82,8 +85,7 @@ pub struct {} {{"#,
             Some(db_type) => {
                 write!(
                     out,
-                    r#"
-    pub value: {},"#,
+                    r#"pub value: {},"#,
                     MAPPING_DB_TYPES_TO_RUST
                         .get(db_type)
                         .unwrap_or(&Default::default())
@@ -98,8 +100,7 @@ pub struct {} {{"#,
                             .unwrap_or(&*DEFAULT_TYPE_DB);
                         write!(
                             out,
-                            r#"
-    pub {}: {},"#,
+                            r#"pub {}: {},"#,
                             property.name,
                             MAPPING_DB_TYPES_TO_RUST
                                 .get(db_type)

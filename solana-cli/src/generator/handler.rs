@@ -13,6 +13,7 @@ use solana_sdk::account::Account;
 use uuid::Uuid;
 use serde_json;
 use massbit_chain_solana::data_type::{SolanaBlock, SolanaLogMessages, SolanaTransaction};
+use solana_transaction_status::{parse_instruction, ConfirmedBlock, TransactionWithStatusMeta};
 "#;
 pub fn append_handler_modules(out: &mut String) {
     writeln!(out, "{}", modules);
@@ -28,18 +29,17 @@ impl Schema {
                 self.expand_handler_functions(&name, self.variants.as_ref().unwrap());
             write!(
                 &mut out,
-                r#"
-pub struct Handler {{}}
-    impl Handler {{
-        pub fn process(&self, block: &SolanaBlock, transaction: &SolanaTransaction, program_id: &Pubkey, accounts: &[Account], input: &[u8]) {{
-            if let Some(instruction) = {name}::unpack(input) {{
-                match instruction {{
-                    {patterns}
-                }}
-            }}
-        }}
-        {handler_functions}
-    }}"#,
+                r#"pub struct Handler {{}}
+                    impl Handler {{
+                        pub fn process(&self, block: &SolanaBlock, transaction: &TransactionWithStatusMeta, program_id: &Pubkey, accounts: &[Account], input: &[u8]) {{
+                            if let Some(instruction) = {name}::unpack(input) {{
+                                match instruction {{
+                                    {patterns}
+                                }}
+                            }}
+                        }}
+                        {handler_functions}
+                    }}"#,
                 name = name,
                 patterns = patterns.join(",\n"),
                 handler_functions = handler_functions.join("\n")
@@ -59,10 +59,9 @@ pub struct Handler {{}}
                 match &variant.inner_type {
                     None => {
                         format!(
-                            r#"
-                    {enum_name}::{var_name} => {{
-                        self.{method_name}(block,transaction,program_id, accounts);
-                    }}"#,
+                            r#"{enum_name}::{var_name} => {{
+                                self.{method_name}(block,transaction,program_id, accounts);
+                            }}"#,
                             enum_name = enum_name,
                             var_name = &variant.name,
                             method_name = method_name
@@ -70,10 +69,9 @@ pub struct Handler {{}}
                     }
                     Some(inner_type) => {
                         format!(
-                            r#"
-                    {enum_name}::{var_name}(arg) => {{
-                        self.{method_name}(block,transaction,program_id, accounts, arg);
-                    }}"#,
+                            r#"{enum_name}::{var_name}(arg) => {{
+                                self.{method_name}(block,transaction,program_id, accounts, arg);
+                            }}"#,
                             enum_name = enum_name,
                             var_name = &variant.name,
                             method_name = method_name
@@ -99,6 +97,8 @@ pub struct Handler {{}}
                         format!(
                             r#"pub fn {function_name}(
                                     &self,
+                                    block: &SolanaBlock,
+                                    transaction: &TransactionWithStatusMeta,
                                     program_id: &Pubkey,
                                     accounts: &[Account],
                                 ) -> Result<(), anyhow::Error> {{
@@ -110,18 +110,17 @@ pub struct Handler {{}}
                     }
                     Some(inner_type) => {
                         format!(
-                            r#"
-        pub fn {function_name}(
+                            r#"pub fn {function_name}(
                                 &self,
                                 block: &SolanaBlock,
-                                transaction: &SolanaTransaction,
+                                transaction: &TransactionWithStatusMeta,
                                 program_id: &Pubkey,
                                 accounts: &[Account],
                                 arg: {inner_type}
                             ) -> Result<(), anyhow::Error> {{
+                                println!("{{:?}}", &arg);
                                 {function_body}
-                        
-        }}"#,
+                            }}"#,
                             function_name = function_name,
                             function_body = function_body,
                             inner_type = inner_type
@@ -179,8 +178,7 @@ pub struct Handler {{}}
             Some(db_type) => {
                 write!(
                     out,
-                    r#"
-    value: arg as {},"#,
+                    r#"value: arg as {},"#,
                     MAPPING_DB_TYPES_TO_RUST
                         .get(db_type)
                         .unwrap_or(&Default::default())
@@ -196,22 +194,32 @@ pub struct Handler {{}}
                         match db_type {
                             // If data_type is primitive (e.g. Enum, Struct)
                             Some(db_type) => {
-                                write!(
-                                    out,
-                                    r#"
-                {}: arg.{} as {},"#,
-                                    property.name,
-                                    property.name,
-                                    MAPPING_DB_TYPES_TO_RUST
-                                        .get(db_type)
-                                        .unwrap_or(&Default::default())
-                                );
+                                if property.data_type.starts_with("NonZero") {
+                                    write!(
+                                        out,
+                                        r#"{}: arg.{}.get() as {},"#,
+                                        property.name,
+                                        property.name,
+                                        MAPPING_DB_TYPES_TO_RUST
+                                            .get(db_type)
+                                            .unwrap_or(&Default::default())
+                                    );
+                                } else {
+                                    write!(
+                                        out,
+                                        r#"{}: arg.{} as {},"#,
+                                        property.name,
+                                        property.name,
+                                        MAPPING_DB_TYPES_TO_RUST
+                                            .get(db_type)
+                                            .unwrap_or(&Default::default())
+                                    );
+                                }
                             }
                             None => {
                                 write!(
                                     out,
-                                    r#"
-                {}: serde_json::to_string(arg.{}),"#,
+                                    r#"{}: serde_json::to_string(arg.{}),"#,
                                     property.name, property.name,
                                 );
                             }

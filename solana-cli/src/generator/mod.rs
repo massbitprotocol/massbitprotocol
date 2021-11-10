@@ -1,3 +1,5 @@
+pub mod gen_lib;
+pub mod gen_mapping;
 pub mod graphql;
 pub mod handler;
 pub mod helper;
@@ -5,6 +7,8 @@ pub mod instruction;
 pub mod model;
 
 use crate::schema::Schema;
+use gen_lib::gen_lib;
+use gen_mapping::gen_mapping;
 use serde::ser::Serialize;
 use std::fs;
 use std::fs::DirEntry;
@@ -33,15 +37,27 @@ impl<'a> Generator<'a> {
         match &self.schema {
             None => {}
             Some(schema) => {
+                //Instruction
                 let data = schema.gen_instruction();
                 let path = format!("{}/{}", self.output_dir, "generated/instruction.rs");
                 self.write_to_file(path.as_str(), &data, true);
+                //Instruction handler
                 let data = schema.gen_handler();
                 let path = format!("{}/{}", self.output_dir, "generated/handler.rs");
                 self.write_to_file(path.as_str(), &data, true);
+                //Models
                 let data = schema.gen_models();
                 let path = format!("{}/{}", self.output_dir, "models.rs");
                 self.write_to_file(path.as_str(), &data, true);
+                //libs
+                let lib_code = gen_lib();
+                let path = format!("{}/{}", self.output_dir, "lib.rs");
+                self.write_to_file(path.as_str(), &lib_code, true);
+                //Mapping
+                let mapping_code = gen_mapping();
+                let path = format!("{}/{}", self.output_dir, "mapping.rs");
+                self.write_to_file(path.as_str(), &mapping_code, true);
+                //Schema graphql
                 let data = schema.gen_graphql_schema();
                 let path = format!("{}/{}", self.output_dir, "schema.graphql");
                 self.write_to_file(path.as_str(), &data, false);

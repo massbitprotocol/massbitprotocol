@@ -70,9 +70,9 @@ impl Schema {
             .map(|property| {
                 if property.array_length.is_some() && property.array_length.unwrap_or_default() > 0
                 {
-                    format!("{}: Vec<{}>", &property.name, &property.data_type)
+                    format!("pub {}: Vec<{}>", &property.name, &property.data_type)
                 } else {
-                    format!("{}:{}", &property.name, &property.data_type)
+                    format!("pub {}:{}", &property.name, &property.data_type)
                 }
             })
             .collect::<Vec<String>>()
