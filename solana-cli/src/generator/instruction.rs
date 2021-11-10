@@ -9,7 +9,6 @@ use solana_program::{{
     pubkey::Pubkey,
     sysvar::rent,
 }};
-use std::convert::TryInto;
 use arrayref::{{array_ref, array_refs}};
 use num_enum::{{IntoPrimitive, TryFromPrimitive}};
 use std::num::*;

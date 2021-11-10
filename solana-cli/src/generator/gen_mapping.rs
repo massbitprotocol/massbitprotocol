@@ -1,7 +1,7 @@
 const default_content: &str = r#"
 use crate::generated::handler::Handler;
 use crate::generated::instruction::*;
-use crate::models::*;
+//use crate::models::*;
 use crate::SOLANA_CLIENT;
 use massbit_chain_solana::data_type::{SolanaBlock, SolanaLogMessages, SolanaTransaction};
 use massbit_chain_solana::helper::get_account_info;
