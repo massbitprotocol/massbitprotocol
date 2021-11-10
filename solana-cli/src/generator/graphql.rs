@@ -98,7 +98,7 @@ impl Schema {
         out
     }
     pub fn gen_entity_db(schema: &Schema, entity_type: String, entity_name: String) -> String {
-        let mut entity_properties: Vec<String> = Vec::default();
+        let mut entity_properties: Vec<String> = vec![String::from("\tid: ID!")];
         match MAPPING_RUST_TYPES_TO_DB.get(entity_type.as_str()) {
             Some(db_type) => {
                 entity_properties.push(format!("\tvalue: {}", db_type));
