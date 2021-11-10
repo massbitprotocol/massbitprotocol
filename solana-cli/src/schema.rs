@@ -60,7 +60,7 @@ impl Property {
                 "u32" | "i32" => 4_usize,
                 "u64" | "i64" => 8_usize,
                 "u128" | "i128" => 16_usize,
-                &_ => 0_usize,
+                &_ => 1_usize,
             },
             Some(len) => len,
         }
