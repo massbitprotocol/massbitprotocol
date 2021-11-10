@@ -208,7 +208,8 @@
         },
         {
           "name": "owner",
-          "dataType": "[u64; 4]",
+          "dataType": "u64",
+          "arrayLength" : 4,
           "length": 32,
           "required": true
         },
