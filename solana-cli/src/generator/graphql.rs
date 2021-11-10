@@ -72,7 +72,6 @@ lazy_static! {
 impl Schema {
     pub fn gen_graphql_schema(&self) -> String {
         let mut out = String::new();
-        // println!("Schema: {:#?}", self);
         if let Some(instructions) = self.variants.clone() {
             // List instruction
             for instruction in instructions {
@@ -98,8 +97,45 @@ impl Schema {
         }
         out
     }
-
     pub fn gen_entity_db(schema: &Schema, entity_type: String, entity_name: String) -> String {
+        let mut entity_properties: Vec<String> = Vec::default();
+        match MAPPING_RUST_TYPES_TO_DB.get(entity_type.as_str()) {
+            Some(db_type) => {
+                entity_properties.push(format!("\tvalue: {}", db_type));
+            }
+            None => {
+                if let Some(properties) = &schema.properties {
+                    for property in properties {
+                        match property.array_length {
+                            Some(array_length) => {
+                                let db_type = MAPPING_RUST_TYPES_TO_DB
+                                    .get(property.data_type.as_str())
+                                    .unwrap_or(&*DEFAULT_TYPE_DB);
+                                entity_properties
+                                    .push(format!("\t{}: [{}]", &property.name, db_type));
+                            }
+                            None => {
+                                let db_type = MAPPING_RUST_TYPES_TO_DB
+                                    .get(property.data_type.as_str())
+                                    .unwrap_or(&*DEFAULT_TYPE_DB);
+                                entity_properties
+                                    .push(format!("\t{}: {}", &property.name, db_type));
+                            }
+                        }
+                    }
+                }
+            }
+        };
+        format!(
+            r#"type {} @entity {{
+{entity_properties}
+}}"#,
+            &entity_name,
+            entity_properties = entity_properties.join(",\n")
+        )
+    }
+    //Todo: remove this function
+    pub fn gen_entity_db0(schema: &Schema, entity_type: String, entity_name: String) -> String {
         let mut out = String::new();
         // Write entity name
         write!(
