@@ -1,5 +1,5 @@
 use crate::generator::helper::is_integer_type;
-use crate::schema::{PropertyArray, Schema, VariantArray};
+use crate::schema::{Property, PropertyArray, Schema, Variant, VariantArray};
 use std::fmt::Write;
 
 const modules: &str = r#"
@@ -67,7 +67,14 @@ impl Schema {
     pub fn expand_fields(&self, properties: &PropertyArray) -> String {
         properties
             .iter()
-            .map(|property| format!("{}:{}", &property.name, &property.data_type))
+            .map(|property| {
+                if property.array_length.is_some() && property.array_length.unwrap_or_default() > 0
+                {
+                    format!("{}: Vec<{}>", &property.name, &property.data_type)
+                } else {
+                    format!("{}:{}", &property.name, &property.data_type)
+                }
+            })
             .collect::<Vec<String>>()
             .join(",\n")
     }
@@ -100,11 +107,7 @@ impl Schema {
             lengths.push(format!("{}", property.size()));
             //Expand struct field's data type.
             //Use unpack for user defined type other use try_from_primitive
-            let field_value = expand_data_type(
-                property.name.as_str(),
-                property.data_type.as_str(),
-                self.definitions.contains_key(&property.name),
-            );
+            let field_value = self.expand_property_unpack(property);
             properties.push(format!("{}: {}", &property.name, &field_value));
         }
         if let Some(val) = struct_size {
@@ -141,13 +144,13 @@ impl Schema {
         let separation = match self.offset {
             None => {
                 format!(
-                    "let (&tag_slice, data) = array_refs![input, {}, ..];",
+                    "let (&tag_slice, data) = array_refs![input, {}; ..;];",
                     tag_len
                 )
             }
             Some(offset) => {
                 format!(
-                    "let (&[offset], &tag_slice, data) = array_refs![input, {}, {}, ..];",
+                    "let (&[offset], &tag_slice, data) = array_refs![input, {}, {}; ..;];",
                     offset, tag_len
                 )
             }
@@ -162,45 +165,7 @@ impl Schema {
             .as_ref()
             .unwrap()
             .iter()
-            .map(|variant| {
-                let var_tag = variant.variant_tag;
-                match &variant.inner_type {
-                    Some(inner_type) => {
-                        let inner_schema = self.definitions.get(inner_type);
-                        let variant_size = inner_schema
-                            .and_then(|schema| schema.get_size())
-                            .or(variant.get_size());
-                        match variant_size {
-                            None => {
-                                let inner_value =
-                                    expand_data_type("data", inner_type.as_str(), true);
-                                format!(
-                                    "{} => {{\
-                                        Some({}::{}({}))\
-                                     }}",
-                                    var_tag, &name, &variant.name, inner_value
-                                )
-                            }
-                            Some(size) => {
-                                let inner_value =
-                                    expand_data_type("field_slice", inner_type.as_str(), true);
-                                format!(
-                                    r#"{var_tag} => {{
-                                        let (field_slice, remain) = array_refs![data, {size}, ..];
-                                        Some({name}::{var_name}({inner_value}))
-                                    }}"#,
-                                    var_tag = var_tag,
-                                    size = size,
-                                    name = &name,
-                                    var_name = &variant.name,
-                                    inner_value = inner_value
-                                )
-                            }
-                        }
-                    }
-                    None => format!("{} => Some({}::{})", var_tag, &name, &variant.name),
-                }
-            })
+            .map(|variant| self.expand_variant_unpack(name, variant))
             .collect::<Vec<String>>();
         //Add remain pattern for enum unpacking;
         variants.push(String::from("_ => None"));
@@ -216,18 +181,90 @@ impl Schema {
             match_frag = match_frag
         )
     }
-}
-
-pub fn expand_data_type(field_name: &str, data_type: &str, user_defined: bool) -> String {
-    if data_type.starts_with("NonZero") {
-        let inner_type = &data_type[7..data_type.len()].to_lowercase();
-        format!(
-            "{}::new({}::from_le_bytes(*{})).unwrap()",
-            data_type, inner_type, field_name
-        )
-    } else if is_integer_type(data_type) {
-        format!("{}::from_le_bytes(*{})", data_type, field_name)
-    } else {
-        format!("{}::unpack({}).unwrap()", data_type, field_name)
+    pub fn expand_data_unpack(&self, field_name: &str, data_type: &str) -> String {
+        if data_type.starts_with("NonZero") {
+            let inner_type = &data_type[7..data_type.len()].to_lowercase();
+            format!(
+                "{}::new({}::from_le_bytes(*{})).unwrap()",
+                data_type, inner_type, &field_name
+            )
+        } else if is_integer_type(data_type) {
+            format!("{}::from_le_bytes(*{})", data_type, field_name)
+        } else {
+            format!("{}::unpack({}).unwrap()", data_type, field_name)
+        }
+    }
+    pub fn expand_property_unpack(&self, property: &Property) -> String {
+        let data_type = property.data_type.as_str();
+        match property.array_length {
+            Some(val) => {
+                let total_size = property.length.unwrap_or_default();
+                if val > 0 && total_size > 0 {
+                    //Size of a single vector element
+                    let elm_size = total_size / val;
+                    if elm_size * val < total_size {
+                        panic!(format!("Error in property {}. Total size {} is not multiples of array length {}", &property.name, total_size, val))
+                    } else {
+                        let mut sizes = vec![];
+                        let mut indexes = vec![];
+                        for i in 0..val {
+                            sizes.push(format!("{}", elm_size));
+                            indexes.push(
+                                self.expand_data_unpack(format!("arr.{}", i).as_str(), data_type),
+                            );
+                        }
+                        format!(
+                            r#"{{
+                            let arr = array_refs![owner, {sizes}];
+                            vec![{indexes}]
+                        }}"#,
+                            sizes = sizes.join(","),
+                            indexes = indexes.join(",")
+                        )
+                    }
+                } else {
+                    String::from("Vec::default()")
+                }
+            }
+            None => self.expand_data_unpack(property.name.as_str(), data_type),
+        }
+    }
+    pub fn expand_variant_unpack(&self, name: &String, variant: &Variant) -> String {
+        let var_tag = variant.variant_tag;
+        match &variant.inner_type {
+            Some(inner_type) => {
+                let inner_schema = self.definitions.get(inner_type);
+                let variant_size = inner_schema
+                    .and_then(|schema| schema.get_size())
+                    .or(variant.get_size());
+                match variant_size {
+                    None => {
+                        let inner_value = self.expand_data_unpack("data", inner_type.as_str());
+                        format!(
+                            "{} => {{\
+                                        Some({}::{}({}))\
+                                     }}",
+                            var_tag, name, &variant.name, inner_value
+                        )
+                    }
+                    Some(size) => {
+                        let inner_value =
+                            self.expand_data_unpack("field_slice", inner_type.as_str());
+                        format!(
+                            r#"{var_tag} => {{
+                                        let field_slice = array_ref![data, 0, {size}];
+                                        Some({name}::{var_name}({inner_value}))
+                                    }}"#,
+                            var_tag = var_tag,
+                            size = size,
+                            name = name,
+                            var_name = &variant.name,
+                            inner_value = inner_value
+                        )
+                    }
+                }
+            }
+            None => format!("{} => Some({}::{})", var_tag, name, &variant.name),
+        }
     }
 }
