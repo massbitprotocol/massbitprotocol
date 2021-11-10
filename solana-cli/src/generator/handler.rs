@@ -11,6 +11,8 @@ use crate::models::*;
 use solana_program::pubkey::Pubkey;
 use solana_sdk::account::Account;
 use uuid::Uuid;
+use serde_json;
+use massbit_chain_solana::data_type::{SolanaBlock, SolanaLogMessages, SolanaTransaction};
 "#;
 pub fn append_handler_modules(out: &mut String) {
     writeln!(out, "{}", modules);
@@ -29,7 +31,7 @@ impl Schema {
                 r#"
 pub struct Handler {{}}
     impl Handler {{
-        pub fn process(&self, block: &Block, transaction: &Transaction, program_id: &Pubkey, accounts: &[Account], input: &[u8]) {{
+        pub fn process(&self, block: &SolanaBlock, transaction: &SolanaTransaction, program_id: &Pubkey, accounts: &[Account], input: &[u8]) {{
             if let Some(instruction) = {name}::unpack(input) {{
                 match instruction {{
                     {patterns}
@@ -111,8 +113,8 @@ pub struct Handler {{}}
                             r#"
         pub fn {function_name}(
                                 &self,
-                                block: &Block,
-                                transaction: &Transaction,
+                                block: &SolanaBlock,
+                                transaction: &SolanaTransaction,
                                 program_id: &Pubkey,
                                 accounts: &[Account],
                                 arg: {inner_type}
