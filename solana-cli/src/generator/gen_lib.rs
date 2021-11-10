@@ -1,12 +1,12 @@
 const default_content: &str = r#"
 pub mod mapping;
-pub mod models;
+//pub mod models;
 pub mod generated;
 
 use adapter::core::PluginRegistrar;
 use adapter::solana::*;
 use index_store::core::Store;
-pub use index_store::{Entity, EntityFilter, EntityOrder, EntityRange, Value};
+pub use index_store::{Attribute, Entity, EntityFilter, EntityOrder, EntityRange, Value};
 pub use index_store::{EntityValue, FromEntity, FromValueTrait, ToMap, ValueFrom};
 use lazy_static::lazy_static;
 use massbit_chain_solana::data_type as solana_types;

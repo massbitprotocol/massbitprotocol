@@ -1,0 +1,83 @@
+{
+  "name": "RootInstruction",
+  "type": "enum",
+  "offset": 1,
+  "variantTagLength": 4,
+  "variants": [
+    {
+      "name" : "InitializeMarket",
+      "innerType" : "InitializeMarketInstruction",
+      "variantTag" : 0
+    }
+  ],
+  "definitions": {
+    "RampAData" : {
+      "type": "struct",
+      "properties": [
+        {
+          "name": "target_amp",
+          "dataType": "u64",
+          "required": true
+        },
+        {
+          "name": "stop_ramp_ts",
+          "dataType": "u64",
+          "required": true
+        }
+      ]
+    },
+    "Fees" : {
+      "type": "struct",
+      "properties": [
+        {
+          "description": "Admin trade fee numerator",
+          "name": "admin_trade_fee_numerator",
+          "dataType": "u64",
+          "required": true
+        },
+        {
+          "description": "Admin trade fee denominator",
+          "name": "admin_trade_fee_denominator",
+          "dataType": "u64",
+          "required": true
+        },
+        {
+          "description": "Admin withdraw fee numerator",
+          "name": "admin_withdraw_fee_numerator",
+          "dataType": "u64",
+          "required": true
+        },
+        {
+          "description": "Admin withdraw fee denominator",
+          "name":"admin_withdraw_fee_denominator",
+          "dataType":"u64",
+          "required": true
+        },
+        {
+          "description": "Trade fee numerator",
+          "name":"trade_fee_numerator",
+          "dataType":"u64",
+          "required": true
+        },
+        {
+          "description": "Trade fee denominator",
+          "name":"trade_fee_denominator",
+          "dataType":"u64",
+          "required": true
+        },
+        {
+          "description": "Withdraw fee numerator",
+          "name": "withdraw_fee_numerator",
+          "dataType": "u64",
+          "required": true
+        },
+        {
+          "description": "Withdraw fee denominator",
+          "name":"withdraw_fee_denominator",
+          "dataType":"u64",
+          "required": true
+        }
+      ]
+    }
+  }
+}

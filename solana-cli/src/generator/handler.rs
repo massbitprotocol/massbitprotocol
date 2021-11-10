@@ -7,21 +7,91 @@ use std::fmt::Write;
 
 const modules: &str = r#"
 use crate::generated::instruction::*;
-use crate::models::*;
+use crate::STORE;
+use crate::{Attribute, Entity, EntityFilter, EntityOrder, EntityRange, Value};
+//use crate::models::*;
 use solana_program::pubkey::Pubkey;
 use solana_sdk::account::Account;
 use uuid::Uuid;
 use serde_json;
 use massbit_chain_solana::data_type::{SolanaBlock, SolanaLogMessages, SolanaTransaction};
 use solana_transaction_status::{parse_instruction, ConfirmedBlock, TransactionWithStatusMeta};
+use std::collections::HashMap;
 "#;
-pub fn append_handler_modules(out: &mut String) {
-    writeln!(out, "{}", modules);
+const entity_save: &str = r#"
+pub trait EntityExt {
+    fn save(&self, entity_name: &str);
 }
+impl EntityExt for Entity {
+    fn save(&self, entity_name: &str) {
+        unsafe {
+            STORE
+                .as_mut()
+                .unwrap()
+                .save(String::from(entity_name), self.clone());
+        }
+    }
+}
+pub trait ValueExt<T>: Sized {
+    fn try_from(_: T) -> Self;
+}    
+impl ValueExt<String> for Value {
+    fn try_from(value: String) -> Value {
+        Value::String(value)
+    }
+}
+impl ValueExt<u8> for Value {
+    fn try_from(value: u8) -> Value {
+        Value::Int(value as i32)
+    }
+}
+impl ValueExt<i8> for Value {
+    fn try_from(value: i8) -> Value {
+        Value::Int(value as i32)
+    }
+}
+impl ValueExt<u16> for Value {
+    fn try_from(value: u16) -> Value {
+        Value::Int(value as i32)
+    }
+}
+impl ValueExt<i16> for Value {
+    fn try_from(value: i16) -> Value {
+        Value::Int(value as i32)
+    }
+}
+impl ValueExt<u32> for Value {
+    fn try_from(value: u32) -> Value {
+        Value::Int(value as i32)
+    }
+}
+impl ValueExt<i32> for Value {
+    fn try_from(value: i32) -> Value {
+        Value::Int(value)
+    }
+}
+impl ValueExt<u64> for Value {
+    fn try_from(value: u64) -> Value {
+        Value::BigInt(value.into())
+    }
+}
+impl ValueExt<i64> for Value {
+    fn try_from(value: i64) -> Value {
+        Value::BigInt(value.into())
+    }
+}
+impl ValueExt<Vec<Value>> for Value {
+    fn try_from(value: Vec<Value>) -> Value {
+        Value::List(value)
+    }
+}
+"#;
+
 impl Schema {
     pub fn gen_handler(&self) -> String {
         let mut out = String::new();
         writeln!(out, "{}", modules);
+        writeln!(out, "{}", entity_save);
         if self.name.is_some() && self.variants.is_some() {
             let name = self.get_pascal_name(self.name.as_ref().unwrap());
             let patterns = self.expand_handler_patterns(&name, self.variants.as_ref().unwrap());
@@ -159,6 +229,87 @@ impl Schema {
         out
     }
     pub fn gen_entity_assignment(
+        schema: &Schema,
+        entity_type: &String,
+        entity_name: &String,
+    ) -> String {
+        let mut attributes: Vec<String> = Vec::default();
+        match MAPPING_RUST_TYPES_TO_DB.get(entity_type.as_str()) {
+            // if it is primitive type
+            Some(db_type) => {
+                attributes.push(format!(
+                    r#"map.insert("value".to_string(), Value::try_from(arg));"#,
+                    // MAPPING_DB_TYPES_TO_RUST
+                    //     .get(db_type)
+                    //     .unwrap_or(&Default::default())
+                ));
+            }
+            // if it is not primitive type
+            None => {
+                if let Some(properties) = &schema.properties {
+                    for property in properties {
+                        let db_type = MAPPING_RUST_TYPES_TO_DB.get(property.data_type.as_str());
+                        //.unwrap_or(&*DEFAULT_TYPE_DB);
+                        // If data_type is not primitive (e.g. Enum, Struct)
+                        match db_type {
+                            // If data_type is primitive (e.g. Enum, Struct)
+                            Some(db_type) => {
+                                let property_name = if property.data_type.starts_with("NonZero") {
+                                    format!("{}.get()", property.name)
+                                } else {
+                                    format!("{}", property.name)
+                                };
+
+                                match property.array_length {
+                                    Some(array_length) => {
+                                        // Todo: this code is tricky, should revise.
+                                        attributes.push(format!(
+                                            r#"map.insert("{}".to_string(), Value::try_from(arg.{}.iter().map(|&{}| Value::try_from({})).collect::<Vec<Value>>()));"#,
+                                            property.name,
+                                            property.name,
+                                            property.name,
+                                            property_name,
+                                            // MAPPING_DB_TYPES_TO_RUST
+                                            //     .get(db_type)
+                                            //     .unwrap_or(&Default::default())
+                                        ));
+                                    }
+                                    None => {
+                                        attributes.push(format!(
+                                            r#"map.insert("{}".to_string(), Value::try_from(arg.{}));"#,
+                                            property.name,
+                                            property_name,
+                                            // MAPPING_DB_TYPES_TO_RUST
+                                            //     .get(db_type)
+                                            //     .unwrap_or(&Default::default())
+                                        ));
+                                    }
+                                }
+                            }
+                            None => {
+                                attributes.push(format!(
+                                    r#"map.insert("{name}".to_string(), Value::try_from(serde_json::to_string(&arg.{name}).unwrap_or(Default::default())));"#,
+                                    name=property.name
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
+        };
+        format!(
+            r#"
+        let mut map : HashMap<Attribute, Value> = HashMap::default();
+        map.insert("id".to_string(), Value::try_from(Uuid::new_v4().to_simple().to_string()));
+        {attributes}
+        Entity::from(map).save("{entity_name}");
+        "#,
+            attributes = attributes.join("\n"),
+            entity_name = entity_name
+        )
+    }
+
+    pub fn gen_entity_assignment0(
         schema: &Schema,
         entity_type: &String,
         entity_name: &String,
