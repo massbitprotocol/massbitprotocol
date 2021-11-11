@@ -1,7 +1,7 @@
 use crate::generator::graphql::{
     DEFAULT_TYPE_DB, MAPPING_DB_TYPES_TO_RUST, MAPPING_RUST_TYPES_TO_DB,
 };
-use crate::schema::{PropertyArray, Schema, VariantArray};
+use crate::schema::Schema;
 use std::fmt::Write;
 
 impl Schema {
@@ -15,7 +15,6 @@ impl Schema {
             for instruction in instructions {
                 // Write table if there is inner_type
                 if let Some(inner_type) = instruction.inner_type {
-                    println!("{}({})", &instruction.name, &inner_type);
                     // Get definitions
                     if let Some(sub_schema) = self.definitions.get(&inner_type) {
                         // get a table corresponding to sub_schema
@@ -138,49 +137,49 @@ impl Schema {
         write!(
             out,
             r#"
-impl Into<Entity> for {struct_name} {{
-    fn into(self) -> Entity {{
-        let map = {struct_name}::to_map(self.clone());
-        Entity::from(map)
-    }}
-}}
-impl {struct_name} {{
-    pub fn save(&self) {{
-        unsafe {{
-            STORE
-                .as_mut()
-                .unwrap()
-                .save("{struct_name}".to_string(), self.clone().into());
-        }}
-    }}
-    pub fn get(entity_id: &String) -> Option<{struct_name}> {{
-        unsafe {{
-            let entity = STORE
-                .as_mut()
-                .unwrap()
-                .get("{struct_name}".to_string(), entity_id);
-            match entity {{
-                Some(e) => Some({struct_name}::from_entity(&e)),
-                None => None,
-            }}
-        }}
-    }}
-    pub fn query(
-        filter: Option<EntityFilter>,
-        order: EntityOrder,
-        range: EntityRange,
-    ) -> Vec<{struct_name}> {{
-        unsafe {{
-            STORE
-                .as_ref()
-                .unwrap()
-                .query("{struct_name}".to_string(), filter, order, range)
-                .iter()
-                .map(|e| {struct_name}::from_entity(e))
-                .collect::<Vec<{struct_name}>>()
-        }}
-    }}
-}}
+                impl Into<Entity> for {struct_name} {{
+                    fn into(self) -> Entity {{
+                        let map = {struct_name}::to_map(self.clone());
+                        Entity::from(map)
+                    }}
+                }}
+                impl {struct_name} {{
+                    pub fn save(&self) {{
+                        unsafe {{
+                            STORE
+                                .as_mut()
+                                .unwrap()
+                                .save("{struct_name}".to_string(), self.clone().into());
+                        }}
+                    }}
+                    pub fn get(entity_id: &String) -> Option<{struct_name}> {{
+                        unsafe {{
+                            let entity = STORE
+                                .as_mut()
+                                .unwrap()
+                                .get("{struct_name}".to_string(), entity_id);
+                            match entity {{
+                                Some(e) => Some({struct_name}::from_entity(&e)),
+                                None => None,
+                            }}
+                        }}
+                    }}
+                    pub fn query(
+                        filter: Option<EntityFilter>,
+                        order: EntityOrder,
+                        range: EntityRange,
+                    ) -> Vec<{struct_name}> {{
+                        unsafe {{
+                            STORE
+                                .as_ref()
+                                .unwrap()
+                                .query("{struct_name}".to_string(), filter, order, range)
+                                .iter()
+                                .map(|e| {struct_name}::from_entity(e))
+                                .collect::<Vec<{struct_name}>>()
+                        }}
+                    }}
+                }}
         "#,
             struct_name = struct_name
         );

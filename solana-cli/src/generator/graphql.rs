@@ -1,4 +1,4 @@
-use crate::schema::{PropertyArray, Schema, VariantArray};
+use crate::schema::Schema;
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::fmt::Write;
@@ -77,10 +77,6 @@ impl Schema {
             for instruction in instructions {
                 // Write table if there is inner_type
                 if let Some(inner_type) = instruction.inner_type {
-                    // if let Ok() = self.definitions.get(inner_type){
-                    //
-                    // }
-                    println!("{}({})", &instruction.name, &inner_type);
                     // Get definitions
                     if let Some(sub_schema) = self.definitions.get(&inner_type) {
                         // get a table corresponding to sub_schema
@@ -107,7 +103,7 @@ impl Schema {
                 if let Some(properties) = &schema.properties {
                     for property in properties {
                         match property.array_length {
-                            Some(array_length) => {
+                            Some(_array_length) => {
                                 let db_type = MAPPING_RUST_TYPES_TO_DB
                                     .get(property.data_type.as_str())
                                     .unwrap_or(&*DEFAULT_TYPE_DB);
@@ -128,55 +124,10 @@ impl Schema {
         };
         format!(
             r#"type {} @entity {{
-{entity_properties}
-}}"#,
+                {entity_properties}
+            }}"#,
             &entity_name,
             entity_properties = entity_properties.join(",\n")
         )
-    }
-    //Todo: remove this function
-    pub fn gen_entity_db0(schema: &Schema, entity_type: String, entity_name: String) -> String {
-        let mut out = String::new();
-        // Write entity name
-        write!(
-            out,
-            r#"type {} @entity {{
-    id: ID!"#,
-            &entity_name
-        );
-        // if it is primitive type
-        match MAPPING_RUST_TYPES_TO_DB.get(entity_type.as_str()) {
-            Some(db_type) => {
-                write!(
-                    out,
-                    r#"
-    value: {}"#,
-                    db_type
-                );
-            }
-            None => {
-                if let Some(properties) = &schema.properties {
-                    for property in properties {
-                        let db_type = MAPPING_RUST_TYPES_TO_DB
-                            .get(property.data_type.as_str())
-                            .unwrap_or(&*DEFAULT_TYPE_DB);
-                        write!(
-                            out,
-                            r#"
-    {}: {}"#,
-                            property.name, db_type
-                        );
-                    }
-                }
-            }
-        };
-        write!(
-            out,
-            r#"
- }}
- "#
-        );
-
-        out
     }
 }

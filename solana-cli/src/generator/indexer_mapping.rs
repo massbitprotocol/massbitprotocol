@@ -1,4 +1,4 @@
-pub const indexer_mapping: &str = r#"
+pub const INDEXER_MAPPING: &str = r#"
 use crate::generated::handler::Handler;
 use crate::generated::instruction::*;
 //use crate::models::*;

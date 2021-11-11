@@ -1,4 +1,4 @@
-pub const cargo_toml: &str = r#"
+pub const CARGO_TOML: &str = r#"
 [package]
 name = "block"
 version = "0.1.0"
@@ -66,7 +66,7 @@ crate-type = ["cdylib"]
 
 "#;
 
-pub const indexer_yaml: &str = r#"
+pub const INDEXER_YAML: &str = r#"
 specVersion: 0.0.2
 description: Indexer for Serum
 repository: https://github.com/massbitprotocol/massbitprotocol/tree/main/user-example

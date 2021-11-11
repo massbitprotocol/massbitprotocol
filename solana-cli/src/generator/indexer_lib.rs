@@ -1,4 +1,4 @@
-pub const indexer_lib: &str = r#"
+pub const INDEXER_LIB: &str = r#"
 pub mod mapping;
 //pub mod models;
 pub mod generated;

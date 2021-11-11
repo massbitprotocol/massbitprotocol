@@ -5,7 +5,7 @@ pub type PositiveIntegerDefault0 = serde_json::Value;
 pub type SchemaArray = Vec<Schema>;
 pub type VariantArray = Vec<Variant>;
 pub type PropertyArray = Vec<Property>;
-#[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Variant {
     pub name: String,
     pub value: Option<i32>,
@@ -35,7 +35,7 @@ impl Variant {
             "i32" | "u32" => Some(4),
             "i64" | "u64" => Some(8),
             "i128" | "u128" => Some(16),
-            type_name => None,
+            _type_name => None,
         })
     }
 }
@@ -44,7 +44,7 @@ pub struct AccountInfo {
     pub index: usize,
     pub name: String,
 }
-#[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Property {
     pub name: String,
     #[serde(rename = "dataType")]
@@ -105,7 +105,7 @@ pub enum SimpleTypes {
     String,
 }
 pub type StringArray = Vec<String>;
-#[derive(Clone, PartialEq, Debug, Deserialize, Serialize, Default)]
+#[derive(Clone, Debug, Deserialize, Serialize, Default)]
 pub struct Schema {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
