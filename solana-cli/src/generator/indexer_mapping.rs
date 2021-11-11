@@ -1,4 +1,4 @@
-const default_content: &str = r#"
+pub const indexer_mapping: &str = r#"
 use crate::generated::handler::Handler;
 use crate::generated::instruction::*;
 //use crate::models::*;
@@ -73,6 +73,3 @@ fn parse_instructions(block: &SolanaBlock, tran: &TransactionWithStatusMeta, tx_
 }
 
 "#;
-pub fn gen_mapping() -> String {
-    format!("{}", default_content)
-}

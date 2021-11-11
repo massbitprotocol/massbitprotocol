@@ -188,7 +188,6 @@ impl Schema {
                                 accounts: &[Account],
                                 arg: {inner_type}
                             ) -> Result<(), anyhow::Error> {{
-                                println!("{{:?}}", &arg);
                                 {function_body}
                             }}"#,
                             function_name = function_name,
@@ -299,11 +298,11 @@ impl Schema {
         };
         format!(
             r#"
-        let mut map : HashMap<Attribute, Value> = HashMap::default();
-        map.insert("id".to_string(), Value::try_from(Uuid::new_v4().to_simple().to_string()));
-        {attributes}
-        Entity::from(map).save("{entity_name}");
-        "#,
+                let mut map : HashMap<Attribute, Value> = HashMap::default();
+                map.insert("id".to_string(), Value::try_from(Uuid::new_v4().to_simple().to_string()));
+                {attributes}
+                Entity::from(map).save("{entity_name}");
+            "#,
             attributes = attributes.join("\n"),
             entity_name = entity_name
         )
