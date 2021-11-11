@@ -93,8 +93,7 @@ pub async fn loop_get_block(
         let block_hash = block.block.hash().to_string();
         let block_number = block.block.number() as u64;
         // Create generic block
-        let generic_block =
-            _create_generic_block_with_trigger(block_hash, block_number, &block, version.clone());
+        let generic_block = _create_generic_block_with_trigger(&block, version.clone());
         // Send data to GRPC stream
         if !chan.is_closed() {
             let send_res = chan.send(Ok(generic_block as BlockResponse)).await;
@@ -110,16 +109,11 @@ pub async fn loop_get_block(
 }
 
 fn _create_generic_block_with_trigger(
-    block_hash: String,
-    block_number: u64,
     block: &BlockWithTriggers<Chain>,
     version: String,
 ) -> BlockResponse {
     let generic_data = BlockResponse {
-        chain_type: CHAIN_TYPE as i32,
         version,
-        block_hash,
-        block_number,
         payload: serde_json::to_vec(block).unwrap(),
     };
     // Deserialize

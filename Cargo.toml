@@ -8,6 +8,7 @@ members = [
     "core/index-store",
     "cli",
     "chain/ethereum",
+    "chain/solana",
     "massbit",
     "runtime/wasm",
     "runtime/derive",
@@ -16,7 +17,8 @@ members = [
     "index-manager/main",
     "plugin/adapter",
     "plugin/plugin",
-    "tests"
+    "tests",
+    "solana-cli"
 ]
 exclude = ["code-compiler/generated"]
 

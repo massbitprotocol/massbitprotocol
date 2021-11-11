@@ -8,7 +8,7 @@ use strum_macros::AsStaticStr;
 
 // Massbit dependencies
 // pub use stream_mod::{
-//     streamout_client::StreamoutClient, ChainType, DataType, BlockResponse, GetBlocksRequest,
+//     streamout_client::StreamoutClient, ChainType, DataType, BlockResponse, GetBlockRequest,
 // };
 // pub mod stream_mod {
 //     tonic::include_proto!("chaindata");

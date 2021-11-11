@@ -25,7 +25,7 @@ use tower::timeout::Timeout;
 
 use crate::postgres_adapter::{PostgresAdapter, PostgresAdapterBuilder};
 use massbit::firehose::bstream::{
-    stream_client::StreamClient, BlockResponse, BlocksRequest, ChainType,
+    stream_client::StreamClient, BlockRequest, BlockResponse, ChainType,
 };
 use massbit_common::NetworkType;
 
@@ -54,7 +54,7 @@ pub async fn try_create_stream(
 ) -> Option<Streaming<BlockResponse>> {
     log::info!("Create new stream from block {:?}", start_block);
     let filter = vec![];
-    let get_blocks_request = BlocksRequest {
+    let get_blocks_request = BlockRequest {
         start_block_number: start_block,
         chain_type: chain_type as i32,
         network: network.clone().unwrap_or_default(),

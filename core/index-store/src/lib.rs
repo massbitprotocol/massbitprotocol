@@ -26,12 +26,14 @@ pub use graph::components::store::{
     EntityType, StoreError, StoreEvent, StoredDynamicDataSource, WritableStore,
 };
 pub use graph::data::graphql::ext::ValueExt;
-pub use graph::data::store::{Entity, Value};
+pub use graph::data::store::{Attribute, Entity, Value};
 pub use graph::prelude::q;
+use massbit_common::prelude::diesel::{Connection, PgConnection};
 pub use struct_entity::{EntityValue, FromEntity, FromValueTrait, ToMap, ValueFrom};
-use massbit_common::prelude::diesel::{PgConnection, Connection};
 
 pub fn establish_connection() -> PgConnection {
-    PgConnection::establish(DATABASE_CONNECTION_STRING.as_str())
-        .expect(&format!("Error connecting to {}", DATABASE_CONNECTION_STRING.as_str()))
+    PgConnection::establish(DATABASE_CONNECTION_STRING.as_str()).expect(&format!(
+        "Error connecting to {}",
+        DATABASE_CONNECTION_STRING.as_str()
+    ))
 }
