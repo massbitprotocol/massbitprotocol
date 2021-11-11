@@ -23,6 +23,8 @@ pub struct Variant {
     pub offset: Option<u16>,
     #[serde(rename = "variantTag")]
     pub variant_tag: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub accounts: Option<Vec<AccountInfo>>,
 }
 
 impl Variant {
@@ -36,6 +38,11 @@ impl Variant {
             type_name => None,
         })
     }
+}
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct AccountInfo {
+    pub index: usize,
+    pub name: String,
 }
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
 pub struct Property {
