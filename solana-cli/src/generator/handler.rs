@@ -1,11 +1,9 @@
-use crate::generator::graphql::{
-    DEFAULT_TYPE_DB, MAPPING_DB_TYPES_TO_RUST, MAPPING_RUST_TYPES_TO_DB,
-};
-use crate::schema::{PropertyArray, Schema, Variant, VariantArray};
+use crate::generator::graphql::{MAPPING_DB_TYPES_TO_RUST, MAPPING_RUST_TYPES_TO_DB};
+use crate::schema::{Schema, Variant, VariantArray};
 use inflector::Inflector;
 use std::fmt::Write;
 
-const modules: &str = r#"
+const MODULES: &str = r#"
 use crate::generated::instruction::*;
 use crate::STORE;
 use crate::{Attribute, Entity, EntityFilter, EntityOrder, EntityRange, Value};
@@ -18,7 +16,7 @@ use massbit_chain_solana::data_type::{SolanaBlock, SolanaLogMessages, SolanaTran
 use solana_transaction_status::{parse_instruction, ConfirmedBlock, TransactionWithStatusMeta};
 use std::collections::HashMap;
 "#;
-const entity_save: &str = r#"
+const ENTITY_SAVE: &str = r#"
 pub trait EntityExt {
     fn save(&self, entity_name: &str);
 }
@@ -90,8 +88,8 @@ impl ValueExt<Vec<Value>> for Value {
 impl Schema {
     pub fn gen_handler(&self) -> String {
         let mut out = String::new();
-        writeln!(out, "{}", modules);
-        writeln!(out, "{}", entity_save);
+        writeln!(out, "{}", MODULES);
+        writeln!(out, "{}", ENTITY_SAVE);
         if self.name.is_some() && self.variants.is_some() {
             let name = self.get_pascal_name(self.name.as_ref().unwrap());
             let patterns = self.expand_handler_patterns(&name, self.variants.as_ref().unwrap());
@@ -137,7 +135,7 @@ impl Schema {
                             method_name = method_name
                         )
                     }
-                    Some(inner_type) => {
+                    Some(_inner_type) => {
                         format!(
                             r#"{enum_name}::{var_name}(arg) => {{
                                 self.{method_name}(block,transaction,program_id, accounts, arg);

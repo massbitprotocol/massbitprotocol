@@ -8,19 +8,11 @@ pub mod instruction;
 pub mod model;
 
 use crate::schema::Schema;
-use indexer_lib::indexer_lib;
-use indexer_mapping::indexer_mapping;
+use indexer_lib::INDEXER_LIB;
+use indexer_mapping::INDEXER_MAPPING;
 use indexer_setting::*;
-use serde::ser::Serialize;
 use std::fs;
-use std::fs::DirEntry;
-use std::io::Error;
-use std::{
-    io,
-    path::{Path, PathBuf},
-};
-
-use tera::{Context, Tera};
+use std::{io, path::Path};
 
 #[derive(Debug)]
 #[must_use]
@@ -35,7 +27,7 @@ impl<'a> Generator<'a> {
     pub fn builder() -> GeneratorBuilder<'a> {
         GeneratorBuilder::default()
     }
-    pub fn generate(&self) {
+    pub fn generate(&self) -> Result<(), io::Error> {
         match &self.schema {
             None => {}
             Some(schema) => {
@@ -45,54 +37,55 @@ impl<'a> Generator<'a> {
                     format!("{}/{}", self.output_dir, "src/generated/instruction.rs").as_str(),
                     &data,
                     true,
-                );
+                )?;
                 //Instruction handler
                 let data = schema.gen_handler();
                 self.write_to_file(
                     format!("{}/{}", self.output_dir, "src/generated/handler.rs").as_str(),
                     &data,
                     true,
-                );
+                )?;
                 //Models
                 let data = schema.gen_models();
                 self.write_to_file(
                     format!("{}/{}", self.output_dir, "src/models.rs").as_str(),
                     &data,
                     true,
-                );
+                )?;
                 //libs
                 self.write_to_file(
                     format!("{}/{}", self.output_dir, "src/lib.rs").as_str(),
-                    &format!("{}", indexer_lib),
+                    &format!("{}", INDEXER_LIB),
                     true,
-                );
+                )?;
                 //Mapping
                 self.write_to_file(
                     format!("{}/{}", self.output_dir, "src/mapping.rs").as_str(),
-                    &format!("{}", indexer_mapping),
+                    &format!("{}", INDEXER_MAPPING),
                     true,
-                );
+                )?;
                 //subgraph.yaml
                 self.write_to_file(
                     format!("{}/{}", self.output_dir, "src/subgraph.yaml").as_str(),
-                    &format!("{}", indexer_yaml),
+                    &format!("{}", INDEXER_YAML),
                     true,
-                );
+                )?;
                 //Schema graphql
                 let data = schema.gen_graphql_schema();
                 self.write_to_file(
                     format!("{}/{}", self.output_dir, "src/schema.graphql").as_str(),
                     &data,
                     false,
-                );
+                )?;
                 //Cargo toml
                 self.write_to_file(
                     format!("{}/{}", self.output_dir, "Cargo.toml").as_str(),
-                    &format!("{}", cargo_toml),
+                    &format!("{}", CARGO_TOML),
                     false,
-                );
+                )?;
             }
         }
+        Ok(())
     }
 
     //pub fn generate_to_file<P: ?Sized + AsRef<Path>>(&self, output_file: &'b P) -> io::Result<()> {

@@ -2,7 +2,7 @@ use crate::generator::helper::is_integer_type;
 use crate::schema::{Property, PropertyArray, Schema, Variant, VariantArray};
 use std::fmt::Write;
 
-const modules: &str = r#"
+const MODULES: &str = r#"
 use bytemuck::cast;
 use serde::{{Deserialize, Serialize}};
 use solana_program::{{
@@ -16,8 +16,8 @@ use std::num::*;
 impl Schema {
     pub fn gen_instruction(&self) -> String {
         let mut out = String::new();
-        ///Import modules for instruction
-        writeln!(out, "{}", modules);
+        //Import modules for instruction
+        writeln!(out, "{}", MODULES);
         match &self.name {
             Some(name) => {
                 self.expand_definitions(&mut out, name);
@@ -230,7 +230,7 @@ impl Schema {
                     //Size of a single vector element
                     let elm_size = total_size / val;
                     if elm_size * val < total_size {
-                        panic!(format!("Error in property {}. Total size {} is not multiples of array length {}", &property.name, total_size, val))
+                        panic!("Error in property {}. Total size {} is not multiples of array length {}", &property.name, total_size, val)
                     } else {
                         let mut sizes = vec![];
                         let mut indexes = vec![];
