@@ -9,8 +9,6 @@ pub mod model;
 
 use crate::schema::Schema;
 use handlebars::Handlebars;
-use indexer_lib::indexer_lib;
-use indexer_mapping::indexer_mapping;
 use indexer_lib::INDEXER_LIB;
 use indexer_mapping::INDEXER_MAPPING;
 use indexer_setting::*;
@@ -21,7 +19,6 @@ use std::{io, path::Path};
 
 use minifier::json::minify;
 use serde_json::Value;
-use tera::{Context, Tera};
 
 #[derive(Debug)]
 #[must_use]
@@ -86,7 +83,7 @@ impl<'a> Generator<'a> {
                     format!("{}/{}", self.output_dir, "src/subgraph.yaml").as_str(),
                     &Handlebars::new()
                         .render_template(
-                            indexer_yaml,
+                            INDEXER_YAML,
                             &json!({
                                 "name": name,
                                 "address": contract_address,
