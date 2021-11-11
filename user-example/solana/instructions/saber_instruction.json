@@ -1,16 +1,312 @@
 {
   "name": "RootInstruction",
   "type": "enum",
-  "offset": 1,
-  "variantTagLength": 4,
+  "offset": 0,
+  "variantTagLength": 1,
   "variants": [
     {
-      "name" : "InitializeMarket",
-      "innerType" : "InitializeMarketInstruction",
+      "name":"Initialize",
+      "innerType": "InitializeData",
       "variantTag" : 0
+    },
+    {
+      "name":"Swap",
+      "innerType": "SwapData",
+      "variantTag" : 1,
+      "accounts": [
+        {
+          "index": 1,
+          "name": "authority_base"
+        },
+        {
+          "index": 2,
+          "name": "authority_source"
+        },
+        {
+          "index": 3,
+          "name": "source_account"
+        },
+        {
+          "index": 4,
+          "name": "base_into"
+        },
+        {
+          "index": 5,
+          "name": "base_from"
+        },
+        {
+          "index": 6,
+          "name": "destination_account"
+        },
+        {
+          "index": 7,
+          "name": "admin_fee_account"
+        },
+        {
+          "index": 8,
+          "name": "program_id"
+        },
+        {
+          "index": 9,
+          "name": "clock_sysvar"
+        }
+      ]
+    },
+    {
+      "name":"Deposit",
+      "innerType": "DepositData",
+      "variantTag" : 2,
+      "accounts" : [
+        {
+          "index": 1,
+          "name": "base_authority"
+        },
+        {
+          "index": 2,
+          "name": "owner_authority"
+        },
+        {
+          "index": 3,
+          "name": "token_a"
+        },
+        {
+          "index": 4,
+          "name": "token_b"
+        },
+        {
+          "index": 5,
+          "name": "token_a_base"
+        },
+        {
+          "index": 6,
+          "name": "token_b_base"
+        },
+        {
+          "index": 7,
+          "name": "mint_account"
+        },
+        {
+          "index": 8,
+          "name": "pool_account"
+        },
+        {
+          "index": 10,
+          "name": "clock_sysvar"
+        }
+      ]
+    },
+    {
+      "name":"Withdraw",
+      "innerType": "WithdrawData",
+      "variantTag" : 3,
+      "accounts" : [
+        {
+          "index": 1,
+          "name": "base_authority"
+        },
+        {
+          "index": 2,
+          "name": "owner_authority"
+        },
+        {
+          "index": 3,
+          "name": "pool_mint"
+        },
+        {
+          "index": 4,
+          "name": "pool_account"
+        },
+        {
+          "index": 5,
+          "name": "token_a_swap"
+        },
+        {
+          "index": 6,
+          "name": "token_b_swap"
+        },
+        {
+          "index": 7,
+          "name": "token_a"
+        },
+        {
+          "index": 8,
+          "name": "token_b"
+        },
+        {
+          "index": 9,
+          "name": "admin_fee_a_account"
+        },
+        {
+          "index": 10,
+          "name": "admin_fee_b_account"
+        }
+      ]
+    },
+    {
+      "name":"WithdrawOne",
+      "innerType": "WithdrawOneData",
+      "variantTag" : 4,
+      "accounts" : [
+        {
+          "index": 1,
+          "name": "swap_authority"
+        },
+        {
+          "index": 2,
+          "name": "pool_authority"
+        },
+        {
+          "index": 3,
+          "name": "pool_mint"
+        },
+        {
+          "index": 4,
+          "name": "pool_account"
+        },
+        {
+          "index": 5,
+          "name": "swap_base_account"
+        },
+        {
+          "index": 6,
+          "name": "swap_quote_account"
+        },
+        {
+          "index": 8,
+          "name": "admin_fee_account"
+        },
+        {
+          "index": 10,
+          "name": "clock_sysvar"
+        }
+      ]
+    },
+    {
+      "name" : "RampA",
+      "innerType" : "RampAData",
+      "variantTag" : 100
+    },
+    {
+      "name" : "StopRampA",
+      "variantTag" : 101
+    },
+    {
+      "name" : "Pause",
+      "variantTag" : 102
+    },
+    {
+      "name" : "Unpause",
+      "variantTag" : 103
+    },
+    {
+      "name" : "SetFeeAccount",
+      "variantTag" : 104
+    },
+    {
+      "name" : "ApplyNewAdmin",
+      "variantTag" : 105
+    },
+    {
+      "name" : "CommitNewAdmin",
+      "variantTag" : 106
+    },
+    {
+      "name" : "SetNewFees",
+      "innerType" : "Fees",
+      "variantTag" : 107
     }
   ],
   "definitions": {
+    "InitializeData" : {
+      "type": "struct",
+      "properties": [
+        {
+          "name": "nonce",
+          "dataType": "u8",
+          "required": true
+        },
+        {
+          "name": "amp_factor",
+          "dataType": "u64",
+          "required": true
+        },
+        {
+          "name": "fees",
+          "dataType": "Fees",
+          "required": true
+        }
+      ]
+    },
+    "SwapData" : {
+      "type": "struct",
+      "properties": [
+        {
+          "name": "amount_in",
+          "dataType": "u64",
+          "required": true
+        },
+        {
+          "name": "minimum_amount_out",
+          "dataType": "u64",
+          "required": true
+        }
+      ]
+    },
+    "DepositData" : {
+      "type": "struct",
+      "properties": [
+        {
+          "name": "token_a_amount",
+          "dataType": "u64",
+          "required": true
+        },
+        {
+          "name": "token_b_amount",
+          "dataType": "u64",
+          "required": true
+        },
+        {
+          "name": "min_mint_amount",
+          "dataType": "u64",
+          "required": true
+        }
+      ]
+    },
+    "WithdrawData" : {
+      "type": "struct",
+      "properties": [
+        {
+          "name": "pool_token_amount",
+          "dataType": "u64",
+          "required": true
+        },
+        {
+          "name": "minimum_token_a_amount",
+          "dataType": "u64",
+          "required": true
+        },
+        {
+          "name": "minimum_token_b_amount",
+          "dataType": "u64",
+          "required": true
+        }
+      ]
+    },
+    "WithdrawOneData" : {
+      "type": "struct",
+      "properties": [
+        {
+          "name": "pool_token_amount",
+          "dataType": "u64",
+          "required": true
+        },
+        {
+          "name": "minimum_token_amount",
+          "dataType": "u64",
+          "required": true
+        }
+      ]
+    },
     "RampAData" : {
       "type": "struct",
       "properties": [

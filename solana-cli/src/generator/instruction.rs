@@ -97,9 +97,13 @@ impl Schema {
             }
             Some(total_size)
         });
-        let mut offset = 0usize;
         let mut ref_names: Vec<String> = Vec::default();
         let mut lengths: Vec<String> = Vec::default();
+        //Store optional assigments
+        let mut property_assignments: Vec<String> = Vec::default();
+        //Collect is_some() condition
+        let mut optional_conditions: Vec<String> = Vec::default();
+        //Struct fields
         let mut properties: Vec<String> = Vec::default();
         for property in self.properties.as_ref().unwrap() {
             ref_names.push(format!("{}", &property.name));
@@ -107,36 +111,51 @@ impl Schema {
             //Expand struct field's data type.
             //Use unpack for user defined type other use try_from_primitive
             let field_value = self.expand_property_unpack(property);
-            properties.push(format!("{}: {}", &property.name, &field_value));
+            if self.is_option_value(property) {
+                property_assignments.push(format!("let {} = {};", &property.name, &field_value));
+                optional_conditions.push(format!("{}.is_some()", &property.name));
+                properties.push(format!("{name}:{name}.unwrap()", name = &property.name));
+            } else {
+                properties.push(format!("{}: {}", &property.name, &field_value));
+            }
         }
-        if let Some(val) = struct_size {
-            format!(
-                r#"pub fn unpack(input: &[u8; {size}]) -> Option<Self> {{
-                        let ({ref_names}) = array_refs![input, {lengths}];
-                        Some({name} {{
-                            {properties}
-                        }})
-                    }}"#,
-                size = val,
-                ref_names = ref_names.join(","),
-                lengths = lengths.join(","),
-                name = name,
-                properties = properties.join(",\n")
+        let str_size = if let Some(val) = struct_size {
+            format!("; {}", val)
+        } else {
+            String::from("")
+        };
+        let optional_flow = if optional_conditions.len() > 0 {
+            (
+                format!("if {} {{", optional_conditions.join("&&")),
+                String::from(
+                    r#"
+                } else {
+                    None
+                }"#,
+                ),
             )
         } else {
-            format!(
-                r#"pub fn unpack(input: &[u8]) -> Option<Self> {{
-                    let ({ref_names}) = array_refs![input, {lengths}];
-                    Some({name} {{
-                        {properties}
-                    }})
-                }}"#,
-                ref_names = ref_names.join(","),
-                lengths = lengths.join(","),
-                name = name,
-                properties = properties.join(",\n")
-            )
-        }
+            (String::default(), String::default())
+        };
+        format!(
+            r#"pub fn unpack(input: &[u8{size}]) -> Option<Self> {{
+                let ({ref_names}) = array_refs![input, {lengths}];
+                {assignments}
+                {optional_if}
+                Some({name} {{
+                    {properties}
+                }})
+                {optional_else}
+            }}"#,
+            size = str_size,
+            ref_names = ref_names.join(","),
+            lengths = lengths.join(","),
+            assignments = property_assignments.join("\n"),
+            name = name,
+            properties = properties.join(",\n"),
+            optional_if = &optional_flow.0,
+            optional_else = &optional_flow.1,
+        )
     }
     pub fn expand_enum_unpack(&self, name: &String) -> String {
         let tag_len = self.variant_tag_length.unwrap_or(1);
@@ -184,14 +203,23 @@ impl Schema {
         if data_type.starts_with("NonZero") {
             let inner_type = &data_type[7..data_type.len()].to_lowercase();
             format!(
-                "{}::new({}::from_le_bytes(*{})).unwrap()",
+                "{}::new({}::from_le_bytes(*{}))",
                 data_type, inner_type, &field_name
             )
         } else if is_integer_type(data_type) {
             format!("{}::from_le_bytes(*{})", data_type, field_name)
         } else {
-            format!("{}::unpack({}).unwrap()", data_type, field_name)
+            format!("{}::unpack({})", data_type, field_name)
         }
+    }
+    /// Return true if value of a property is optional
+    /// A property can be none when unpacking if
+    /// Property is not a vector, data_type is NonZero* or some user defined struct or enum
+    ///
+    pub fn is_option_value(&self, property: &Property) -> bool {
+        let data_type = property.data_type.as_str();
+        //Property is not vector
+        property.array_length.unwrap_or_default() == 0 && !is_integer_type(data_type)
     }
     pub fn expand_property_unpack(&self, property: &Property) -> String {
         let data_type = property.data_type.as_str();
@@ -236,31 +264,41 @@ impl Schema {
                 let variant_size = inner_schema
                     .and_then(|schema| schema.get_size())
                     .or(variant.get_size());
-                match variant_size {
-                    None => {
-                        let inner_value = self.expand_data_unpack("data", inner_type.as_str());
-                        format!(
-                            "{} => {{\
-                                        Some({}::{}({}))\
-                                     }}",
-                            var_tag, name, &variant.name, inner_value
-                        )
-                    }
-                    Some(size) => {
-                        let inner_value =
-                            self.expand_data_unpack("field_slice", inner_type.as_str());
-                        format!(
-                            r#"{var_tag} => {{
-                                        let field_slice = array_ref![data, 0, {size}];
+                let (inner_value, field_slice) = match variant_size {
+                    None => (
+                        self.expand_data_unpack("data", inner_type.as_str()),
+                        String::default(),
+                    ),
+                    Some(size) => (
+                        self.expand_data_unpack("field_slice", inner_type.as_str()),
+                        format!("let field_slice = array_ref![data, 0, {}];", size),
+                    ),
+                };
+                if is_integer_type(inner_type.as_str()) {
+                    format!(
+                        r#"{var_tag} => {{
+                                        {field_slice}
                                         Some({name}::{var_name}({inner_value}))
                                     }}"#,
-                            var_tag = var_tag,
-                            size = size,
-                            name = name,
-                            var_name = &variant.name,
-                            inner_value = inner_value
-                        )
-                    }
+                        var_tag = var_tag,
+                        field_slice = field_slice,
+                        name = name,
+                        var_name = &variant.name,
+                        inner_value = inner_value
+                    )
+                } else {
+                    format!(
+                        r#"{var_tag} => {{
+                                        {field_slice}
+                                        let inner = {inner_value};
+                                        inner.and_then(|inner_val| Some({name}::{var_name}(inner_val)))
+                                    }}"#,
+                        var_tag = var_tag,
+                        field_slice = field_slice,
+                        name = name,
+                        var_name = &variant.name,
+                        inner_value = inner_value
+                    )
                 }
             }
             None => format!("{} => Some({}::{})", var_tag, name, &variant.name),
