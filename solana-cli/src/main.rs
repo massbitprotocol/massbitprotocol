@@ -13,7 +13,15 @@ fn main() {
                 .short("s")
                 .long("structure")
                 .value_name("structure")
-                .help("Input instruction structure")
+                .help("Input instruction structure file")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("config")
+                .short("c")
+                .long("config")
+                .value_name("config")
+                .help("Input config file")
                 .takes_value(true),
         )
         .arg(
@@ -26,9 +34,11 @@ fn main() {
         )
         .get_matches();
     let structure_path = matches.value_of("structure").unwrap_or("instruction.json");
+    let config_path = matches.value_of("config").unwrap_or("config.json");
     let output = matches.value_of("output").unwrap_or("src");
     let generator = Generator::builder()
         .with_structure_path(structure_path)
+        .with_config_path(config_path)
         .with_output_dir(output)
         .build();
     generator.generate();
