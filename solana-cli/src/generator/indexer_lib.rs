@@ -1,4 +1,4 @@
-const default_content: &str = r#"
+pub const indexer_lib: &str = r#"
 pub mod mapping;
 //pub mod models;
 pub mod generated;
@@ -41,6 +41,3 @@ impl SolanaHandler for SolanaHandlerAdapter {
     }
 }
 "#;
-pub fn gen_lib() -> String {
-    format!("{}", default_content)
-}
