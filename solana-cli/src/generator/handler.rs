@@ -100,7 +100,15 @@ impl<'a> Generator<'a> {
                 &mut out,
                 r#"pub struct Handler {{}}
                     impl Handler {{
-                        pub fn process(&self, block: &SolanaBlock, transaction: &TransactionWithStatusMeta, program_id: &Pubkey, accounts: &[Account], input: &[u8]) {{
+                        pub fn process(
+                            &self, 
+                            block: &SolanaBlock, 
+                            transaction: &TransactionWithStatusMeta, 
+                            program_id: &Pubkey, 
+                            accounts: &Vec<Pubkey>, 
+                            input: &[u8],
+                        ) {{
+                            println!("Process block {{}} with input {{:?}}", block.block_number, input);
                             if let Some(instruction) = {name}::unpack(input) {{
                                 match instruction {{
                                     {patterns}
@@ -131,8 +139,8 @@ impl<'a> Generator<'a> {
                 };
                 format!(
                     r#"{enum_name}::{var_name}{var_inner} => {{
-                                self.{method_name}(block,transaction,program_id, accounts{arg});
-                            }}"#,
+                        self.{method_name}(block,transaction,program_id, accounts{arg});
+                    }}"#,
                     enum_name = enum_name,
                     var_name = &variant.name,
                     method_name = method_name,
@@ -151,10 +159,15 @@ impl<'a> Generator<'a> {
             .iter()
             .map(|variant| {
                 let function_name = format!("process_{}", &variant.name.to_snake_case());
-                let function_body = self.gen_function_body(variant);
+                let function_body = self.expand_function_body(variant);
                 let mut inner_arg = String::default();
                 if let Some(inner_type) = &variant.inner_type {
                     write!(&mut inner_arg, "arg: {}", inner_type);
+                };
+                let log = if let Some(inner_type) = &variant.inner_type {
+                    format!(r#"println!("call function {} for handle incoming block {{}} with argument {{:?}}", block.block_number, &arg);"#, function_name)
+                } else {
+                    format!(r#"println!("call function {} for handle incoming block {{}}", block.block_number);"#, function_name)
                 };
                 format!(
                     r#"pub fn {function_name}(
@@ -162,124 +175,113 @@ impl<'a> Generator<'a> {
                                 block: &SolanaBlock,
                                 transaction: &TransactionWithStatusMeta,
                                 program_id: &Pubkey,
-                                accounts: &[Account],
+                                accounts: &Vec<Pubkey>,
                                 {inner_arg}
                             ) -> Result<(), anyhow::Error> {{
+                                {log}
                                 {function_body}
                             }}"#,
                     function_name = function_name,
+                    log = log,
                     function_body = function_body,
                     inner_arg = inner_arg
                 )
             })
             .collect::<Vec<String>>()
     }
-    pub fn gen_function_body(&self, variant: &Variant) -> String {
-        let mut out = String::new();
-
-        // Write table if there is inner_type
-        if let Some(inner_type) = variant.inner_type.clone() {
-            // Get definitions
-            if let Some(sub_schema) = self.definitions.get(&inner_type) {
-                // get a table corresponding to sub_schema
-                let str_entity: String =
-                    Schema::gen_entity_assignment(sub_schema, &inner_type, &variant.name);
-                write!(out, "{}", str_entity);
-            } else if MAPPING_RUST_TYPES_TO_DB.contains_key(inner_type.as_str()) {
-                let str_entity: String = Schema::gen_entity_assignment(
-                    &Schema::default(),
-                    &inner_type,
-                    &variant.name.clone(),
-                );
-                write!(out, "{}", str_entity);
-            }
-        }
-        // Tail of function
-        write!(
-            out,
-            r#"
-            Ok(())"#
-        );
-        out
-    }
-    pub fn gen_entity_assignment(
-        schema: &Schema,
-        entity_type: &String,
-        entity_name: &String,
-    ) -> String {
-        let mut attributes: Vec<String> = Vec::default();
-        match MAPPING_RUST_TYPES_TO_DB.get(entity_type.as_str()) {
-            // if it is primitive type
-            Some(db_type) => {
-                attributes.push(format!(
-                    r#"map.insert("value".to_string(), Value::try_from(arg));"#,
-                    // MAPPING_DB_TYPES_TO_RUST
-                    //     .get(db_type)
-                    //     .unwrap_or(&Default::default())
+    pub fn expand_function_body(&self, variant: &Variant) -> String {
+        let mut assignments: Vec<String> = Vec::default();
+        //Account assigment
+        if let Some(accounts) = &variant.accounts {
+            for account in accounts {
+                assignments.push(format!(
+                    r#"map.insert("{}".to_string(), Value::try_from(
+                        accounts.get({})
+                            .and_then(|pubkey| Some(pubkey.to_string()))
+                            .unwrap_or_default()));"#,
+                    account.name, account.index
                 ));
             }
-            // if it is not primitive type
-            None => {
-                if let Some(properties) = &schema.properties {
-                    for property in properties {
-                        let db_type = MAPPING_RUST_TYPES_TO_DB.get(property.data_type.as_str());
-                        //.unwrap_or(&*DEFAULT_TYPE_DB);
-                        // If data_type is not primitive (e.g. Enum, Struct)
-                        match db_type {
-                            // If data_type is primitive (e.g. Enum, Struct)
-                            Some(db_type) => {
-                                let property_name = if property.data_type.starts_with("NonZero") {
-                                    format!("{}.get()", property.name)
-                                } else {
-                                    format!("{}", property.name)
-                                };
-
-                                match property.array_length {
-                                    Some(array_length) => {
-                                        // Todo: this code is tricky, should revise.
-                                        attributes.push(format!(
-                                            r#"map.insert("{}".to_string(), Value::try_from(arg.{}.iter().map(|&{}| Value::try_from({})).collect::<Vec<Value>>()));"#,
-                                            property.name,
-                                            property.name,
-                                            property.name,
-                                            property_name,
-                                            // MAPPING_DB_TYPES_TO_RUST
-                                            //     .get(db_type)
-                                            //     .unwrap_or(&Default::default())
-                                        ));
-                                    }
-                                    None => {
-                                        attributes.push(format!(
-                                            r#"map.insert("{}".to_string(), Value::try_from(arg.{}));"#,
-                                            property.name,
-                                            property_name,
-                                            // MAPPING_DB_TYPES_TO_RUST
-                                            //     .get(db_type)
-                                            //     .unwrap_or(&Default::default())
-                                        ));
-                                    }
-                                }
-                            }
-                            None => {
-                                attributes.push(format!(
-                                    r#"map.insert("{name}".to_string(), Value::try_from(serde_json::to_string(&arg.{name}).unwrap_or(Default::default())));"#,
-                                    name=property.name
-                                ));
-                            }
-                        }
-                    }
-                }
+        }
+        // Write table if there is inner_type
+        if let Some(inner_type) = &variant.inner_type {
+            // Get definitions
+            if let Some(inner_schema) = self.definitions.get(inner_type.as_str()) {
+                // get a table corresponding to inner_schema
+                self.expand_entity_assignment(&mut assignments, variant, inner_schema);
+            } else if MAPPING_RUST_TYPES_TO_DB.contains_key(inner_type.as_str()) {
+                //Inner type is primitive
+                self.expand_single_assignment(&mut assignments, "value", "arg");
             }
-        };
+        }
         format!(
             r#"
                 let mut map : HashMap<Attribute, Value> = HashMap::default();
                 map.insert("id".to_string(), Value::try_from(Uuid::new_v4().to_simple().to_string()));
-                {attributes}
+                {assignments}
                 Entity::from(map).save("{entity_name}");
+                Ok(())
             "#,
-            attributes = attributes.join("\n"),
-            entity_name = entity_name
+            assignments = assignments.join("\n"),
+            entity_name = &variant.name
         )
+    }
+    fn expand_single_assignment(
+        &self,
+        assignments: &mut Vec<String>,
+        field_name: &str,
+        field_value: &str,
+    ) {
+        assignments.push(format!(
+            r#"map.insert("{}".to_string(), Value::try_from({}));"#,
+            field_name, field_value
+        ));
+    }
+    pub fn expand_entity_assignment(
+        &self,
+        assignments: &mut Vec<String>,
+        variant: &Variant,
+        inner_schema: &Schema,
+    ) {
+        //If inner schema is a struct
+        if let Some(properties) = &inner_schema.properties {
+            for property in properties {
+                let db_type = MAPPING_RUST_TYPES_TO_DB.get(property.data_type.as_str());
+                //.unwrap_or(&*DEFAULT_TYPE_DB);
+                // If data_type is not primitive (e.g. Enum, Struct)
+                match db_type {
+                    // If data_type is primitive (e.g. Enum, Struct)
+                    Some(db_type) => {
+                        let elm_value = if property.data_type.starts_with("NonZero") {
+                            format!("{}.get()", property.name)
+                        } else {
+                            format!("{}", property.name)
+                        };
+                        let property_value = match property.array_length {
+                            Some(_) => {
+                                format!(
+                                    r#"arg.{property_name}.iter().map(|&{property_name}| Value::try_from({elm_value})).collect::<Vec<Value>>())"#,
+                                    property_name = &property.name,
+                                    elm_value = elm_value
+                                )
+                            }
+                            None => {
+                                format!("arg.{}", elm_value)
+                            }
+                        };
+                        assignments.push(format!(
+                            r#"map.insert("{}".to_string(), Value::try_from({}));"#,
+                            &property.name, &property_value
+                        ));
+                    }
+                    None => {
+                        assignments.push(format!(
+                            r#"map.insert("{name}".to_string(), Value::try_from(serde_json::to_string(&arg.{name}).unwrap_or(Default::default())));"#,
+                            name=&property.name
+                        ));
+                    }
+                }
+            }
+        }
     }
 }

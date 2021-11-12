@@ -31,7 +31,7 @@ pub struct Generator<'a> {
     pub output_dir: &'a str,
     pub schema: Option<Schema>,
     pub config: Option<Value>,
-    pub definitions: BTreeMap<String, &'a Schema>,
+    pub definitions: BTreeMap<String, Schema>,
 }
 
 impl<'a> Generator<'a> {
@@ -42,15 +42,20 @@ impl<'a> Generator<'a> {
     pub fn generate(&self) -> Result<(), io::Error> {
         let ref_schema = self.schema.as_ref();
         if let Some(schema) = ref_schema {
+            let config = self.config.clone().unwrap();
+            let name = &config["name"].as_str().unwrap_or_default();
+            let contract_address = &config["contract_address"].as_str().unwrap_or_default();
+            let start_block = &config["start_block"].as_i64().unwrap_or_default();
+
             //Instruction
-            let data = schema.gen_instruction();
+            let data = self.generate_instruction(schema);
             self.write_to_file(
                 &format!("{}/{}", self.output_dir, "src/generated/instruction.rs"),
                 &data,
                 true,
             )?;
             //Instruction handler
-            let data = self.gennerate_handler();
+            let data = self.generate_handler(schema);
             self.write_to_file(
                 &format!("{}/{}", self.output_dir, "src/generated/handler.rs"),
                 &data,
@@ -63,10 +68,19 @@ impl<'a> Generator<'a> {
             //     &data,
             //     true,
             // )?;
+
             //libs
+            let lib_content = &Handlebars::new()
+                .render_template(
+                    INDEXER_LIB,
+                    &json!({
+                        "address": contract_address,
+                    }),
+                )
+                .unwrap();
             self.write_to_file(
                 &format!("{}/{}", self.output_dir, "src/lib.rs"),
-                &format!("{}", INDEXER_LIB),
+                &lib_content,
                 true,
             )?;
             //Mapping
@@ -82,12 +96,7 @@ impl<'a> Generator<'a> {
                 true,
             )?;
             //subgraph.yaml
-            let config = self.config.clone().unwrap();
-            let name = &config["name"].as_str().unwrap_or_default();
-            let contract_address = &config["contract_address"].as_str().unwrap_or_default();
-            let start_block = &config["start_block"].as_i64().unwrap_or_default();
 
-            println!("name: {}", name);
             self.write_to_file(
                 &format!("{}/{}", self.output_dir, "src/subgraph.yaml"),
                 &Handlebars::new()
@@ -103,7 +112,7 @@ impl<'a> Generator<'a> {
                 true,
             )?;
             //Schema graphql
-            let data = schema.gen_graphql_schema();
+            let data = self.generate_graphql_schema(schema);
             self.write_to_file(
                 &format!("{}/{}", self.output_dir, "src/schema.graphql"),
                 &data,
@@ -182,7 +191,7 @@ impl<'a> GeneratorBuilder<'a> {
 
         let schema: Schema = serde_json::from_str(&json)
             .unwrap_or_else(|err| panic!("Cannot parse `{}` as JSON: {}", path, err));
-        //println!("{:?}", &schema.definitions);
+        self.collect_definitions(&schema);
         self.inner.schema = Some(schema);
         self
     }
@@ -200,9 +209,9 @@ impl<'a> GeneratorBuilder<'a> {
         self.inner.output_dir = output_dir;
         self
     }
-    fn collect_definitions(&mut self, schema: &'a Schema) {
+    fn collect_definitions(&mut self, schema: &Schema) {
         schema.definitions.iter().for_each(|(name, schema)| {
-            self.inner.definitions.insert(name.clone(), schema);
+            self.inner.definitions.insert(name.clone(), schema.clone());
             self.collect_definitions(schema);
         });
     }
