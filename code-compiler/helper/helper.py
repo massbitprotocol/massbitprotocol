@@ -92,20 +92,20 @@ def get_file(path):
 
 # To be refactored
 # We'll be traversing subgraph.yaml and upload the content instead of pre-upload the content to IPFS.
-def get_abi_files(compilation_id):
+def get_abi_files(compilation_folder):
     """
     Build a new array of abi object from the /generated/hash/abis folder
-
-    :param compilation_id: (String) Hash Identifier of the new index. It's also the name of the folders in the generated folder
+    :param by default, compilation_folder == ./generated/compilation_id
+    compilation_id: (String) Hash Identifier of the new index. It's also the name of the folders in the generated folder
     :return: (Array) ABI file objects (name of the file, path to the file)
     """
     abi = []
-    abi_path = os.path.join("./generated", compilation_id, "abis")
+    abi_path = os.path.join(compilation_folder, "abis")
     if os.path.isdir(abi_path):
         for file_name in get_file(abi_path):
             abi_object = {
                 "name": file_name,
-                "path": os.path.join("./generated", compilation_id, "abis", file_name)
+                "path": os.path.join(compilation_folder, "abis", file_name)
             }
             abi.append(abi_object)
     return abi

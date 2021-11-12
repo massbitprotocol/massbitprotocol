@@ -52,11 +52,9 @@ def compile_status_handler(deployment_hash):
 @cross_origin()
 def deploy_handler():
     data = request.json
-    deploy_so(data)
-    return {
-               "status": "success",
-               "payload": "",
-           }, 200
+    res = deploy_so(data)
+
+    return res, 200
 
 
 @app.route("/deploy/wasm", methods=['POST'])

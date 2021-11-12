@@ -130,14 +130,25 @@ def compile_so(data, use_precompile=True):
 
 def deploy_so(data):
     # Parse the data
-    compilation_id = urllib.parse.unquote(data["compilation_id"])
+    if "compilation_id" in data:
+        compilation_id = urllib.parse.unquote(data["compilation_id"])
+        compilation_folder = os.path.join("./generated", compilation_id)
+    elif "compilation_folder" in data:
+        # Get the files path from generated/hash folder
+        compilation_folder = urllib.parse.unquote(data["compilation_folder"])
+    else:
+        print("Need compilation_id or compilation_folder parameter")
+        return {
+            "status": "false",
+            "payload": "Need compilation_id or compilation_folder parameter",
+        }
 
-    # Get the files path from generated/hash folder
-    subgraph_path = os.path.join("./generated", compilation_id, "src", "subgraph.yaml")
-    parsed_subgraph_path = os.path.join("./generated", compilation_id, "parsed_subgraph.yaml")
-    mapping_path = os.path.join("./generated", compilation_id, "target/release/libblock.so")
-    schema_path = os.path.join("./generated", compilation_id, "src/schema.graphql")
-    abi = get_abi_files(compilation_id)
+    subgraph_path = os.path.join(compilation_folder, "src", "subgraph.yaml")
+    parsed_subgraph_path = os.path.join(compilation_folder, "parsed_subgraph.yaml")
+    mapping_path = os.path.join(compilation_folder, "target/release/libblock.so")
+    schema_path = os.path.join(compilation_folder, "src/schema.graphql")
+    abi = get_abi_files(compilation_folder)
+
 
     # Uploading files to IPFS
     if os.environ.get('IPFS_URL'):
@@ -156,7 +167,7 @@ def deploy_so(data):
     print(f"libblock.so: : {mapping_res['Hash']}")
     print(f"{schema_path}: {schema_res['Hash']}")
     for abi_object in abi_res:
-        print(f"{os.path.join('./generated', compilation_id, abi_object['name'])} : {abi_object['hash']}")
+        print(f"{os.path.join(compilation_folder, abi_object['name'])} : {abi_object['hash']}")
 
     # Parse subgraph file and upload to IPFS
     parse_subgraph(subgraph_path, parsed_subgraph_path, mapping_res, schema_res, abi_res)
@@ -164,6 +175,10 @@ def deploy_so(data):
 
     # Deploy a new index to Index Manager
     deploy_to_index_manager(subgraph_res, parsed_subgraph_res, mapping_res, schema_res)
+    return {
+        "status": "success",
+        "payload": "",
+    }
 
 
 def deploy_to_index_manager(subgraph_res, parsed_subgraph_res, mapping_res, schema_res):
