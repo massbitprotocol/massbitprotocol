@@ -17,8 +17,7 @@ use solana_program::pubkey::Pubkey;
 use solana_sdk::account::Account;
 use solana_transaction_status::{parse_instruction, ConfirmedBlock, TransactionWithStatusMeta};
 use uuid::Uuid;
-
-const ADDRESS: &str = "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin";
+use crate::ADDRESS;
 
 pub fn handle_block(block: &SolanaBlock) -> Result<(), Box<dyn std::error::Error>> {
     for (tx_ind, tran) in block.block.transactions.iter().enumerate() {
@@ -66,7 +65,7 @@ fn parse_instructions(block: &SolanaBlock, tran: &TransactionWithStatusMeta, tx_
             //println!("account_infos {:?}", &account_infos);
             let handler = Handler {};
             // Fixme: Get account_infos from chain take a lot of time. For now, use empty vector.
-            handler.process(block, tran, program_key, vec![].as_slice(), inst.data.as_slice());
+            handler.process(block, tran, program_key, &accounts, inst.data.as_slice());
             // }
         }
     }
