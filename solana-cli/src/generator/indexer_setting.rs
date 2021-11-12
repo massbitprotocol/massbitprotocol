@@ -74,12 +74,12 @@ schema:
   file: ./schema.graphql
 dataSources:
   - kind: solana
-    name: Serum-Indexer
+    name: {{name}}
     network: mainnet
     source:
-      address: 9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin
+      address: {{address}}
       abi: Serum,
-      start_block: 0
+      start_block: {{start_block}}
     mapping:
       kind: solana/BlockHandler
       apiVersion: 0.0.4

@@ -8,19 +8,27 @@ pub mod instruction;
 pub mod model;
 
 use crate::schema::Schema;
+use handlebars::Handlebars;
 use indexer_lib::INDEXER_LIB;
 use indexer_mapping::INDEXER_MAPPING;
 use indexer_setting::*;
+use serde::ser::Serialize;
+use serde_json::{json, to_string};
 use std::fs;
 use std::{io, path::Path};
+
+use minifier::json::minify;
+use serde_json::Value;
 
 #[derive(Debug)]
 #[must_use]
 pub struct Generator<'a> {
     pub structure_path: &'a str,
+    pub config_path: &'a str,
     /// The output dir
     pub output_dir: &'a str,
     pub schema: Option<Schema>,
+    pub config: Option<Value>,
 }
 
 impl<'a> Generator<'a> {
@@ -65,9 +73,24 @@ impl<'a> Generator<'a> {
                     true,
                 )?;
                 //subgraph.yaml
+                let config = self.config.clone().unwrap();
+                let name = &config["name"].as_str().unwrap_or_default();
+                let contract_address = &config["contract_address"].as_str().unwrap_or_default();
+                let start_block = &config["start_block"].as_i64().unwrap_or_default();
+
+                println!("name: {}", name);
                 self.write_to_file(
                     format!("{}/{}", self.output_dir, "src/subgraph.yaml").as_str(),
-                    &format!("{}", INDEXER_YAML),
+                    &Handlebars::new()
+                        .render_template(
+                            INDEXER_YAML,
+                            &json!({
+                                "name": name,
+                                "address": contract_address,
+                                "start_block": start_block
+                            }),
+                        )
+                        .unwrap(),
                     true,
                 )?;
                 //Schema graphql
@@ -131,8 +154,10 @@ impl<'a> Default for GeneratorBuilder<'a> {
         Self {
             inner: Generator {
                 structure_path: "",
+                config_path: "",
                 output_dir: "",
                 schema: None,
+                config: None,
             },
         }
     }
@@ -148,6 +173,16 @@ impl<'a> GeneratorBuilder<'a> {
             .unwrap_or_else(|err| panic!("Cannot parse `{}` as JSON: {}", path, err));
         //println!("{:?}", &schema.definitions);
         self.inner.schema = Some(schema);
+        self
+    }
+    pub fn with_config_path(mut self, path: &'a str) -> Self {
+        self.inner.config_path = path;
+        let json = std::fs::read_to_string(path)
+            .unwrap_or_else(|err| panic!("Unable to read `{}`: {}", path, err));
+        let config: Value = serde_json::from_str(&minify(&json))
+            .unwrap_or_else(|err| panic!("Cannot parse `{}` as JSON: {}", path, err));
+        //println!("config: {:?}", &config);
+        self.inner.config = Some(config);
         self
     }
     pub fn with_output_dir(mut self, output_dir: &'a str) -> Self {
