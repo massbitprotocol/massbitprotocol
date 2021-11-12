@@ -1,0 +1,15 @@
+{
+  "name": "MangoInstruction",
+  "type" : "enum",
+  "offset": 0,
+  "variantTagLength" : 4,
+  "variants": [
+    {
+      "name":"Initialize",
+      "innerType": "InitializeData",
+      "variantTag" : 0
+    }
+  ],
+  "definitions": {
+  }
+}

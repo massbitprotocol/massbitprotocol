@@ -1,4 +1,5 @@
 use crate::generator::graphql::{MAPPING_DB_TYPES_TO_RUST, MAPPING_RUST_TYPES_TO_DB};
+use crate::generator::Generator;
 use crate::schema::{Schema, Variant, VariantArray};
 use inflector::Inflector;
 use std::fmt::Write;
@@ -99,7 +100,7 @@ impl Schema {
                 &mut out,
                 r#"pub struct Handler {{}}
                     impl Handler {{
-                        pub fn process(&self, block: &SolanaBlock, transaction: &TransactionWithStatusMeta, program_id: &Pubkey, accounts: &[Account], input: &[u8]) {{
+                        pub fn process(&self, block: &SolanaBlock, transaction: &TransactionWithStatusMeta, program_id: &Pubkey, accounts: &Vec<Pubkey> input: &[u8]) {{
                             if let Some(instruction) = {name}::unpack(input) {{
                                 match instruction {{
                                     {patterns}
@@ -159,47 +160,45 @@ impl Schema {
             .map(|variant| {
                 let function_name = format!("process_{}", &variant.name.to_snake_case());
                 let function_body = self.gen_function_body(variant);
-
-                match &variant.inner_type {
-                    None => {
-                        format!(
-                            r#"pub fn {function_name}(
-                                    &self,
-                                    block: &SolanaBlock,
-                                    transaction: &TransactionWithStatusMeta,
-                                    program_id: &Pubkey,
-                                    accounts: &[Account],
-                                ) -> Result<(), anyhow::Error> {{
-                                    {function_body}
-                                }}"#,
-                            function_name = function_name,
-                            function_body = function_body,
-                        )
-                    }
+                let args = match &variant.inner_type {
                     Some(inner_type) => {
-                        format!(
-                            r#"pub fn {function_name}(
-                                &self,
-                                block: &SolanaBlock,
-                                transaction: &TransactionWithStatusMeta,
-                                program_id: &Pubkey,
-                                accounts: &[Account],
-                                arg: {inner_type}
-                            ) -> Result<(), anyhow::Error> {{
-                                {function_body}
-                            }}"#,
-                            function_name = function_name,
-                            function_body = function_body,
-                            inner_type = inner_type
-                        )
+                        format!("arg: {}", inner_type)
                     }
-                }
+                    None => String::default(),
+                };
+                format!(
+                    r#"pub fn {function_name}(
+                            &self,
+                            block: &SolanaBlock,
+                            transaction: &TransactionWithStatusMeta,
+                            program_id: &Pubkey,
+                            accounts: &Vec<Pubkey>
+                            {args}
+                        ) -> Result<(), anyhow::Error> {{
+                            {function_body}
+                        }}"#,
+                    function_name = function_name,
+                    function_body = function_body,
+                    args = args
+                )
             })
             .collect::<Vec<String>>()
     }
     pub fn gen_function_body(&self, variant: &Variant) -> String {
         let mut out = String::new();
-
+        let mut assignments: Vec<String> = Vec::default();
+        //Account assigment
+        if let Some(accounts) = &variant.accounts {
+            for account in accounts {
+                account_assignments.push(format!(
+                    r#"map.insert({}.to_string(), Value::try_from(accounts
+                            .get({})
+                            .and_then(|pubkey| pubkey.to_string())
+                            .unwrap_or_default());"#,
+                    account.name, account.index
+                ));
+            }
+        }
         // Write table if there is inner_type
         if let Some(inner_type) = variant.inner_type.clone() {
             // Get definitions
@@ -225,6 +224,7 @@ impl Schema {
         );
         out
     }
+    pub fn gen_entity_property_assignment(&self) -> String {}
     pub fn gen_entity_assignment(
         schema: &Schema,
         entity_type: &String,
