@@ -3,6 +3,7 @@ pub mod handler;
 pub mod helper;
 pub mod indexer_lib;
 pub mod indexer_mapping;
+pub mod indexer_mod;
 pub mod indexer_setting;
 pub mod instruction;
 pub mod model;
@@ -17,6 +18,7 @@ use serde_json::{json, to_string};
 use std::fs;
 use std::{io, path::Path};
 
+use crate::generator::indexer_mod::INDEXER_MOD;
 use minifier::json::minify;
 use serde_json::Value;
 
@@ -42,34 +44,40 @@ impl<'a> Generator<'a> {
                 //Instruction
                 let data = schema.gen_instruction();
                 self.write_to_file(
-                    format!("{}/{}", self.output_dir, "src/generated/instruction.rs").as_str(),
+                    &format!("{}/{}", self.output_dir, "src/generated/instruction.rs"),
                     &data,
                     true,
                 )?;
                 //Instruction handler
                 let data = schema.gen_handler();
                 self.write_to_file(
-                    format!("{}/{}", self.output_dir, "src/generated/handler.rs").as_str(),
+                    &format!("{}/{}", self.output_dir, "src/generated/handler.rs"),
                     &data,
                     true,
                 )?;
                 //Models
                 let data = schema.gen_models();
                 self.write_to_file(
-                    format!("{}/{}", self.output_dir, "src/models.rs").as_str(),
+                    &format!("{}/{}", self.output_dir, "src/models.rs"),
                     &data,
                     true,
                 )?;
                 //libs
                 self.write_to_file(
-                    format!("{}/{}", self.output_dir, "src/lib.rs").as_str(),
+                    &format!("{}/{}", self.output_dir, "src/lib.rs"),
                     &format!("{}", INDEXER_LIB),
                     true,
                 )?;
                 //Mapping
                 self.write_to_file(
-                    format!("{}/{}", self.output_dir, "src/mapping.rs").as_str(),
+                    &format!("{}/{}", self.output_dir, "src/mapping.rs"),
                     &format!("{}", INDEXER_MAPPING),
+                    true,
+                )?;
+                //mod.rs
+                self.write_to_file(
+                    &format!("{}/{}", self.output_dir, "src/generated/mod.rs"),
+                    &format!("{}", INDEXER_MOD),
                     true,
                 )?;
                 //subgraph.yaml
@@ -80,7 +88,7 @@ impl<'a> Generator<'a> {
 
                 println!("name: {}", name);
                 self.write_to_file(
-                    format!("{}/{}", self.output_dir, "src/subgraph.yaml").as_str(),
+                    &format!("{}/{}", self.output_dir, "src/subgraph.yaml"),
                     &Handlebars::new()
                         .render_template(
                             INDEXER_YAML,
@@ -96,13 +104,13 @@ impl<'a> Generator<'a> {
                 //Schema graphql
                 let data = schema.gen_graphql_schema();
                 self.write_to_file(
-                    format!("{}/{}", self.output_dir, "src/schema.graphql").as_str(),
+                    &format!("{}/{}", self.output_dir, "src/schema.graphql"),
                     &data,
                     false,
                 )?;
                 //Cargo toml
                 self.write_to_file(
-                    format!("{}/{}", self.output_dir, "Cargo.toml").as_str(),
+                    &format!("{}/{}", self.output_dir, "Cargo.toml"),
                     &format!("{}", CARGO_TOML),
                     false,
                 )?;
@@ -113,32 +121,35 @@ impl<'a> Generator<'a> {
 
     //pub fn generate_to_file<P: ?Sized + AsRef<Path>>(&self, output_file: &'b P) -> io::Result<()> {
 
-    pub fn write_to_file<P: ?Sized + AsRef<Path>>(
+    // pub fn write_to_file<P: ?Sized + AsRef<Path>>(
+    //     &self,
+    //     output_path: &P,
+    //     content: &String,
+    //     apply_format: bool,
+    // ) -> io::Result<()> {
+    pub fn write_to_file(
         &self,
-        output_path: &P,
+        output_path: &String,
         content: &String,
         apply_format: bool,
     ) -> io::Result<()> {
+        // Check and create parent directory
+        let path = std::path::Path::new(&output_path);
+        let prefix = path.parent().unwrap();
+        std::fs::create_dir_all(prefix).unwrap();
+
+        // Write the file
         match fs::write(output_path, content) {
             Ok(_) => {
                 if apply_format {
                     use std::process::Command;
-                    Command::new("rustfmt")
-                        .arg(output_path.as_ref().as_os_str())
-                        .output();
+                    Command::new("rustfmt").arg(output_path).output();
                 }
-                log::info!(
-                    "Write content to file {:?} successfully",
-                    &output_path.as_ref().as_os_str()
-                );
+                log::info!("Write content to file {:?} successfully", &output_path);
                 Ok(())
             }
             e @ Err(_) => {
-                log::info!(
-                    "Write content to file {:?} fail. {:?}",
-                    &output_path.as_ref().as_os_str(),
-                    &e
-                );
+                log::info!("Write content to file {:?} fail. {:?}", &output_path, &e);
                 e
             }
         }

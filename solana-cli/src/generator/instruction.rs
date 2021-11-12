@@ -93,7 +93,11 @@ impl Schema {
         let struct_size = self.properties.as_ref().and_then(|properties| {
             let mut total_size = 0_usize;
             for property in properties {
-                total_size = total_size + property.size()
+                if let Some(prop_def) = self.definitions.get(property.data_type.as_str()) {
+                    total_size = total_size + prop_def.get_size().unwrap_or_default();
+                } else {
+                    total_size = total_size + property.size();
+                }
             }
             Some(total_size)
         });
