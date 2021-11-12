@@ -6,21 +6,21 @@ pub mod indexer_mapping;
 pub mod indexer_mod;
 pub mod indexer_setting;
 pub mod instruction;
-pub mod model;
+//pub mod model;
 
+use crate::generator::indexer_mod::INDEXER_MOD;
 use crate::schema::Schema;
 use handlebars::Handlebars;
 use indexer_lib::INDEXER_LIB;
 use indexer_mapping::INDEXER_MAPPING;
 use indexer_setting::*;
+use minifier::json::minify;
 use serde::ser::Serialize;
+use serde_json::Value;
 use serde_json::{json, to_string};
+use std::collections::BTreeMap;
 use std::fs;
 use std::{io, path::Path};
-
-use crate::generator::indexer_mod::INDEXER_MOD;
-use minifier::json::minify;
-use serde_json::Value;
 
 #[derive(Debug)]
 #[must_use]
@@ -31,94 +31,93 @@ pub struct Generator<'a> {
     pub output_dir: &'a str,
     pub schema: Option<Schema>,
     pub config: Option<Value>,
+    pub definitions: BTreeMap<String, &'a Schema>,
 }
 
 impl<'a> Generator<'a> {
     pub fn builder() -> GeneratorBuilder<'a> {
         GeneratorBuilder::default()
     }
-    pub fn generate(&self) -> Result<(), io::Error> {
-        match &self.schema {
-            None => {}
-            Some(schema) => {
-                //Instruction
-                let data = schema.gen_instruction();
-                self.write_to_file(
-                    &format!("{}/{}", self.output_dir, "src/generated/instruction.rs"),
-                    &data,
-                    true,
-                )?;
-                //Instruction handler
-                let data = schema.gen_handler();
-                self.write_to_file(
-                    &format!("{}/{}", self.output_dir, "src/generated/handler.rs"),
-                    &data,
-                    true,
-                )?;
-                //Models
-                let data = schema.gen_models();
-                self.write_to_file(
-                    &format!("{}/{}", self.output_dir, "src/models.rs"),
-                    &data,
-                    true,
-                )?;
-                //libs
-                self.write_to_file(
-                    &format!("{}/{}", self.output_dir, "src/lib.rs"),
-                    &format!("{}", INDEXER_LIB),
-                    true,
-                )?;
-                //Mapping
-                self.write_to_file(
-                    &format!("{}/{}", self.output_dir, "src/mapping.rs"),
-                    &format!("{}", INDEXER_MAPPING),
-                    true,
-                )?;
-                //mod.rs
-                self.write_to_file(
-                    &format!("{}/{}", self.output_dir, "src/generated/mod.rs"),
-                    &format!("{}", INDEXER_MOD),
-                    true,
-                )?;
-                //subgraph.yaml
-                let config = self.config.clone().unwrap();
-                let name = &config["name"].as_str().unwrap_or_default();
-                let contract_address = &config["contract_address"].as_str().unwrap_or_default();
-                let start_block = &config["start_block"].as_i64().unwrap_or_default();
 
-                println!("name: {}", name);
-                self.write_to_file(
-                    &format!("{}/{}", self.output_dir, "src/subgraph.yaml"),
-                    &Handlebars::new()
-                        .render_template(
-                            INDEXER_YAML,
-                            &json!({
-                                "name": name,
-                                "address": contract_address,
-                                "start_block": start_block
-                            }),
-                        )
-                        .unwrap(),
-                    true,
-                )?;
-                //Schema graphql
-                let data = schema.gen_graphql_schema();
-                self.write_to_file(
-                    &format!("{}/{}", self.output_dir, "src/schema.graphql"),
-                    &data,
-                    false,
-                )?;
-                //Cargo toml
-                self.write_to_file(
-                    &format!("{}/{}", self.output_dir, "Cargo.toml"),
-                    &format!("{}", CARGO_TOML),
-                    false,
-                )?;
-            }
-        }
+    pub fn generate(&self) -> Result<(), io::Error> {
+        let ref_schema = self.schema.as_ref();
+        if let Some(schema) = ref_schema {
+            //Instruction
+            let data = schema.gen_instruction();
+            self.write_to_file(
+                &format!("{}/{}", self.output_dir, "src/generated/instruction.rs"),
+                &data,
+                true,
+            )?;
+            //Instruction handler
+            let data = self.gennerate_handler();
+            self.write_to_file(
+                &format!("{}/{}", self.output_dir, "src/generated/handler.rs"),
+                &data,
+                true,
+            )?;
+            //Models
+            // let data = schema.gen_models();
+            // self.write_to_file(
+            //     &format!("{}/{}", self.output_dir, "src/models.rs"),
+            //     &data,
+            //     true,
+            // )?;
+            //libs
+            self.write_to_file(
+                &format!("{}/{}", self.output_dir, "src/lib.rs"),
+                &format!("{}", INDEXER_LIB),
+                true,
+            )?;
+            //Mapping
+            self.write_to_file(
+                &format!("{}/{}", self.output_dir, "src/mapping.rs"),
+                &format!("{}", INDEXER_MAPPING),
+                true,
+            )?;
+            //mod.rs
+            self.write_to_file(
+                &format!("{}/{}", self.output_dir, "src/generated/mod.rs"),
+                &format!("{}", INDEXER_MOD),
+                true,
+            )?;
+            //subgraph.yaml
+            let config = self.config.clone().unwrap();
+            let name = &config["name"].as_str().unwrap_or_default();
+            let contract_address = &config["contract_address"].as_str().unwrap_or_default();
+            let start_block = &config["start_block"].as_i64().unwrap_or_default();
+
+            println!("name: {}", name);
+            self.write_to_file(
+                &format!("{}/{}", self.output_dir, "src/subgraph.yaml"),
+                &Handlebars::new()
+                    .render_template(
+                        INDEXER_YAML,
+                        &json!({
+                            "name": name,
+                            "address": contract_address,
+                            "start_block": start_block
+                        }),
+                    )
+                    .unwrap(),
+                true,
+            )?;
+            //Schema graphql
+            let data = schema.gen_graphql_schema();
+            self.write_to_file(
+                &format!("{}/{}", self.output_dir, "src/schema.graphql"),
+                &data,
+                false,
+            )?;
+            //Cargo toml
+            self.write_to_file(
+                &format!("{}/{}", self.output_dir, "Cargo.toml"),
+                &format!("{}", CARGO_TOML),
+                false,
+            )?;
+        };
         Ok(())
     }
-
     //pub fn generate_to_file<P: ?Sized + AsRef<Path>>(&self, output_file: &'b P) -> io::Result<()> {
 
     // pub fn write_to_file<P: ?Sized + AsRef<Path>>(
@@ -169,6 +168,7 @@ impl<'a> Default for GeneratorBuilder<'a> {
                 output_dir: "",
                 schema: None,
                 config: None,
+                definitions: BTreeMap::default(),
             },
         }
     }
@@ -199,6 +199,12 @@ impl<'a> GeneratorBuilder<'a> {
     pub fn with_output_dir(mut self, output_dir: &'a str) -> Self {
         self.inner.output_dir = output_dir;
         self
+    }
+    fn collect_definitions(&mut self, schema: &'a Schema) {
+        schema.definitions.iter().for_each(|(name, schema)| {
+            self.inner.definitions.insert(name.clone(), schema);
+            self.collect_definitions(schema);
+        });
     }
     pub fn build(mut self) -> Generator<'a> {
         self.inner
