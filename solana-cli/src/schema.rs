@@ -1,5 +1,6 @@
 use crate::generator::helper::replace_invalid_identifier_chars;
 use inflector::Inflector;
+use std::collections::BTreeMap;
 pub type PositiveInteger = i64;
 pub type PositiveIntegerDefault0 = serde_json::Value;
 pub type SchemaArray = Vec<Schema>;
@@ -59,7 +60,7 @@ pub struct Property {
     pub description: Option<String>,
 }
 impl Property {
-    pub fn size(&self) -> usize {
+    pub fn get_size(&self, definitions: &BTreeMap<String, Schema>) -> usize {
         match self.length {
             None => match self.data_type.as_str() {
                 "u8" | "i8" => 1_usize,
@@ -67,7 +68,10 @@ impl Property {
                 "u32" | "i32" => 4_usize,
                 "u64" | "i64" => 8_usize,
                 "u128" | "i128" => 16_usize,
-                &_ => 1_usize,
+                type_name => definitions
+                    .get(type_name)
+                    .and_then(|def_schema| def_schema.get_size(definitions))
+                    .unwrap_or(1usize),
             },
             Some(len) => len,
         }
@@ -129,11 +133,11 @@ impl Schema {
         replace_invalid_identifier_chars(&name.as_str().to_pascal_case())
     }
     //Get size of struct type
-    pub fn get_size(&self) -> Option<usize> {
+    pub fn get_size(&self, definitions: &BTreeMap<String, Schema>) -> Option<usize> {
         self.properties.as_ref().and_then(|properties| {
             let mut size = 0usize;
             for property in properties {
-                size = size + property.size();
+                size = size + property.get_size(definitions);
             }
             Some(size)
         })
