@@ -47,11 +47,11 @@ impl MessageHandler for SolanaHandlerProxy {
         // Todo: Rewrite the flush so it will flush after finish the array of blocks for better performance. For now, we flush after each block.
         for block in blocks {
             log::info!(
-                "{} Received SOLANA BLOCK with block number: {:?}, with {} TRANSACTION: {:?}",
+                "{} Received SOLANA BLOCK with block slot: {:?} and hash {:?}, with {} TRANSACTIONs",
                 &*COMPONENT_NAME,
                 &block.block_number,
-                &block.block.transactions.len(),
-                &block.block.blockhash
+                &block.block.blockhash,
+                &block.block.transactions.len()
             );
             self.handler.handle_block(&block);
             let mut print_flag = true;

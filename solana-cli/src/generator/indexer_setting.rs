@@ -18,6 +18,7 @@ bytemuck = { version = "1.4.0" }
 arbitrary = { version = "0.4.6", features = ["derive"], optional = true }
 bincode = "1.3.1"
 enumflags2 = "0.6.4"
+log = "0.4.14"
 # Massbit dependencies
 adapter = { path = "../../../plugin/adapter" }
 massbit-chain-solana = { path = "../../../core/chain/solana" }
@@ -26,7 +27,6 @@ massbit-drive = {path = "../../../core/drive" }
 num_enum = "0.5.0"
 thiserror = "1.0.20"
 safe-transmute = "0.11.0"
-serum-swap = "0.4.0"
 lazy_static     = "1.4.0"
 serde = "1.0.114"
 serde_json = "1.0.69"
