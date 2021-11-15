@@ -1,0 +1,36 @@
+[package]
+name = "indexer_api"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bigdecimal = "0.3.0"
+bs58 = "0.4.0"
+base64 = "0.13.0"
+diesel          = { version = "1.4.7", features = ["postgres", "serde_json", "numeric", "r2d2", "chrono"] }
+diesel-derive-enum  = { version = "1.1", features = ["postgres"] }
+logger = { path = "../../core/logger" }
+log = "0.4.14"
+massbit = { path = "../../massbit" }
+massbit-common = { path = "../../core/common" }
+massbit-chain-solana = { path = "../../core/chain/solana" }
+massbit-store-postgres = { path = "../../store/postgres"}
+jsonrpc-core = "18.0.0"
+jsonrpc-core-client = "18.0.0"
+jsonrpc-derive      = "18.0.0"
+jsonrpc-http-server = "18.0.0"
+itertools = "0.10.1"
+lazy_static     = "1.4.0"
+serde           = { version = "1.0", optional = false }
+tokio = {version = "1.2.0", features = ["full"]} # Required by Tonic
+futures = { version = "0.3.13", features = ["compat"] }
+tokio-compat-02 = "0.2"
+tokio02-spawn = { path = "../../core/tokio02-spawn" }
+[build-dependencies]
+tonic-build = "0.5"
+
+[[bin]] # Bin to run gRPC server
+name = "indexer-api"
+path = "src/main.rs"

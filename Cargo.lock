@@ -3441,6 +3441,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "indexer_api"
+version = "0.1.0"
+dependencies = [
+ "base64 0.13.0",
+ "bigdecimal 0.3.0",
+ "bs58 0.4.0",
+ "diesel",
+ "diesel-derive-enum",
+ "futures 0.3.17",
+ "itertools 0.10.1",
+ "jsonrpc-core 18.0.0",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "jsonrpc-http-server 18.0.0",
+ "lazy_static",
+ "log 0.4.14",
+ "logger",
+ "massbit",
+ "massbit-chain-solana",
+ "massbit-common",
+ "massbit-store-postgres",
+ "serde",
+ "tokio 1.12.0",
+ "tokio-compat-02",
+ "tokio02-spawn",
+ "tonic-build",
+]
+
+[[package]]
 name = "indexmap"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -2,6 +2,7 @@
 members = [
     "analytics",
     "apis/solana_api",
+    "apis/indexer_api",
     "chain-reader",
     "core/chain/solana",
     "core/drive",
