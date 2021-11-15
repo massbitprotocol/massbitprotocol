@@ -22,10 +22,6 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::{io, path::Path};
 
-use crate::generator::indexer_mod::INDEXER_MOD;
-use minifier::json::minify;
-use serde_json::Value;
-
 #[derive(Debug)]
 #[must_use]
 pub struct Generator<'a> {
