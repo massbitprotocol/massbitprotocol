@@ -100,12 +100,14 @@ def get_abi_files(compilation_id):
     :return: (Array) ABI file objects (name of the file, path to the file)
     """
     abi = []
-    for file_name in get_file(os.path.join("./generated", compilation_id, "abis")):
-        abi_object = {
-            "name": file_name,
-            "path": os.path.join("./generated", compilation_id, "abis", file_name)
-        }
-        abi.append(abi_object)
+    abi_path = os.path.join("./generated", compilation_id, "abis")
+    if os.path.isdir(abi_path):
+        for file_name in get_file(abi_path):
+            abi_object = {
+                "name": file_name,
+                "path": os.path.join("./generated", compilation_id, "abis", file_name)
+            }
+            abi.append(abi_object)
     return abi
 
 

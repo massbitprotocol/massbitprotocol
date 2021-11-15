@@ -1,4 +1,5 @@
 use crate::generator::helper::is_integer_type;
+use crate::generator::Generator;
 use crate::schema::{Property, PropertyArray, Schema, Variant, VariantArray};
 use std::fmt::Write;
 
@@ -13,30 +14,25 @@ use arrayref::{{array_ref, array_refs}};
 use num_enum::{{IntoPrimitive, TryFromPrimitive}};
 use std::num::*;
 "#;
-impl Schema {
-    pub fn gen_instruction(&self) -> String {
+impl<'a> Generator<'a> {
+    pub fn generate_instruction(&self, schema: &Schema) -> String {
         let mut out = String::new();
         //Import modules for instruction
         writeln!(out, "{}", MODULES);
-        match &self.name {
-            Some(name) => {
-                self.expand_definitions(&mut out, name);
-            }
-            None => {}
+        //Expand definitions
+        self.definitions.iter().for_each(|(name, def)| {
+            self.expand_schema(&mut out, name, def);
+        });
+        if let Some(name) = &schema.name {
+            self.expand_schema(&mut out, name, schema);
         }
         out
     }
     pub fn expand_schema(&self, out: &mut String, name: &String, schema: &Schema) {
-        schema.expand_definitions(out, name)
-    }
-    pub fn expand_definitions(&self, out: &mut String, schema_name: &String) {
-        self.definitions.iter().for_each(|(name, def)| {
-            self.expand_schema(out, name, def);
-        });
-        if let Some(properties) = &self.properties {
-            let name = self.get_pascal_name(schema_name);
+        if let Some(properties) = &schema.properties {
+            let name = schema.get_pascal_name(name);
             let fields = self.expand_fields(properties);
-            let unpack = self.expand_struct_unpack(&name);
+            let unpack = self.expand_struct_unpack(&name, schema);
             let struct_def = format!("pub struct {} {{{fields}}}", &name, fields = &fields);
             let struct_impl = format!("impl {} {{\n{unpack}\n}}", &name, unpack = &unpack);
             write! {
@@ -45,15 +41,15 @@ impl Schema {
                 struct_def = struct_def,
                 struct_impl = struct_impl
             };
-        } else if let Some(variants) = &self.variants {
-            let name = self.get_pascal_name(schema_name);
+        } else if let Some(variants) = &schema.variants {
+            let name = schema.get_pascal_name(name);
             let variants = self.expand_variants(variants);
             let enum_def = format!(
                 "pub enum {} {{\n{variants}\n}}",
                 &name,
                 variants = &variants
             );
-            let unpack = self.expand_enum_unpack(&name);
+            let unpack = self.expand_enum_unpack(&name, schema);
             let enum_impl = format!("impl {} {{\n{unpack}\n}}", &name, unpack = &unpack);
             write! {
                 out,
@@ -89,14 +85,8 @@ impl Schema {
             .collect::<Vec<String>>()
             .join(",\n")
     }
-    pub fn expand_struct_unpack(&self, name: &String) -> String {
-        let struct_size = self.properties.as_ref().and_then(|properties| {
-            let mut total_size = 0_usize;
-            for property in properties {
-                total_size = total_size + property.size()
-            }
-            Some(total_size)
-        });
+    pub fn expand_struct_unpack(&self, name: &String, schema: &Schema) -> String {
+        let struct_size = schema.get_size(&self.definitions);
         let mut ref_names: Vec<String> = Vec::default();
         let mut lengths: Vec<String> = Vec::default();
         //Store optional assigments
@@ -105,9 +95,9 @@ impl Schema {
         let mut optional_conditions: Vec<String> = Vec::default();
         //Struct fields
         let mut properties: Vec<String> = Vec::default();
-        for property in self.properties.as_ref().unwrap() {
+        for property in schema.properties.as_ref().unwrap() {
             ref_names.push(format!("{}", &property.name));
-            lengths.push(format!("{}", property.size()));
+            lengths.push(format!("{}", property.get_size(&self.definitions)));
             //Expand struct field's data type.
             //Use unpack for user defined type other use try_from_primitive
             let field_value = self.expand_property_unpack(property);
@@ -157,28 +147,26 @@ impl Schema {
             optional_else = &optional_flow.1,
         )
     }
-    pub fn expand_enum_unpack(&self, name: &String) -> String {
-        let tag_len = self.variant_tag_length.unwrap_or(1);
-        let separation = match self.offset {
-            None => {
-                format!(
-                    "let (&tag_slice, data) = array_refs![input, {}; ..;];",
-                    tag_len
-                )
-            }
-            Some(offset) => {
-                format!(
-                    "let (&[offset], &tag_slice, data) = array_refs![input, {}, {}; ..;];",
-                    offset, tag_len
-                )
-            }
+    pub fn expand_enum_unpack(&self, name: &String, schema: &Schema) -> String {
+        let tag_len = schema.variant_tag_length.unwrap_or(1);
+        let offset = schema.offset.unwrap_or_default();
+        let separation = if offset > 0 {
+            format!(
+                "let (&[offset], &tag_slice, data) = array_refs![input, {}, {}; ..;];",
+                offset, tag_len
+            )
+        } else {
+            format!(
+                "let (&tag_slice, data) = array_refs![input, {}; ..;];",
+                tag_len
+            )
         };
         let tag_val = match tag_len {
             1 => "let tag_val = u8::from_le_bytes(tag_slice) as u32;".to_string(),
             2 => "let tag_val = u16::from_le_bytes(tag_slice) as u32;".to_string(),
             _ => "let tag_val = u32::from_le_bytes(tag_slice) as u32;".to_string(),
         };
-        let mut variants = self
+        let mut variants = schema
             .variants
             .as_ref()
             .unwrap()
@@ -190,6 +178,7 @@ impl Schema {
         let match_frag = format!("match tag_val {{{}}}", variants.join(",\n"));
         format!(
             r#"pub fn unpack(input: &[u8]) -> Option<Self> {{
+                println!("unpack input data {{:?}}", input);
                 {separation}
                 {tag_val}            
                 {match_frag}
@@ -262,7 +251,7 @@ impl Schema {
             Some(inner_type) => {
                 let inner_schema = self.definitions.get(inner_type);
                 let variant_size = inner_schema
-                    .and_then(|schema| schema.get_size())
+                    .and_then(|schema| schema.get_size(&self.definitions))
                     .or(variant.get_size());
                 let (inner_value, field_slice) = match variant_size {
                     None => (
