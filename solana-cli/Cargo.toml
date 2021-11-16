@@ -2,7 +2,12 @@
 name = "solana-cli"
 version = "0.1.0"
 edition = "2018"
-
+authors = ["Massbit <contact@massbit.io>"]
+description = "CLI for Massbit Solana Indexer"
+homepage = "https://www.massbit.io/"
+repository = "https://github.com/massbitprotocol/massbitprotocol"
+readme = "README.md"
+keywords = ["cli", "solana","massbit"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -27,7 +32,7 @@ proptest-derive = "0.3.0"
 log = "0.4.14"
 lazy_static = "1.4.0"
 minifier = "0.0.41"
-logger = { path = "../core/logger" }
+logger = {version = "0.1.0", path = "../core/logger" }
 handlebars = "4.1.4"
 #[[bin]] # Bin to run gRPC server
 #name = "test_origin"
