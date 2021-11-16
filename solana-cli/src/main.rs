@@ -1,6 +1,6 @@
 use clap::{App, Arg};
 //use logger::core::init_logger;
-use solana_cli::generator::Generator;
+use massbit_sol::generator::Generator;
 
 fn main() {
     //let res = init_logger(&String::from("solana-cli"));

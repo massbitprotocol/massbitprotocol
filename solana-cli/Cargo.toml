@@ -1,5 +1,5 @@
 [package]
-name = "solana-cli"
+name = "massbit-sol"
 version = "0.1.0"
 edition = "2018"
 authors = ["Massbit <contact@massbit.io>"]
@@ -10,6 +10,7 @@ readme = "README.md"
 keywords = ["cli", "solana","massbit"]
 license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
 
 [dependencies]
 anyhow = "1.0.45"
@@ -35,6 +36,6 @@ lazy_static = "1.4.0"
 minifier = "0.0.41"
 #logger = {version = "0.1.0", path = "../core/logger" }
 handlebars = "4.1.4"
-#[[bin]] # Bin to run gRPC server
-#name = "test_origin"
-#path = "./src/test_origin.rs"
+[[bin]] # Bin to run cli
+name = "solana-cli"
+path = "./src/main.rs"
