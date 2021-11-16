@@ -32,7 +32,7 @@ proptest-derive = "0.3.0"
 log = "0.4.14"
 lazy_static = "1.4.0"
 minifier = "0.0.41"
-logger = {version = "0.1.0", path = "../core/logger" }
+#logger = {version = "0.1.0", path = "../core/logger" }
 handlebars = "4.1.4"
 #[[bin]] # Bin to run gRPC server
 #name = "test_origin"

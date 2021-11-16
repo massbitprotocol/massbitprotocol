@@ -1,10 +1,10 @@
 use clap::{App, Arg};
-use logger::core::init_logger;
+//use logger::core::init_logger;
 use solana_cli::generator::Generator;
 
 fn main() {
-    let res = init_logger(&String::from("solana-cli"));
-    println!("Log output: {}", res); // Print log output type
+    //let res = init_logger(&String::from("solana-cli"));
+    //println!("Log output: {}", res); // Print log output type
     let matches = App::new("massbit-sol")
         .version("1.0")
         .about("Massbit Solana CLI")

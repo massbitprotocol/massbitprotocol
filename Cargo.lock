@@ -6737,7 +6737,6 @@ dependencies = [
  "handlebars",
  "lazy_static",
  "log 0.4.14",
- "logger",
  "minifier",
  "num-derive",
  "num-traits",
