@@ -260,7 +260,7 @@ impl<'a> Generator<'a> {
                         let property_value = match property.array_length {
                             Some(_) => {
                                 format!(
-                                    r#"arg.{property_name}.iter().map(|&{property_name}| Value::try_from({elm_value})).collect::<Vec<Value>>())"#,
+                                    r#"arg.{property_name}.iter().map(|&{property_name}| Value::try_from({elm_value})).collect::<Vec<Value>>()"#,
                                     property_name = &property.name,
                                     elm_value = elm_value
                                 )

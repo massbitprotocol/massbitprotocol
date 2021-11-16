@@ -7,17 +7,143 @@
     {
       "name" : "InitializeMarket",
       "innerType" : "InitializeMarketInstruction",
-      "variantTag" : 0
+      "variantTag" : 0,
+      "accounts" : [
+        {
+          "index": 0,
+          "name": "market"
+        },
+        {
+          "index": 1,
+          "name": "request_queue"
+        },
+        {
+          "index": 2,
+          "name": "event_queue"
+        },
+        {
+          "index": 3,
+          "name": "bids"
+        },
+        {
+          "index": 4,
+          "name": "asks"
+        },
+        {
+          "index": 5,
+          "name": "coin_currency"
+        },
+        {
+          "index": 6,
+          "name": "price_currency"
+        },
+        {
+          "index": 7,
+          "name": "coin_currency_mint"
+        },
+        {
+          "index": 8,
+          "name": "price_currency_mint"
+        },
+        {
+          "index": 9,
+          "name": "rent_sysvar"
+        },
+        {
+          "index": 10,
+          "name": "open_orders_market_authority"
+        },
+        {
+          "index": 11,
+          "name": "prune_authority"
+        },
+        {
+          "index": 12,
+          "name": "crank_authority"
+        }
+      ]
     },
     {
       "name" : "NewOrder",
       "innerType": "NewOrderInstructionV1",
-      "variantTag" : 1
+      "variantTag" : 1,
+      "accounts" : [
+        {
+          "index": 0,
+          "name": "market"
+        },
+        {
+          "index": 1,
+          "name": "OpenOrders account"
+        },
+        {
+          "index": 2,
+          "name": "request queue"
+        },
+        {
+          "index": 3,
+          "name": "account paying"
+        },
+        {
+          "index": 4,
+          "name": "owner_openOrders_account"
+        },
+        {
+          "index": 5,
+          "name": "coin vault"
+        },
+        {
+          "index": 6,
+          "name": "pc vault"
+        },
+        {
+          "index": 7,
+          "name": "spl token program"
+        },
+        {
+          "index": 8,
+          "name": "rent_sysvar"
+        },
+        {
+          "index": 9,
+          "name": "(M)SRM account"
+        }
+      ]
     },
     {
       "name" : "MatchOrders",
       "innerType" : "u16",
-      "variantTag" : 2
+      "variantTag" : 2,
+      "accounts" : [
+        {
+          "index": 0,
+          "name": "market"
+        },
+        {
+          "index": 1,
+          "name": "request_queue"
+        },
+        {
+          "index": 2,
+          "name": "event_queue"
+        },
+        {
+          "index": 3,
+          "name": "bids"
+        },
+        {
+          "index": 4,
+          "name": "asks"
+        },
+        {
+          "index": 5,
+          "name": "coin fee"
+        },
+        {
+          "index": 6,
+          "name": "pc fee"
+        }
+      ]
     },
     {
       "name" : "ConsumeEvents",
@@ -27,62 +153,400 @@
     {
       "name" : "CancelOrder",
       "innerType" : "CancelOrderInstruction",
-      "variantTag" : 4
+      "variantTag" : 4,
+      "accounts" : [
+        {
+          "index": 0,
+          "name": "market"
+        },
+        {
+          "index": 1,
+          "name": "OpenOrders"
+        },
+        {
+          "index": 2,
+          "name": "request queue"
+        },
+        {
+          "index": 3,
+          "name": "OpenOrders owner"
+        }
+      ]
     },
     {
       "name" : "SettleFunds",
-      "variantTag" : 5
+      "variantTag" : 5,
+      "accounts" : [
+        {
+          "index": 0,
+          "name": "market"
+        },
+        {
+          "index": 1,
+          "name": "OpenOrders"
+        },
+        {
+          "index": 2,
+          "name": "OpenOrders owner"
+        },
+        {
+          "index": 3,
+          "name": "coin vault"
+        },
+        {
+          "index": 4,
+          "name": "pc vault"
+        },
+        {
+          "index": 5,
+          "name": "coin wallet"
+        },
+        {
+          "index": 6,
+          "name": "pc wallet"
+        },
+        {
+          "index": 7,
+          "name": "vault signer"
+        },
+        {
+          "index": 8,
+          "name": "spl token program"
+        },
+        {
+          "index": 9,
+          "name": "referrer pc wallet"
+        }
+      ]
     },
     {
       "name" : "CancelOrderByClientId",
       "innerType" : "u64",
-      "variantTag" : 6
+      "variantTag" : 6,
+      "accounts" : [
+        {
+          "index": 0,
+          "name": "market"
+        },
+        {
+          "index": 1,
+          "name": "OpenOrders"
+        },
+        {
+          "index": 2,
+          "name": "request queue"
+        },
+        {
+          "index": 3,
+          "name": "OpenOrders owner"
+        }
+      ]
     },
     {
       "name" : "DisableMarket",
-      "variantTag" : 7
+      "variantTag" : 7,
+      "accounts" : [
+        {
+          "index": 0,
+          "name": "market"
+        },
+        {
+          "index": 1,
+          "name": "disable authority"
+        }
+      ]
     },
     {
       "name" : "SweepFees",
-      "variantTag" : 8
+      "variantTag" : 8,
+      "accounts" : [
+        {
+          "index": 0,
+          "name": "market"
+        },
+        {
+          "index": 1,
+          "name": "pc vault"
+        },
+        {
+          "index": 2,
+          "name": "fee sweeping authority"
+        },
+        {
+          "index": 3,
+          "name": "fee receivable account"
+        },
+        {
+          "index": 4,
+          "name": "vault signer"
+        },
+        {
+          "index": 5,
+          "name": "spl token program"
+        }
+      ]
     },
     {
       "name" : "NewOrderV2",
       "innerType" : "NewOrderInstructionV2",
-      "variantTag" : 9
+      "variantTag" : 9,
+      "accounts" : [
+        {
+          "index": 0,
+          "name": "market"
+        },
+        {
+          "index": 1,
+          "name": "OpenOrders"
+        },
+        {
+          "index": 2,
+          "name": "request queue"
+        },
+        {
+          "index": 3,
+          "name": "account paying for the order"
+        },
+        {
+          "index": 4,
+          "name": "owner OpenOrders account"
+        },
+        {
+          "index": 5,
+          "name": "coin vault"
+        },
+        {
+          "index": 6,
+          "name": "pc vault"
+        },
+        {
+          "index": 7,
+          "name": "spl token program"
+        },
+        {
+          "index": 8,
+          "name": "rent_sysvar"
+        },
+        {
+          "index": 9,
+          "name": "(M)SRM account"
+        }
+      ]
     },
     {
       "name" : "NewOrderV3",
       "innerType" : "NewOrderInstructionV3",
-      "variantTag" : 10
+      "variantTag" : 10,
+      "accounts" : [
+        {
+          "index": 0,
+          "name": "market"
+        },
+        {
+          "index": 1,
+          "name": "OpenOrders"
+        },
+        {
+          "index": 2,
+          "name": "request_queue"
+        },
+        {
+          "index": 3,
+          "name": "event_queue"
+        },
+        {
+          "index": 4,
+          "name": "bids"
+        },
+        {
+          "index": 5,
+          "name": "asks"
+        },
+        {
+          "index": 6,
+          "name": "account paying for the order"
+        },
+        {
+          "index": 7,
+          "name": "owner of the OpenOrders account"
+        },
+        {
+          "index": 8,
+          "name": "coin vault"
+        },
+        {
+          "index": 9,
+          "name": "pc vault"
+        },
+        {
+          "index": 10,
+          "name": "spl token program"
+        },
+        {
+          "index": 11,
+          "name": "rent sysvar"
+        }
+      ]
     },
     {
       "name" : "CancelOrderV2",
       "innerType" : "CancelOrderInstructionV2",
-      "variantTag" : 11
+      "variantTag" : 11,
+      "accounts" : [
+        {
+          "index": 0,
+          "name": "market"
+        },
+        {
+          "index": 1,
+          "name": "bids"
+        },
+        {
+          "index": 2,
+          "name": "asks"
+        },
+        {
+          "index": 3,
+          "name": "OpenOrders"
+        },
+        {
+          "index": 4,
+          "name": "OpenOrders owner"
+        },
+        {
+          "index": 5,
+          "name": "event_queue"
+        }
+      ]
     },
     {
       "name" : "CancelOrderByClientIdV2",
       "innerType" : "u64",
-      "variantTag" : 12
+      "variantTag" : 12,
+      "accounts" : [
+        {
+          "index": 0,
+          "name": "market"
+        },
+        {
+          "index": 1,
+          "name": "bids"
+        },
+        {
+          "index": 2,
+          "name": "asks"
+        },
+        {
+          "index": 3,
+          "name": "OpenOrders"
+        }
+      ]
     },
     {
       "name" : "SendTake",
       "innerType" : "SendTakeInstruction",
-      "variantTag" : 13
+      "variantTag" : 13,
+      "accounts" : [
+        {
+          "index": 0,
+          "name": "market"
+        },
+        {
+          "index": 1,
+          "name": "bids"
+        },
+        {
+          "index": 2,
+          "name": "asks"
+        },
+        {
+          "index": 3,
+          "name": "OpenOrders"
+        }
+      ]
     },
     {
       "name" : "CloseOpenOrders",
-      "variantTag" :14
+      "variantTag" :14,
+      "accounts" : [
+        {
+          "index": 0,
+          "name": "OpenOrders"
+        },
+        {
+          "index": 1,
+          "name": "OpenOrders owner"
+        },
+        {
+          "index": 2,
+          "name": "destination_to_send_rent_exemption_sol"
+        },
+        {
+          "index": 3,
+          "name": "market"
+        }
+      ]
     },
     {
       "name" : "InitOpenOrders",
-      "variantTag" :15
+      "variantTag" :15,
+      "accounts" : [
+        {
+          "index": 0,
+          "name": "OpenOrders"
+        },
+        {
+          "index": 1,
+          "name": "OpenOrders owner"
+        },
+        {
+          "index": 2,
+          "name": "market"
+        },
+        {
+          "index": 3,
+          "name": "rent sysvar"
+        },
+        {
+          "index": 4,
+          "name": "open orders market authority"
+        }
+      ]
     },
     {
       "name" : "Prune",
       "innerType" : "u16",
-      "variantTag" : 16
+      "variantTag" : 16,
+      "accounts" : [
+        {
+          "index": 0,
+          "name": "market"
+        },
+        {
+          "index": 1,
+          "name": "bids"
+        },
+        {
+          "index": 2,
+          "name": "asks"
+        },
+        {
+          "index": 3,
+          "name": "prune authority"
+        },
+        {
+          "index": 4,
+          "name": "open orders"
+        },
+        {
+          "index": 5,
+          "name": "open orders owner"
+        },
+        {
+          "index": 6,
+          "name": "event queue"
+        }
+      ]
     },
     {
       "name" : "ConsumeEventsPermissioned",
