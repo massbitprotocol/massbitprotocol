@@ -74,15 +74,15 @@
         },
         {
           "index": 1,
-          "name": "OpenOrders account"
+          "name": "open_orders"
         },
         {
           "index": 2,
-          "name": "request queue"
+          "name": "request_queue"
         },
         {
           "index": 3,
-          "name": "account paying"
+          "name": "account_paying"
         },
         {
           "index": 4,
@@ -90,15 +90,15 @@
         },
         {
           "index": 5,
-          "name": "coin vault"
+          "name": "coin_vault"
         },
         {
           "index": 6,
-          "name": "pc vault"
+          "name": "pc_vault"
         },
         {
           "index": 7,
-          "name": "spl token program"
+          "name": "token_program"
         },
         {
           "index": 8,
@@ -106,7 +106,7 @@
         },
         {
           "index": 9,
-          "name": "(M)SRM account"
+          "name": "SRM_account"
         }
       ]
     },
@@ -137,11 +137,11 @@
         },
         {
           "index": 5,
-          "name": "coin fee"
+          "name": "coin_fee"
         },
         {
           "index": 6,
-          "name": "pc fee"
+          "name": "pc_fee"
         }
       ]
     },
@@ -161,15 +161,15 @@
         },
         {
           "index": 1,
-          "name": "OpenOrders"
+          "name": "open_orders"
         },
         {
           "index": 2,
-          "name": "request queue"
+          "name": "request_queue"
         },
         {
           "index": 3,
-          "name": "OpenOrders owner"
+          "name": "open_orders_owner"
         }
       ]
     },
@@ -183,39 +183,39 @@
         },
         {
           "index": 1,
-          "name": "OpenOrders"
+          "name": "open_orders"
         },
         {
           "index": 2,
-          "name": "OpenOrders owner"
+          "name": "open_orders_owner"
         },
         {
           "index": 3,
-          "name": "coin vault"
+          "name": "coin_vault"
         },
         {
           "index": 4,
-          "name": "pc vault"
+          "name": "pc_vault"
         },
         {
           "index": 5,
-          "name": "coin wallet"
+          "name": "coin_wallet"
         },
         {
           "index": 6,
-          "name": "pc wallet"
+          "name": "pc_wallet"
         },
         {
           "index": 7,
-          "name": "vault signer"
+          "name": "vault_signer"
         },
         {
           "index": 8,
-          "name": "spl token program"
+          "name": "token_program"
         },
         {
           "index": 9,
-          "name": "referrer pc wallet"
+          "name": "referrer_pc_wallet"
         }
       ]
     },
@@ -230,15 +230,15 @@
         },
         {
           "index": 1,
-          "name": "OpenOrders"
+          "name": "open_orders"
         },
         {
           "index": 2,
-          "name": "request queue"
+          "name": "request_queue"
         },
         {
           "index": 3,
-          "name": "OpenOrders owner"
+          "name": "open_orders_owner"
         }
       ]
     },
@@ -252,7 +252,7 @@
         },
         {
           "index": 1,
-          "name": "disable authority"
+          "name": "disable_authority"
         }
       ]
     },
@@ -266,23 +266,23 @@
         },
         {
           "index": 1,
-          "name": "pc vault"
+          "name": "pc_vault"
         },
         {
           "index": 2,
-          "name": "fee sweeping authority"
+          "name": "fee_sweeping_authority"
         },
         {
           "index": 3,
-          "name": "fee receivable account"
+          "name": "fee_receivable_account"
         },
         {
           "index": 4,
-          "name": "vault signer"
+          "name": "vault_signer"
         },
         {
           "index": 5,
-          "name": "spl token program"
+          "name": "token_program"
         }
       ]
     },
@@ -297,31 +297,31 @@
         },
         {
           "index": 1,
-          "name": "OpenOrders"
+          "name": "open_orders"
         },
         {
           "index": 2,
-          "name": "request queue"
+          "name": "request_queue"
         },
         {
           "index": 3,
-          "name": "account paying for the order"
+          "name": "account_paying_for_the_order"
         },
         {
           "index": 4,
-          "name": "owner OpenOrders account"
+          "name": "open_orders_owner"
         },
         {
           "index": 5,
-          "name": "coin vault"
+          "name": "coin_vault"
         },
         {
           "index": 6,
-          "name": "pc vault"
+          "name": "pc_vault"
         },
         {
           "index": 7,
-          "name": "spl token program"
+          "name": "token_program"
         },
         {
           "index": 8,
@@ -329,7 +329,7 @@
         },
         {
           "index": 9,
-          "name": "(M)SRM account"
+          "name": "SRM_account"
         }
       ]
     },
@@ -344,7 +344,7 @@
         },
         {
           "index": 1,
-          "name": "OpenOrders"
+          "name": "open_orders"
         },
         {
           "index": 2,
@@ -364,27 +364,27 @@
         },
         {
           "index": 6,
-          "name": "account paying for the order"
+          "name": "account_paying_for_the_order"
         },
         {
           "index": 7,
-          "name": "owner of the OpenOrders account"
+          "name": "open_orders_owner"
         },
         {
           "index": 8,
-          "name": "coin vault"
+          "name": "coin_vault"
         },
         {
           "index": 9,
-          "name": "pc vault"
+          "name": "pc_vault"
         },
         {
           "index": 10,
-          "name": "spl token program"
+          "name": "token_program"
         },
         {
           "index": 11,
-          "name": "rent sysvar"
+          "name": "rent_sysvar"
         }
       ]
     },
@@ -407,11 +407,11 @@
         },
         {
           "index": 3,
-          "name": "OpenOrders"
+          "name": "open_orders"
         },
         {
           "index": 4,
-          "name": "OpenOrders owner"
+          "name": "open_orders_owner"
         },
         {
           "index": 5,
@@ -438,7 +438,7 @@
         },
         {
           "index": 3,
-          "name": "OpenOrders"
+          "name": "open_orders"
         }
       ]
     },
@@ -461,7 +461,7 @@
         },
         {
           "index": 3,
-          "name": "OpenOrders"
+          "name": "open_orders"
         }
       ]
     },
@@ -471,11 +471,11 @@
       "accounts" : [
         {
           "index": 0,
-          "name": "OpenOrders"
+          "name": "open_orders"
         },
         {
           "index": 1,
-          "name": "OpenOrders owner"
+          "name": "open_orders_owner"
         },
         {
           "index": 2,
@@ -493,11 +493,11 @@
       "accounts" : [
         {
           "index": 0,
-          "name": "OpenOrders"
+          "name": "open_orders"
         },
         {
           "index": 1,
-          "name": "OpenOrders owner"
+          "name": "open_orders_owner"
         },
         {
           "index": 2,
@@ -505,11 +505,11 @@
         },
         {
           "index": 3,
-          "name": "rent sysvar"
+          "name": "rent_sysvar"
         },
         {
           "index": 4,
-          "name": "open orders market authority"
+          "name": "open_orders_market_authority"
         }
       ]
     },
@@ -532,19 +532,19 @@
         },
         {
           "index": 3,
-          "name": "prune authority"
+          "name": "prune_authority"
         },
         {
           "index": 4,
-          "name": "open orders"
+          "name": "open_orders"
         },
         {
           "index": 5,
-          "name": "open orders owner"
+          "name": "open_orders_owner"
         },
         {
           "index": 6,
-          "name": "event queue"
+          "name": "event_queue"
         }
       ]
     },
