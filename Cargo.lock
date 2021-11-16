@@ -4150,6 +4150,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "massbit-sol"
+version = "0.1.0"
+dependencies = [
+ "Inflector",
+ "anyhow",
+ "arrayref",
+ "bincode",
+ "bytemuck",
+ "clap",
+ "handlebars",
+ "lazy_static",
+ "log 0.4.14",
+ "minifier",
+ "num-derive",
+ "num-traits",
+ "num_enum",
+ "proptest",
+ "proptest-derive",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "serde_repr",
+ "syn 1.0.80",
+ "thiserror",
+ "uriparse",
+]
+
+[[package]]
 name = "massbit-store-postgres"
 version = "0.1.0"
 dependencies = [
@@ -6722,34 +6750,6 @@ dependencies = [
  "tiny-bip39",
  "uriparse",
  "url 2.2.2",
-]
-
-[[package]]
-name = "solana-cli"
-version = "0.1.0"
-dependencies = [
- "Inflector",
- "anyhow",
- "arrayref",
- "bincode",
- "bytemuck",
- "clap",
- "handlebars",
- "lazy_static",
- "log 0.4.14",
- "minifier",
- "num-derive",
- "num-traits",
- "num_enum",
- "proptest",
- "proptest-derive",
- "serde",
- "serde_derive",
- "serde_json",
- "serde_repr",
- "syn 1.0.80",
- "thiserror",
- "uriparse",
 ]
 
 [[package]]

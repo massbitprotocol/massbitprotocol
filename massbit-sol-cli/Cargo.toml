@@ -37,5 +37,5 @@ minifier = "0.0.41"
 #logger = {version = "0.1.0", path = "../core/logger" }
 handlebars = "4.1.4"
 [[bin]] # Bin to run cli
-name = "solana-cli"
+name = "massbit-sol"
 path = "./src/main.rs"
