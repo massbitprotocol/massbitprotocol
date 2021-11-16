@@ -8,6 +8,7 @@ homepage = "https://www.massbit.io/"
 repository = "https://github.com/massbitprotocol/massbitprotocol"
 readme = "README.md"
 keywords = ["cli", "solana","massbit"]
+license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
