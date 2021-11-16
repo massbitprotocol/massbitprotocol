@@ -41,5 +41,5 @@ fn main() {
         .with_config_path(config_path)
         .with_output_dir(output)
         .build();
-    generator.generate();
+    let _ = generator.generate();
 }

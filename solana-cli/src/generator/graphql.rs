@@ -78,7 +78,7 @@ impl<'a> Generator<'a> {
             for variant in variants {
                 // Write table if there is inner_type
                 let variant_entity = self.generate_variant_entity(variant, &self.definitions);
-                writeln!(out, "{}", &variant_entity);
+                let _ = writeln!(out, "{}", &variant_entity);
                 // Get definitions
                 // if let Some(sub_schema) = self.definitions.get(&inner_type) {
                 //     // get a table corresponding to sub_schema
