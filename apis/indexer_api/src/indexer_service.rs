@@ -30,8 +30,7 @@ use warp::{
 pub struct IndexerService {
     pub ipfs_clients: Vec<IpfsClient>,
     pub connection_pool: Arc<r2d2::Pool<ConnectionManager<PgConnection>>>,
-    pub logger_factory: LoggerFactory, // pub task_sender: Sender<Box<dyn std::future::Future<Output = ()> + Send + Unpin>>,
-                                       // pub task_receiver: Receiver<Box<dyn std::future::Future<Output = ()> + Send + Unpin>>
+    pub logger_factory: LoggerFactory,
 }
 
 impl IndexerService {
@@ -58,20 +57,6 @@ impl IndexerService {
             let p_name = format!("{}", &p.name());
             match p_name.as_str() {
                 name @ "mapping" | name @ "schema" | name @ "manifest" => {
-                    // if store_path.is_none() {
-                    //     store_path = Some(uuid::Uuid::new_v4().to_string());
-                    // }
-                    // let file_name = format!(
-                    //     "{}/{}/{}",
-                    //     INDEXER_UPLOAD_DIR.deref(),
-                    //     store_path.as_ref().unwrap(),
-                    //     p.filename().unwrap()
-                    // );
-                    // //create directory
-                    // // Check and create parent directory
-                    // let path = std::path::Path::new(&file_name);
-                    // let prefix = path.parent().unwrap();
-                    // std::fs::create_dir_all(prefix);
                     let value = p
                         .stream()
                         .try_fold(Vec::new(), |mut vec, data| {
@@ -101,10 +86,6 @@ impl IndexerService {
                     } else {
                         log::warn!("Ipfs client not configured");
                     }
-                    // tokio::fs::write(&file_name, value).await.map_err(|e| {
-                    //     eprint!("error writing file: {}", e);
-                    //     warp::reject::reject()
-                    // })?;
                 }
                 _ => {}
             }
@@ -159,23 +140,6 @@ impl IndexerService {
         )
         .await
         .context("Failed to resolve manifest from upload data")
-
-        // if let Some(address) = raw_value["dataSources"][0]["source"]["address"].as_str() {
-        //     indexer.address = Some(String::from(address));
-        // }
-        // match &raw_value["dataSources"][0]["source"]["start_block"] {
-        //     serde_yaml::Value::Number(num) => {
-        //         indexer.start_block = num.as_i64().unwrap_or_default();
-        //     }
-        //     _ => {}
-        // }
-        // if let Some(network) = raw_value["dataSources"][0]["kind"].as_str() {
-        //     indexer.network = Some(String::from(network));
-        // };
-        // if let Some(name) = raw_value["dataSources"][0]["name"].as_str() {
-        //     indexer.name = String::from(name);
-        // };
-        // indexer.status = Some(String::from("deployed"));
     }
     fn get_next_sequence(
         &self,
@@ -245,98 +209,3 @@ impl IndexerService {
         }
     }
 }
-
-// async fn deploy_handler(params: DeployParams) -> JsonRpcResult<Value> {
-//     println!("Params {:?}", &params);
-//     let index_config = IndexConfigIpfsBuilder::default()
-//         .config(&params.config)
-//         .await
-//         .mapping(&params.mapping)
-//         .await
-//         .schema(&params.schema)
-//         .await
-//         //.abi(params.abi)
-//         //.await
-//         .subgraph(&params.subgraph)
-//         .await
-//         .build();
-//     // Set up logger
-//     let logger = logger(false);
-//     let ipfs_addresses = vec![IPFS_ADDRESS.to_string()];
-//     let ipfs_clients: Vec<IpfsClient> = create_ipfs_clients(&ipfs_addresses).await;
-//
-//     // Convert the clients into a link resolver. Since we want to get past
-//     // possible temporary DNS failures, make the resolver retry
-//     let link_resolver = Arc::new(LinkResolver::from(ipfs_clients));
-//     // Create a component and indexer logger factory
-//     let logger_factory = LoggerFactory::new(logger.clone());
-//     let deployment_hash = DeploymentHash::new(index_config.identifier.hash.clone())?;
-//     let logger = logger_factory.indexer_logger(&DeploymentLocator::new(
-//         DeploymentId(0),
-//         deployment_hash.clone(),
-//     ));
-//     info!("Ipfs {:?}", &deployment_hash.to_ipfs_link());
-//     // let raw: serde_yaml::Mapping = {
-//     //     let file_bytes = link_resolver
-//     //         .cat(&logger, &deployment_hash.to_ipfs_link())
-//     //         .await
-//     //         .map_err(|e| {
-//     //             error!("{:?}", &e);
-//     //             IndexerRegistrarError::ResolveError(IndexerManifestResolveError::ResolveError(e))
-//     //         })?;
-//     //
-//     //     serde_yaml::from_slice(&file_bytes)
-//     //         .map_err(|e| IndexerRegistrarError::ResolveError(e.into()))?
-//     // };
-//     // TODO: Maybe break this into two different struct (So and Wasm) so we don't have to use Option
-//     // let mut manifest = IndexerManifest::<Chain>::resolve_from_raw(
-//     //     &logger,
-//     //     deployment_hash.cheap_clone(),
-//     //     raw,
-//     //     // Allow for infinite retries for indexer definition files.
-//     //     &link_resolver.as_ref().clone().with_retries(),
-//     //     MAX_SPEC_VERSION.clone(),
-//     // )
-//     // .await
-//     // .context("Failed to resolve indexer from IPFS")?;
-//     let manifest: Option<IndexerManifest<Chain>> = match &params.subgraph {
-//         Some(v) => Some(
-//             get_indexer_manifest(DeploymentHash::new(v)?, link_resolver)
-//                 .await
-//                 .unwrap(),
-//         ),
-//         None => {
-//             println!(".SO mapping doesn't have parsed data source");
-//             //vec![]
-//             None
-//         }
-//     };
-//     // Create tables for the new index and track them in hasura
-//     //run_ddl_gen(&index_config).await;
-//
-//     // Create a new indexer so we can keep track of it's status
-//     //IndexStore::insert_new_indexer(&index_config);
-//     let config_value = read_config_file(&index_config.config);
-//     let network = config_value["dataSources"][0]["kind"].as_str().unwrap();
-//     let name = config_value["dataSources"][0]["name"].as_str().unwrap();
-//     IndexerStore::create_indexer(
-//         index_config.identifier.hash.clone(),
-//         String::from(name),
-//         String::from(network),
-//         &params.subgraph,
-//     );
-//     //Start the adapter for the index
-//     adapter_init(&index_config, &manifest).await?;
-//
-//     let res = Output::from(
-//         Ok(serde_json::to_value("Deploy index success").expect("Unable to deploy new index")),
-//         Id::Num(2),
-//         None,
-//     );
-//     let success = Success {
-//         jsonrpc: Some(Version::V2),
-//         result: json!("Deploy index success"),
-//         id: Id::Num(2),
-//     };
-//     Ok(json!(success))
-// }
