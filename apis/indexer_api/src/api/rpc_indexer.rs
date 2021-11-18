@@ -1,6 +1,6 @@
 use crate::api::rpc_types::DeployParams;
 use crate::indexer_service::IndexerService;
-use jsonrpc_core::{Error, Params, Result as JsonRpcResult};
+use jsonrpc_core::{Error, Params, Response, Result as JsonRpcResult};
 use jsonrpc_derive::rpc;
 use massbit::prelude::serde_json::{json, Value};
 use massbit::prelude::{Future, Future01CompatExt};
@@ -55,7 +55,10 @@ impl RpcIndexers for RpcIndexersImpl {
     }
 
     fn deploy_indexer(&self, params: Params) -> JsonRpcResult<Value> {
+        println!("{:?}", &params);
         let deploy_params: DeployParams = params.parse().unwrap();
-        self.indexer_service.deploy(deploy_params)
+        println!("{:?}", &deploy_params);
+        //self.indexer_service.deploy(deploy_params)
+        todo!()
     }
 }

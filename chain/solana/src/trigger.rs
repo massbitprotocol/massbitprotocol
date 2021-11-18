@@ -7,7 +7,6 @@ use massbit::prelude::*;
 use massbit::runtime::{AscHeap, AscPtr, DeterministicHostError};
 use solana_program::pubkey::Pubkey;
 use std::cmp::Ordering;
-use std::collections::HashSet;
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct TriggerFilter {

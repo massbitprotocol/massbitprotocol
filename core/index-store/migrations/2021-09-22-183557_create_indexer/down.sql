@@ -1,1 +1,1 @@
-drop table if exists indexers;
+drop table if exists indexers_;
