@@ -1,4 +1,4 @@
-use crate::generator::graphql::{MAPPING_DB_TYPES_TO_RUST, MAPPING_RUST_TYPES_TO_DB};
+use crate::generator::graphql::MAPPING_RUST_TYPES_TO_DB;
 use crate::generator::Generator;
 use crate::schema::{Schema, Variant, VariantArray};
 use inflector::Inflector;
@@ -89,14 +89,14 @@ impl ValueExt<Vec<Value>> for Value {
 impl<'a> Generator<'a> {
     pub fn generate_handler(&self, schema: &Schema) -> String {
         let mut out = String::new();
-        writeln!(out, "{}", MODULES);
-        writeln!(out, "{}", ENTITY_SAVE);
+        let _ = writeln!(out, "{}", MODULES);
+        let _ = writeln!(out, "{}", ENTITY_SAVE);
         if schema.name.is_some() && schema.variants.is_some() {
             let name = schema.get_pascal_name(schema.name.as_ref().unwrap());
             let patterns = self.expand_handler_patterns(&name, schema.variants.as_ref().unwrap());
             let handler_functions =
-                self.expand_handler_functions(&name, schema.variants.as_ref().unwrap());
-            write!(
+                self.expand_handler_functions(schema.variants.as_ref().unwrap());
+            let _ = write!(
                 &mut out,
                 r#"pub struct Handler {{}}
                     impl Handler {{
@@ -150,11 +150,7 @@ impl<'a> Generator<'a> {
             })
             .collect::<Vec<String>>()
     }
-    pub fn expand_handler_functions(
-        &self,
-        enum_name: &String,
-        variants: &VariantArray,
-    ) -> Vec<String> {
+    pub fn expand_handler_functions(&self, variants: &VariantArray) -> Vec<String> {
         variants
             .iter()
             .map(|variant| {
@@ -162,9 +158,9 @@ impl<'a> Generator<'a> {
                 let function_body = self.expand_function_body(variant);
                 let mut inner_arg = String::default();
                 if let Some(inner_type) = &variant.inner_type {
-                    write!(&mut inner_arg, "arg: {}", inner_type);
+                    let _ =  write!(&mut inner_arg, "arg: {}", inner_type);
                 };
-                let log = if let Some(inner_type) = &variant.inner_type {
+                let log = if let Some(_inner_type) = &variant.inner_type {
                     format!(r#"println!("call function {} for handle incoming block {{}} with argument {{:?}}", block.block_number, &arg);"#, function_name)
                 } else {
                     format!(r#"println!("call function {} for handle incoming block {{}}", block.block_number);"#, function_name)
@@ -208,7 +204,7 @@ impl<'a> Generator<'a> {
             // Get definitions
             if let Some(inner_schema) = self.definitions.get(inner_type.as_str()) {
                 // get a table corresponding to inner_schema
-                self.expand_entity_assignment(&mut assignments, variant, inner_schema);
+                self.expand_entity_assignment(&mut assignments, inner_schema);
             } else if MAPPING_RUST_TYPES_TO_DB.contains_key(inner_type.as_str()) {
                 //Inner type is primitive
                 self.expand_single_assignment(&mut assignments, "value", "arg");
@@ -237,12 +233,7 @@ impl<'a> Generator<'a> {
             field_name, field_value
         ));
     }
-    pub fn expand_entity_assignment(
-        &self,
-        assignments: &mut Vec<String>,
-        variant: &Variant,
-        inner_schema: &Schema,
-    ) {
+    pub fn expand_entity_assignment(&self, assignments: &mut Vec<String>, inner_schema: &Schema) {
         //If inner schema is a struct
         if let Some(properties) = &inner_schema.properties {
             for property in properties {
@@ -252,7 +243,7 @@ impl<'a> Generator<'a> {
                 match db_type {
                     // If data_type is primitive (e.g. Enum, Struct)
                     Some(db_type) => {
-                        let elm_value = if property.data_type.starts_with("NonZero") {
+                        let elm_value = if db_type.starts_with("NonZero") {
                             format!("{}.get()", property.name)
                         } else {
                             format!("{}", property.name)
@@ -260,7 +251,7 @@ impl<'a> Generator<'a> {
                         let property_value = match property.array_length {
                             Some(_) => {
                                 format!(
-                                    r#"arg.{property_name}.iter().map(|&{property_name}| Value::try_from({elm_value})).collect::<Vec<Value>>())"#,
+                                    r#"arg.{property_name}.iter().map(|&{property_name}| Value::try_from({elm_value})).collect::<Vec<Value>>()"#,
                                     property_name = &property.name,
                                     elm_value = elm_value
                                 )

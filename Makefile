@@ -248,3 +248,4 @@ index-pancakeswap:
 index-harmony:
 	@echo "Start indexing Harmony (Harmony) ..."
 	cd e2e-test/harmony && robot -t "Index Harmony" contract.robot
+

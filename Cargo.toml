@@ -19,7 +19,7 @@ members = [
     "plugin/adapter",
     "plugin/plugin",
     "tests",
-    "solana-cli"
+    "massbit-sol-cli"
 ]
 exclude = ["code-compiler/generated"]
 

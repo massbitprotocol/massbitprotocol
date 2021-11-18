@@ -18,7 +18,7 @@ impl<'a> Generator<'a> {
     pub fn generate_instruction(&self, schema: &Schema) -> String {
         let mut out = String::new();
         //Import modules for instruction
-        writeln!(out, "{}", MODULES);
+        let _ = writeln!(out, "{}", MODULES);
         //Expand definitions
         self.definitions.iter().for_each(|(name, def)| {
             self.expand_schema(&mut out, name, def);
@@ -35,7 +35,7 @@ impl<'a> Generator<'a> {
             let unpack = self.expand_struct_unpack(&name, schema);
             let struct_def = format!("pub struct {} {{{fields}}}", &name, fields = &fields);
             let struct_impl = format!("impl {} {{\n{unpack}\n}}", &name, unpack = &unpack);
-            write! {
+            let _ = write! {
                 out,
                 "#[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]\n{struct_def}\n{struct_impl}",
                 struct_def = struct_def,
@@ -51,7 +51,7 @@ impl<'a> Generator<'a> {
             );
             let unpack = self.expand_enum_unpack(&name, schema);
             let enum_impl = format!("impl {} {{\n{unpack}\n}}", &name, unpack = &unpack);
-            write! {
+            let _ = write! {
                 out,
                 "#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]\n{enum_def}\n{enum_impl}",
                 enum_def = enum_def,
