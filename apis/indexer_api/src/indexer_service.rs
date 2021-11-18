@@ -1,20 +1,9 @@
-use diesel::sql_types::BigInt;
-use std::collections::hash_map::DefaultHasher;
-use std::env::temp_dir;
-use std::fs;
-use std::path::PathBuf;
-use std::sync::Arc;
-// use core::convert::From;
-// use futures::channel::mpsc;
-// use futures::channel::mpsc::{Receiver, Sender};
-// use jsonrpc_core::version::Version::V2;
-// use jsonrpc_core::{types::Id, Error, Params, Response, Result as JsonRpcResult, Success, Version};
-// use jsonrpc_http_server::jsonrpc_core::Output;
 use crate::orm::models::Indexer;
 use crate::orm::schema::indexers;
 use adapter::core::AdapterManager;
 use chain_solana::manifest::ManifestResolve;
 use chain_solana::SolanaIndexerManifest;
+use diesel::sql_types::BigInt;
 use log::{debug, info};
 use massbit::components::link_resolver::LinkResolver as _;
 use massbit::components::store::{DeploymentId, DeploymentLocator};
@@ -28,6 +17,10 @@ use massbit::prelude::{anyhow, CheapClone, LoggerFactory, TryStreamExt};
 use massbit_common::prelude::diesel::r2d2::ConnectionManager;
 use massbit_common::prelude::diesel::{r2d2, PgConnection, RunQueryDsl};
 use massbit_common::prelude::r2d2::PooledConnection;
+use std::env::temp_dir;
+use std::fs;
+use std::path::PathBuf;
+use std::sync::Arc;
 use uuid::Uuid;
 use warp::{
     multipart::{FormData, Part},

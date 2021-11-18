@@ -2,6 +2,8 @@ use clap::{App, Arg};
 //use logger::core::init_logger;
 use massbit_sol::generator::Generator;
 use massbit_sol::indexer_deploy::deploy_indexer;
+use massbit_sol::parser::SchemaBuilder;
+use massbit_sol::INDEXER_ENDPOINT;
 
 fn main() {
     //let res = init_logger(&String::from("massbit-sol-cli"));
@@ -40,13 +42,13 @@ fn main() {
         let structure_path = matches.value_of("source").unwrap_or("instruction.rs");
         let config_path = matches.value_of("config").unwrap_or("config.json");
         let output = matches.value_of("output").unwrap_or("src");
-        // let schema_builder = SchemaBuilder::builder()
-        //     .with_instruction_path(structure_path)
-        //     .with_output_dir(output);
-        // schema_builder.build()
+        let schema_builder = SchemaBuilder::builder()
+            .with_instruction_path(structure_path)
+            .with_output_dir(output);
+        schema_builder.build()
     }
 }
-fn create_gencode_cmd() -> App {
+fn create_gencode_cmd() -> App<'static, 'static> {
     App::new("gencode")
         .about("Generate Rust code & SQL migrations from Instruction structure")
         .arg(
@@ -75,7 +77,7 @@ fn create_gencode_cmd() -> App {
         )
 }
 
-fn create_deploy_cmd() -> App {
+fn create_deploy_cmd() -> App<'static, 'static> {
     App::new("deploy")
         .about("Deploy compiled indexer binary")
         .arg(
@@ -96,7 +98,7 @@ fn create_deploy_cmd() -> App {
         )
 }
 
-fn create_genstructure_cmd() -> App {
+fn create_genstructure_cmd() -> App<'static, 'static> {
     App::new("genstructure")
         .about("Generate Solana smartcontract instruction structure from source code.")
         .arg(
