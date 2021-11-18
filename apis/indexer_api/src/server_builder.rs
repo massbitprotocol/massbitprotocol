@@ -1,3 +1,4 @@
+use super::model::ListOptions;
 use super::MAX_UPLOAD_FILE_SIZE;
 use crate::indexer_service::IndexerService;
 use massbit::ipfs_client::IpfsClient;
@@ -30,20 +31,64 @@ impl IndexerServer {
     }
     pub async fn serve(&self) {
         let service = self.indexer_service.clone();
-        let fn_deploy = move |form: FormData| {
-            let clone_service = service.clone();
-            async move { clone_service.deploy_indexer(form).await }
-        };
-        let deploy_route = warp::path!("indexer" / "deploy")
-            .and(warp::post())
-            .and(warp::multipart::form().max_length(MAX_UPLOAD_FILE_SIZE.clone()))
-            .and_then(fn_deploy);
-        let download_route = warp::path("files").and(warp::fs::dir("./files/"));
+        // let fn_deploy = move |form: FormData| {
+        //     let clone_service = service.clone();
+        //     async move { clone_service.deploy_indexer(form).await }
+        // };
+        // /// Indexer deploy
+        // let deploy_route = warp::path!("indexer" / "deploy")
+        //     .and(warp::post())
+        //     .and(warp::multipart::form().max_length(MAX_UPLOAD_FILE_SIZE.clone()))
+        //     .and_then(fn_deploy);
 
-        let router = deploy_route.or(download_route).recover(handle_rejection);
+        //let download_route = warp::path("files").and(warp::fs::dir("./files/"));
+
+        let router = self
+            .create_route_indexer_deploy(self.indexer_service.clone())
+            .or(self.create_route_indexer_list(self.indexer_service.clone()))
+            .or(self.create_route_indexer_detail(self.indexer_service.clone()))
+            .recover(handle_rejection);
         let socket_addr: SocketAddr = self.entry_point.parse().unwrap();
 
         warp::serve(router).run(socket_addr).await;
+    }
+    /// Indexer deploy api
+    fn create_route_indexer_deploy(
+        &self,
+        service: Arc<IndexerService>,
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        warp::path!("indexers" / "deploy")
+            .and(warp::post())
+            .and(warp::multipart::form().max_length(MAX_UPLOAD_FILE_SIZE.clone()))
+            .and_then(move |form: FormData| {
+                let clone_service = service.clone();
+                async move { clone_service.deploy_indexer(form).await }
+            })
+    }
+    /// Indexer list api
+    fn create_route_indexer_list(
+        &self,
+        service: Arc<IndexerService>,
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        warp::path!("indexers")
+            .and(warp::get())
+            .and(warp::query::<ListOptions>())
+            .and_then(move |options: ListOptions| {
+                let clone_service = service.clone();
+                async move { clone_service.list_indexer(options).await }
+            })
+    }
+    /// Indexer detail api
+    fn create_route_indexer_detail(
+        &self,
+        service: Arc<IndexerService>,
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        warp::path!("indexers" / String)
+            .and(warp::get())
+            .and_then(move |hash: String| {
+                let clone_service = service.clone();
+                async move { clone_service.get_indexer(hash).await }
+            })
     }
 }
 impl ServerBuilder {

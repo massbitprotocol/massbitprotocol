@@ -1,16 +1,17 @@
 #[macro_use]
 extern crate diesel;
 extern crate diesel_migrations;
-use lazy_static::lazy_static;
-use std::env;
 
 pub mod indexer_service;
 pub mod model;
 pub mod orm;
 pub mod server_builder;
 
+use lazy_static::lazy_static;
+use std::env;
 //Time out when get content from ipfs
 pub const IPFS_TIME_OUT: u64 = 10_u64;
+pub const API_LIST_LIMIT: i64 = 100_i64;
 lazy_static! {
     pub static ref COMPONENT_NAME: String = String::from("[IndexerApi]");
     pub static ref CONNECTION_POOL_SIZE: u32 = env::var("CONNECTION_POOL_SIZE")

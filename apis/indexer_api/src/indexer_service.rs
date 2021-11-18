@@ -1,5 +1,8 @@
+use crate::model::ListOptions;
 use crate::orm::models::Indexer;
 use crate::orm::schema::indexers;
+use crate::orm::schema::indexers::dsl;
+use crate::API_LIST_LIMIT;
 use adapter::core::AdapterManager;
 use chain_solana::manifest::ManifestResolve;
 use chain_solana::SolanaIndexerManifest;
@@ -15,13 +18,17 @@ use massbit::prelude::anyhow::Context;
 use massbit::prelude::prost::bytes::BufMut;
 use massbit::prelude::{anyhow, CheapClone, LoggerFactory, TryStreamExt};
 use massbit_common::prelude::diesel::r2d2::ConnectionManager;
-use massbit_common::prelude::diesel::{r2d2, PgConnection, RunQueryDsl};
+use massbit_common::prelude::diesel::{
+    r2d2, ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl,
+};
 use massbit_common::prelude::r2d2::PooledConnection;
 use std::env::temp_dir;
 use std::fs;
+use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
 use uuid::Uuid;
+use warp::http::StatusCode;
 use warp::{
     multipart::{FormData, Part},
     Rejection, Reply,
@@ -42,6 +49,7 @@ impl IndexerService {
     > {
         self.connection_pool.get()
     }
+    /// for api deploy indexer from massbit-sol cli
     pub async fn deploy_indexer(&self, form: FormData) -> Result<impl Reply, Rejection> {
         log::info!("Deploy new indexer");
         //let mut store_path: Option<String> = None;
@@ -112,6 +120,42 @@ impl IndexerService {
             }
         }
         Ok("success")
+    }
+    /// for api list indexer: /indexers?limit=?&offset=?
+    pub async fn list_indexer(&self, options: ListOptions) -> Result<impl Reply, Rejection> {
+        let mut content: Vec<Indexer> = vec![];
+        if let Ok(conn) = self.get_connection() {
+            match dsl::indexers
+                .order(dsl::v_id.asc())
+                .offset(options.offset.unwrap_or_default())
+                .limit(options.limit.unwrap_or(API_LIST_LIMIT))
+                .load::<Indexer>(conn.deref())
+            {
+                Ok(vals) => Ok(warp::reply::json(&vals)),
+                Err(err) => {
+                    log::error!("{:?}", &err);
+                    Ok(warp::reply::json(&content))
+                }
+            }
+        } else {
+            Ok(warp::reply::json(&content))
+        }
+    }
+    /// for api get indexer detail: /indexers/:hash
+    pub async fn get_indexer(&self, hash: String) -> Result<impl Reply, Rejection> {
+        if let Ok(conn) = self.get_connection() {
+            let results = dsl::indexers
+                .filter(dsl::hash.eq(hash.as_str()))
+                .limit(1)
+                .load::<Indexer>(conn.deref())
+                .expect("Error loading indexers");
+            match results.get(0) {
+                Some(res) => Ok(warp::reply::json(&res)),
+                None => Ok(warp::reply::json(&String::from(""))),
+            }
+        } else {
+            Ok(warp::reply::json(&String::from("")))
+        }
     }
     pub async fn parse_manifest(
         &self,

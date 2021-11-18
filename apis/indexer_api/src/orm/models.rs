@@ -2,7 +2,8 @@
 #![allow(unused)]
 #![allow(clippy::all)]
 use super::schema::indexers;
-#[derive(Queryable, Default, Debug, Identifiable, Insertable)]
+use serde::Serialize;
+#[derive(Queryable, Default, Debug, Identifiable, Serialize, Insertable)]
 #[primary_key(v_id)]
 pub struct Indexer {
     pub network: Option<String>,
