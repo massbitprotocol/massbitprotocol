@@ -1,7 +1,7 @@
 use crate::schema::Schema;
 use std::path::Path;
 use std::{fs, io};
-use syn::{Attribute, DeriveInput, Item, ItemEnum, ItemUse, Variant};
+use syn::{Attribute, Item, ItemEnum, ItemUse, Variant};
 
 pub struct SchemaBuilder<'a> {
     pub instruction_path: &'a str,
