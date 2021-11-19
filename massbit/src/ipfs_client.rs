@@ -61,7 +61,7 @@ impl IpfsClient {
     /// Calls `object stat`.
     pub async fn object_stat(
         &self,
-        path: String,
+        path: &String,
         timeout: Duration,
     ) -> Result<ObjectStatResponse, reqwest::Error> {
         self.call(self.url("object/stat", path), None, Some(timeout))
@@ -71,8 +71,12 @@ impl IpfsClient {
     }
 
     /// Download the entire contents.
-    pub async fn cat_all(&self, cid: String, timeout: Duration) -> Result<Bytes, reqwest::Error> {
-        self.call(self.url("cat", cid), None, Some(timeout))
+    pub async fn cat_all(
+        &self,
+        cid: &String,
+        timeout: Option<Duration>,
+    ) -> Result<Bytes, reqwest::Error> {
+        self.call(self.url("cat", cid), None, timeout)
             .await?
             .bytes()
             .await
@@ -80,7 +84,7 @@ impl IpfsClient {
 
     pub async fn cat(
         &self,
-        cid: String,
+        cid: &String,
     ) -> Result<impl Stream<Item = Result<Bytes, reqwest::Error>>, reqwest::Error> {
         Ok(self
             .call(self.url("cat", cid), None, None)
@@ -103,7 +107,7 @@ impl IpfsClient {
             .await
     }
 
-    fn url(&self, route: &'static str, arg: String) -> String {
+    fn url(&self, route: &'static str, arg: &String) -> String {
         // URL security: We control the base and the route, user-supplied input goes only into the
         // query parameters.
         format!("{}api/v0/{}?arg={}", self.base, route, arg)

@@ -5,7 +5,6 @@ use index_store::Store;
 use libloading::Library;
 pub use massbit::firehose::bstream::BlockResponse;
 use massbit_chain_solana::data_type::{decode, SolanaBlock, SolanaLogMessages, SolanaTransaction};
-use paste::paste;
 use std::{error::Error, sync::Arc};
 
 // crate::prepare_adapter!(Solana, {

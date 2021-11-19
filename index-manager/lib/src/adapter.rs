@@ -16,14 +16,14 @@ pub async fn adapter_init(
     //assert_eq!(manifest.data_sources.len(), 1);
 
     println!("{:?}", index_config);
-    adapter
-        .init(
-            &index_config.identifier.name_with_hash,
-            &config_value,
-            &index_config.mapping,
-            &index_config.schema,
-            manifest,
-        )
-        .await?;
+    // adapter
+    //     .init(
+    //         &index_config.identifier.name_with_hash,
+    //         &config_value,
+    //         &index_config.mapping,
+    //         &index_config.schema,
+    //         manifest,
+    //     )
+    //     .await?;
     Ok(())
 }

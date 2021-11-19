@@ -21,7 +21,7 @@ use std::path::Path;
 
 use crate::solana::SolanaHandler;
 use chain_solana::data_source::{DataSource, DataSourceTemplate};
-use chain_solana::Chain;
+use chain_solana::{Chain, SolanaIndexerManifest};
 use std::{
     alloc::System, collections::HashMap, env, error::Error, ffi::OsStr, fmt, path::PathBuf,
     sync::Arc,
@@ -38,8 +38,6 @@ lazy_static! {
     static ref GENERATED_FOLDER: String = String::from("index-manager/generated/");
     static ref COMPONENT_NAME: String = String::from("[Adapter-Manager]");
 }
-const SABER_STABLE_SWAP_PROGRAM: &str = "SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ";
-const SERUM_DEX_PROGRAM: &str = "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin";
 const GET_BLOCK_TIMEOUT_SEC: u64 = 600;
 const GET_STREAM_TIMEOUT_SEC: u64 = 30;
 #[global_allocator]
@@ -95,25 +93,26 @@ impl AdapterManager {
     pub async fn init(
         &mut self,
         hash: &String,
-        _config: &Value,
+        db_schema: &String,
+        //_config: &Value,
         mapping: &PathBuf,
         schema: &PathBuf,
-        manifest: &Option<IndexerManifest<Chain>>,
-    ) -> Result<(), Box<dyn Error>> {
-        let mut data_sources: Vec<DataSource> = vec![];
-        let mut templates: Vec<DataSourceTemplate> = vec![];
-        if let Some(sgd) = manifest {
-            data_sources = sgd
-                .data_sources
-                .iter()
-                .map(|ds| ds.clone())
-                .collect::<Vec<DataSource>>();
-            templates = sgd
-                .templates
-                .iter()
-                .map(|tpl| tpl.clone())
-                .collect::<Vec<DataSourceTemplate>>();
-        }
+        //manifest: &IndexerManifest<Chain>,
+        manifest: &SolanaIndexerManifest,
+    ) -> Result<(), anyhow::Error> {
+        //let mut data_sources: Vec<DataSource> = vec![];
+        //let mut templates: Vec<DataSourceTemplate> = vec![];
+        //if let Some(sgd) = manifest {
+        let data_sources = manifest
+            .data_sources
+            .iter()
+            .map(|ds| ds.clone())
+            .collect::<Vec<DataSource>>();
+        let templates = manifest
+            .templates
+            .iter()
+            .map(|tpl| tpl.clone())
+            .collect::<Vec<DataSourceTemplate>>();
 
         let _arc_templates = Arc::new(templates);
         //Todo: Currently adapter only works with one datasource
@@ -142,6 +141,7 @@ impl AdapterManager {
                 let mut client = StreamClient::new(timeout_channel);
                 self.handle_rust_mapping(
                     hash,
+                    db_schema,
                     data_source,
                     start_block,
                     mapping,
@@ -171,13 +171,14 @@ impl AdapterManager {
     async fn handle_rust_mapping<P: AsRef<Path>>(
         &mut self,
         indexer_hash: &String,
+        db_schema: &String,
         data_source: &DataSource,
         init_block: u64,
         mapping_path: P,
         schema_path: P,
         client: &mut StreamClient<Timeout<Channel>>,
-    ) -> Result<(), Box<dyn Error>> {
-        let store = StoreBuilder::create_store(indexer_hash.as_str(), &schema_path).unwrap();
+    ) -> Result<(), anyhow::Error> {
+        let store = StoreBuilder::create_store(db_schema.as_str(), &schema_path).unwrap();
         let mut indexer_state = IndexerState::new(Arc::new(store));
 
         //Use unsafe to inject a store pointer into user's lib

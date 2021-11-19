@@ -9,15 +9,12 @@ use crate::{
 };
 use anyhow::anyhow;
 use async_trait::async_trait;
-use bytes::BytesMut;
-use futures::Async;
 use futures::{try_ready, Poll};
 use futures03::stream::poll_fn;
 use futures03::stream::FuturesUnordered;
 use futures03::StreamExt;
 use lazy_static::lazy_static;
 use lru_time_cache::LruCache;
-use serde_json::Value;
 use slog::{self, crit, debug, error, info, o, trace, warn, Logger};
 use std::env;
 use std::str::FromStr;
@@ -93,23 +90,23 @@ fn retry_policy<I: Send + Sync>(
 /// make good use of the stat returned.
 async fn select_fastest_client_with_stat(
     clients: Arc<Vec<Arc<IpfsClient>>>,
-    path: String,
+    path: &String,
     timeout: Duration,
     do_retry: bool,
     logger: Logger,
 ) -> Result<(ObjectStatResponse, Arc<IpfsClient>), Error> {
     let mut err: Option<Error> = None;
-
+    let path = path.clone();
     let mut stats: FuturesUnordered<_> = clients
         .iter()
         .enumerate()
         .map(|(i, c)| {
-            let c = c.cheap_clone();
             let path = path.clone();
+            let c = c.cheap_clone();
             retry_policy(do_retry, "object.stat", &logger).run(move || {
                 let path = path.clone();
                 let c = c.cheap_clone();
-                async move { c.object_stat(path, timeout).map_ok(move |s| (s, i)).await }
+                async move { c.object_stat(&path, timeout).map_ok(move |s| (s, i)).await }
             })
         })
         .collect();
@@ -211,7 +208,7 @@ impl LinkResolverTrait for LinkResolver {
 
         let (stat, client) = select_fastest_client_with_stat(
             self.clients.cheap_clone(),
-            path.clone(),
+            &path,
             self.timeout,
             self.retry,
             logger.cheap_clone(),
@@ -232,7 +229,7 @@ impl LinkResolverTrait for LinkResolver {
                 let this = this.clone();
                 let logger = logger.clone();
                 async move {
-                    let data = client.cat_all(path.clone(), timeout).await?.to_vec();
+                    let data = client.cat_all(&path, Some(timeout)).await?.to_vec();
 
                     // Only cache files if they are not too large
                     if data.len() <= *MAX_IPFS_CACHE_FILE_SIZE as usize {

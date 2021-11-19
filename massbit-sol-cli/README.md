@@ -8,12 +8,12 @@ tmux new -d -s indexer scripts/tmux-code-compiler.sh
 
 ## Run CLI
 ```bash
-cargo run --bin massbit-sol  -- -s user-example/solana/instructions/serum_instruction.json -o code-compiler/generated/serum-index -c user-example/solana/instructions/serum_config.json
+cargo run --bin massbit-sol  -- -s user-example/solana/instructions/serum/instruction.json -o serum-index -c user-example/solana/instructions/serum/config.json
 ```
 
 ## Build indexer
 ```bash
-cd code-compiler/generated/serum-index
+cd serum-index
 cargo build --release
 ```
 
