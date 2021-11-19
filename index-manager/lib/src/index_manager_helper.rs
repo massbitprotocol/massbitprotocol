@@ -190,7 +190,7 @@ async fn get_indexer_manifest(
     let ipfs_clients = create_ipfs_clients(&ipfs_addresses).await;
 
     let file_bytes = ipfs_clients[0]
-        .cat_all(deployment_hash.to_string(), Duration::from_secs(10))
+        .cat_all(&deployment_hash.to_string(), Some(Duration::from_secs(10)))
         .compat()
         .await
         .unwrap()

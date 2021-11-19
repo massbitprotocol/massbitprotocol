@@ -6,30 +6,32 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+async-trait = "0.1.51"
 bigdecimal = "0.3.0"
 bs58 = "0.4.0"
 base64 = "0.13.0"
+bytes = "1.1.0"
 diesel          = { version = "1.4.7", features = ["postgres", "serde_json", "numeric", "r2d2", "chrono"] }
 diesel-derive-enum  = { version = "1.1", features = ["postgres"] }
+diesel_migrations   = "1.4.0"
 logger = { path = "../../core/logger" }
 log = "0.4.14"
 massbit = { path = "../../massbit" }
 massbit-common = { path = "../../core/common" }
 massbit-chain-solana = { path = "../../core/chain/solana" }
 massbit-store-postgres = { path = "../../store/postgres"}
-jsonrpc-core = "18.0.0"
-jsonrpc-core-client = "18.0.0"
-jsonrpc-derive      = "18.0.0"
-jsonrpc-http-server = "18.0.0"
+chain-solana = { path = "../../chain/solana" }
+adapter = { path = "../../plugin/adapter" }
 itertools = "0.10.1"
 lazy_static     = "1.4.0"
+serde_yaml = "0.8.21"
 serde           = { version = "1.0", optional = false }
 tokio = {version = "1.2.0", features = ["full"]} # Required by Tonic
 futures = { version = "0.3.13", features = ["compat"] }
 tokio-compat-02 = "0.2"
 tokio02-spawn = { path = "../../core/tokio02-spawn" }
-[build-dependencies]
-tonic-build = "0.5"
+uuid = "0.8.2"
+warp = "0.3.2"
 
 [[bin]] # Bin to run gRPC server
 name = "indexer-api"

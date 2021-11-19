@@ -15,12 +15,12 @@ use indexer_lib::INDEXER_LIB;
 use indexer_mapping::INDEXER_MAPPING;
 use indexer_setting::*;
 use minifier::json::minify;
-use serde::ser::Serialize;
+
+use serde_json::json;
 use serde_json::Value;
-use serde_json::{json, to_string};
 use std::collections::BTreeMap;
 use std::fs;
-use std::{io, path::Path};
+use std::io;
 
 #[derive(Debug)]
 #[must_use]
@@ -151,7 +151,7 @@ impl<'a> Generator<'a> {
             Ok(_) => {
                 if apply_format {
                     use std::process::Command;
-                    Command::new("rustfmt").arg(output_path).output();
+                    let _ = Command::new("rustfmt").arg(output_path).output();
                 }
                 log::info!("Write content to file {:?} successfully", &output_path);
                 Ok(())
@@ -215,7 +215,7 @@ impl<'a> GeneratorBuilder<'a> {
             self.collect_definitions(schema);
         });
     }
-    pub fn build(mut self) -> Generator<'a> {
+    pub fn build(self) -> Generator<'a> {
         self.inner
     }
 }

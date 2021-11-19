@@ -52,22 +52,19 @@ const CONN_POOL_SIZE: u32 = 20;
 
 pub struct StoreBuilder {}
 impl StoreBuilder {
-    pub fn prepare_schema(
-        indexer_hash: &str,
-        conn: &PgConnection,
-    ) -> Result<String, anyhow::Error> {
-        log::info!("Prepare schema for indexer {}", indexer_hash);
-        let entity = indexers::table
-            .filter(indexers::id.eq(indexer_hash))
-            .limit(1)
-            .load::<Indexer>(conn)
-            .expect("Error loading indexer state")
-            .pop()
-            .expect("Indexer not found");
-        println!("{:?}", entity);
+    pub fn prepare_schema(db_schema: &str, conn: &PgConnection) -> Result<(), anyhow::Error> {
+        // log::info!("Prepare schema for indexer {}", indexer_hash);
+        // let entity = indexers::table
+        //     .filter(indexers::id.eq(indexer_hash))
+        //     .limit(1)
+        //     .load::<Indexer>(conn)
+        //     .expect("Error loading indexer state")
+        //     .pop()
+        //     .expect("Indexer not found");
+        // println!("{:?}", entity);
         let counter = sql_query(format!(
             "SELECT count(schema_name) FROM information_schema.schemata WHERE schema_name = '{}'",
-            entity.namespace.as_str()
+            db_schema
         ))
         .get_results::<Counter>(conn)
         .expect("Query failed")
@@ -75,19 +72,18 @@ impl StoreBuilder {
         .expect("No record found");
         if counter.count == 0 {
             //Create schema
-            match sql_query(format!("create schema {}", entity.namespace.as_str())).execute(conn) {
+            match sql_query(format!("create schema {}", db_schema)).execute(conn) {
                 Ok(_) => {}
                 Err(err) => {
-                    error!("Error while create schema {:?}", err)
+                    error!("Error while create schema {:?}", &err)
                 }
             };
             //Need execute command CREATE EXTENSION btree_gist; on db
         }
-
-        Ok(entity.namespace)
+        Ok(())
     }
     pub fn create_store<P: AsRef<Path>>(
-        indexer: &str,
+        db_schema: &str,
         schema_path: P,
     ) -> Result<PostgresIndexStore, anyhow::Error> {
         let logger = logger(false);
@@ -115,9 +111,13 @@ impl StoreBuilder {
         //     Ok(res) => println!("Finished embedded_migration {:?}", &res),
         //     Err(err) => println!("{:?}", &err)
         // };
-        match StoreBuilder::prepare_schema(indexer, &conn) {
-            Ok(schema) => {
-                match Self::create_relational_schema(schema_path, schema, &connection) {
+        match StoreBuilder::prepare_schema(db_schema, &conn) {
+            Ok(()) => {
+                match Self::create_relational_schema(
+                    schema_path,
+                    db_schema.to_string(),
+                    &connection,
+                ) {
                     Ok(layout) => {
                         //let entity_dependencies = layout.create_dependencies();
                         Ok(PostgresIndexStore {

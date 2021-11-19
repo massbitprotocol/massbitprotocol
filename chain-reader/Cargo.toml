@@ -78,10 +78,6 @@ git = "https://github.com/graphprotocol/rust-web3"
 branch = "master"
 
 
-
-# need to add this for the app_crypto macro
-full_crypto = []
-
 [build-dependencies]
 tonic-build = "0.5"
 

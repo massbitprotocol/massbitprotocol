@@ -1,9 +1,16 @@
 [package]
-name = "solana-cli"
-version = "0.1.0"
+name = "massbit-sol"
+version = "0.1.1"
 edition = "2018"
-
+authors = ["Massbit <contact@massbit.io>"]
+description = "CLI for Massbit Solana Indexer"
+homepage = "https://www.massbit.io/"
+repository = "https://github.com/massbitprotocol/massbitprotocol"
+readme = "README.md"
+keywords = ["cli", "solana","massbit"]
+license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
 
 [dependencies]
 anyhow = "1.0.45"
@@ -27,8 +34,10 @@ proptest-derive = "0.3.0"
 log = "0.4.14"
 lazy_static = "1.4.0"
 minifier = "0.0.41"
-logger = { path = "../core/logger" }
+reqwest = {version = "0.11.6", features = ["blocking"]}
+multipart = "0.18.0"
+#logger = {version = "0.1.0", path = "../core/logger" }
 handlebars = "4.1.4"
-#[[bin]] # Bin to run gRPC server
-#name = "test_origin"
-#path = "./src/test_origin.rs"
+[[bin]] # Bin to run cli
+name = "massbit-sol"
+path = "./src/main.rs"
