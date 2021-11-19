@@ -141,27 +141,3 @@ impl ManifestUnresolve for UnresolvedSolanaIndexerManifest {
         })
     }
 }
-// impl<C: Blockchain> SolanaIndexerManifest<C> {
-//     /// Entry point for resolving a indexer definition.
-//     pub async fn resolve_from_raw(
-//         logger: &Logger,
-//         id: DeploymentHash,
-//         mut raw: serde_yaml::Mapping,
-//         resolver: &impl LinkResolver,
-//         max_spec_version: semver::Version,
-//     ) -> Result<Self, IndexerManifestResolveError> {
-//         // Inject the IPFS hash as the ID of the indexer into the definition.
-//         raw.insert(
-//             serde_yaml::Value::from("id"),
-//             serde_yaml::Value::from(id.to_string()),
-//         );
-//
-//         // Parse the YAML data into an UnresolvedIndexerManifest
-//         let unresolved: UnresolvedIndexerManifest<C> = serde_yaml::from_value(raw.into())?;
-//
-//         unresolved
-//             .resolve(&*resolver, logger, max_spec_version)
-//             .await
-//             .map_err(IndexerManifestResolveError::ResolveError)
-//     }
-// }
