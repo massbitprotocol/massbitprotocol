@@ -1,23 +1,8 @@
 pub const INDEXER_MAPPING: &str = r#"
 use crate::generated::handler::Handler;
-use crate::generated::instruction::*;
-//use crate::models::*;
-use crate::SOLANA_CLIENT;
-use massbit_chain_solana::data_type::{SolanaBlock, SolanaLogMessages, SolanaTransaction};
-use massbit_chain_solana::helper::get_account_info;
-use massbit_chain_solana::{get_mint_account, get_owner_account};
-use solana_account_decoder::UiAccountEncoding;
-use solana_client::rpc_config::RpcAccountInfoConfig;
-use solana_client::rpc_response::RpcResult;
-use solana_client::{client_error::Result as ClientResult, rpc_request::RpcRequest};
-use solana_program::account_info::AccountInfo;
-use solana_program::instruction::CompiledInstruction;
-use solana_program::program_error::ProgramError;
-use solana_program::pubkey::Pubkey;
-use solana_sdk::account::Account;
-use solana_transaction_status::{parse_instruction, ConfirmedBlock, TransactionWithStatusMeta};
-use uuid::Uuid;
 use crate::ADDRESS;
+use massbit_solana_sdk::types::SolanaBlock;
+use solana_transaction_status::TransactionWithStatusMeta;
 
 pub fn handle_block(block: &SolanaBlock) -> Result<(), Box<dyn std::error::Error>> {
     for (tx_ind, tran) in block.block.transactions.iter().enumerate() {
@@ -28,7 +13,7 @@ pub fn handle_block(block: &SolanaBlock) -> Result<(), Box<dyn std::error::Error
             .iter()
             .any(|key| key.to_string().as_str() == ADDRESS)
         {
-            let entities = parse_instructions(block, tran, tx_ind);
+            parse_instructions(block, tran, tx_ind);
         }
     }
     Ok(())

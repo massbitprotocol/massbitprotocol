@@ -3,6 +3,7 @@ extern crate diesel;
 extern crate diesel_migrations;
 
 pub mod indexer_service;
+pub mod manager;
 pub mod model;
 pub mod orm;
 pub mod server_builder;

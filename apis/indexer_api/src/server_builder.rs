@@ -9,7 +9,7 @@ use massbit_common::prelude::diesel::PgConnection;
 use massbit_common::prelude::r2d2;
 use std::convert::Infallible;
 use std::net::SocketAddr;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use warp::{http::StatusCode, multipart::FormData, Filter, Rejection, Reply};
 
 #[derive(Default)]
@@ -29,6 +29,9 @@ impl IndexerServer {
     pub fn builder() -> ServerBuilder {
         ServerBuilder::default()
     }
+    pub async fn start_indexers(&mut self) {
+        self.indexer_service.start_indexers().await;
+    }
     pub async fn serve(&self) {
         let service = self.indexer_service.clone();
         // let fn_deploy = move |form: FormData| {
@@ -42,11 +45,15 @@ impl IndexerServer {
         //     .and_then(fn_deploy);
 
         //let download_route = warp::path("files").and(warp::fs::dir("./files/"));
-
+        let cors = warp::cors().allow_any_origin();
         let router = self
             .create_route_indexer_deploy(self.indexer_service.clone())
-            .or(self.create_route_indexer_list(self.indexer_service.clone()))
-            .or(self.create_route_indexer_detail(self.indexer_service.clone()))
+            .or(self
+                .create_route_indexer_list(self.indexer_service.clone())
+                .with(&cors))
+            .or(self
+                .create_route_indexer_detail(self.indexer_service.clone())
+                .with(&cors))
             .recover(handle_rejection);
         let socket_addr: SocketAddr = self.entry_point.parse().unwrap();
 

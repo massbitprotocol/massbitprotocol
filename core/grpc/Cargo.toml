@@ -1,0 +1,14 @@
+[package]
+name = "massbit-grpc"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+anyhow = "1.0.43"
+http = "0.2.3"
+tonic = { version = "0.5", features = ["tls-roots"] }
+prost = "0.8"
+prost-types = "0.8.0"
+rand = "0.6.1"
+[build-dependencies]
+tonic-build = "0.5"

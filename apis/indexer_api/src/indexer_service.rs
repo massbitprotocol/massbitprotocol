@@ -1,9 +1,9 @@
+use crate::manager::IndexerManager;
 use crate::model::ListOptions;
 use crate::orm::models::Indexer;
 use crate::orm::schema::indexers;
 use crate::orm::schema::indexers::dsl;
 use crate::API_LIST_LIMIT;
-use adapter::core::AdapterManager;
 use chain_solana::manifest::ManifestResolve;
 use chain_solana::SolanaIndexerManifest;
 use diesel::sql_types::BigInt;
@@ -28,7 +28,6 @@ use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::Arc;
 use uuid::Uuid;
-use warp::http::StatusCode;
 use warp::{
     multipart::{FormData, Part},
     Rejection, Reply,
@@ -49,8 +48,28 @@ impl IndexerService {
     > {
         self.connection_pool.get()
     }
+    pub async fn start_indexers(&mut self) {
+        let opt_ipfs_client = self.ipfs_clients.get(0);
+        let opt_conn = self.get_connection();
+        if opt_ipfs_client.is_some() && opt_conn.is_ok() {
+            if let Ok(stored_indexers) = dsl::indexers.load::<Indexer>(opt_conn.unwrap().deref()) {
+                let ipfs_client = opt_ipfs_client.unwrap();
+                // stored_indexers.iter().for_each(|indexer| async {
+                //     if let Ok(content) = ipfs_client.cat_all(&indexer.mapping, None).await {
+                //         if let Ok(manifest) =
+                //             &self.parse_manifest(&indexer.hash, &content.to_vec()).await
+                //         {
+                //             if let Err(err) = self.init_indexer(&indexer, manifest).await {
+                //                 log::error!("{:?}", &err);
+                //             };
+                //         };
+                //     };
+                // });
+            }
+        }
+    }
     /// for api deploy indexer from massbit-sol cli
-    pub async fn deploy_indexer(&self, form: FormData) -> Result<impl Reply, Rejection> {
+    pub async fn deploy_indexer(&mut self, form: FormData) -> Result<impl Reply, Rejection> {
         log::info!("Deploy new indexer");
         //let mut store_path: Option<String> = None;
         let parts: Vec<Part> = form.try_collect().await.map_err(|e| {
@@ -205,7 +224,7 @@ impl IndexerService {
         next_seq.unwrap_or_default().value
     }
     pub async fn init_indexer(
-        &self,
+        &mut self,
         indexer: &Indexer,
         manifest: &SolanaIndexerManifest,
     ) -> Result<(), anyhow::Error> {
@@ -214,16 +233,24 @@ impl IndexerService {
         let mapping_path = self.get_ipfs_file(&indexer.mapping, "so").await;
         let schema_path = self.get_ipfs_file(&indexer.graphql, "graphql").await;
         if mapping_path.is_some() && schema_path.is_some() {
-            let mut adapter = AdapterManager::new();
-            adapter
-                .init(
-                    &indexer.hash,
-                    &indexer.namespace,
+            self.indexer_manager
+                .init_indexer(
+                    indexer,
+                    manifest,
                     mapping_path.as_ref().unwrap(),
                     schema_path.as_ref().unwrap(),
-                    manifest,
                 )
-                .await?;
+                .await;
+            // let mut adapter = AdapterManager::new();
+            // adapter
+            //     .init(
+            //         &indexer.hash,
+            //         &indexer.namespace,
+            //         mapping_path.as_ref().unwrap(),
+            //         schema_path.as_ref().unwrap(),
+            //         manifest,
+            //     )
+            //     .await?;
         }
 
         Ok(())

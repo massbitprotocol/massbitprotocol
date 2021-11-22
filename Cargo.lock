@@ -3499,7 +3499,6 @@ dependencies = [
 name = "indexer_api"
 version = "0.1.0"
 dependencies = [
- "adapter",
  "async-trait",
  "base64 0.13.0",
  "bigdecimal 0.3.0",
@@ -3515,8 +3514,8 @@ dependencies = [
  "log 0.4.14",
  "logger",
  "massbit",
- "massbit-chain-solana",
  "massbit-common",
+ "massbit-solana-sdk",
  "massbit-store-postgres",
  "serde",
  "serde_yaml",
@@ -4253,6 +4252,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "massbit-grpc"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "http 0.2.5",
+ "prost 0.8.0",
+ "prost-types",
+ "rand 0.6.5",
+ "tonic",
+ "tonic-build",
+]
+
+[[package]]
 name = "massbit-sol"
 version = "0.1.1"
 dependencies = [
@@ -4280,6 +4292,30 @@ dependencies = [
  "syn 1.0.80",
  "thiserror",
  "uriparse",
+]
+
+[[package]]
+name = "massbit-solana-sdk"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "bigdecimal 0.1.2",
+ "diesel",
+ "diesel_derives",
+ "hex",
+ "itertools 0.10.1",
+ "lazy_static",
+ "libloading 0.7.1",
+ "log 0.4.14",
+ "massbit-grpc",
+ "num-bigint 0.2.6",
+ "num-traits",
+ "num_cpus",
+ "serde",
+ "serde_json",
+ "solana-transaction-status",
+ "thiserror",
 ]
 
 [[package]]

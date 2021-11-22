@@ -25,15 +25,16 @@ async fn main() {
     }
     let ipfs_clients = create_ipfs_clients();
     let socket_addr = indexer_api::API_ENDPOINT.as_str();
-    let _server = ServerBuilder::default()
+    let server = ServerBuilder::default()
         .with_entry_point(socket_addr)
         .with_ipfs_clients(ipfs_clients)
         .with_hasura_url(HASURA_URL.as_str())
         .with_connection_pool(connection_pool)
         .with_logger(logger(false))
-        .build()
-        .serve()
-        .await;
+        .build();
+    //Start all stored indexer
+    server.start_indexers().await;
+    server.serve().await;
     log::info!("Indexer is started. Ready for request processing...");
 }
 
