@@ -243,7 +243,7 @@ impl<'a> Generator<'a> {
                 match db_type {
                     // If data_type is primitive (e.g. Enum, Struct)
                     Some(db_type) => {
-                        let elm_value = if db_type.starts_with("NonZero") {
+                        let elm_value = if property.data_type.starts_with("NonZero") {
                             format!("{}.get()", property.name)
                         } else {
                             format!("{}", property.name)

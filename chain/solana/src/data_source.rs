@@ -1,9 +1,3 @@
-use anyhow::ensure;
-use std::collections::BTreeMap;
-use std::str::FromStr;
-use std::{convert::TryFrom, sync::Arc};
-use tiny_keccak::{keccak256, Keccak};
-
 use crate::chain::Chain;
 use crate::trigger::{SolanaBlockTriggerType, SolanaMappingTrigger, SolanaTriggerData};
 use massbit::components::indexer::DataSourceTemplateInfo;
@@ -13,14 +7,16 @@ use massbit::data::indexer::{
     calls_host_fn, DataSourceContext, IndexerManifestValidationError, Link,
 };
 use massbit::prelude::anyhow::Context;
-use massbit::prelude::futures03::future::try_join;
-use massbit::prelude::futures03::stream::FuturesOrdered;
-use massbit::prelude::Entity;
+use std::collections::BTreeMap;
+use std::{convert::TryFrom, sync::Arc};
+//use massbit::prelude::futures03::future::try_join;
+//use massbit::prelude::futures03::stream::FuturesOrdered;
+
 use massbit::{
     blockchain::{self, Blockchain},
     prelude::*,
 };
-use solana_transaction_status::{ConfirmedBlock, EncodedConfirmedBlock};
+use solana_transaction_status::EncodedConfirmedBlock;
 
 #[derive(Clone, Debug, Hash, Eq, PartialEq, Deserialize)]
 pub struct Source {
@@ -806,7 +802,7 @@ pub struct UnresolvedMapping {
     pub call_handlers: Vec<MappingCallHandler>,
     #[serde(default)]
     pub event_handlers: Vec<MappingEventHandler>,
-    pub file: Link,
+    //pub file: Link,
 }
 
 #[derive(Clone, Debug)]
@@ -820,7 +816,7 @@ pub struct Mapping {
     pub call_handlers: Vec<MappingCallHandler>,
     pub event_handlers: Vec<MappingEventHandler>,
     pub runtime: Arc<Vec<u8>>,
-    pub link: Link,
+    //pub link: Link,
 }
 
 impl Mapping {
@@ -863,10 +859,10 @@ impl UnresolvedMapping {
             block_handlers,
             call_handlers,
             event_handlers,
-            file: link,
+            //file: link,
         } = self;
 
-        info!(logger, "Resolve mapping"; "link" => &link.link);
+        //info!(logger, "Resolve mapping"; "link" => &link.link);
 
         let api_version = semver::Version::parse(&api_version)?;
 
@@ -886,7 +882,8 @@ impl UnresolvedMapping {
         //     },
         // )
         //     .await?;
-        let module_bytes = resolver.cat(&logger, &link).await?;
+        //let module_bytes = resolver.cat(&logger, &link).await?;
+        let module_bytes = vec![];
         let runtime = Arc::new(module_bytes);
 
         Ok(Mapping {
@@ -899,7 +896,7 @@ impl UnresolvedMapping {
             call_handlers: call_handlers.clone(),
             event_handlers: event_handlers.clone(),
             runtime,
-            link,
+            //link,
         })
     }
 }
