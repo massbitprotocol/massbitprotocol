@@ -35,10 +35,9 @@ use std::error::Error;
 use std::str::FromStr;
 use std::sync::atomic::Ordering;
 use std::sync::atomic::{AtomicU64, AtomicUsize};
-use std::{
-    sync::{Arc, Mutex},
-    time::Instant,
-};
+use std::{sync::Arc, time::Instant};
+
+use futures03::lock::Mutex;
 use tokio::sync::mpsc;
 use tonic::Status;
 
@@ -188,49 +187,48 @@ struct SendQueue {
 }
 
 impl SendQueue {
-    fn pop_queue(&mut self) -> Option<Option<ConfirmedBlock>> {
-        let block = self.queue.remove(&self.sending_slot);
+    fn pop_queue(&mut self) -> Option<(Option<ConfirmedBlock>, u64)> {
+        let block_with_slot = self
+            .queue
+            .remove(&self.sending_slot)
+            .map(|block| (block, self.sending_slot));
         self.sending_slot += 1;
-        block
+        block_with_slot
     }
-}
-
-async fn insert_and_prepare_send(
-    send_queue: Arc<Mutex<SendQueue>>,
-    block: Option<ConfirmedBlock>,
-    block_slot: &u64,
-) -> Option<BlockResponse> {
-    let mut send_queue = send_queue.lock().unwrap();
-    // If it is not the waiting for sending block
-    if (*block_slot != send_queue.sending_slot) {
-        // Insert block into queue
-        send_queue.queue.insert(*block_slot, block);
-        return None;
-    }
-    // If it is the waiting block
-    // Add it to send blocks
-    let mut blocks = vec![];
-    if let Some(block) = block {
-        blocks.push((block, *block_slot));
-    }
-    send_queue.sending_slot += 1;
-
-    // Check if there are any blocks that could be send at the same time
-    let mut check_slot = send_queue.sending_slot;
-
-    while let Some(block) = send_queue.pop_queue() {
-        if let Some(block) = block {
-            blocks.push((block, send_queue.sending_slot));
+    fn insert_and_prepare_send(
+        &mut self,
+        block: Option<ConfirmedBlock>,
+        block_slot: &u64,
+    ) -> Option<BlockResponse> {
+        // let mut send_queue = send_queue.lock().unwrap();
+        // If it is not the waiting for sending block
+        if (*block_slot != self.sending_slot) {
+            // Insert block into queue
+            self.queue.insert(*block_slot, block);
+            return None;
         }
-        send_queue.sending_slot += 1;
+        // If it is the waiting block
+        // Add it to send blocks
+        let mut blocks = vec![];
+        if let Some(block) = block {
+            blocks.push((block, *block_slot));
+        }
+        self.sending_slot += 1;
+
+        // Check if there are any blocks that could be send at the same time
+        while let Some((block, sending_slot)) = self.pop_queue() {
+            if let Some(block) = block {
+                blocks.push((block, sending_slot));
+            }
+        }
+
+        // drop(send_queue);
+        let _blocks: Vec<u64> = blocks.iter().map(|(block, slot)| *slot).collect();
+        info!("** Packed blocks: {:?}  to send", _blocks);
+
+        let block_response = _to_generic_block(blocks);
+        Some(block_response)
     }
-
-    drop(send_queue);
-    let _blocks: Vec<u64> = blocks.iter().map(|(block, slot)| *slot).collect();
-    info!("** Packed blocks: {:?}  to send", _blocks);
-
-    let block_response = _to_generic_block(blocks);
-    Some(block_response)
 }
 
 pub async fn loop_get_block(
@@ -430,10 +428,10 @@ pub async fn loop_get_block(
                                 None
                             }
                         };
-
-                        let block_response =
-                            insert_and_prepare_send(send_queue_clone, decoded_block, &block_slot)
-                                .await;
+                        let mut send_queue_clone_lock = send_queue_clone.lock().await;
+                        let block_response = send_queue_clone_lock
+                            .insert_and_prepare_send(decoded_block, &block_slot);
+                        drop(send_queue_clone_lock);
                         if let Some(block_response) = block_response {
                             grpc_send_block(block_response, &chan_clone).await;
                             info!("Send block_response to indexer-manager");
