@@ -21,6 +21,7 @@ use massbit::prelude::lazy_static;
 // use massbit::slog::MutexDrainError::Mutex;
 use massbit_common::prelude::diesel::serialize::IsNull::No;
 //use solana_runtime::contains::Contains;
+use massbit::prelude::prost::alloc::borrow::Borrow;
 use massbit_common::prelude::diesel::RunQueryDsl;
 use solana_sdk::account::Account;
 use solana_sdk::clock::Slot;
@@ -47,7 +48,7 @@ const VERSION: &str = "1.7.0";
 const BLOCK_AVAILABLE_MARGIN: u64 = 100;
 const RPC_BLOCK_ENCODING: UiTransactionEncoding = UiTransactionEncoding::Base64;
 const GET_BLOCK_TIMEOUT_SEC: u64 = 120;
-const BLOCK_BATCH_SIZE: u64 = 2;
+const BLOCK_BATCH_SIZE: u64 = 20;
 //massbit 2: 1-> 5,695ms, 10->7.54s, 50 -> 14.2ms, 100 -> 17.8ms
 //massbit 3: 20-> ,50 -> 8.983ms, 100 -> 10.289ms
 const GET_NEW_SLOT_DELAY_MS: u64 = 500;
@@ -186,40 +187,50 @@ struct SendQueue {
     sending_slot: u64,
 }
 
+impl SendQueue {
+    fn pop_queue(&mut self) -> Option<Option<ConfirmedBlock>> {
+        let block = self.queue.remove(&self.sending_slot);
+        self.sending_slot += 1;
+        block
+    }
+}
+
 async fn insert_and_prepare_send(
     send_queue: Arc<Mutex<SendQueue>>,
     block: Option<ConfirmedBlock>,
     block_slot: &u64,
 ) -> Option<BlockResponse> {
     let mut send_queue = send_queue.lock().unwrap();
-    let mut count_send_block = 0;
-    // Insert block into queue
-    send_queue.queue.insert(*block_slot, block);
-    // Check if there are blocks that could be sending
-    let mut end_slot: Option<u64> = None;
-    let mut check_slot = send_queue.sending_slot;
+    // If it is not the waiting for sending block
+    if (*block_slot != send_queue.sending_slot) {
+        // Insert block into queue
+        send_queue.queue.insert(*block_slot, block);
+        return None;
+    }
+    // If it is the waiting block
+    // Add it to send blocks
     let mut blocks = vec![];
-    loop {
-        if send_queue.queue.contains_key(&check_slot) {
-            let block = send_queue.queue.remove(&check_slot);
-            if let Some(Some(block)) = block {
-                blocks.push((block, check_slot));
-            }
-            check_slot = check_slot + 1;
-        } else {
-            send_queue.sending_slot = check_slot;
-            break;
+    if let Some(block) = block {
+        blocks.push((block, *block_slot));
+    }
+    send_queue.sending_slot += 1;
+
+    // Check if there are any blocks that could be send at the same time
+    let mut check_slot = send_queue.sending_slot;
+
+    while let Some(block) = send_queue.pop_queue() {
+        if let Some(block) = block {
+            blocks.push((block, send_queue.sending_slot));
         }
+        send_queue.sending_slot += 1;
     }
 
     drop(send_queue);
-    if count_send_block != 0 {
-        let block_response = _to_generic_block(blocks);
-        info!("Packed {} blocks to send", count_send_block);
-        Some(block_response)
-    } else {
-        None
-    }
+    let _blocks: Vec<u64> = blocks.iter().map(|(block, slot)| *slot).collect();
+    info!("** Packed blocks: {:?}  to send", _blocks);
+
+    let block_response = _to_generic_block(blocks);
+    Some(block_response)
 }
 
 pub async fn loop_get_block(
@@ -407,35 +418,25 @@ pub async fn loop_get_block(
                         )
                         .await;
                         info!(
-                            "Finish tokio::spawn for getting block number: {:?}",
+                            "Finish get_block for getting block number: {:?}",
                             &block_slot
                         );
 
-                        match res {
-                            Ok(Ok((block, slot))) => {
-                                let decoded_block = decode_and_filter(filter_clone, block);
-                                let block_response = insert_and_prepare_send(
-                                    send_queue_clone,
-                                    decoded_block,
-                                    &block_slot,
-                                )
-                                .await;
-                                // if let Some(block_response) = block_response {
-                                //     grpc_send_block(block_response, &chan_clone).await;
-                                //     info!("Send block_response to indexer-manager");
-                                // }
-                            }
+                        let decoded_block = match res {
+                            Ok(Ok((block, slot))) => decode_and_filter(filter_clone, block),
                             Err(_) | Ok(Err(_)) => {
                                 warn!("get_block timed out at block number {}", &block_slot);
                                 BLOCK_TIMEOUT_COUNT.fetch_add(1, Ordering::SeqCst);
-                                let block_response =
-                                    insert_and_prepare_send(send_queue_clone, None, &block_slot)
-                                        .await;
-                                if let Some(block_response) = block_response {
-                                    grpc_send_block(block_response, &chan_clone).await;
-                                    info!("Send block_response to indexer-manager");
-                                }
+                                None
                             }
+                        };
+
+                        let block_response =
+                            insert_and_prepare_send(send_queue_clone, decoded_block, &block_slot)
+                                .await;
+                        if let Some(block_response) = block_response {
+                            grpc_send_block(block_response, &chan_clone).await;
+                            info!("Send block_response to indexer-manager");
                         }
                     });
                 }

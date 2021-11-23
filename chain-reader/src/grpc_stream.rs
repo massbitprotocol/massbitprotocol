@@ -58,7 +58,7 @@ impl Stream for StreamService {
                             &filter,
                         )
                         .await;
-                        error!("Restart {:?} response {:?}", &chain_type, resp);
+                        error!("{:?} chain loop_get_block stop: {:?}", &chain_type, resp);
                     }))
                 });
             }
