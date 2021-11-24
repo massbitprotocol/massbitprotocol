@@ -6,12 +6,11 @@ use massbit::prelude::tokio::time::sleep;
 
 use massbit_common::prelude::tokio::time::{timeout, Duration};
 use massbit_common::NetworkType;
-use solana_client::{rpc_client::RpcClient};
-use solana_transaction_status::{UiTransactionEncoding};
+use solana_client::rpc_client::RpcClient;
+use solana_transaction_status::UiTransactionEncoding;
 use std::error::Error;
 use std::{sync::Arc, time::Instant};
 use tokio::sync::mpsc;
-
 
 // Check https://github.com/tokio-rs/prost for enum converting in rust protobuf
 const BLOCK_AVAILABLE_MARGIN: u64 = 100;
@@ -80,23 +79,7 @@ pub async fn loop_get_block(
                             .filter_map(|res_block| res_block.ok().and_then(|res| res.ok()))
                             .collect();
                         blocks.sort_by(|a, b| a.block_slot.cmp(&b.block_slot));
-                        //Send all got blocks
-                        // if !chan.is_closed() {
-                        //     let start = Instant::now();
-                        //     let send_res = chan.send(blocks).await;
-                        //     if send_res.is_ok() {
-                        //         info!(
-                        //             "gRPC successfully sending block {} blocks in {:?}",
-                        //             blocks.len(),
-                        //             start.elapsed()
-                        //         );
-                        //     } else {
-                        //         warn!("gRPC unsuccessfully sending blocks");
-                        //     }
-                        // } else {
-                        //     return Err("Stream is closed!".into());
-                        // }
-                        //info!("Finished get blocks");
+
                         for block in blocks.into_iter() {
                             let block_slot = block.block_slot;
                             debug!("gRPC sending block {}", &block_slot);
