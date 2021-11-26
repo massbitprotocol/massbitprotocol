@@ -7,7 +7,7 @@ provider "google" {
 
 
 resource "google_compute_instance" "default" {
-  name         = "dev-solana-scanner"
+  name         = "staging-solana-scanner"
   machine_type = "e2-medium"
   zone         = "europe-west3-a"
 
@@ -16,7 +16,7 @@ resource "google_compute_instance" "default" {
   boot_disk {
     initialize_params {      
       image = "projects/ubuntu-os-cloud/global/images/ubuntu-2004-focal-v20210720"
-      size = 6000
+      size = 3000
     }
   }
 
