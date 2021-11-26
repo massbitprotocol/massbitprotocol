@@ -16,13 +16,13 @@ provider "kubernetes" {
 module "gke" {
   source                     = "terraform-google-modules/kubernetes-engine/google"
   project_id                 = "dev-cluster-332910"
-  name                       = "gke-dev-01"
+  name                       = "gke-cluster-dev"
   region                     = "asia-southeast1"
   zones                      = ["asia-southeast1-a", "asia-southeast1-b", "asia-southeast1-c"]
-  network                    = "vpc-01"
-  subnetwork                 = "asia-southeast1-01"
-  ip_range_pods              = "asia-southeast1-01-gke-01-pods"
-  ip_range_services          = "asia-southeast1-01-gke-01-services"
+  network                    = "gke-vpc-dev"
+  subnetwork                 = "gke-asia-southeast1-subnet-dev"
+  ip_range_pods              = "gke-pods"
+  ip_range_services          = "gke-services"
   http_load_balancing        = false
   horizontal_pod_autoscaling = true
   network_policy             = false
@@ -33,16 +33,16 @@ module "gke" {
       machine_type              = "e2-medium"
       node_locations            = "asia-southeast1-b,asia-southeast1-c"
       min_count                 = 1
-      max_count                 = 100
+      max_count                 = 2
       local_ssd_count           = 0
       disk_size_gb              = 100
       disk_type                 = "pd-standard"
       image_type                = "COS"
       auto_repair               = true
       auto_upgrade              = true
-      service_account           = "project-service-account@dev-cluster-332910.iam.gserviceaccount.com"
+      service_account           = "dev-cluster@dev-cluster-332910.iam.gserviceaccount.com"
       preemptible               = false
-      initial_node_count        = 80
+      initial_node_count        = 2
     },
   ]
 
