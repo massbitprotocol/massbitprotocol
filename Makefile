@@ -138,6 +138,12 @@ deploy-so:
     --header 'Content-Type: application/json' \
     --data-raw '{"compilation_id": "$(id)" }'
 
+deploy:
+	@echo "Deploy already build indexer $(id)"
+	cargo run --bin massbit-sol -- deploy -u http://127.0.0.1:3031/indexers/deploy -d code-compiler/generated/$(id)
+
+
+
 run-index-manager:
 	@echo "Run index-manager"
 	cargo run --bin index-manager-main
@@ -149,6 +155,10 @@ run-chain-reader:
 run-code-compiler:
 	@echo "Run code-compiler"
 	cd code-compiler/ && python app.py
+
+run-index-api:
+	@echo "Run indexer-api"
+	cargo run --bin indexer-api
 
 services-dev-up:
 	@echo "Run all services in dev mode"
