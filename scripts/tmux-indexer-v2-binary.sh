@@ -1,2 +1,2 @@
 #!/bin/sh
-./e2e-test/manager --ipfs 127.0.0.1:5001 --config manager/config.toml 2>&1 | tee log/console-indexer-v2.log
+./deployment/binary/manager --ipfs 127.0.0.1:5001 --config manager/config.toml 2>&1 | tee log/console-indexer-v2.log
