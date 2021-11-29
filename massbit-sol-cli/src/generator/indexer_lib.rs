@@ -5,7 +5,7 @@ pub mod mapping;
 use massbit_solana_sdk::{
     export_plugin,
     plugin::{handler::SolanaHandler, PluginRegistrar},
-    store::Store,
+    store::IndexStore,
     types::SolanaBlock,
 };
 use lazy_static::lazy_static;
@@ -23,7 +23,7 @@ pub const ADDRESS: &str = "{{address}}";
 
 #[doc(hidden)]
 #[no_mangle]
-pub static mut STORE: Option<&mut dyn Store> = None;
+pub static mut STORE: Option<&mut dyn IndexStore> = None;
 
 export_plugin!(register);
 

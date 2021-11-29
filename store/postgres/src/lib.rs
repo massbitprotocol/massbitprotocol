@@ -19,7 +19,7 @@ extern crate serde;
 extern crate uuid;
 
 mod advisory_lock;
-mod block_range;
+pub mod block_range;
 mod catalog;
 pub mod connection_pool;
 mod deployment;
@@ -30,8 +30,8 @@ pub mod helper;
 mod indexer_store;
 mod primary;
 pub mod relational;
-mod relational_queries;
-mod sql_value;
+pub mod relational_queries;
+pub mod sql_value;
 pub use self::indexer_store::{IndexerStore, Shard, PRIMARY_SHARD};
 
 /// This module is only meant to support command line tooling. It must not

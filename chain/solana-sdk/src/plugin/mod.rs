@@ -1,5 +1,5 @@
 use crate::plugin::handler::SolanaHandler;
-use crate::store::Store;
+use crate::store::IndexStore;
 pub use massbit_grpc::firehose::bstream::BlockResponse;
 use std::error::Error;
 
@@ -18,15 +18,16 @@ pub struct AdapterDeclaration {
 // General trait for handling message,
 // every adapter proxies must implement this trait
 pub trait MessageHandler {
+    //Return max processed block number
     fn handle_block_mapping(
         &self,
         _message: &mut BlockResponse,
-        _store: &mut dyn Store,
-    ) -> Result<(), Box<dyn Error>>;
+        _store: &mut dyn IndexStore,
+    ) -> Result<i64, Box<dyn Error>>;
     fn handle_transaction_mapping(
         &self,
         _message: &mut BlockResponse,
-        _store: &mut dyn Store,
+        _store: &mut dyn IndexStore,
     ) -> Result<(), Box<dyn Error>> {
         log::error!("Error! handle_transaction_mapping is not implemented!");
         Ok(())

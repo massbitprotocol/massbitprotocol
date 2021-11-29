@@ -1,8 +1,10 @@
-pub mod data;
+pub mod entity;
+pub mod model;
 pub mod plugin;
 pub mod scalar;
 pub mod store;
 pub mod types;
+
 use lazy_static::lazy_static;
 
 lazy_static! {

@@ -34,7 +34,7 @@ pub struct SolanaSchema {}
 pub trait ManifestResolve {
     async fn resolve_from_raw(
         logger: &Logger,
-        id: DeploymentHash,
+        id: String,
         mut raw: serde_yaml::Mapping,
         resolver: &impl LinkResolver,
         max_spec_version: semver::Version,
@@ -64,16 +64,13 @@ impl UnresolvedSolanaSchema {
 impl ManifestResolve for SolanaIndexerManifest {
     async fn resolve_from_raw(
         logger: &Logger,
-        id: DeploymentHash,
+        id: String,
         mut raw: Mapping,
         resolver: &impl LinkResolver,
         max_spec_version: Version,
     ) -> Result<SolanaIndexerManifest, IndexerManifestResolveError> {
         // Inject the IPFS hash as the ID of the indexer into the definition.
-        raw.insert(
-            serde_yaml::Value::from("id"),
-            serde_yaml::Value::from(id.to_string()),
-        );
+        raw.insert(serde_yaml::Value::from("id"), serde_yaml::Value::from(id));
 
         // Parse the YAML data into an UnresolvedIndexerManifest
         let unresolved: UnresolvedSolanaIndexerManifest = serde_yaml::from_value(raw.into())?;

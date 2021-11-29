@@ -23,11 +23,11 @@ async fn main() {
             Err(err) => println!("{:?}", &err),
         };
     }
-    let ipfs_clients = create_ipfs_clients();
+    let ipfs_client = create_ipfs_client();
     let socket_addr = indexer_api::API_ENDPOINT.as_str();
-    let server = ServerBuilder::default()
+    let mut server = ServerBuilder::default()
         .with_entry_point(socket_addr)
-        .with_ipfs_clients(ipfs_clients)
+        .with_ipfs_clients(ipfs_client)
         .with_hasura_url(HASURA_URL.as_str())
         .with_connection_pool(connection_pool)
         .with_logger(logger(false))
@@ -38,19 +38,18 @@ async fn main() {
     log::info!("Indexer is started. Ready for request processing...");
 }
 
-fn create_ipfs_clients() -> Vec<IpfsClient> {
+fn create_ipfs_client() -> IpfsClient {
     // Parse the IPFS URL from the `--ipfs` command line argument
     let address = if IPFS_ADDRESS.starts_with("http://") || IPFS_ADDRESS.starts_with("https://") {
         IPFS_ADDRESS.clone()
     } else {
         format!("http://{}", IPFS_ADDRESS.as_str())
     };
-    let ipfs_client = match IpfsClient::new(address.as_str()) {
+    match IpfsClient::new(address.as_str()) {
         Ok(ipfs_client) => ipfs_client,
         Err(e) => {
             log::error!("Failed to create IPFS client {}", e);
             panic!("Could not connect to IPFS");
         }
-    };
-    vec![ipfs_client]
+    }
 }

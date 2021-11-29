@@ -1,7 +1,7 @@
-use super::data::Entity;
+use crate::entity::Entity;
 use std::error::Error;
 
-pub trait Store: Sync + Send {
+pub trait IndexStore: Sync + Send {
     fn save(&mut self, entity_name: String, data: Entity);
     fn get(&mut self, entity_name: String, entity_id: &String) -> Option<Entity>;
     // fn query(
@@ -11,5 +11,5 @@ pub trait Store: Sync + Send {
     //     order: EntityOrder,
     //     range: EntityRange,
     // ) -> Vec<Entity>;
-    fn flush(&mut self, block_hash: &String, block_number: u64) -> Result<(), Box<dyn Error>>;
+    fn flush(&mut self, block_hash: &String, block_slot: u64) -> Result<(), Box<dyn Error>>;
 }

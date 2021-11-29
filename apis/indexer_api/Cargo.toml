@@ -14,15 +14,22 @@ bytes = "1.1.0"
 diesel          = { version = "1.4.7", features = ["postgres", "serde_json", "numeric", "r2d2", "chrono"] }
 diesel-derive-enum  = { version = "1.1", features = ["postgres"] }
 diesel_migrations   = "1.4.0"
+derive_more = { version = "0.99.14" }
 logger = { path = "../../core/logger" }
 log = "0.4.14"
 massbit = { path = "../../massbit" }
 massbit-common = { path = "../../core/common" }
 #massbit-chain-solana = { path = "../../core/chain/solana" }
 massbit-store-postgres = { path = "../../store/postgres"}
+Inflector = "0.11.3"
 chain-solana = { path = "../../chain/solana" }
 #adapter = { path = "../../plugin/adapter" }
+reqwest = "0.11.6"
+octocrab = "0.15.1"
+priority-queue = "0.7.0"
+libloading      =   "0.7.0"
 massbit-solana-sdk = { path = "../../chain/solana-sdk" }
+massbit-grpc = { path = "../../core/grpc" }
 itertools = "0.10.1"
 lazy_static     = "1.4.0"
 serde_yaml = "0.8.21"
@@ -31,8 +38,16 @@ tokio = {version = "1.2.0", features = ["full"]} # Required by Tonic
 futures = { version = "0.3.13", features = ["compat"] }
 tokio-compat-02 = "0.2"
 tokio02-spawn = { path = "../../core/tokio02-spawn" }
+tonic           =   "0.5" # Chain Reader Client
+prost           =   "0.7" # Chain Reader Client
+tower           = { version = "0.4" }
 uuid = "0.8.2"
 warp = "0.3.2"
+
+[dependencies.github-rs]
+version = "0.7"
+default-features = false
+features = ["rust-native-tls"]
 
 [[bin]] # Bin to run gRPC server
 name = "indexer-api"

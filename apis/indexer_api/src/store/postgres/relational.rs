@@ -18,10 +18,10 @@ use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use massbit::components::store::{EntityType, BLOCK_NUMBER_MAX};
-use massbit::data::graphql::ext::{DirectiveFinder, DocumentExt, ObjectTypeExt};
-use massbit::data::schema::{Schema, SCHEMA_TYPE_NAME};
-use massbit::prelude::{anyhow, BlockNumber, DeploymentHash, Entity, EntityKey, StoreError, *};
+// use massbit::components::store::{EntityType, BLOCK_NUMBER_MAX};
+// use massbit::data::graphql::ext::{DirectiveFinder, DocumentExt, ObjectTypeExt};
+// use massbit::data::schema::{Schema, SCHEMA_TYPE_NAME};
+// use massbit::prelude::{anyhow, BlockNumber, DeploymentHash, Entity, EntityKey, StoreError, *};
 
 use crate::block_range::BLOCK_RANGE_COLUMN;
 pub use crate::catalog::Catalog;

@@ -171,7 +171,18 @@ impl From<IpfsClient> for LinkResolver {
         vec![client].into()
     }
 }
-
+impl From<Arc<IpfsClient>> for LinkResolver {
+    fn from(client: Arc<IpfsClient>) -> Self {
+        Self {
+            clients: Arc::new(vec![client]),
+            cache: Arc::new(Mutex::new(LruCache::with_capacity(
+                *MAX_IPFS_CACHE_SIZE as usize,
+            ))),
+            timeout: *IPFS_TIMEOUT,
+            retry: false,
+        }
+    }
+}
 impl From<Vec<IpfsClient>> for LinkResolver {
     fn from(clients: Vec<IpfsClient>) -> Self {
         Self {

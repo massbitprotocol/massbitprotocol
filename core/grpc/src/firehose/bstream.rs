@@ -1,12 +1,14 @@
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BlockRequest {
-    #[prost(uint64, optional, tag = "1")]
+    #[prost(string, tag = "1")]
+    pub indexer_hash: ::prost::alloc::string::String,
+    #[prost(uint64, optional, tag = "2")]
     pub start_block_number: ::core::option::Option<u64>,
-    #[prost(enumeration = "ChainType", tag = "2")]
+    #[prost(enumeration = "ChainType", tag = "3")]
     pub chain_type: i32,
-    #[prost(string, tag = "3")]
+    #[prost(string, tag = "4")]
     pub network: ::prost::alloc::string::String,
-    #[prost(bytes = "vec", tag = "4")]
+    #[prost(bytes = "vec", tag = "5")]
     pub filter: ::prost::alloc::vec::Vec<u8>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]

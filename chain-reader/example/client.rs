@@ -1,11 +1,11 @@
 use clap::{App, Arg};
 
 use log::{debug, info};
-use massbit::firehose::bstream::{
-    stream_client::StreamClient, BlockRequest, BlockResponse, ChainType,
-};
 use massbit::ipfs_client::IpfsClient;
 use massbit_chain_solana::data_type::{decode as solana_decode, SolanaBlock, SolanaFilter};
+use massbit_grpc::firehose::bstream::{
+    stream_client::StreamClient, BlockRequest, BlockResponse, ChainType,
+};
 use std::time::Instant;
 
 use massbit_common::NetworkType;
@@ -41,6 +41,7 @@ pub async fn print_blocks(
     let encoded_filter = serde_json::to_vec(&filter).unwrap();
     // Not use start_block_number start_block_number yet
     let get_blocks_request = BlockRequest {
+        indexer_hash: "indexer_hash".to_string(),
         start_block_number: start_block,
         chain_type: chain_type as i32,
         network,

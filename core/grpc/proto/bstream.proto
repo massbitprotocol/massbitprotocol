@@ -7,10 +7,11 @@ service Stream {
 }
 
 message BlockRequest {
-  optional uint64 start_block_number = 1;
-  ChainType chain_type = 2;
-  string network = 3;
-  bytes filter = 4;
+  string indexer_hash = 1;
+  optional uint64 start_block_number = 2;
+  ChainType chain_type = 3;
+  string network = 4;
+  bytes filter = 5;
 }
 
 message BlockResponse {

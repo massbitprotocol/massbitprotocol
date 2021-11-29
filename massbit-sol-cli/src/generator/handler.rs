@@ -7,7 +7,7 @@ use std::fmt::Write;
 const MODULES: &str = r#"
 use crate::generated::instruction::*;
 use crate::STORE;
-use massbit_solana_sdk::data::{Attribute, Entity, Value};
+use massbit_solana_sdk::entity::{Attribute, Entity, Value};
 use massbit_solana_sdk::types::SolanaBlock;
 use serde_json;
 use solana_program::pubkey::Pubkey;
@@ -106,7 +106,7 @@ impl<'a> Generator<'a> {
                             accounts: &Vec<Pubkey>, 
                             input: &[u8],
                         ) {{
-                            println!("Process block {{}} with input {{:?}}", block.block_slot, input);
+                            println!("Process block {{}} with input {{:?}}", block.block_number, input);
                             if let Some(instruction) = {name}::unpack(input) {{
                                 match instruction {{
                                     {patterns}
@@ -159,16 +159,16 @@ impl<'a> Generator<'a> {
                     let _ =  write!(&mut inner_arg, "arg: {}", inner_type);
                 };
                 let log = if let Some(_inner_type) = &variant.inner_type {
-                    format!(r#"println!("call function {} for handle incoming block {{}} with argument {{:?}}", block.block_slot, &arg);"#, function_name)
+                    format!(r#"println!("call function {} for handle incoming block {{}} with argument {{:?}}", block.block_number, &arg);"#, function_name)
                 } else {
-                    format!(r#"println!("call function {} for handle incoming block {{}}", block.block_slot);"#, function_name)
+                    format!(r#"println!("call function {} for handle incoming block {{}}", block.block_number);"#, function_name)
                 };
                 format!(
                     r#"pub fn {function_name}(
                                 &self,
                                 block: &SolanaBlock,
                                 transaction: &TransactionWithStatusMeta,
-                                program_id: &Pubkey,
+                       s         program_id: &Pubkey,
                                 accounts: &Vec<Pubkey>,
                                 {inner_arg}
                             ) -> Result<(), anyhow::Error> {{

@@ -10,6 +10,7 @@ create table indexers
     mapping varchar not null,   -- hash of mapping file from IPFS
     graphql varchar not null,   -- hash of graphql file from IPFS
     status varchar,
+    deleted bool not null default false, -- logical deleted indexer
     address varchar, -- interested address of indexer
     start_block bigint default 0 not null, -- start block from manifest
     got_block bigint default 0 not null,    --last got block
