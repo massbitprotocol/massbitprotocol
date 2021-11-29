@@ -9,7 +9,7 @@ use chain_solana::manifest::ManifestResolve;
 use chain_solana::SolanaIndexerManifest;
 use diesel::sql_types::BigInt;
 use futures::lock::Mutex;
-use log::{debug, info};
+use log::{debug, error, info};
 use massbit::components::link_resolver::LinkResolver as _;
 use massbit::components::store::{DeploymentId, DeploymentLocator};
 use massbit::data::indexer::DeploymentHash;
@@ -116,30 +116,11 @@ impl IndexerService {
             }
         }
         if let Some(manifest) = &manifest {
-            indexer.got_block = -1_i64;
-            if let Some(datasource) = manifest.data_sources.get(0) {
-                indexer.address = datasource.source.address.clone();
-                indexer.start_block = datasource.source.start_block.clone() as i64;
-                indexer.network = datasource.network.clone();
-                indexer.name = datasource.name.clone();
+            if let Ok(indexer) = self.store_indexer(manifest, indexer).await {
+                if let Err(err) = indexer_manager.lock().await.start_indexer(indexer).await {
+                    log::error!("{:?}", &err);
+                };
             }
-            if IndexerRuntime::verify_manifest(manifest) {
-                indexer.status = Some(String::from("Invalid"))
-            } else {
-                indexer.status = Some(String::from("Deploying"))
-            }
-            if let Ok(conn) = self.get_connection() {
-                indexer.v_id = self.get_next_sequence(&conn, "indexers", "v_id");
-                indexer.namespace = format!("sgd{:?}", &indexer.v_id);
-                //let indexer = indexer.clone();
-                let inserted_value = diesel::insert_into(indexers::table)
-                    .values(&indexer)
-                    .get_result::<Indexer>(&conn)
-                    .expect("Error while create new indexer");
-            }
-            if let Err(err) = indexer_manager.lock().await.start_indexer(indexer).await {
-                log::error!("{:?}", &err);
-            };
         };
         Ok("success")
     }
@@ -150,40 +131,79 @@ impl IndexerService {
         indexer_manager: Arc<Mutex<IndexerManager>>,
     ) -> Result<impl Reply, Rejection> {
         log::info!("Deploy new indexer from git {:?}.", &content);
-        if let Some(git_url) = &content.repository {
-            let git_helper = GitHelper::new(git_url);
-            git_helper.load_indexer().await;
-        }
         let mut indexer = Indexer::new();
         let mut manifest: Option<SolanaIndexerManifest> = None;
-
-        // if let Some(manifest) = &manifest {
-        //     indexer.got_block = -1_i64;
-        //     if let Some(datasource) = manifest.data_sources.get(0) {
-        //         indexer.address = datasource.source.address.clone();
-        //         indexer.start_block = datasource.source.start_block.clone() as i64;
-        //         indexer.network = datasource.network.clone();
-        //         indexer.name = datasource.name.clone();
-        //     }
-        //     if IndexerRuntime::verify_manifest(manifest) {
-        //         indexer.status = Some(String::from("Invalid"))
-        //     } else {
-        //         indexer.status = Some(String::from("Deploying"))
-        //     }
-        //     if let Ok(conn) = self.get_connection() {
-        //         indexer.v_id = self.get_next_sequence(&conn, "indexers", "v_id");
-        //         indexer.namespace = format!("sgd{:?}", &indexer.v_id);
-        //         //let indexer = indexer.clone();
-        //         let inserted_value = diesel::insert_into(indexers::table)
-        //             .values(&indexer)
-        //             .get_result::<Indexer>(&conn)
-        //             .expect("Error while create new indexer");
-        //     }
-        //     if let Err(err) = indexer_manager.lock().await.start_indexer(indexer).await {
-        //         log::error!("{:?}", &err);
-        //     };
-        // };
+        if let Some(git_url) = &content.repository {
+            let git_helper = GitHelper::new(git_url);
+            if let Ok(map) = git_helper.load_indexer().await {
+                for (file_name, content) in map {
+                    let values = content.to_vec();
+                    // Return manifest content for parser
+                    if file_name.as_str() == "manifest" {
+                        let link_resolver = LinkResolver::from(self.ipfs_client.clone());
+                        manifest = IndexerRuntime::parse_manifest(
+                            &indexer.hash,
+                            &values,
+                            link_resolver,
+                            &self.logger,
+                        )
+                        .await
+                        .ok();
+                    }
+                    match self.ipfs_client.add(values).await {
+                        Ok(response) => match file_name.as_str() {
+                            "mapping" => indexer.mapping = response.hash,
+                            "manifest" => indexer.manifest = response.hash,
+                            "schema" => indexer.graphql = response.hash,
+                            _ => {}
+                        },
+                        Err(err) => {
+                            log::error!("{:?}", &err);
+                        }
+                    }
+                }
+            }
+        }
+        println!("{:?}", &indexer);
+        if let Some(manifest) = &manifest {
+            if let Ok(indexer) = self.store_indexer(manifest, indexer).await {
+                if let Err(err) = indexer_manager.lock().await.start_indexer(indexer).await {
+                    log::error!("{:?}", &err);
+                };
+            }
+        };
         Ok("success")
+    }
+    async fn store_indexer(
+        &self,
+        manifest: &SolanaIndexerManifest,
+        mut indexer: Indexer,
+    ) -> Result<Indexer, anyhow::Error> {
+        indexer.got_block = -1_i64;
+        if let Some(datasource) = manifest.data_sources.get(0) {
+            indexer.address = datasource.source.address.clone();
+            indexer.start_block = datasource.source.start_block.clone() as i64;
+            indexer.network = datasource.network.clone();
+            indexer.name = datasource.name.clone();
+        }
+        if IndexerRuntime::verify_manifest(manifest) {
+            indexer.status = Some(String::from("Invalid"))
+        } else {
+            indexer.status = Some(String::from("Deploying"))
+        }
+        match self.get_connection() {
+            Ok(conn) => {
+                indexer.v_id = self.get_next_sequence(&conn, "indexers", "v_id");
+                indexer.namespace = format!("sgd{:?}", &indexer.v_id);
+                //let indexer = indexer.clone();
+                diesel::insert_into(indexers::table)
+                    .values(&indexer)
+                    .get_result::<Indexer>(&conn)
+                    .map_err(|err| anyhow!(format!("{:?}", &err)))
+                //.expect("Error while create new indexer");
+            }
+            Err(err) => Err(anyhow!(format!("{:?}", &err))),
+        }
     }
     /// for api list indexer: /indexers?limit=?&offset=?
     pub async fn list_indexer(&self, options: ListOptions) -> Result<impl Reply, Rejection> {

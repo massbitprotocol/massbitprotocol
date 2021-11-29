@@ -340,6 +340,7 @@ impl IndexerRuntime {
             _ => ChainType::Solana, // If not provided, assume it's Solana network
         };
         let transaction_request = BlockRequest {
+            indexer_hash: self.indexer.hash.clone(),
             start_block_number,
             chain_type: chain_type as i32,
             network: data_source.network.clone().unwrap_or(Default::default()),

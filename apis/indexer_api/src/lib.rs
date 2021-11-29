@@ -11,7 +11,10 @@ pub mod server_builder;
 pub mod store;
 
 use lazy_static::lazy_static;
+use std::collections::HashMap;
 use std::env;
+use std::iter::FromIterator;
+
 //Time out when get content from ipfs
 pub const IPFS_TIME_OUT: u64 = 10_u64;
 pub const API_LIST_LIMIT: i64 = 100_i64;
@@ -39,4 +42,9 @@ lazy_static! {
     pub static ref INDEXER_UPLOAD_DIR: String =
         env::var("INDEXER_UPLOAD_DIR").unwrap_or(String::from("."));
     pub static ref MAX_UPLOAD_FILE_SIZE: u64 = 10_000_000_u64;
+    pub static ref FILES: HashMap<String, String> = HashMap::from_iter([
+        (String::from("libblock.so"), String::from("mapping")),
+        (String::from("schema.graphql"), String::from("schema")),
+        (String::from("subgraph.yaml"), String::from("manifest")),
+    ]);
 }
