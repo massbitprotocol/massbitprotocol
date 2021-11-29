@@ -1,20 +1,44 @@
+use crate::orm::models::Indexer;
+use crate::FILES;
+use bytes::Bytes;
+use itertools::Itertools;
+use log::error;
+use massbit::ipfs_client::IpfsClient;
 use massbit_common::prelude::anyhow;
-use octocrab::Octocrab;
+use octocrab::{models::repos::Content, models::Contents, Octocrab};
+use std::collections::HashMap;
+use std::env::temp_dir;
+use std::fs;
 use std::io::Cursor;
+use std::iter::FromIterator;
+use std::path::PathBuf;
+use std::sync::Arc;
+use uuid::Uuid;
 
 pub struct GitHelper {
     pub repo: String,
+    github_client: Octocrab,
 }
 impl GitHelper {
     pub fn new(repo: &String) -> Self {
-        GitHelper { repo: repo.clone() }
+        let github_client = Octocrab::builder().build().unwrap();
+        GitHelper {
+            repo: repo.clone(),
+            github_client,
+        }
     }
-    pub async fn load_indexer(&self) -> Result<(), anyhow::Error> {
-        let octocrab = Octocrab::builder().build()?;
-        let builder = octocrab.request_builder(&self.repo, reqwest::Method::GET);
-        let response = octocrab.execute(builder).await?;
-        println!("{:?}", &response);
-        let content = octocrab
+    async fn get_github_content(&self, url: &String) -> octocrab::Result<reqwest::Response> {
+        let builder = self
+            .github_client
+            .request_builder(url, reqwest::Method::GET);
+        self.github_client.execute(builder).await
+    }
+    //Load indexer files (mapping, schema, graphql) from github
+    //and store them in ipfs server
+    pub async fn load_indexer(&self) -> Result<HashMap<String, Bytes>, anyhow::Error> {
+        let mut map = HashMap::default();
+        let content = self
+            .github_client
             .repos("massbitprotocol", "serum_index")
             .get_content()
             .send()
@@ -25,21 +49,38 @@ impl GitHelper {
             .filter(|item| item.r#type.as_str() == "dir" && item.r#name.as_str() == "releases")
             .next()
         {
-            let builder = octocrab.request_builder(&first_item.url, reqwest::Method::GET);
-            let response = octocrab.execute(builder).await?;
-            println!("{:?}", &response);
-            println!("{:?}", first_item);
+            let response = self.get_github_content(&first_item.url).await?;
+            match response.json::<Vec<Content>>().await {
+                Ok(contents) => {
+                    for content in contents.iter() {
+                        if FILES.contains_key(&content.name) {
+                            if let Some(bytes) = self.download_file(content).await {
+                                map.insert(content.name.clone(), bytes);
+                            }
+                        }
+                    }
+                }
+                Err(err) => {
+                    error!("{:?}", &err);
+                }
+            }
         }
-        //
-        // println!(
-        //     "{} files/dirs in the repo root",
-        //     content.items.into_iter().count()
-        // );
-
-        // let response = reqwest::get(&self.repo).await?;
-        // let mut file = std::fs::File::create(file_name)?;
-        // let mut content = Cursor::new(response.bytes().await?);
-        // std::io::copy(&mut content, &mut file)?;
-        Ok(())
+        Ok(map)
+    }
+    async fn download_file(&self, content: &Content) -> Option<Bytes> {
+        let mut resp = None;
+        if let Some(file_name) = FILES
+            .iter()
+            .filter(|(_, v)| content.name.eq(v.as_str()))
+            .map(|(k, _)| k)
+            .next()
+        {
+            if let Some(url) = &content.download_url {
+                if let Ok(response) = self.get_github_content(url).await {
+                    resp = response.bytes().await.ok();
+                }
+            }
+        }
+        resp
     }
 }
