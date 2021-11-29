@@ -5,7 +5,7 @@ create table indexers
     namespace varchar not null, -- schema name
     description varchar,
     image_url varchar,
-    repo varchar,               -- public Github repo url
+    repository varchar,               -- public Github repo url
     manifest varchar not null,  -- hash of manifest file from IPFS
     mapping varchar not null,   -- hash of mapping file from IPFS
     graphql varchar not null,   -- hash of graphql file from IPFS

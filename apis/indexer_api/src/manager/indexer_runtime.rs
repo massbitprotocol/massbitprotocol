@@ -1,5 +1,6 @@
 use crate::orm::models::Indexer;
 use crate::orm::schema::indexers::dsl as idx;
+use crate::store::block_range::block_number;
 use crate::store::StoreBuilder;
 use crate::{CHAIN_READER_URL, COMPONENT_NAME, GET_BLOCK_TIMEOUT_SEC, GET_STREAM_TIMEOUT_SEC};
 use chain_solana::data_source::{DataSource, DataSourceTemplate};
@@ -30,7 +31,7 @@ use massbit_solana_sdk::plugin::{
     AdapterDeclaration, BlockResponse, MessageHandler, PluginRegistrar,
 };
 use massbit_solana_sdk::store::IndexStore;
-use massbit_solana_sdk::types::SolanaFilter;
+use massbit_solana_sdk::types::{SolanaBlock, SolanaFilter};
 use std::collections::HashMap;
 use std::env::temp_dir;
 use std::error::Error;
@@ -253,11 +254,17 @@ impl IndexerRuntime {
             if let Some(proxy) = &adapter.handler_proxies {
                 let data_source = self.manifest.data_sources.get(0).unwrap();
                 let mut opt_stream: Option<Streaming<BlockResponse>> = None;
-
+                let mut start_block = if self.indexer.got_block >= 0 {
+                    Some(self.indexer.got_block.clone() as u64 + 1)
+                } else {
+                    None
+                };
                 loop {
                     match opt_stream {
                         None => {
-                            opt_stream = self.try_create_block_stream(data_source).await;
+                            opt_stream = self
+                                .try_create_block_stream(data_source, start_block.clone())
+                                .await;
                             if opt_stream.is_none() {
                                 //Sleep for a while and reconnect
                                 sleep(Duration::from_secs(GET_STREAM_TIMEOUT_SEC)).await;
@@ -272,6 +279,9 @@ impl IndexerRuntime {
                             match response {
                                 Ok(Ok(res)) => {
                                     if let Some(mut data) = res {
+                                        let blocks: Vec<SolanaBlock> =
+                                            serde_json::from_slice(&mut data.payload).unwrap();
+                                        let first_block = blocks.get(0);
                                         match proxy.handle_block_mapping(&mut data, store) {
                                             Err(err) => {
                                                 log::error!(
@@ -315,6 +325,7 @@ impl IndexerRuntime {
     async fn try_create_block_stream(
         &self,
         data_source: &DataSource,
+        start_block: Option<u64>,
     ) -> Option<Streaming<BlockResponse>> {
         //Todo: if remove this line, debug will be broken
         // let _filter =
@@ -325,15 +336,10 @@ impl IndexerRuntime {
         };
         let filter = SolanaFilter::new(addresses);
         let encoded_filter = serde_json::to_vec(&filter).unwrap();
-        let start_block_number = if self.indexer.got_block >= 0 {
-            Some(self.indexer.got_block.clone() as u64 + 1)
-        } else {
-            None
-        };
         log::info!(
             "Indexer {:?} get new stream from block {:?}.",
             &self.indexer.name,
-            start_block_number
+            &start_block
         );
         let chain_type = match data_source.kind.split('/').next().unwrap() {
             "ethereum" => ChainType::Ethereum,
@@ -341,7 +347,7 @@ impl IndexerRuntime {
         };
         let transaction_request = BlockRequest {
             indexer_hash: self.indexer.hash.clone(),
-            start_block_number,
+            start_block_number: start_block,
             chain_type: chain_type as i32,
             network: data_source.network.clone().unwrap_or(Default::default()),
             filter: encoded_filter,
