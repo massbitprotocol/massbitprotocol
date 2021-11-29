@@ -24,24 +24,28 @@ const MAX_COUNT: i32 = 3;
 const SABER_STABLE_SWAP_PROGRAM: &str = "SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ";
 #[allow(dead_code)]
 const SABER_ROUTER_PROGRAM: &str = "Crt7UoUR6QgrFrN7j8rmSQpUTNWNSitSwWvsWGf1qZ5t";
+const SERUM_PROGRAM: &str = "0x5757371414417b8C6CAad45bAeF941aBc7d3Ab32";
 
 pub async fn print_blocks(
     mut client: StreamClient<Channel>,
     chain_type: ChainType,
     network: NetworkType,
     start_block: Option<u64>,
+    index_hash: String,
+    addresses: Vec<&str>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     // Debug
     let _count = 0;
-    let filter = SolanaFilter::new(vec![
-        SABER_STABLE_SWAP_PROGRAM,
-        // SABER_ROUTER_PROGRAM,
-    ]);
+    // let filter = SolanaFilter::new(vec![
+    //     //SABER_STABLE_SWAP_PROGRAM,
+    //     SERUM_PROGRAM,
+    // ]);
+    let filter = SolanaFilter::new(addresses);
 
     let encoded_filter = serde_json::to_vec(&filter).unwrap();
     // Not use start_block_number start_block_number yet
     let get_blocks_request = BlockRequest {
-        indexer_hash: "indexer_hash".to_string(),
+        indexer_hash: index_hash,
         start_block_number: start_block,
         chain_type: chain_type as i32,
         network,
@@ -195,6 +199,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
                 .takes_value(true),
         )
         .arg(
+            Arg::with_name("index-hash")
+                .short("i")
+                .long("index-hash")
+                .value_name("index-hash")
+                .help("Sets index-hash")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("address")
+                .short("a")
+                .long("address")
+                .value_name("address")
+                .help("Sets program address for filter")
+                .takes_value(true),
+        )
+        .arg(
             Arg::with_name("start-block")
                 .short("s")
                 .long("start-block")
@@ -205,11 +225,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
         .get_matches();
 
     let chain_type = matches.value_of("type").unwrap_or("solana");
+    let index_hash = matches.value_of("index-hash").unwrap_or("index-hash-1");
     let start_block: Option<u64> = matches.value_of("start-block").map(|start_block| {
         println!("start_block: {:?}", start_block);
         let start_block: u64 = start_block.parse().unwrap();
         start_block
     });
+    let address = matches
+        .value_of("address")
+        .unwrap_or(SABER_STABLE_SWAP_PROGRAM);
+    let addresses = vec![address];
 
     let client = StreamClient::connect(URL).await.unwrap();
     println!("Match {:?}", matches);
@@ -221,12 +246,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
                 ChainType::Solana,
                 "mainnet".to_string(),
                 start_block,
+                index_hash.to_string(),
+                addresses,
             )
             .await?;
         }
         _ => {
-            info!("Run client: {}", chain_type);
-            print_blocks(client, ChainType::Solana, "matic".to_string(), start_block).await?;
+            info!("Error not support chain: {}", chain_type);
         }
     };
 

@@ -1,6 +1,6 @@
 use crate::stream_service::BlockInfo;
 use chain_solana::types::ConfirmedBlockWithSlot;
-use log::info;
+use log::{debug, info};
 use massbit::prelude::Future;
 use massbit_chain_solana::data_type::{ExtBlock, SolanaBlock, SolanaFilter};
 use massbit_grpc::firehose::bstream::BlockResponse;
@@ -28,10 +28,12 @@ impl BlockBuffer {
         match block_info {
             BlockInfo::BlockSlot(slot) => {
                 //Current block_slot
+                debug!("*** handle_incoming_block receive block: {}", &slot);
                 self.expected_slot = slot;
                 None
             }
             BlockInfo::ConfirmBlockWithSlot(confirm_block) => {
+                debug!("*** Receive block: {}", &confirm_block.block_slot);
                 if confirm_block.block_slot != self.expected_slot {
                     self.queue.insert(confirm_block.block_slot, confirm_block);
                     None
@@ -72,13 +74,17 @@ impl IndexerBroadcast {
         }
     }
     ///Init broadcast thread
-    pub async fn start(&mut self) {
-        let name = "indexer".to_string();
-        //let mut receiver = self.block_receiver.clone();
-        //let mut buffer = self.block_buffer.clone();
-        while let Some(data) = self.block_receiver.recv().await {
-            if let Some(blocks) = self.block_buffer.handle_incoming_block(data) {
-                self.broadcast_blocks(blocks);
+    pub async fn try_recv(&mut self) -> bool {
+        match self.block_receiver.try_recv() {
+            Ok(data) => {
+                if let Some(blocks) = self.block_buffer.handle_incoming_block(data) {
+                    self.broadcast_blocks(blocks).await;
+                }
+                return true;
+            }
+            Err(e) => {
+                debug!("try_recv error: {:?}", e);
+                return false;
             }
         }
     }
@@ -104,7 +110,8 @@ impl IndexerBroadcast {
             sender: indexer_sender,
         });
     }
-    fn broadcast_blocks(&mut self, block_with_slots: Vec<ConfirmedBlockWithSlot>) {
+    async fn broadcast_blocks(&mut self, block_with_slots: Vec<ConfirmedBlockWithSlot>) {
+        debug!("*** broadcast_blocks");
         let mut filtered_blocks: HashMap<String, Vec<ConfirmedBlockWithSlot>> = HashMap::default();
         let mut indexers = self.ind_senders.lock().unwrap();
         //Remove stop indexers
@@ -151,18 +158,27 @@ impl IndexerBroadcast {
                     }
                 });
             });
-        indexers.iter().for_each(|indexer| {
+        for indexer in indexers.iter() {
             if let Some(blocks) = filtered_blocks.remove(&indexer.hash) {
                 let block_response = Self::create_block_response(blocks);
-                indexer.sender.send(Ok(block_response));
+                debug!("*** GRPC Send block_response");
+                indexer.sender.send(Ok(block_response)).await;
             }
-        });
+        }
+        // indexers.iter().for_each(|indexer| {
+        //     if let Some(blocks) = filtered_blocks.remove(&indexer.hash) {
+        //         let block_response = Self::create_block_response(blocks);
+        //         debug!("*** GRPC Send block_response");
+        //         indexer.sender.send(Ok(block_response)).await;
+        //     }
+        // });
     }
     fn create_block_response(blocks: Vec<ConfirmedBlockWithSlot>) -> BlockResponse {
         let ext_blocks = blocks
             .into_iter()
             .map(|block_with_slot| {
                 let ConfirmedBlockWithSlot { block_slot, block } = block_with_slot;
+                debug!("Add block: {}", &block_slot);
                 let ref_block = block.as_ref().unwrap();
                 let timestamp = ref_block.block_time.unwrap_or_default();
                 let list_log_messages = ref_block

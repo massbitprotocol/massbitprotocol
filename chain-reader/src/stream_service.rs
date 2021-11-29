@@ -1,14 +1,15 @@
 use crate::command::{ChainConfig, Config};
 use crate::indexer_broadcast::IndexerBroadcast;
+use crate::solana_chain;
 use crate::solana_chain_adapter::ChainAdapter;
 use crate::SOLANA_NETWORKS;
-use crate::{ethereum_chain, solana_chain};
 use chain_ethereum::{Chain, TriggerFilter};
 use chain_solana::types::ConfirmedBlockWithSlot;
 use log::{error, info};
 use massbit::prelude::tokio::sync::mpsc::Sender;
 use massbit_chain_solana::data_type::SolanaFilter;
 use massbit_common::prelude::tokio::sync::RwLock;
+use massbit_common::prelude::tokio::time::{sleep, Duration};
 use massbit_common::NetworkType;
 use massbit_grpc::firehose::bstream::{
     stream_server::Stream, BlockRequest, BlockResponse, ChainType,
@@ -91,7 +92,15 @@ impl NetworkService {
         let name = format!("{:?}_broadcaster", &self.network);
         massbit::spawn_thread(name, move || {
             massbit::block_on(task::unconstrained(async {
-                broadcaster.lock().unwrap().start().await;
+                loop {
+                    let success = broadcaster.lock().unwrap().try_recv().await;
+                    if !success {
+                        sleep(Duration::from_millis(100)).await;
+                        print!(".");
+                    } else {
+                        print!("*** Broadcaster receive block from chain_adapter");
+                    }
+                }
             }))
         });
     }

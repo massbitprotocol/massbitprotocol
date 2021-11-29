@@ -46,13 +46,18 @@ impl ChainAdapter {
         }
     }
     pub async fn start(&mut self) {
+        let mut first_notification_to_broadcast = true;
         loop {
             match self.client.get_slot() {
                 Ok(new_slot) => {
                     // Root is finalized block in Solana
                     let current_root = new_slot - BLOCK_AVAILABLE_MARGIN;
-                    //Send current slot to broadcaster
-                    self.sender.send(BlockInfo::from(current_root));
+                    //Send current slot to broadcaster only in first time
+                    if first_notification_to_broadcast {
+                        self.sender.send(BlockInfo::from(current_root)).await;
+                        first_notification_to_broadcast = false
+                    }
+
                     //info!("Root: {:?}",new_info.root);
                     match self.last_block {
                         Some(value_last_indexed_slot) => {
@@ -87,7 +92,13 @@ impl ChainAdapter {
                                                 &block_slot
                                             );
                                             if let Ok(block) = res {
-                                                sender.send(BlockInfo::ConfirmBlockWithSlot(block));
+                                                debug!(
+                                                    "*** ChainAdapter sending block: {}",
+                                                    block.block_slot
+                                                );
+                                                sender
+                                                    .send(BlockInfo::ConfirmBlockWithSlot(block))
+                                                    .await;
                                             }
                                         }
                                         Err(err) => {
