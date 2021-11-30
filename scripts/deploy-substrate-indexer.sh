@@ -1,3 +1,8 @@
+# We need to 
+# start docker-compose 
+# start manager server: https://github.com/massbitprotocol/substrate-indexer/blob/master/packages/manager/package.json
+# start apollo (don't have 1 yet)
+
 git clone https://github.com/massbitprotocol/substrate-indexer
 cd substrate-indexer/packages/manager
 
