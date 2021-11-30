@@ -341,27 +341,27 @@ impl IndexerRuntime {
             "Start get transaction backward with filter address: {:?}",
             &self.indexer
         );
-        if start_block.is_some() {
-            loop {
-                let now = Instant::now();
-                let mut res = getFilterConfirmedTransactionStatus(
-                    &filter,
-                    client,
-                    &before_tx_signature,
-                    start_block,
-                );
-                debug!("res: {:?}", res);
-                before_tx_signature = res.last_tx_signature;
-                filter_txs.append(res.txs.as_mut());
-
-                info!("Time to get filter transactions: {:?}. Got {:?} filtered addresses, last address: {:?}",now.elapsed(), filter_txs.len(),
-        filter_txs.last());
-                // No record in txs
-                if res.is_done {
-                    break;
-                }
-            }
-        }
+        // if start_block.is_some() {
+        //     loop {
+        //         let now = Instant::now();
+        //         let mut res = getFilterConfirmedTransactionStatus(
+        //             &filter,
+        //             client,
+        //             &before_tx_signature,
+        //             start_block,
+        //         );
+        //         debug!("res: {:?}", res);
+        //         before_tx_signature = res.last_tx_signature;
+        //         filter_txs.append(res.txs.as_mut());
+        //
+        //         info!("Time to get filter transactions: {:?}. Got {:?} filtered addresses, last address: {:?}",now.elapsed(), filter_txs.len(),
+        // filter_txs.last());
+        //         // No record in txs
+        //         if res.is_done {
+        //             break;
+        //         }
+        //     }
+        // }
         //******************* Forward run ***************************//
         // info!("Start get {} transaction forward.", filter_txs.len());
         //
