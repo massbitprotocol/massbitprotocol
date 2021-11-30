@@ -35,3 +35,7 @@ sudo certbot --nginx
 # Use sub-index-staging.massbit.io
 
 # Point to correct port
+cd /etc/nginx/sites-available
+sudo vi default
+    proxy_pass http://localhost:3000;
+sudo nginx -s reload
