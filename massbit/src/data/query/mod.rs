@@ -1,3 +1,3 @@
 mod error;
 
-pub use self::error::{QueryError, QueryExecutionError};
+pub use self::error::{CloneableAnyhowError, QueryError, QueryExecutionError};

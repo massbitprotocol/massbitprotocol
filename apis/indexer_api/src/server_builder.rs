@@ -1,6 +1,11 @@
 use super::model::ListOptions;
 use super::MAX_UPLOAD_FILE_SIZE;
 use crate::indexer_service::IndexerService;
+use crate::manager::IndexerManager;
+use crate::model::IndexerData;
+use crate::MAX_JSON_BODY_SIZE;
+use futures::future::{BoxFuture, FutureExt};
+use futures::lock::Mutex;
 use massbit::ipfs_client::IpfsClient;
 use massbit::prelude::LoggerFactory;
 use massbit::slog::Logger;
@@ -15,7 +20,7 @@ use warp::{http::StatusCode, multipart::FormData, Filter, Rejection, Reply};
 #[derive(Default)]
 pub struct ServerBuilder {
     entry_point: String,
-    ipfs_clients: Vec<IpfsClient>,
+    ipfs_client: Option<IpfsClient>,
     connection_pool: Option<Arc<r2d2::Pool<ConnectionManager<PgConnection>>>>,
     hasura_url: Option<String>,
     logger: Option<Logger>,
@@ -23,46 +28,88 @@ pub struct ServerBuilder {
 pub struct IndexerServer {
     entry_point: String,
     indexer_service: Arc<IndexerService>,
+    indexer_manager: Arc<Mutex<IndexerManager>>,
 }
 
-impl IndexerServer {
+impl<'a> IndexerServer {
     pub fn builder() -> ServerBuilder {
         ServerBuilder::default()
     }
+    pub async fn start_indexers(&mut self) {
+        if let Some(indexers) = self.indexer_service.get_indexers() {
+            let manager = self.indexer_manager.clone();
+            manager.lock().await.start_indexers(&indexers).await;
+        };
+    }
     pub async fn serve(&self) {
-        let service = self.indexer_service.clone();
-        // let fn_deploy = move |form: FormData| {
-        //     let clone_service = service.clone();
-        //     async move { clone_service.deploy_indexer(form).await }
-        // };
-        // /// Indexer deploy
-        // let deploy_route = warp::path!("indexer" / "deploy")
-        //     .and(warp::post())
-        //     .and(warp::multipart::form().max_length(MAX_UPLOAD_FILE_SIZE.clone()))
-        //     .and_then(fn_deploy);
-
-        //let download_route = warp::path("files").and(warp::fs::dir("./files/"));
-
+        let cors = warp::cors().allow_any_origin();
         let router = self
-            .create_route_indexer_deploy(self.indexer_service.clone())
-            .or(self.create_route_indexer_list(self.indexer_service.clone()))
-            .or(self.create_route_indexer_detail(self.indexer_service.clone()))
+            .create_route_indexer_cli_deploy(
+                self.indexer_service.clone(),
+                self.indexer_manager.clone(),
+            )
+            .or(self.create_route_indexer_github_deploy(
+                self.indexer_service.clone(),
+                self.indexer_manager.clone(),
+            ))
+            .or(self
+                .create_route_indexer_list(self.indexer_service.clone())
+                .with(&cors))
+            .or(self
+                .create_route_indexer_detail(self.indexer_service.clone())
+                .with(&cors))
             .recover(handle_rejection);
         let socket_addr: SocketAddr = self.entry_point.parse().unwrap();
 
         warp::serve(router).run(socket_addr).await;
     }
-    /// Indexer deploy api
-    fn create_route_indexer_deploy(
+    /// Indexer deploy from cli api
+    fn create_route_indexer_cli_deploy(
         &self,
         service: Arc<IndexerService>,
+        manager: Arc<Mutex<IndexerManager>>,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("indexers" / "deploy")
             .and(warp::post())
             .and(warp::multipart::form().max_length(MAX_UPLOAD_FILE_SIZE.clone()))
             .and_then(move |form: FormData| {
                 let clone_service = service.clone();
-                async move { clone_service.deploy_indexer(form).await }
+                let clone_manager = manager.clone();
+                async move { clone_service.deploy_indexer(form, clone_manager).await }
+            })
+    }
+    /// Indexer deploy from github api
+    fn create_route_indexer_github_deploy(
+        &self,
+        service: Arc<IndexerService>,
+        manager: Arc<Mutex<IndexerManager>>,
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        warp::path!("indexers" / "gitdeploy")
+            .and(warp::post())
+            .and(json_body())
+            .and_then(move |content: IndexerData| {
+                let clone_service = service.clone();
+                let clone_manager = manager.clone();
+                async move {
+                    clone_service
+                        .deploy_git_indexer(content, clone_manager)
+                        .await
+                }
+            })
+    }
+    /// Indexer create api
+    fn create_route_indexer_create(
+        &self,
+        service: Arc<IndexerService>,
+        manager: Arc<Mutex<IndexerManager>>,
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        warp::path!("indexers")
+            .and(warp::post())
+            .and(warp::multipart::form().max_length(MAX_UPLOAD_FILE_SIZE.clone()))
+            .and_then(move |form: FormData| {
+                let clone_service = service.clone();
+                let clone_manager = manager.clone();
+                async move { clone_service.deploy_indexer(form, clone_manager).await }
             })
     }
     /// Indexer list api
@@ -96,8 +143,8 @@ impl ServerBuilder {
         self.entry_point = String::from(entry_point);
         self
     }
-    pub fn with_ipfs_clients(mut self, ipfs_client: Vec<IpfsClient>) -> Self {
-        self.ipfs_clients = ipfs_client;
+    pub fn with_ipfs_clients(mut self, ipfs_client: IpfsClient) -> Self {
+        self.ipfs_client = Some(ipfs_client);
         self
     }
     pub fn with_hasura_url(mut self, hasura_url: &str) -> Self {
@@ -117,15 +164,30 @@ impl ServerBuilder {
     }
 
     pub fn build(&self) -> IndexerServer {
+        if self.ipfs_client.is_none() {
+            panic!("Please config ipfs client")
+        }
+        let ipfs_client = Arc::new(self.ipfs_client.as_ref().unwrap().clone());
         IndexerServer {
             entry_point: self.entry_point.clone(),
             indexer_service: Arc::new(IndexerService {
-                ipfs_clients: self.ipfs_clients.clone(),
+                ipfs_client: ipfs_client.clone(),
                 connection_pool: self.connection_pool.as_ref().unwrap().clone(),
-                logger_factory: LoggerFactory::new(self.logger.as_ref().unwrap().clone()),
+                logger: self.logger.as_ref().unwrap().clone(),
             }),
+            indexer_manager: Arc::new(Mutex::new(IndexerManager {
+                ipfs_client: ipfs_client.clone(),
+                connection_pool: self.connection_pool.as_ref().unwrap().clone(),
+                //runtimes: Default::default(),
+                logger: self.logger.as_ref().unwrap().clone(),
+            })),
         }
     }
+}
+fn json_body() -> impl Filter<Extract = (IndexerData,), Error = warp::Rejection> + Clone {
+    // When accepting a body, we want a JSON body
+    // (and to reject huge payloads)...
+    warp::body::content_length_limit(MAX_JSON_BODY_SIZE).and(warp::body::json())
 }
 
 async fn handle_rejection(err: Rejection) -> std::result::Result<impl Reply, Infallible> {

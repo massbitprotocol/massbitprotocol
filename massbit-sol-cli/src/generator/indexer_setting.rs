@@ -14,16 +14,12 @@ anyhow = "1.0.44"
 uuid = { version = "0.8", features = ["serde", "v4"] }
 num-traits = "0.2.12"
 arrayref = "0.3.6"
-bytemuck = { version = "1.4.0" }
 arbitrary = { version = "0.4.6", features = ["derive"], optional = true }
 bincode = "1.3.1"
 enumflags2 = "0.6.4"
 log = "0.4.14"
 # Massbit dependencies
-adapter = { path = "../../../plugin/adapter" }
-massbit-chain-solana = { path = "../../../core/chain/solana" }
-index-store = { path = "../../../core/index-store" }
-massbit-drive = {path = "../../../core/drive" }
+massbit-solana-sdk = { path = "../../../chain/solana-sdk" }
 num_enum = "0.5.0"
 thiserror = "1.0.20"
 safe-transmute = "0.11.0"

@@ -351,3 +351,18 @@ impl<'a> Connection<'a> {
         schema.map(|schema| schema.try_into()).transpose()
     }
 }
+///
+/// Allow create new site while create store for solana smart contract indexer
+///
+impl Site {
+    pub fn new(deployment_hash: &DeploymentHash, schema: &str, network: &str) -> Self {
+        Site {
+            id: DeploymentId(0),
+            deployment: deployment_hash.clone(),
+            shard: crate::PRIMARY_SHARD.clone(),
+            namespace: Namespace::new(schema.to_string()).unwrap(),
+            network: String::from(network),
+            _creation_disallowed: (),
+        }
+    }
+}

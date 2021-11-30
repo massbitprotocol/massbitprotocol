@@ -10,6 +10,7 @@ async-trait = "0.1.51"
 mockall = "0.10.2"
 jsonrpc-core = "14.2.0"
 url = "2.2.2"
+itertools = "0.10.1"
 massbit = { path = "../../massbit" }
 serde = "1.0"
 http = "0.1.21" # must be compatible with the version rust-web3 uses

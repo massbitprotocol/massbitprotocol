@@ -5,7 +5,6 @@ use massbit::blockchain::TriggerData;
 use massbit::prelude::prost::alloc::fmt::Formatter;
 use massbit::prelude::*;
 use massbit::runtime::{AscHeap, AscPtr, DeterministicHostError};
-use solana_program::pubkey::Pubkey;
 use std::cmp::Ordering;
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]

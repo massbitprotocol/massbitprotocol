@@ -1,0 +1,43 @@
+[package]
+name = "massbit-solana-sdk"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.43"
+async-trait = "0.1.51"
+hex = "0.4.3"
+itertools = "0.10.1"
+lazy_static = "1.4.0"
+libloading = "0.7.0"
+log = "0.4.14"
+num-bigint = { version = "^0.2.6", features = ["serde"] }
+num_cpus = "1.13.0"
+num-traits = "0.2.14"
+bigdecimal = { version = "0.1.0", features = ["serde"] }
+
+diesel = { version = "1.4.8", features = ["postgres", "serde_json", "numeric", "r2d2", "chrono"] }
+diesel_derives = "1.4"
+serde = "1.0.130"
+serde_json = { version = "1.0", optional = false }
+thiserror = "1.0.30"
+
+# Massbit dependencies
+massbit-grpc = { path = "../../core/grpc" }
+
+#[dependencies.massbit-grpc]
+#package = "massbit-grpc"
+#git = "https://github.com/massbitprotocol/massbitprotocol.git"
+#branch = "main"
+
+[dependencies.solana-transaction-status]
+package = "solana-transaction-status"
+git = "https://github.com/massbitprotocol/solana.git"
+branch = "massbit"
+
+[dependencies.solana-program]
+package = "solana-program"
+git = "https://github.com/massbitprotocol/solana.git"
+branch = "massbit"
