@@ -500,7 +500,7 @@ impl Layout {
         })
     }
 
-    fn create_hasura_tracking_tables(&self) -> (serde_json::Value, serde_json::Value) {
+    pub fn create_hasura_tracking_tables(&self) -> (serde_json::Value, serde_json::Value) {
         //Generate hasura request to track tables + relationships
         let mut hasura_tables: Vec<serde_json::Value> = Vec::new();
         let mut hasura_down_tables: Vec<serde_json::Value> = Vec::new();
@@ -541,7 +541,7 @@ impl Layout {
         )
     }
 
-    fn create_hasura_tracking_relationships(&self) -> (serde_json::Value, serde_json::Value) {
+    pub fn create_hasura_tracking_relationships(&self) -> (serde_json::Value, serde_json::Value) {
         let mut hasura_relations: Vec<serde_json::Value> = Vec::new();
         let mut hasura_down_relations: Vec<serde_json::Value> = Vec::new();
         let schema = self.site.namespace.as_str();

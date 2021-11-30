@@ -5,11 +5,12 @@ create table indexers
     namespace varchar not null, -- schema name
     description varchar,
     image_url varchar,
-    repo varchar,               -- public Github repo url
+    repository varchar,               -- public Github repo url
     manifest varchar not null,  -- hash of manifest file from IPFS
     mapping varchar not null,   -- hash of mapping file from IPFS
     graphql varchar not null,   -- hash of graphql file from IPFS
     status varchar,
+    deleted bool not null default false, -- logical deleted indexer
     address varchar, -- interested address of indexer
     start_block bigint default 0 not null, -- start block from manifest
     got_block bigint default 0 not null,    --last got block

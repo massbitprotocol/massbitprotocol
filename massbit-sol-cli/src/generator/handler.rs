@@ -7,15 +7,13 @@ use std::fmt::Write;
 const MODULES: &str = r#"
 use crate::generated::instruction::*;
 use crate::STORE;
-use crate::{Attribute, Entity, EntityFilter, EntityOrder, EntityRange, Value};
-//use crate::models::*;
-use solana_program::pubkey::Pubkey;
-use solana_sdk::account::Account;
-use uuid::Uuid;
+use massbit_solana_sdk::entity::{Attribute, Entity, Value};
+use massbit_solana_sdk::types::SolanaBlock;
 use serde_json;
-use massbit_chain_solana::data_type::{SolanaBlock, SolanaLogMessages, SolanaTransaction};
-use solana_transaction_status::{parse_instruction, ConfirmedBlock, TransactionWithStatusMeta};
+use solana_program::pubkey::Pubkey;
+use solana_transaction_status::TransactionWithStatusMeta;
 use std::collections::HashMap;
+use uuid::Uuid;
 "#;
 const ENTITY_SAVE: &str = r#"
 pub trait EntityExt {
@@ -29,59 +27,6 @@ impl EntityExt for Entity {
                 .unwrap()
                 .save(String::from(entity_name), self.clone());
         }
-    }
-}
-pub trait ValueExt<T>: Sized {
-    fn try_from(_: T) -> Self;
-}    
-impl ValueExt<String> for Value {
-    fn try_from(value: String) -> Value {
-        Value::String(value)
-    }
-}
-impl ValueExt<u8> for Value {
-    fn try_from(value: u8) -> Value {
-        Value::Int(value as i32)
-    }
-}
-impl ValueExt<i8> for Value {
-    fn try_from(value: i8) -> Value {
-        Value::Int(value as i32)
-    }
-}
-impl ValueExt<u16> for Value {
-    fn try_from(value: u16) -> Value {
-        Value::Int(value as i32)
-    }
-}
-impl ValueExt<i16> for Value {
-    fn try_from(value: i16) -> Value {
-        Value::Int(value as i32)
-    }
-}
-impl ValueExt<u32> for Value {
-    fn try_from(value: u32) -> Value {
-        Value::Int(value as i32)
-    }
-}
-impl ValueExt<i32> for Value {
-    fn try_from(value: i32) -> Value {
-        Value::Int(value)
-    }
-}
-impl ValueExt<u64> for Value {
-    fn try_from(value: u64) -> Value {
-        Value::BigInt(value.into())
-    }
-}
-impl ValueExt<i64> for Value {
-    fn try_from(value: i64) -> Value {
-        Value::BigInt(value.into())
-    }
-}
-impl ValueExt<Vec<Value>> for Value {
-    fn try_from(value: Vec<Value>) -> Value {
-        Value::List(value)
     }
 }
 "#;
@@ -191,7 +136,7 @@ impl<'a> Generator<'a> {
         if let Some(accounts) = &variant.accounts {
             for account in accounts {
                 assignments.push(format!(
-                    r#"map.insert("{}".to_string(), Value::try_from(
+                    r#"map.insert("{}".to_string(), Value::from(
                         accounts.get({})
                             .and_then(|pubkey| Some(pubkey.to_string()))
                             .unwrap_or_default()));"#,
@@ -213,7 +158,7 @@ impl<'a> Generator<'a> {
         format!(
             r#"
                 let mut map : HashMap<Attribute, Value> = HashMap::default();
-                map.insert("id".to_string(), Value::try_from(Uuid::new_v4().to_simple().to_string()));
+                map.insert("id".to_string(), Value::from(Uuid::new_v4().to_simple().to_string()));
                 {assignments}
                 Entity::from(map).save("{entity_name}");
                 Ok(())
@@ -229,7 +174,7 @@ impl<'a> Generator<'a> {
         field_value: &str,
     ) {
         assignments.push(format!(
-            r#"map.insert("{}".to_string(), Value::try_from({}));"#,
+            r#"map.insert("{}".to_string(), Value::from({}));"#,
             field_name, field_value
         ));
     }
@@ -251,7 +196,7 @@ impl<'a> Generator<'a> {
                         let property_value = match property.array_length {
                             Some(_) => {
                                 format!(
-                                    r#"arg.{property_name}.iter().map(|&{property_name}| Value::try_from({elm_value})).collect::<Vec<Value>>()"#,
+                                    r#"arg.{property_name}.iter().map(|&{property_name}| Value::from({elm_value})).collect::<Vec<Value>>()"#,
                                     property_name = &property.name,
                                     elm_value = elm_value
                                 )
@@ -261,13 +206,13 @@ impl<'a> Generator<'a> {
                             }
                         };
                         assignments.push(format!(
-                            r#"map.insert("{}".to_string(), Value::try_from({}));"#,
+                            r#"map.insert("{}".to_string(), Value::from({}));"#,
                             &property.name, &property_value
                         ));
                     }
                     None => {
                         assignments.push(format!(
-                            r#"map.insert("{name}".to_string(), Value::try_from(serde_json::to_string(&arg.{name}).unwrap_or(Default::default())));"#,
+                            r#"map.insert("{name}".to_string(), Value::from(serde_json::to_string(&arg.{name}).unwrap_or(Default::default())));"#,
                             name=&property.name
                         ));
                     }

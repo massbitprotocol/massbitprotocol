@@ -899,6 +899,9 @@ dependencies = [
  "anyhow",
  "async-stream 0.2.1",
  "broadcaster",
+ "bs58 0.4.0",
+ "chain-ethereum",
+ "chain-solana",
  "clap",
  "dotenv",
  "env_logger 0.9.0",
@@ -918,6 +921,7 @@ dependencies = [
  "massbit",
  "massbit-chain-solana",
  "massbit-common",
+ "massbit-grpc",
  "multiqueue",
  "parity-scale-codec 2.3.1",
  "primitive-types 0.6.2",
@@ -949,6 +953,7 @@ dependencies = [
  "futures 0.1.31",
  "futures 0.3.17",
  "http 0.1.21",
+ "itertools 0.10.1",
  "jsonrpc-core 14.2.0",
  "massbit",
  "mockall 0.10.2",
@@ -1761,6 +1766,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "doc-comment"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fea41bba32d969b513997752735605054bc0dfa92b4c56bf1189f2e174be7a10"
+
+[[package]]
 name = "dotenv"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1907,6 +1918,16 @@ checksum = "aa68f1b12764fab894d2755d2518754e71b4fd80ecfb822714a1206c2aab39bf"
 dependencies = [
  "cc",
  "libc",
+]
+
+[[package]]
+name = "error-chain"
+version = "0.12.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d2f06b9cac1506ece98fe3231e3cc9c4410ec3d5b1f24ae1c8946f0742cdefc"
+dependencies = [
+ "backtrace",
+ "version_check 0.9.3",
 ]
 
 [[package]]
@@ -2404,6 +2425,22 @@ dependencies = [
  "proc-macro2 1.0.30",
  "quote 1.0.10",
  "syn 1.0.80",
+]
+
+[[package]]
+name = "github-rs"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "268597381fbed574532b33fed35c02e4fd04a9975310b9f942666d2b4989b912"
+dependencies = [
+ "error-chain",
+ "futures 0.1.31",
+ "hyper 0.12.36",
+ "hyper-tls 0.3.2",
+ "native-tls",
+ "serde",
+ "serde_json",
+ "tokio-core",
 ]
 
 [[package]]
@@ -3150,7 +3187,7 @@ checksum = "0a0652d9a2609a968c14be1a9ea00bf4b1d64e2e1f53a1b51b6fff3a6e829273"
 dependencies = [
  "base64 0.9.3",
  "httparse",
- "language-tags",
+ "language-tags 0.2.2",
  "log 0.3.9",
  "mime 0.2.6",
  "num_cpus",
@@ -3316,6 +3353,22 @@ dependencies = [
  "hyper 0.14.13",
  "pin-project",
  "tokio 1.12.0",
+]
+
+[[package]]
+name = "hyperx"
+version = "1.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5617e92fc2f2501c3e2bc6ce547cad841adba2bae5b921c7e52510beca6d084c"
+dependencies = [
+ "base64 0.13.0",
+ "bytes 1.1.0",
+ "http 0.2.5",
+ "httpdate 1.0.1",
+ "language-tags 0.3.2",
+ "mime 0.3.16",
+ "percent-encoding 2.1.0",
+ "unicase 2.6.0",
 ]
 
 [[package]]
@@ -3498,30 +3551,40 @@ dependencies = [
 name = "indexer_api"
 version = "0.1.0"
 dependencies = [
- "adapter",
+ "Inflector",
  "async-trait",
  "base64 0.13.0",
  "bigdecimal 0.3.0",
  "bs58 0.4.0",
  "bytes 1.1.0",
  "chain-solana",
+ "derive_more",
  "diesel",
  "diesel-derive-enum",
  "diesel_migrations",
  "futures 0.3.17",
+ "github-rs",
  "itertools 0.10.1",
  "lazy_static",
+ "libloading 0.7.1",
  "log 0.4.14",
  "logger",
  "massbit",
- "massbit-chain-solana",
  "massbit-common",
+ "massbit-grpc",
+ "massbit-solana-sdk",
  "massbit-store-postgres",
+ "octocrab",
+ "priority-queue",
+ "prost 0.7.0",
+ "reqwest 0.11.6",
  "serde",
  "serde_yaml",
  "tokio 1.12.0",
  "tokio-compat-02",
  "tokio02-spawn",
+ "tonic",
+ "tower",
  "uuid 0.8.2",
  "warp",
 ]
@@ -3829,6 +3892,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "jsonwebtoken"
+version = "7.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "afabcc15e437a6484fc4f12d0fd63068fe457bf93f1c148d3d9649c60b103f32"
+dependencies = [
+ "base64 0.12.3",
+ "pem",
+ "ring",
+ "serde",
+ "serde_json",
+ "simple_asn1",
+]
+
+[[package]]
 name = "keccak"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3858,6 +3935,12 @@ name = "language-tags"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a91d884b6667cd606bb5a69aa0c99ba811a115fc68915e7056ec08a46e93199a"
+
+[[package]]
+name = "language-tags"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d4345964bb142484797b161f473a503a434de77149dd8c7427788c6e13379388"
 
 [[package]]
 name = "lazy_static"
@@ -4252,6 +4335,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "massbit-grpc"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "http 0.2.5",
+ "prost 0.8.0",
+ "prost-types",
+ "rand 0.6.5",
+ "tonic",
+ "tonic-build",
+]
+
+[[package]]
 name = "massbit-sol"
 version = "0.1.1"
 dependencies = [
@@ -4279,6 +4375,31 @@ dependencies = [
  "syn 1.0.80",
  "thiserror",
  "uriparse",
+]
+
+[[package]]
+name = "massbit-solana-sdk"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "bigdecimal 0.1.2",
+ "diesel",
+ "diesel_derives",
+ "hex",
+ "itertools 0.10.1",
+ "lazy_static",
+ "libloading 0.7.1",
+ "log 0.4.14",
+ "massbit-grpc",
+ "num-bigint 0.2.6",
+ "num-traits",
+ "num_cpus",
+ "serde",
+ "serde_json",
+ "solana-program 1.9.0",
+ "solana-transaction-status",
+ "thiserror",
 ]
 
 [[package]]
@@ -4891,6 +5012,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "octocrab"
+version = "0.15.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f60d5caee6f28941777b16adbeb1439c2dc8c11bddc8e3dcf55d3b0c453d5f60"
+dependencies = [
+ "arc-swap 1.4.0",
+ "async-trait",
+ "base64 0.13.0",
+ "bytes 1.1.0",
+ "chrono",
+ "hyperx",
+ "jsonwebtoken",
+ "once_cell",
+ "reqwest 0.11.6",
+ "serde",
+ "serde_json",
+ "serde_path_to_error",
+ "snafu",
+ "url 2.2.2",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5175,6 +5318,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f05894bce6a1ba4be299d0c5f29563e08af2bc18bb7d48313113bed71e904739"
 dependencies = [
  "crypto-mac 0.11.1",
+]
+
+[[package]]
+name = "pem"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fd56cbd21fea48d0c440b41cd69c589faacade08c992d9a54e471b79d0fd13eb"
+dependencies = [
+ "base64 0.13.0",
+ "once_cell",
+ "regex",
 ]
 
 [[package]]
@@ -6634,6 +6788,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_path_to_error"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d0421d4f173fab82d72d6babf36d57fae38b994ca5c2d78e704260ba6d12118b"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "serde_plain"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6791,6 +6954,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c19772be3c4dd2ceaacf03cb41d5885f2a02c4d8804884918e3a258480803335"
 
 [[package]]
+name = "simple_asn1"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "692ca13de57ce0613a363c8c2f1de925adebc81b04c923ac60c5488bb44abe4b"
+dependencies = [
+ "chrono",
+ "num-bigint 0.2.6",
+ "num-traits",
+]
+
+[[package]]
 name = "siphasher"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6911,6 +7085,28 @@ name = "smallvec"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ecab6c735a6bb4139c0caafd0cc3635748bbb3acf4550e8138122099251f309"
+
+[[package]]
+name = "snafu"
+version = "0.6.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eab12d3c261b2308b0d80c26fffb58d17eba81a4be97890101f416b478c79ca7"
+dependencies = [
+ "backtrace",
+ "doc-comment",
+ "snafu-derive",
+]
+
+[[package]]
+name = "snafu-derive"
+version = "0.6.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1508efa03c362e23817f96cde18abed596a25219a8b2c66e8db33c03543d315b"
+dependencies = [
+ "proc-macro2 1.0.30",
+ "quote 1.0.10",
+ "syn 1.0.80",
+]
 
 [[package]]
 name = "socket2"
@@ -9103,6 +9299,7 @@ dependencies = [
  "idna 0.2.3",
  "matches",
  "percent-encoding 2.1.0",
+ "serde",
 ]
 
 [[package]]

@@ -3,7 +3,7 @@
 #![allow(clippy::all)]
 use super::schema::indexers;
 use serde::Serialize;
-#[derive(Queryable, Default, Debug, Identifiable, Serialize, Insertable)]
+#[derive(Queryable, Clone, Default, Debug, Identifiable, Serialize, Insertable)]
 #[primary_key(v_id)]
 pub struct Indexer {
     pub network: Option<String>,
@@ -11,11 +11,12 @@ pub struct Indexer {
     pub namespace: String,
     pub description: Option<String>,
     pub image_url: Option<String>,
-    pub repo: Option<String>,
+    pub repository: Option<String>,
     pub manifest: String,
     pub mapping: String,
     pub graphql: String,
     pub status: Option<String>,
+    pub deleted: bool,
     pub address: Option<String>,
     pub start_block: i64,
     pub got_block: i64,

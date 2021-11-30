@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package bstream;
+
+service Stream {
+  rpc Blocks(BlockRequest) returns (stream BlockResponse);
+}
+
+message BlockRequest {
+  string indexer_hash = 1;
+  optional uint64 start_block_number = 2;
+  ChainType chain_type = 3;
+  string network = 4;
+  bytes filter = 5;
+}
+
+message BlockResponse {
+//  ChainType chain_type = 1;
+  string version = 2;
+//  string block_hash = 3;
+//  uint64 block_slot = 4;
+  bytes payload = 5;
+}
+
+
+enum ChainType {
+  Solana = 0;
+  Ethereum = 1;
+}

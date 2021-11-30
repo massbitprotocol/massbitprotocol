@@ -1,7 +1,9 @@
+//pub mod cheap_clone;
 pub mod consts;
 pub mod prelude {
     pub use anyhow;
     //pub use anyhow::{anyhow, Context as _, Error};
+    //pub use crate::cheap_clone::CheapClone;
     pub use async_trait;
     pub use bigdecimal;
     pub use bs58;
@@ -26,7 +28,6 @@ pub mod prelude {
     pub use tokio_compat_02;
     pub use tokio_postgres;
 }
-
 pub type NetworkType = String;
 
 #[cfg(test)]

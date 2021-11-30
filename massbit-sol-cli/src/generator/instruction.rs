@@ -4,14 +4,8 @@ use crate::schema::{Property, PropertyArray, Schema, Variant, VariantArray};
 use std::fmt::Write;
 
 const MODULES: &str = r#"
-use bytemuck::cast;
-use serde::{{Deserialize, Serialize}};
-use solana_program::{{
-    pubkey::Pubkey,
-    sysvar::rent,
-}};
-use arrayref::{{array_ref, array_refs}};
-use num_enum::{{IntoPrimitive, TryFromPrimitive}};
+use arrayref::{array_ref, array_refs};
+use serde::{Deserialize, Serialize};
 use std::num::*;
 "#;
 impl<'a> Generator<'a> {

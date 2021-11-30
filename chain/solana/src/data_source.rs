@@ -23,6 +23,20 @@ pub struct Source {
     pub address: Option<String>,
     pub start_block: BlockNumber,
 }
+
+#[derive(Clone, Debug, Hash, Eq, PartialEq, Deserialize)]
+pub struct UnresolvedSource {
+    pub address: Option<String>,
+    pub start_block: Option<BlockNumber>,
+}
+impl UnresolvedSource {
+    pub fn resolve(self) -> Source {
+        Source {
+            address: self.address.clone(),
+            start_block: self.start_block.unwrap_or(-1),
+        }
+    }
+}
 /// Runtime representation of a data source.
 // Note: Not great for memory usage that this needs to be `Clone`, considering how there may be tens
 // of thousands of data sources in memory at once.
@@ -656,7 +670,7 @@ pub struct UnresolvedDataSource {
     pub kind: String,
     pub network: Option<String>,
     pub name: String,
-    pub source: Source,
+    pub source: UnresolvedSource,
     pub mapping: UnresolvedMapping,
     pub context: Option<DataSourceContext>,
 }
@@ -681,7 +695,7 @@ impl blockchain::UnresolvedDataSource<Chain> for UnresolvedDataSource {
 
         let mapping = mapping.resolve(&*resolver, logger).await?;
 
-        DataSource::from_manifest(kind, network, name, source, mapping, context)
+        DataSource::from_manifest(kind, network, name, source.resolve(), mapping, context)
     }
 }
 
