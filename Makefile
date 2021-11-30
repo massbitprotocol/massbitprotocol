@@ -121,9 +121,9 @@ restart-chain-reader-index-manager:
 	tmux kill-session -t chain-reader
 	tmux kill-session -t index-manager
 	@echo "Run index-manager in tmux"
-	tmux new -d -s index-manager scripts/tmux-indexer-v1.sh
+	tmux new -d -s index-manager scripts/run-indexer-sol.sh
 	@echo "Run chain-reader in tmux"
-	tmux new -d -s chain-reader scripts/tmux-chain-reader.sh
+	tmux new -d -s chain-reader scripts/run-chain-reader.sh
 
 #################### Dev commands ##########################
 deploy-wasm:
@@ -141,7 +141,6 @@ deploy-so:
 deploy:
 	@echo "Deploy already build indexer $(id)"
 	cargo run --bin massbit-sol -- deploy -u http://127.0.0.1:3031/indexers/deploy -d code-compiler/generated/$(id)
-
 
 
 run-index-manager:
@@ -181,17 +180,17 @@ tmux-start-all:
 	@echo "A quick fix to bypass the not able to start tmux error"
 	export TERM=xterm
 
-	@echo "Run indexer-v1 in tmux"
-	tmux new -d -s indexer-v1 scripts/tmux-indexer-v1.sh
+	@echo "Run indexer-sol in tmux"
+	tmux new -d -s indexer-sol scripts/run-indexer-sol.sh
 
-	@echo "Run indexer-v2 in tmux"
-	tmux new -d -s indexer-v2 scripts/tmux-indexer-v2.sh
+	@echo "Run indexer-eth in tmux"
+	tmux new -d -s indexer-eth scripts/run-indexer-eth.sh
 
 	@echo "Run chain-reader in tmux"
-	tmux new -d -s chain-reader scripts/tmux-chain-reader.sh
+	tmux new -d -s chain-reader scripts/run-chain-reader.sh
 
 	@echo "Run code-compiler in tmux"
-	tmux new -d -s code-compiler scripts/tmux-code-compiler.sh
+	tmux new -d -s code-compiler scripts/run-code-compiler.sh
 	tmux ls
 
 tmux-kill-all:
@@ -200,32 +199,37 @@ tmux-kill-all:
 
 tmux-code-compiler:
 	@echo "Run code-compiler in tmux"
-	tmux new -d -s code-compiler scripts/tmux-code-compiler.sh
+	tmux new -d -s code-compiler scripts/run-code-compiler.sh
 	tmux ls
 
-tmux-indexer-v1:
-	@echo "Run Indexer V1 in tmux"
-	tmux new -d -s indexer-v1 scripts/tmux-indexer-v1.sh
+tmux-indexer-sol:
+	@echo "Run Indexer Solana in tmux"
+	tmux new -d -s indexer-sol scripts/run-indexer-sol.sh
 	tmux ls
 
-tmux-indexer-v2:
-	@echo "Run Indexer V2 in tmux"
-	tmux new -d -s indexer-v2 scripts/tmux-indexer-v2.sh
+tmux-indexer-eth:
+	@echo "Run Indexer Ethereum in tmux"
+	tmux new -d -s indexer-eth scripts/run-indexer-eth.sh
 	tmux ls
 
 tmux-chain-reader:
 	@echo "Run Chain Reader in tmux"
-	tmux new -d -s chain-reader scripts/tmux-chain-reader.sh
+	tmux new -d -s chain-reader scripts/run-chain-reader.sh
 	tmux ls
 
-tmux-indexer-v2-binary:
-	@echo "Run Indexer V2 in tmux with binary"
-	tmux new -d -s indexer-v2 scripts/tmux-indexer-v2-binary.sh
+tmux-indexer-eth-binary:
+	@echo "Run Indexer Ethereum in tmux with binary"
+	tmux new -d -s indexer-eth scripts/run-indexer-eth-binary.sh
 	tmux ls
 
 tmux-chain-reader-binary:
 	@echo "Run Chain Reader in tmux with binary"
-	tmux new -d -s chain-reader scripts/tmux-chain-reader-binary.sh
+	tmux new -d -s chain-reader scripts/run-chain-reader-binary.sh
+	tmux ls
+
+tmux-index-api-binary:
+	@echo "Run Index API in tmux with binary"
+	tmux new -d -s index-api scripts/run-index-api-binary.sh
 	tmux ls
 
 #################### Long running test commands ##################
@@ -233,11 +237,11 @@ index-quickswap-full:
 	@echo "A quick fix to bypass the not able to start tmux error"
 	export TERM=xterm
 	@echo "Run index-manager in tmux"
-	tmux new -d -s index-manager scripts/tmux-indexer-v1.sh
+	tmux new -d -s index-manager scripts/run-indexer-sol.sh
 	@echo "Run chain-reader in tmux"
-	tmux new -d -s chain-reader scripts/tmux-chain-reader.sh
+	tmux new -d -s chain-reader scripts/run-chain-reader.sh
 	@echo "Run code-compiler in tmux"
-	tmux new -d -s code-compiler scripts/tmux-code-compiler.sh
+	tmux new -d -s code-compiler scripts/run-code-compiler.sh
 	@echo "Wait for the services to start"
 	sleep 15;
 	@echo "Running only the quickswap Ethereum test ..."

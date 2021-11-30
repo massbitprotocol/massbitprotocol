@@ -1,9 +1,8 @@
 ## RUN chain-reader and index-manager indexer
 ```bash
 tmux new -d -s services "make services-dev-up"
-tmux new -d -s chain-reader scripts/tmux-chain-reader.sh
-tmux new -d -s indexer-v1 scripts/tmux-indexer-v1.sh
-tmux new -d -s indexer scripts/tmux-code-compiler.sh
+tmux new -d -s chain-reader scripts/run-chain-reader.sh
+tmux new -d -s indexer-api scripts/run-indexer-api.sh
 ```
 
 ## Run CLI for gencode
