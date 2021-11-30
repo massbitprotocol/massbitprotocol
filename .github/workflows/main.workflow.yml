@@ -30,4 +30,4 @@ jobs:
        - name: Run test
          run: |
            rustup default nightly-2021-05-21
-           cargo test
+           cargo test --verbose --workspace --exclude massbit-tests -- --nocapture
