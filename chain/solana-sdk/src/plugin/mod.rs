@@ -1,5 +1,6 @@
 use crate::plugin::handler::SolanaHandler;
 use crate::store::IndexStore;
+use crate::types::SolanaBlock;
 pub use massbit_grpc::firehose::bstream::BlockResponse;
 use std::error::Error;
 
@@ -21,7 +22,7 @@ pub trait MessageHandler {
     //Return max processed block number
     fn handle_block_mapping(
         &self,
-        _message: &mut BlockResponse,
+        blocks: Vec<SolanaBlock>,
         _store: &mut dyn IndexStore,
     ) -> Result<i64, Box<dyn Error>>;
     fn handle_transaction_mapping(

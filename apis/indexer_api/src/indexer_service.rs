@@ -187,9 +187,9 @@ impl IndexerService {
             indexer.name = datasource.name.clone();
         }
         if IndexerRuntime::verify_manifest(manifest) {
-            indexer.status = Some(String::from("Invalid"))
-        } else {
             indexer.status = Some(String::from("Deploying"))
+        } else {
+            indexer.status = Some(String::from("Invalid"))
         }
         match self.get_connection() {
             Ok(conn) => {

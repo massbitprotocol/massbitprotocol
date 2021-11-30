@@ -26,14 +26,9 @@ thiserror = "1.0.30"
 
 # Massbit dependencies
 massbit-grpc = { path = "../../core/grpc" }
-massbit-store-postgres = {path = "../../store/postgres"}
 
 #[dependencies.massbit-grpc]
 #package = "massbit-grpc"
-#git = "https://github.com/massbitprotocol/massbitprotocol.git"
-#branch = "main"
-#[dependencies.massbit-store-postgres]
-#package = "massbit-store-postgres"
 #git = "https://github.com/massbitprotocol/massbitprotocol.git"
 #branch = "main"
 
