@@ -155,7 +155,7 @@ run-code-compiler:
 	@echo "Run code-compiler"
 	cd code-compiler/ && python app.py
 
-run-index-api:
+run-indexer-api:
 	@echo "Run indexer-api"
 	cargo run --bin indexer-api
 
@@ -227,9 +227,9 @@ tmux-chain-reader-binary:
 	tmux new -d -s chain-reader scripts/run-chain-reader-binary.sh
 	tmux ls
 
-tmux-index-api-binary:
+tmux-indexer-api-binary:
 	@echo "Run Index API in tmux with binary"
-	tmux new -d -s index-api scripts/run-index-api-binary.sh
+	tmux new -d -s indexer-api scripts/run-indexer-api-binary.sh
 	tmux ls
 
 #################### Long running test commands ##################

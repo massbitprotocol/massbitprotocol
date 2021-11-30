@@ -16,10 +16,11 @@ sudo snap install core; sudo snap refresh core
 sudo snap install --classic certbot
 sudo ln -s /snap/bin/certbot /usr/bin/certbot
 
+
 # Start services
-make services-dev-up
+sudo docker-compose -f docker-compose.min.yml up -d
 make tmux-chain-reader-binary
-make tmux-indexer-api-binary
+make tmux-index-api-binary
 
 # Setup cert manually
 sudo certbot --nginx # Use sub-index-staging.massbit.io and point to correct port
