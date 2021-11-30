@@ -2,8 +2,10 @@
 extern crate serde_derive;
 pub mod generator;
 pub mod indexer_deploy;
+pub mod indexer_release;
 pub mod parser;
 pub mod schema;
+
 use lazy_static::lazy_static;
 use std::env;
 lazy_static! {

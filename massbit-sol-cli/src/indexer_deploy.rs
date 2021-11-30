@@ -1,5 +1,5 @@
-use massbit::prelude::reqwest::blocking::multipart::{Form, Part};
-use massbit::prelude::reqwest::blocking::Client;
+use reqwest::blocking::multipart::{Form, Part};
+use reqwest::blocking::Client;
 use std::process;
 
 const SO_FILE_NAME: &str = "libblock.so";
