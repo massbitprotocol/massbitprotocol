@@ -207,7 +207,7 @@ impl IndexerService {
     }
     /// for api list indexer: /indexers?limit=?&offset=?
     pub async fn list_indexer(&self, options: ListOptions) -> Result<impl Reply, Rejection> {
-        let mut content: Vec<Indexer> = vec![];
+        let content: Vec<Indexer> = vec![];
         if let Ok(conn) = self.get_connection() {
             match dsl::indexers
                 .filter(dsl::deleted.eq(false))

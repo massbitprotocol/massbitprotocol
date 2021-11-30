@@ -3,8 +3,10 @@ use crate::orm::schema::indexers::dsl as idx;
 use crate::store::block_range::block_number;
 use crate::store::StoreBuilder;
 use crate::{CHAIN_READER_URL, COMPONENT_NAME, GET_BLOCK_TIMEOUT_SEC, GET_STREAM_TIMEOUT_SEC};
+use chain_solana::adapter::SolanaNetworkAdapter;
 use chain_solana::data_source::{DataSource, DataSourceTemplate};
 use chain_solana::manifest::ManifestResolve;
+use chain_solana::types::{Pubkey, SolanaFilter};
 use chain_solana::SolanaIndexerManifest;
 use libloading::Library;
 use log::{debug, error, info};
@@ -15,7 +17,7 @@ use massbit::data::indexer::MAX_SPEC_VERSION;
 use massbit::ipfs_client::IpfsClient;
 use massbit::ipfs_link_resolver::LinkResolver;
 use massbit::prelude::anyhow::Context;
-use massbit::prelude::{Arc, LoggerFactory, Stream};
+use massbit::prelude::{Arc, LoggerFactory};
 use massbit::prelude::{DeploymentHash, Logger};
 use massbit_common::prelude::diesel::{
     r2d2::{self, ConnectionManager},
@@ -32,7 +34,7 @@ use massbit_solana_sdk::plugin::{
     AdapterDeclaration, BlockResponse, MessageHandler, PluginRegistrar,
 };
 use massbit_solana_sdk::store::IndexStore;
-use massbit_solana_sdk::types::{SolanaBlock, SolanaFilter};
+use massbit_solana_sdk::types::SolanaBlock;
 use std::collections::HashMap;
 use std::env::temp_dir;
 use std::error::Error;
@@ -40,24 +42,26 @@ use std::ffi::OsStr;
 use std::fs;
 use std::ops::Deref;
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::time::Instant;
 use tonic::transport::Channel;
 use tonic::{Request, Streaming};
 use tower::timeout::Timeout;
 use uuid::Uuid;
-pub struct AdapterHandler {
+
+pub struct IndexerHandler {
     pub lib: Arc<Library>,
     pub handler_proxies: Option<SolanaHandlerProxy>,
 }
-impl AdapterHandler {
-    fn new(lib: Arc<Library>) -> AdapterHandler {
-        AdapterHandler {
+impl IndexerHandler {
+    fn new(lib: Arc<Library>) -> IndexerHandler {
+        IndexerHandler {
             lib,
             handler_proxies: None,
         }
     }
 }
-impl PluginRegistrar for AdapterHandler {
+impl PluginRegistrar for IndexerHandler {
     fn register_solana_handler(&mut self, handler: Box<dyn SolanaHandler + Send + Sync>) {
         self.handler_proxies = Some(SolanaHandlerProxy::new(handler));
     }
@@ -68,7 +72,8 @@ pub struct IndexerRuntime {
     pub manifest: SolanaIndexerManifest,
     pub schema_path: Option<PathBuf>,
     pub mapping_path: Option<PathBuf>,
-    pub adapter_handler: Option<AdapterHandler>,
+    pub indexer_handler: Option<IndexerHandler>,
+    pub network_adapter: Arc<SolanaNetworkAdapter>,
     pub connection_pool: Arc<r2d2::Pool<ConnectionManager<PgConnection>>>,
 }
 /// Static methods
@@ -92,19 +97,22 @@ impl IndexerRuntime {
             }
             Err(err) => None,
         };
-        let verified = if let Some(manifest) = opt_manifest.as_ref() {
-            Self::verify_manifest(manifest)
-        } else {
-            false
-        };
+        let verified = opt_manifest
+            .as_ref()
+            .and_then(|manifest| Some(Self::verify_manifest(manifest)))
+            .unwrap_or(false);
         //get schema and mapping content from ipfs to temporary dir
         if verified && mapping_path.is_some() && schema_path.is_some() {
+            let adapter = SolanaNetworkAdapter::from(indexer.network.clone().unwrap_or_default());
+            let manifest = opt_manifest.unwrap();
+            let data_source = manifest.data_sources.get(0).unwrap();
             let runtime = IndexerRuntime {
                 indexer,
-                manifest: opt_manifest.unwrap(),
+                manifest,
                 mapping_path,
                 schema_path,
-                adapter_handler: None,
+                indexer_handler: None,
+                network_adapter: Arc::new(adapter),
                 connection_pool,
             };
             return Some(runtime);
@@ -245,13 +253,13 @@ impl IndexerRuntime {
         let adapter_decl = lib
             .get::<*mut AdapterDeclaration>(b"adapter_declaration\0")?
             .read();
-        let mut registrar = AdapterHandler::new(lib);
+        let mut registrar = IndexerHandler::new(lib);
         (adapter_decl.register)(&mut registrar);
-        self.adapter_handler = Some(registrar);
+        self.indexer_handler = Some(registrar);
         Ok(())
     }
     async fn start_mapping(&mut self, store: &mut dyn IndexStore) -> Result<(), Box<dyn Error>> {
-        if let Some(adapter) = &self.adapter_handler {
+        if let Some(adapter) = &self.indexer_handler {
             if let Some(proxy) = &adapter.handler_proxies {
                 let data_source = self.manifest.data_sources.get(0).unwrap();
                 let mut opt_stream: Option<Streaming<BlockResponse>> = None;
@@ -341,10 +349,40 @@ impl IndexerRuntime {
             "Start get transaction backward with filter address: {:?}",
             &self.indexer
         );
+        let mut end_signature = None;
+        let mut first_block = Some(from_block);
+        let address = self
+            .manifest
+            .data_sources
+            .get(0)
+            .unwrap()
+            .source
+            .address
+            .and_then(|addr| Pubkey::from_str(addr.as_str()).ok());
+        if let Some(addr) = &address {
+            loop {
+                let now = Instant::now();
+                let mut filtered_transactions = self
+                    .network_adapter
+                    .get_adapter()
+                    .get_signatures_for_address(
+                        addr,
+                        &end_signature,
+                        Some(from_block),
+                        Some(to_block),
+                    );
+                info!("Time to get filter transactions: {:?}. Got {:?} filtered addresses, last address: {:?}",now.elapsed(), filter_txs.len(),
+            filter_txs.last());
+                // No record in txs
+                if filtered_transactions.is_done {
+                    break;
+                }
+            }
+        }
         // if start_block.is_some() {
         //     loop {
         //         let now = Instant::now();
-        //         let mut res = getFilterConfirmedTransactionStatus(
+        //         let mut res = get_filter_confirmed_transaction_status(
         //             &filter,
         //             client,
         //             &before_tx_signature,

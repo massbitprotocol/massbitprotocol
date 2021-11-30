@@ -1,7 +1,7 @@
 use super::postgres_queries::{ClampRangeQuery, FindManyQuery, FindQuery, InsertQuery};
 use crate::diesel::OptionalExtension;
 use crate::store::entity_cache::ModificationsAndCache;
-use crate::store::entity_data::{EntityData, EntityDataTrait};
+use crate::store::entity_data::EntityData;
 use crate::store::postgres_queries::DELETE_OPERATION_CHUNK_SIZE;
 use crate::store::{EntityCache, POSTGRES_MAX_PARAMETERS};
 use async_trait::async_trait;
