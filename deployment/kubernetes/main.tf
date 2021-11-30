@@ -1,10 +1,3 @@
-# provider "google" {
-#   credentials = file("./token.json")
-#   project     = ""
-#   region      = "us-central1"
-#   version     = "~> 2.5.0"
-# }
-
 data "google_client_config" "default" {}
 
 provider "kubernetes" {
