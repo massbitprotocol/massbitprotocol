@@ -29,59 +29,6 @@ impl EntityExt for Entity {
         }
     }
 }
-// pub trait ValueExt<T>: Sized {
-//     fn try_from(_: T) -> Self;
-// }    
-// impl ValueExt<String> for Value {
-//     fn try_from(value: String) -> Value {
-//         Value::String(value)
-//     }
-// }
-// impl ValueExt<u8> for Value {
-//     fn try_from(value: u8) -> Value {
-//         Value::Int(value as i32)
-//     }
-// }
-// impl ValueExt<i8> for Value {
-//     fn try_from(value: i8) -> Value {
-//         Value::Int(value as i32)
-//     }
-// }
-// impl ValueExt<u16> for Value {
-//     fn try_from(value: u16) -> Value {
-//         Value::Int(value as i32)
-//     }
-// }
-// impl ValueExt<i16> for Value {
-//     fn try_from(value: i16) -> Value {
-//         Value::Int(value as i32)
-//     }
-// }
-// impl ValueExt<u32> for Value {
-//     fn try_from(value: u32) -> Value {
-//         Value::Int(value as i32)
-//     }
-// }
-// impl ValueExt<i32> for Value {
-//     fn try_from(value: i32) -> Value {
-//         Value::Int(value)
-//     }
-// }
-// impl ValueExt<u64> for Value {
-//     fn try_from(value: u64) -> Value {
-//         Value::BigInt(value.into())
-//     }
-// }
-// impl ValueExt<i64> for Value {
-//     fn try_from(value: i64) -> Value {
-//         Value::BigInt(value.into())
-//     }
-// }
-// impl ValueExt<Vec<Value>> for Value {
-//     fn try_from(value: Vec<Value>) -> Value {
-//         Value::List(value)
-//     }
-// }
 "#;
 
 impl<'a> Generator<'a> {
@@ -168,7 +115,7 @@ impl<'a> Generator<'a> {
                                 &self,
                                 block: &SolanaBlock,
                                 transaction: &TransactionWithStatusMeta,
-                       s         program_id: &Pubkey,
+                                program_id: &Pubkey,
                                 accounts: &Vec<Pubkey>,
                                 {inner_arg}
                             ) -> Result<(), anyhow::Error> {{
