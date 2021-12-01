@@ -27,9 +27,16 @@ sudo apt install yarn -y
 curl -fsSL https://deb.nodesource.com/setup_14.x | bash - && apt-get install -y nodejs 
 
 
-# Start
+# Start manager
+cd substrate-indexer/packages/manager
 yarn install
-tmux new -d -s indexer-manager yarn start:dev
+tmux new -d -s manager yarn start:dev
+
+# Start query
+cd substrate-indexer/packages/query
+yarn install
+tmux new -d -s query yarn start:dev  
+
 
 # Nginx
 sudo apt install -y nginx
@@ -42,5 +49,7 @@ sudo certbot --nginx
 # Point to correct port
 cd /etc/nginx/sites-available
 sudo vi default
-    proxy_pass http://localhost:3000;
+    proxy_pass http://localhost:3000; # For manager
+    proxy_pass http://localhost:3001; # For query
+
 sudo nginx -s reload
