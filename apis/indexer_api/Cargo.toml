@@ -19,11 +19,10 @@ logger = { path = "../../core/logger" }
 log = "0.4.14"
 massbit = { path = "../../massbit" }
 massbit-common = { path = "../../core/common" }
-#massbit-chain-solana = { path = "../../core/chain/solana" }
 massbit-store-postgres = { path = "../../store/postgres"}
 Inflector = "0.11.3"
 chain-solana = { path = "../../chain/solana" }
-#adapter = { path = "../../plugin/adapter" }
+
 reqwest = "0.11.6"
 octocrab = "0.15.1"
 priority-queue = "0.7.0"
@@ -58,11 +57,6 @@ branch = "massbit"
 package = "solana-transaction-status"
 git = "https://github.com/massbitprotocol/solana.git"
 branch = "massbit"
-
-#[dependencies.github-rs]
-#version = "0.7"
-#default-features = false
-#features = ["rust-native-tls"]
 
 [[bin]] # Bin to run gRPC server
 name = "indexer-api"

@@ -46,6 +46,7 @@ impl SolanaAdapter {
             "Get history blocks for address {:?} from block {:?} to signature {:?}",
             address, first_slot, &end_signature
         );
+        let first_slot = first_slot.unwrap_or_default();
         loop {
             let now = Instant::now();
             let config = GetConfirmedSignaturesForAddress2Config {
@@ -59,27 +60,23 @@ impl SolanaAdapter {
                 .get_signatures_for_address_with_config(address, config)
             {
                 Ok(txs) => {
-                    //println!("{:?}", &txs);
-                    let last_tran = txs.last();
-                    before_signature =
-                        last_tran.map(|tx| Signature::from_str(&tx.signature).unwrap());
+                    if txs.is_empty() {
+                        break;
+                    }
+                    let last_tran = txs.last().unwrap();
+                    before_signature = Some(Signature::from_str(&last_tran.signature).unwrap());
                     // finish get history data when last call returns nothing
                     // or first transaction block_slot less then first_slot
-                    let finished = last_tran
-                        .and_then(|tran| Some(tran.slot))
-                        .unwrap_or(u64::MIN)
-                        < first_slot.unwrap_or_default();
+                    let finished = last_tran.slot < first_slot;
                     info!(
                         "Got {:?} filtered addresses in {:?}, last address: {:?} in slot {:?}",
                         txs.len(),
                         now.elapsed(),
                         &before_signature,
-                        last_tran
-                            .and_then(|tran| Some(tran.slot))
-                            .unwrap_or_default()
+                        last_tran.slot
                     );
                     for tran in txs {
-                        if first_slot.unwrap_or(0) <= tran.slot {
+                        if first_slot <= tran.slot {
                             //Prepend matched transaction hash
                             res_signatures.insert(0, tran.signature);
                         }
@@ -112,7 +109,7 @@ impl SolanaAdapter {
                 .rpc_client
                 .send_batch(RpcRequest::GetTransaction, params);
             debug!("{:?}", res);
-            if let Some(trans) = res.ok() {
+            if let Ok(trans) = res {
                 trans
                     .into_iter()
                     .filter_map(|res| res.ok())
@@ -125,18 +122,6 @@ impl SolanaAdapter {
                         }
                     });
             }
-            // let mut trans = res
-            //     .ok()
-            //     .and_then(|trans| {
-            //         Some(
-            //             trans
-            //                 .into_iter()
-            //                 .filter_map(|tran| tran.ok())
-            //                 .collect::<Vec<EncodedConfirmedTransaction>>(),
-            //         )
-            //     })
-            //     .unwrap_or_default();
-            // res_vec.append(&mut trans);
             start_tx += TRANSACTION_BATCH_SIZE;
         }
         group_transactions
