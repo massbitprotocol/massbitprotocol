@@ -1,18 +1,27 @@
-use massbit::prelude::reqwest::blocking::multipart::{Form, Part};
-use massbit::prelude::reqwest::blocking::Client;
+use crate::{SCHEMA_FILE_NAME, SO_FILE_NAME, SO_FOLDER, SRC_FOLDER, SUBGRAPH_FILE_NAME};
+use reqwest::blocking::multipart::{Form, Part};
+use reqwest::blocking::Client;
+use std::path::PathBuf;
 use std::process;
 
-const SO_FILE_NAME: &str = "libblock.so";
-const SCHEMA_FILE_NAME: &str = "schema.graphql";
-const SUBGRAPH_FILE_NAME: &str = "subgraph.yaml";
 pub fn deploy_indexer(indexer_url: &str, project_dir: &str) -> Result<String, anyhow::Error> {
-    let so_file_path = format!("{}/{}/{}", project_dir, "target/release", SO_FILE_NAME);
-    let schema_file_path = format!("{}/{}/{}", project_dir, "src", SCHEMA_FILE_NAME);
-    let manifest_file_path = format!("{}/{}/{}", project_dir, "src", SUBGRAPH_FILE_NAME);
+    let project_dir = PathBuf::from(project_dir);
+    let so_file_path: PathBuf = project_dir.join(SO_FOLDER).join(SO_FILE_NAME);
+    let schema_file_path: PathBuf = project_dir.join(SRC_FOLDER).join(SCHEMA_FILE_NAME);
+    let manifest_file_path: PathBuf = project_dir.join(SRC_FOLDER).join(SUBGRAPH_FILE_NAME);
     let multipart = Form::new()
-        .part("mapping", Part::file(so_file_path.as_str()).unwrap())
-        .part("schema", Part::file(schema_file_path.as_str()).unwrap())
-        .part("manifest", Part::file(manifest_file_path.as_str()).unwrap());
+        .part(
+            "mapping",
+            Part::file(so_file_path.to_str().unwrap_or_default())?,
+        )
+        .part(
+            "schema",
+            Part::file(schema_file_path.to_str().unwrap_or_default())?,
+        )
+        .part(
+            "manifest",
+            Part::file(manifest_file_path.to_str().unwrap_or_default())?,
+        );
 
     // Compose a request
     let client = Client::new();
