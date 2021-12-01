@@ -124,7 +124,7 @@ impl IndexerService {
         };
         Ok("success")
     }
-    /// for api deploy indexer from massbit-sol cli
+    /// for api deploy indexer from front-end
     pub async fn deploy_git_indexer(
         &self,
         content: IndexerData,
@@ -136,6 +136,14 @@ impl IndexerService {
         if let Some(git_url) = &content.repository {
             let git_helper = GitHelper::new(git_url);
             if let Ok(map) = git_helper.load_indexer().await {
+                log::debug!(
+                    "Finished load indexer from git, content {:#?}.",
+                    &map.keys()
+                );
+                indexer.repository = content.repository;
+                indexer.image_url = content.image_url;
+                indexer.description = content.description;
+
                 for (file_name, content) in map {
                     let values = content.to_vec();
                     // Return manifest content for parser
@@ -164,7 +172,7 @@ impl IndexerService {
                 }
             }
         }
-        println!("{:?}", &indexer);
+        debug!("indexer: {:?}", &indexer);
         if let Some(manifest) = &manifest {
             if let Ok(indexer) = self.store_indexer(manifest, indexer).await {
                 if let Err(err) = indexer_manager.lock().await.start_indexer(indexer).await {
