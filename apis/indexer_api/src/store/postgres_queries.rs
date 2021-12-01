@@ -9,9 +9,7 @@ use diesel::query_dsl::LoadQuery;
 use diesel::result::{Error as DieselError, QueryResult};
 use massbit::components::store::StoreError;
 use massbit::prelude::CheapClone;
-use massbit_common::prelude::diesel::sql_types::{
-    Array, BigInt, Binary, Bool, Integer, Range, Text,
-};
+use massbit_common::prelude::diesel::sql_types::{Array, Binary, Bool, Integer, Range, Text};
 use massbit_common::prelude::diesel::{Connection, RunQueryDsl};
 use massbit_solana_sdk::entity::{Entity, Value};
 use massbit_solana_sdk::model::{EntityKey, BLOCK_NUMBER_MAX};

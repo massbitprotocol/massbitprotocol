@@ -5,6 +5,11 @@ tmux new -d -s chain-reader scripts/run-chain-reader.sh
 tmux new -d -s indexer-api scripts/run-indexer-api.sh
 ```
 
+## Install `massbit-sol`
+```bash
+cargo install massbit-sol
+```
+
 ## Run CLI for gencode
 ```bash
 cargo run --bin massbit-sol  -- gencode -s user-example/solana/instructions/serum/instruction.json -o code-compiler/generated/serum-index -c user-example/solana/instructions/serum/config.json
@@ -28,4 +33,11 @@ or
 ```bash
 cd ../../../
 massbit-sol deploy -u http://127.0.0.1:3031/indexers/deploy -d ~/Massbit/massbitprotocol/code-compiler/generated/serum-index
+```
+
+## Publish new version of `massbit-sol` to `crate.io` 
+(for Massbit developer only)
+```bash
+cd massbit-sol-cli
+cargo publish
 ```

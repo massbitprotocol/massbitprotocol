@@ -3,14 +3,10 @@ use crate::trigger::{SolanaBlockTriggerType, SolanaMappingTrigger, SolanaTrigger
 use massbit::components::indexer::DataSourceTemplateInfo;
 use massbit::components::link_resolver::LinkResolver;
 use massbit::components::store::StoredDynamicDataSource;
-use massbit::data::indexer::{
-    calls_host_fn, DataSourceContext, IndexerManifestValidationError, Link,
-};
+use massbit::data::indexer::{calls_host_fn, DataSourceContext, IndexerManifestValidationError};
 use massbit::prelude::anyhow::Context;
 use std::collections::BTreeMap;
 use std::{convert::TryFrom, sync::Arc};
-//use massbit::prelude::futures03::future::try_join;
-//use massbit::prelude::futures03::stream::FuturesOrdered;
 
 use massbit::{
     blockchain::{self, Blockchain},

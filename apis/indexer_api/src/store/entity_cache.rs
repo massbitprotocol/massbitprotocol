@@ -1,6 +1,5 @@
 use crate::store::IndexerStoreTrait;
 use core::fmt::Debug;
-use massbit::components::store::EntityType;
 use massbit::data::query::{CloneableAnyhowError, QueryExecutionError};
 use massbit::prelude::FromIterator;
 use massbit_common::prelude::anyhow;

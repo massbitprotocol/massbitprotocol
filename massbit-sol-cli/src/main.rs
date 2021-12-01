@@ -2,6 +2,7 @@ use clap::{App, Arg};
 //use logger::core::init_logger;
 use massbit_sol::generator::Generator;
 use massbit_sol::indexer_deploy::deploy_indexer;
+use massbit_sol::indexer_release::release_indexer;
 use massbit_sol::parser::SchemaBuilder;
 use massbit_sol::INDEXER_ENDPOINT;
 
@@ -14,6 +15,7 @@ fn main() {
         .subcommand(create_gencode_cmd())
         .subcommand(create_deploy_cmd())
         .subcommand(create_genstructure_cmd())
+        .subcommand(create_release_cmd())
         .get_matches();
     if let Some(ref matches) = matches.subcommand_matches("gencode") {
         let structure_path = matches.value_of("structure").unwrap_or("instruction.rs");
@@ -46,6 +48,16 @@ fn main() {
             .with_instruction_path(structure_path)
             .with_output_dir(output);
         schema_builder.build()
+    } else if let Some(ref matches) = matches.subcommand_matches("release") {
+        let project_dir = matches.value_of("project-dir").unwrap_or("./");
+        match release_indexer(project_dir) {
+            Ok(_) => {
+                println!("Create `releases` folder successfully");
+            }
+            Err(err) => {
+                println!("Error {:?}", &err);
+            }
+        }
     }
 }
 fn create_gencode_cmd() -> App<'static, 'static> {
@@ -96,6 +108,17 @@ fn create_deploy_cmd() -> App<'static, 'static> {
                 .help("Compiled directory")
                 .takes_value(true),
         )
+}
+
+fn create_release_cmd() -> App<'static, 'static> {
+    App::new("release").about("Create release folder").arg(
+        Arg::with_name("project-dir")
+            .short("d")
+            .long("project-dir")
+            .value_name("project-dir")
+            .help("Compiled directory")
+            .takes_value(true),
+    )
 }
 
 fn create_genstructure_cmd() -> App<'static, 'static> {

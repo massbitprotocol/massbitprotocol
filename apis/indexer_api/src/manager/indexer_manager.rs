@@ -1,24 +1,11 @@
 use super::IndexerRuntime;
 use crate::orm::models::Indexer;
-use massbit::data::indexer::MAX_SPEC_VERSION;
 use massbit::ipfs_client::IpfsClient;
-use massbit::ipfs_link_resolver::LinkResolver;
-use massbit::prelude::anyhow::Context;
-use massbit::prelude::prost::bytes::Bytes;
-use massbit::prelude::reqwest::Error;
+use massbit::slog::Logger;
 use massbit_common::prelude::anyhow;
 use massbit_common::prelude::diesel::r2d2::ConnectionManager;
-use massbit_common::prelude::diesel::{
-    r2d2, ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl,
-};
-use std::collections::HashMap;
-
-use massbit::components::store::{DeploymentId, DeploymentLocator};
-use massbit::prelude::LoggerFactory;
-use massbit::slog::Logger;
-use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
-use tokio::task::JoinHandle;
+use massbit_common::prelude::diesel::{r2d2, PgConnection};
+use std::sync::Arc;
 
 pub struct IndexerManager {
     pub ipfs_client: Arc<IpfsClient>,

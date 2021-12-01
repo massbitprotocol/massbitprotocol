@@ -1,10 +1,9 @@
-use crate::plugin::{handler::SolanaHandler, BlockResponse, MessageHandler};
+use crate::plugin::{handler::SolanaHandler, MessageHandler};
 use crate::store::IndexStore;
 use crate::types::{SolanaBlock, SolanaLogMessages, SolanaTransaction};
 use crate::COMPONENT_NAME;
-use libloading::Library;
 use std::error::Error;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 /// A proxy object which wraps a [`Handler`] and makes sure it can't outlive
 /// the library it came from.
@@ -32,7 +31,7 @@ impl MessageHandler for SolanaHandlerProxy {
     fn handle_block_mapping(
         &self,
         blocks: Vec<SolanaBlock>,
-        store: &mut dyn IndexStore,
+        store: Arc<Mutex<Box<dyn IndexStore>>>,
     ) -> Result<i64, Box<dyn Error>> {
         //log::info!("handle_block_mapping data: {:?}", data);
         let mut block_slot = -1_i64;
@@ -47,7 +46,10 @@ impl MessageHandler for SolanaHandlerProxy {
                 &block.block.transactions.len()
             );
             self.handler.handle_block(&block);
-            store.flush(&block.block.blockhash, block.block_number);
+            store
+                .lock()
+                .unwrap()
+                .flush(&block.block.blockhash, block.block_number);
             block_slot = block_slot.max(block.block_number as i64);
         }
         Ok(block_slot)

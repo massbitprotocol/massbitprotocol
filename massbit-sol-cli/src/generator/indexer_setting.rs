@@ -18,8 +18,6 @@ arbitrary = { version = "0.4.6", features = ["derive"], optional = true }
 bincode = "1.3.1"
 enumflags2 = "0.6.4"
 log = "0.4.14"
-# Massbit dependencies
-massbit-solana-sdk = { path = "../../../chain/solana-sdk" }
 num_enum = "0.5.0"
 thiserror = "1.0.20"
 safe-transmute = "0.11.0"
@@ -28,6 +26,12 @@ serde = "1.0.114"
 serde_json = "1.0.69"
 static_assertions = "1.1.0"
 spl-token = { version = "3.0.0-pre1", features = ["no-entrypoint"] }
+
+# Massbit dependencies
+[dependencies.massbit-solana-sdk]
+package = "massbit-solana-sdk"
+git = "https://github.com/massbitprotocol/massbitprotocol.git"
+branch = "main"
 
 [dependencies.solana-transaction-status]
 package = "solana-transaction-status"

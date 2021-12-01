@@ -172,7 +172,6 @@ impl<'a> Generator<'a> {
         let match_frag = format!("match tag_val {{{}}}", variants.join(",\n"));
         format!(
             r#"pub fn unpack(input: &[u8]) -> Option<Self> {{
-                println!("unpack input data {{:?}}", input);
                 {separation}
                 {tag_val}            
                 {match_frag}

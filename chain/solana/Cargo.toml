@@ -7,10 +7,13 @@ edition = "2018"
 
 [dependencies]
 async-trait = "0.1.51"
+bs58 = "0.4.0"
 mockall = "0.10.2"
 jsonrpc-core = "14.2.0"
 url = "2.2.2"
 itertools = "0.10.1"
+lazy_static     = "1.4.0"
+log = "0.4.14"
 massbit = { path = "../../massbit" }
 serde = "1.0"
 http = "0.1.21" # must be compatible with the version rust-web3 uses
@@ -28,5 +31,15 @@ branch = "massbit"
 
 [dependencies.solana-program]
 package = "solana-program"
+git = "https://github.com/massbitprotocol/solana.git"
+branch = "massbit"
+
+[dependencies.solana-client]
+package = "solana-client"
+git = "https://github.com/massbitprotocol/solana.git"
+branch = "massbit"
+
+[dependencies.solana-sdk]
+package = "solana-sdk"
 git = "https://github.com/massbitprotocol/solana.git"
 branch = "massbit"

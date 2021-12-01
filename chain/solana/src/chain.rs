@@ -9,7 +9,7 @@ use massbit::blockchain::{
 };
 use massbit::components::store::BlockNumber;
 use massbit::prelude::{async_trait, Arc, Deserialize, Error, Logger, LoggerFactory, Serialize};
-use solana_transaction_status::{ConfirmedBlock, EncodedConfirmedBlock};
+use solana_transaction_status::EncodedConfirmedBlock;
 
 pub struct Chain {
     logger_factory: LoggerFactory,
