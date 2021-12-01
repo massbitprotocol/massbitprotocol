@@ -5,13 +5,22 @@ use crate::orm::models::Indexer;
 use crate::orm::schema::indexers;
 use crate::orm::schema::indexers::dsl;
 use crate::API_LIST_LIMIT;
+use chain_solana::manifest::ManifestResolve;
 use chain_solana::SolanaIndexerManifest;
 use diesel::sql_types::BigInt;
+use futures::lock::Mutex;
+use log::{debug, error, info};
+use massbit::components::link_resolver::LinkResolver as _;
+use massbit::components::store::{DeploymentId, DeploymentLocator};
+use massbit::data::indexer::DeploymentHash;
+use massbit::data::indexer::MAX_SPEC_VERSION;
 use futures::lock::Mutex;
 //use massbit::components::link_resolver::LinkResolver as _;
 use massbit::ipfs_client::IpfsClient;
 use massbit::ipfs_link_resolver::LinkResolver;
 use massbit::prelude::prost::bytes::BufMut;
+use massbit::prelude::{anyhow, CheapClone, LoggerFactory, TryStreamExt};
+use massbit::slog::Logger;
 use massbit::prelude::{anyhow, TryStreamExt};
 use massbit::slog::Logger;
 use massbit_common::prelude::diesel::r2d2::ConnectionManager;
@@ -21,6 +30,7 @@ use massbit_common::prelude::diesel::{
 use massbit_common::prelude::r2d2::PooledConnection;
 use std::ops::Deref;
 use std::sync::Arc;
+use uuid::Uuid;
 use warp::{
     multipart::{FormData, Part},
     Rejection, Reply,
@@ -114,7 +124,7 @@ impl IndexerService {
         };
         Ok("success")
     }
-    /// for api deploy indexer from massbit-sol cli
+    /// for api deploy indexer from front-end
     pub async fn deploy_git_indexer(
         &self,
         content: IndexerData,
@@ -126,6 +136,14 @@ impl IndexerService {
         if let Some(git_url) = &content.repository {
             let git_helper = GitHelper::new(git_url);
             if let Ok(map) = git_helper.load_indexer().await {
+                log::debug!(
+                    "Finished load indexer from git, content {:#?}.",
+                    &map.keys()
+                );
+                indexer.repository = content.repository;
+                indexer.image_url = content.image_url;
+                indexer.description = content.description;
+
                 for (file_name, content) in map {
                     let values = content.to_vec();
                     // Return manifest content for parser
@@ -154,7 +172,7 @@ impl IndexerService {
                 }
             }
         }
-        println!("{:?}", &indexer);
+        debug!("indexer: {:?}", &indexer);
         if let Some(manifest) = &manifest {
             if let Ok(indexer) = self.store_indexer(manifest, indexer).await {
                 if let Err(err) = indexer_manager.lock().await.start_indexer(indexer).await {
