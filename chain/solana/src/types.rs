@@ -97,5 +97,5 @@ impl SolanaFilter {
 pub struct ResultFilterTransaction {
     pub txs: Vec<RpcConfirmedTransactionStatusWithSignature>,
     pub last_tx_signature: Option<Signature>,
-    pub is_done: bool,
+    pub finished: bool,
 }

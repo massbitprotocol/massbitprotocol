@@ -12,7 +12,6 @@ use core::array::IntoIter;
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::iter::FromIterator;
-use std::ops::Deref;
 use types::ChainConfig;
 
 const TRANSACTION_BATCH_SIZE: usize = 100;

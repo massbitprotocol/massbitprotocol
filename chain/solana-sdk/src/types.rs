@@ -1,6 +1,4 @@
 use serde::{Deserialize, Serialize};
-use solana_transaction_status::TransactionWithStatusMeta;
-use std::str::FromStr;
 
 pub type SolanaBlock = ExtBlock;
 pub type SolanaTransaction = ExtTransaction;

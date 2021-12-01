@@ -3,6 +3,7 @@ use crate::store::IndexStore;
 use crate::types::SolanaBlock;
 pub use massbit_grpc::firehose::bstream::BlockResponse;
 use std::error::Error;
+use std::sync::{Arc, Mutex};
 
 pub mod handler;
 pub mod proxy;
@@ -23,7 +24,7 @@ pub trait MessageHandler {
     fn handle_block_mapping(
         &self,
         blocks: Vec<SolanaBlock>,
-        _store: &mut dyn IndexStore,
+        _store: Arc<Mutex<Box<dyn IndexStore>>>,
     ) -> Result<i64, Box<dyn Error>>;
     fn handle_transaction_mapping(
         &self,

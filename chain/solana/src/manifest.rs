@@ -1,7 +1,7 @@
 use crate::Chain;
 use anyhow::anyhow;
 use async_trait::async_trait;
-use futures03::{future::try_join3, stream::FuturesOrdered, TryStreamExt as _, TryStreamExt};
+use futures03::{future::try_join3, stream::FuturesOrdered, TryStreamExt};
 use massbit::blockchain::{Blockchain, UnresolvedDataSource, UnresolvedDataSourceTemplate};
 use massbit::data::indexer::{BaseIndexerManifest, IndexerManifestResolveError, MIN_SPEC_VERSION};
 use massbit::prelude::serde_yaml::Mapping;

@@ -1,12 +1,7 @@
 use crate::entity::Entity;
-use anyhow::{anyhow, Error};
-use serde::{de, ser, Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap};
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;
-use std::ops::Deref;
-use std::sync::Arc;
-use thiserror::Error;
 
 /// The type we use for block numbers. This has to be a signed integer type
 /// since Postgres does not support unsigned integer types. But 2G ought to
@@ -115,43 +110,6 @@ pub enum EntityOperation {
     Remove { key: EntityKey },
 }
 
-// /// The type name of an entity. This is the string that is used in the
-// /// indexer's GraphQL schema as `type NAME @entity { .. }`
-// #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
-// pub struct EntityType(String);
-//
-// impl EntityType {
-//     /// Construct a new entity type. Ideally, this is only called when
-//     /// `entity_type` either comes from the GraphQL schema, or from
-//     /// the database from fields that are known to contain a valid entity type
-//     pub fn new(entity_type: String) -> Self {
-//         Self(entity_type)
-//     }
-//
-//     pub fn as_str(&self) -> &str {
-//         &self.0
-//     }
-//
-//     pub fn into_string(self) -> String {
-//         self.0
-//     }
-// }
-//
-// impl fmt::Display for EntityType {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         write!(f, "{}", self.0)
-//     }
-// }
-//
-// // This conversion should only be used in tests since it makes it too
-// // easy to convert random strings into entity types
-// #[cfg(debug_assertions)]
-// impl From<&str> for EntityType {
-//     fn from(s: &str) -> Self {
-//         EntityType::new(s.to_owned())
-//     }
-// }
-
 // Note: Do not modify fields without making a backward compatible change to
 // the StableHash impl (below)
 /// Key by which an individual entity in the store can be accessed.
@@ -167,18 +125,6 @@ pub struct EntityKey {
     pub entity_id: String,
 }
 
-// impl StableHash for EntityKey {
-//     fn stable_hash<H: StableHasher>(&self, mut sequence_number: H::Seq, state: &mut H) {
-//         self.indexer_id
-//             .stable_hash(sequence_number.next_child(), state);
-//         self.entity_type
-//             .as_str()
-//             .stable_hash(sequence_number.next_child(), state);
-//         self.entity_id
-//             .stable_hash(sequence_number.next_child(), state);
-//     }
-// }
-
 impl EntityKey {
     pub fn data(indexer_id: String, entity_type: String, entity_id: String) -> Self {
         Self {
@@ -188,91 +134,3 @@ impl EntityKey {
         }
     }
 }
-
-// #[derive(Error, Debug)]
-// pub enum StoreError {
-//     #[error("store error: {0}")]
-//     Unknown(Error),
-//     #[error(
-//         "tried to set entity of type `{0}` with ID \"{1}\" but an entity of type `{2}`, \
-//          which has an interface in common with `{0}`, exists with the same ID"
-//     )]
-//     ConflictingId(String, String, String), // (entity, id, conflicting_entity)
-//     #[error("unknown field '{0}'")]
-//     UnknownField(String),
-//     #[error("unknown table '{0}'")]
-//     UnknownTable(String),
-//     #[error("malformed directive '{0}'")]
-//     MalformedDirective(String),
-//     #[error("query execution failed: {0}")]
-//     QueryExecutionError(String),
-//     #[error("invalid identifier: {0}")]
-//     InvalidIdentifier(String),
-//     #[error(
-//         "indexer `{0}` has already processed block `{1}`; \
-//          there are most likely two (or more) nodes indexing this indexer"
-//     )]
-//     DuplicateBlockProcessing(String, BlockSlot),
-//     /// An internal error where we expected the application logic to enforce
-//     /// some constraint, e.g., that indexer names are unique, but found that
-//     /// constraint to not hold
-//     #[error("internal constraint violated: {0}")]
-//     ConstraintViolation(String),
-//     #[error("deployment not found: {0}")]
-//     DeploymentNotFound(String),
-//     #[error("shard not found: {0} (this usually indicates a misconfiguration)")]
-//     UnknownShard(String),
-//     #[error("Fulltext search not yet deterministic")]
-//     FulltextSearchNonDeterministic,
-//     #[error("operation was canceled")]
-//     Canceled,
-//     #[error("database unavailable")]
-//     DatabaseUnavailable,
-// }
-//
-// // Convenience to report a constraint violation
-// #[macro_export]
-// macro_rules! constraint_violation {
-//     ($msg:expr) => {{
-//         StoreError::ConstraintViolation(format!("{}", $msg))
-//     }};
-//     ($fmt:expr, $($arg:tt)*) => {{
-//         StoreError::ConstraintViolation(format!($fmt, $($arg)*))
-//     }}
-// }
-//
-// impl From<::diesel::result::Error> for StoreError {
-//     fn from(e: ::diesel::result::Error) -> Self {
-//         StoreError::Unknown(e.into())
-//     }
-// }
-//
-// impl From<::diesel::r2d2::PoolError> for StoreError {
-//     fn from(e: ::diesel::r2d2::PoolError) -> Self {
-//         StoreError::Unknown(e.into())
-//     }
-// }
-//
-// impl From<Error> for StoreError {
-//     fn from(e: Error) -> Self {
-//         StoreError::Unknown(e)
-//     }
-// }
-//
-// impl From<serde_json::Error> for StoreError {
-//     fn from(e: serde_json::Error) -> Self {
-//         StoreError::Unknown(e.into())
-//     }
-// }
-//
-// // impl From<QueryExecutionError> for StoreError {
-// //     fn from(e: QueryExecutionError) -> Self {
-// //         StoreError::QueryExecutionError(e.to_string())
-// //     }
-// // }
-//
-// impl From<std::fmt::Error> for StoreError {
-//     fn from(e: std::fmt::Error) -> Self {
-//         StoreError::Unknown(anyhow!("{}", e.to_string()))
-//     }
-// }

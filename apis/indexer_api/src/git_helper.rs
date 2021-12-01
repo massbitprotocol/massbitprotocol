@@ -1,19 +1,9 @@
-use crate::orm::models::Indexer;
 use crate::FILES;
 use bytes::Bytes;
-use itertools::Itertools;
 use log::error;
-use massbit::ipfs_client::IpfsClient;
 use massbit_common::prelude::anyhow;
-use octocrab::{models::repos::Content, models::Contents, Octocrab};
+use octocrab::{models::repos::Content, Octocrab};
 use std::collections::HashMap;
-use std::env::temp_dir;
-use std::fs;
-use std::io::Cursor;
-use std::iter::FromIterator;
-use std::path::PathBuf;
-use std::sync::Arc;
-use uuid::Uuid;
 
 pub struct GitHelper {
     pub repo: String,

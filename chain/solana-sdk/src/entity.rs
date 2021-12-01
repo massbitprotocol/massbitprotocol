@@ -3,7 +3,7 @@ use anyhow::{anyhow, Error};
 use core::fmt;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::iter::FromIterator;
 pub type Attribute = String;

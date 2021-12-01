@@ -1,16 +1,26 @@
 use super::types::ChainConfig;
 use crate::chain::Chain;
 use crate::data_source::DataSource;
-use crate::types::{Pubkey, ResultFilterTransaction, SolanaFilter};
-use crate::LIMIT_FILTER_RESULT;
+use crate::types::{ConfirmedBlockWithSlot, Pubkey};
+use crate::{LIMIT_FILTER_RESULT, TRANSACTION_BATCH_SIZE};
 use log::{debug, error, info, warn};
 use massbit::blockchain as bc;
 use massbit::blockchain::HostFn;
 use massbit::prelude::*;
+use serde_json::json;
+use solana_client::client_error::Result as ClientResult;
 use solana_client::rpc_client::{GetConfirmedSignaturesForAddress2Config, RpcClient};
-use solana_client::rpc_response::RpcConfirmedTransactionStatusWithSignature;
+use solana_client::rpc_request::RpcRequest;
 use solana_sdk::signature::Signature;
+use solana_transaction_status::UiInstruction::{Compiled, Parsed};
+use solana_transaction_status::{
+    ConfirmedBlock, ConfirmedTransaction, EncodedConfirmedTransaction, InnerInstructions,
+    TransactionStatusMeta, TransactionTokenBalance, TransactionWithStatusMeta, UiInnerInstructions,
+    UiTransactionTokenBalance,
+};
+use std::collections::HashMap;
 use std::str::FromStr;
+use std::time::Instant;
 
 #[derive(Clone)]
 pub struct SolanaAdapter {
@@ -27,53 +37,222 @@ impl SolanaAdapter {
     pub fn get_signatures_for_address(
         &self,
         address: &Pubkey,
-        before_tx_signature: &Option<Signature>,
         first_slot: Option<u64>,
-        end_slot: Option<u64>,
-    ) -> ResultFilterTransaction {
-        let mut txs: Vec<RpcConfirmedTransactionStatusWithSignature> = vec![];
-        let _is_done = false;
-        let client = self.rpc_client.clone();
-        let config = GetConfirmedSignaturesForAddress2Config {
-            before: before_tx_signature.clone(),
-            until: None,
-            limit: Some(LIMIT_FILTER_RESULT),
-            commitment: None,
-        };
-        match client.get_signatures_for_address_with_config(address, config) {
-            Ok(vec) => {}
-            Err(_) => {}
-        }
-        txs.append(&mut res.unwrap_or(vec![]));
-
-        // Fixme: Cover the case that multi addresses are in filter, now the logic is correct for filter 1 address only
-        let last_tx_signature = txs
-            .last()
-            .map(|tx| Signature::from_str(&tx.signature).unwrap());
-
-        // last_tx_signature.is_none: when we cannot found any result
-        // txs.last().unwrap().slot < first_slot.unwrap(): when searching is out of range
-        let is_done = last_tx_signature.is_none()
-            || (!first_slot.is_none() && txs.last().unwrap().slot < first_slot.unwrap());
-
-        let txs: Vec<RpcConfirmedTransactionStatusWithSignature> = txs
-            .into_iter()
-            .filter(|tx| {
-                // Block is out of range or error
-                if !tx.err.is_none() {
-                    debug!("Confirmed Transaction Error: {:?}", tx.err)
+        end_signature: Option<Signature>,
+    ) -> Vec<String> {
+        let mut before_signature = end_signature;
+        let mut res_signatures = vec![];
+        info!(
+            "Get history blocks for address {:?} from block {:?} to signature {:?}",
+            address, first_slot, &end_signature
+        );
+        loop {
+            let now = Instant::now();
+            let config = GetConfirmedSignaturesForAddress2Config {
+                before: before_signature,
+                until: None,
+                limit: Some(LIMIT_FILTER_RESULT),
+                commitment: None,
+            };
+            match self
+                .rpc_client
+                .get_signatures_for_address_with_config(address, config)
+            {
+                Ok(txs) => {
+                    //println!("{:?}", &txs);
+                    let last_tran = txs.last();
+                    before_signature =
+                        last_tran.map(|tx| Signature::from_str(&tx.signature).unwrap());
+                    // finish get history data when last call returns nothing
+                    // or first transaction block_slot less then first_slot
+                    let finished = last_tran
+                        .and_then(|tran| Some(tran.slot))
+                        .unwrap_or(u64::MIN)
+                        < first_slot.unwrap_or_default();
+                    info!(
+                        "Got {:?} filtered addresses in {:?}, last address: {:?} in slot {:?}",
+                        txs.len(),
+                        now.elapsed(),
+                        &before_signature,
+                        last_tran
+                            .and_then(|tran| Some(tran.slot))
+                            .unwrap_or_default()
+                    );
+                    for tran in txs {
+                        if first_slot.unwrap_or(0) <= tran.slot {
+                            //Prepend matched transaction hash
+                            res_signatures.insert(0, tran.signature);
+                        }
+                    }
+                    if finished {
+                        break;
+                    }
                 }
-                (first_slot.is_some() && tx.slot < first_slot.unwrap()) || tx.err.is_none()
+                Err(err) => {
+                    error!("{:?}", &err);
+                    break;
+                }
+            }
+        }
+        res_signatures
+    }
+    //Get transactions by hashes from chain and group by block_slot
+    pub fn get_confirmed_blocks(&self, signatures: &Vec<String>) -> Vec<ConfirmedBlockWithSlot> {
+        let mut start_tx = 0_usize;
+        //let mut res_vec = vec![];
+        //Group transactions by block
+        let mut group_transactions: HashMap<u64, Vec<ConfirmedTransaction>> = HashMap::new();
+        while start_tx < signatures.len() {
+            let params = signatures[start_tx..start_tx + TRANSACTION_BATCH_SIZE]
+                .iter()
+                .map(|tx| json!([tx, "base64"]))
+                .collect();
+            let res: ClientResult<Vec<ClientResult<EncodedConfirmedTransaction>>> = self
+                .rpc_client
+                .send_batch(RpcRequest::GetTransaction, params);
+            debug!("{:?}", res);
+            if let Some(trans) = res.ok() {
+                trans
+                    .into_iter()
+                    .filter_map(|res| res.ok())
+                    .for_each(|tran| {
+                        if let Some(confirmed_transaction) = Self::decode_transaction(&tran) {
+                            group_transactions
+                                .entry(tran.slot)
+                                .or_insert(vec![])
+                                .push(confirmed_transaction);
+                        }
+                    });
+            }
+            // let mut trans = res
+            //     .ok()
+            //     .and_then(|trans| {
+            //         Some(
+            //             trans
+            //                 .into_iter()
+            //                 .filter_map(|tran| tran.ok())
+            //                 .collect::<Vec<EncodedConfirmedTransaction>>(),
+            //         )
+            //     })
+            //     .unwrap_or_default();
+            // res_vec.append(&mut trans);
+            start_tx += TRANSACTION_BATCH_SIZE;
+        }
+        group_transactions
+            .into_iter()
+            .map(|(block_slot, transactions)| {
+                let block = ConfirmedBlock {
+                    previous_blockhash: Default::default(),
+                    blockhash: Default::default(),
+                    parent_slot: Default::default(),
+                    transactions: transactions
+                        .into_iter()
+                        .map(|tran| tran.transaction)
+                        .collect(),
+                    rewards: Default::default(),
+                    block_time: Default::default(),
+                    block_height: Default::default(),
+                };
+                ConfirmedBlockWithSlot {
+                    block_slot,
+                    block: Some(block),
+                }
             })
-            .collect();
+            .collect::<Vec<ConfirmedBlockWithSlot>>()
+    }
+    fn decode_transaction(
+        encode_txs: &EncodedConfirmedTransaction,
+    ) -> Option<ConfirmedTransaction> {
+        let meta = encode_txs.transaction.meta.as_ref().and_then(|ui_meta| {
+            Some(TransactionStatusMeta {
+                status: ui_meta.status.clone(),
+                rewards: ui_meta.rewards.clone(),
+                log_messages: ui_meta.log_messages.clone(),
+                fee: ui_meta.fee,
+                post_balances: ui_meta.post_balances.clone(),
+                pre_balances: ui_meta.pre_balances.clone(),
+                inner_instructions: ui_meta.inner_instructions.as_ref().and_then(|instruction| {
+                    Some(
+                        instruction
+                            .iter()
+                            .map(|ui_inner_instruction| {
+                                Self::to_ui_instructions(ui_inner_instruction)
+                            })
+                            .collect(),
+                    )
+                }),
+                post_token_balances: ui_meta.post_token_balances.as_ref().and_then(|balances| {
+                    Some(
+                        balances
+                            .iter()
+                            .map(|ui_ttb| Self::to_transaction_token_balance(ui_ttb))
+                            .collect(),
+                    )
+                }),
+                pre_token_balances: ui_meta.pre_token_balances.as_ref().and_then(|balances| {
+                    Some(
+                        balances
+                            .iter()
+                            .map(|ui_ttb| Self::to_transaction_token_balance(ui_ttb))
+                            .collect(),
+                    )
+                }),
+            })
+        });
+        encode_txs
+            .transaction
+            .transaction
+            .decode()
+            .and_then(|transaction| {
+                Some(ConfirmedTransaction {
+                    slot: encode_txs.slot,
+                    transaction: TransactionWithStatusMeta { transaction, meta },
+                    block_time: encode_txs.block_time.clone(),
+                })
+            })
+    }
+    fn to_transaction_token_balance(ui_ttb: &UiTransactionTokenBalance) -> TransactionTokenBalance {
+        TransactionTokenBalance {
+            account_index: ui_ttb.account_index.clone(),
+            mint: ui_ttb.mint.clone(),
+            ui_token_amount: ui_ttb.ui_token_amount.clone(),
+            owner: "".to_string(),
+        }
+    }
 
-        ResultFilterTransaction {
-            txs,
-            last_tx_signature,
-            is_done,
+    fn to_ui_instructions(ui_inner_instruction: &UiInnerInstructions) -> InnerInstructions {
+        InnerInstructions {
+            index: ui_inner_instruction.index,
+            //instructions: compiled_instructions,
+            instructions: ui_inner_instruction
+                .instructions
+                .iter()
+                .filter_map(|ui_instruction| {
+                    match ui_instruction {
+                        Compiled(ui_compiled_instruction) => {
+                            Some(solana_program::instruction::CompiledInstruction {
+                                program_id_index: ui_compiled_instruction.program_id_index,
+                                accounts: ui_compiled_instruction.accounts.clone(),
+                                data: bs58::decode(ui_compiled_instruction.data.clone())
+                                    .into_vec()
+                                    .unwrap(),
+                            })
+                        }
+                        // Todo: need support Parsed(UiParsedInstruction)
+                        Parsed(ui_parsed_instruction) => {
+                            warn!(
+                                "Not support ui_instruction type: {:?}",
+                                ui_parsed_instruction
+                            );
+                            None
+                        }
+                    }
+                })
+                .collect(),
         }
     }
 }
+
 #[derive(Clone)]
 pub struct SolanaNetworkAdapter {
     pub network: String,
@@ -98,7 +277,7 @@ impl SolanaNetworkAdapter {
         }
     }
     pub fn get_adapter(&self) -> Arc<SolanaAdapter> {
-        self.adapter.clone();
+        self.adapter.clone()
     }
 }
 #[derive(Clone)]
