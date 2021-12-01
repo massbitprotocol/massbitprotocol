@@ -9,8 +9,6 @@ use crate::{
 };
 use anyhow::anyhow;
 use async_trait::async_trait;
-use futures::{try_ready, Poll};
-use futures03::stream::poll_fn;
 use futures03::stream::FuturesUnordered;
 use futures03::StreamExt;
 use lazy_static::lazy_static;
