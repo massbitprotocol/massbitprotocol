@@ -15,6 +15,7 @@ sudo apt update
 apt-cache policy docker-ce
 sudo apt install -y docker-ce docker-compose
 
+# Start docker-compose
 sudo docker-compose up -d
 
 # Install yarn
@@ -24,8 +25,11 @@ sudo apt update
 sudo apt install yarn -y
 
 # Install node
+sudo apt-get install npm
 curl -fsSL https://deb.nodesource.com/setup_14.x | bash - && apt-get install -y nodejs 
-
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash
+source ~/.bashrc
+nvm install v14.10.1
 
 # Start manager
 cd substrate-indexer/packages/manager
@@ -43,8 +47,8 @@ sudo apt install -y nginx
 sudo snap install core; sudo snap refresh core
 sudo snap install --classic certbot
 sudo ln -s /snap/bin/certbot /usr/bin/certbot
-sudo certbot --nginx
-# Use sub-index-staging.massbit.io
+sudo certbot --nginx # Use sub-index-staging.massbit.io
+sudo certbot -d sub-index-staging.massbit.io,query.sub-index-staging.massbit.io --expand
 
 # Point to correct port
 cd /etc/nginx/sites-available
