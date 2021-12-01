@@ -103,7 +103,8 @@ impl SolanaAdapter {
         //Group transactions by block
         let mut group_transactions: HashMap<u64, Vec<ConfirmedTransaction>> = HashMap::new();
         while start_tx < signatures.len() {
-            let params = signatures[start_tx..start_tx + TRANSACTION_BATCH_SIZE]
+            let last_index = signatures.len().min(start_tx + TRANSACTION_BATCH_SIZE);
+            let params = signatures[start_tx..last_index]
                 .iter()
                 .map(|tx| json!([tx, "base64"]))
                 .collect();
