@@ -12,15 +12,15 @@ pub fn deploy_indexer(indexer_url: &str, project_dir: &str) -> Result<String, an
     let multipart = Form::new()
         .part(
             "mapping",
-            Part::file(so_file_path.to_str().unwrap()).unwrap(),
+            Part::file(so_file_path.to_str().unwrap_or_default())?,
         )
         .part(
             "schema",
-            Part::file(schema_file_path.to_str().unwrap()).unwrap(),
+            Part::file(schema_file_path.to_str().unwrap_or_default())?,
         )
         .part(
             "manifest",
-            Part::file(manifest_file_path.to_str().unwrap()).unwrap(),
+            Part::file(manifest_file_path.to_str().unwrap_or_default())?,
         );
 
     // Compose a request
