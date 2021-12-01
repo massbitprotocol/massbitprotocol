@@ -950,16 +950,21 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "bs58 0.4.0",
  "futures 0.1.31",
  "futures 0.3.17",
  "http 0.1.21",
  "itertools 0.10.1",
  "jsonrpc-core 14.2.0",
+ "lazy_static",
+ "log 0.4.14",
  "massbit",
  "mockall 0.10.2",
  "semver 1.0.4",
  "serde",
+ "solana-client",
  "solana-program 1.9.0",
+ "solana-sdk 1.9.0",
  "solana-transaction-status",
  "tiny-keccak 1.5.0",
  "tokio 1.12.0",
@@ -1921,16 +1926,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "error-chain"
-version = "0.12.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d2f06b9cac1506ece98fe3231e3cc9c4410ec3d5b1f24ae1c8946f0742cdefc"
-dependencies = [
- "backtrace",
- "version_check 0.9.3",
-]
-
-[[package]]
 name = "ethabi"
 version = "12.0.0-graph"
 source = "git+https://github.com/graphprotocol/ethabi.git?branch=master#35977d1ce69d4c2db652c502d70e4e53a7aa9897"
@@ -2425,22 +2420,6 @@ dependencies = [
  "proc-macro2 1.0.30",
  "quote 1.0.10",
  "syn 1.0.80",
-]
-
-[[package]]
-name = "github-rs"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "268597381fbed574532b33fed35c02e4fd04a9975310b9f942666d2b4989b912"
-dependencies = [
- "error-chain",
- "futures 0.1.31",
- "hyper 0.12.36",
- "hyper-tls 0.3.2",
- "native-tls",
- "serde",
- "serde_json",
- "tokio-core",
 ]
 
 [[package]]
@@ -3563,7 +3542,6 @@ dependencies = [
  "diesel-derive-enum",
  "diesel_migrations",
  "futures 0.3.17",
- "github-rs",
  "itertools 0.10.1",
  "lazy_static",
  "libloading 0.7.1",
@@ -3580,6 +3558,9 @@ dependencies = [
  "reqwest 0.11.6",
  "serde",
  "serde_yaml",
+ "solana-client",
+ "solana-sdk 1.9.0",
+ "solana-transaction-status",
  "tokio 1.12.0",
  "tokio-compat-02",
  "tokio02-spawn",

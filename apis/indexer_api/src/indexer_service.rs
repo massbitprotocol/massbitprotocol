@@ -5,32 +5,23 @@ use crate::orm::models::Indexer;
 use crate::orm::schema::indexers;
 use crate::orm::schema::indexers::dsl;
 use crate::API_LIST_LIMIT;
-use chain_solana::manifest::ManifestResolve;
 use chain_solana::SolanaIndexerManifest;
 use diesel::sql_types::BigInt;
 use futures::lock::Mutex;
-use log::{debug, error, info};
-use massbit::components::link_resolver::LinkResolver as _;
-use massbit::components::store::{DeploymentId, DeploymentLocator};
-use massbit::data::indexer::DeploymentHash;
-use massbit::data::indexer::MAX_SPEC_VERSION;
+use log::debug;
+//use massbit::components::link_resolver::LinkResolver as _;
 use massbit::ipfs_client::IpfsClient;
 use massbit::ipfs_link_resolver::LinkResolver;
-use massbit::prelude::anyhow::Context;
 use massbit::prelude::prost::bytes::BufMut;
-use massbit::prelude::{anyhow, CheapClone, LoggerFactory, TryStreamExt};
+use massbit::prelude::{anyhow, TryStreamExt};
 use massbit::slog::Logger;
 use massbit_common::prelude::diesel::r2d2::ConnectionManager;
 use massbit_common::prelude::diesel::{
     r2d2, ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl,
 };
 use massbit_common::prelude::r2d2::PooledConnection;
-use std::env::temp_dir;
-use std::fs;
 use std::ops::Deref;
-use std::path::PathBuf;
 use std::sync::Arc;
-use uuid::Uuid;
 use warp::{
     multipart::{FormData, Part},
     Rejection, Reply,
@@ -215,7 +206,7 @@ impl IndexerService {
     }
     /// for api list indexer: /indexers?limit=?&offset=?
     pub async fn list_indexer(&self, options: ListOptions) -> Result<impl Reply, Rejection> {
-        let mut content: Vec<Indexer> = vec![];
+        let content: Vec<Indexer> = vec![];
         if let Ok(conn) = self.get_connection() {
             match dsl::indexers
                 .filter(dsl::deleted.eq(false))

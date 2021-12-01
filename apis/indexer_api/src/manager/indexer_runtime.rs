@@ -1,21 +1,20 @@
 use crate::orm::models::Indexer;
 use crate::orm::schema::indexers::dsl as idx;
-use crate::store::block_range::block_number;
 use crate::store::StoreBuilder;
 use crate::{CHAIN_READER_URL, COMPONENT_NAME, GET_BLOCK_TIMEOUT_SEC, GET_STREAM_TIMEOUT_SEC};
+use chain_solana::adapter::SolanaNetworkAdapter;
 use chain_solana::data_source::{DataSource, DataSourceTemplate};
 use chain_solana::manifest::ManifestResolve;
+use chain_solana::types::{Pubkey, SolanaFilter};
 use chain_solana::SolanaIndexerManifest;
 use libloading::Library;
-use log::{debug, error, info};
-use massbit::blockchain::{Blockchain, TriggerFilter};
+use log::info;
 use massbit::components::link_resolver::LinkResolver as _;
-use massbit::components::store::{DeploymentId, DeploymentLocator};
 use massbit::data::indexer::MAX_SPEC_VERSION;
 use massbit::ipfs_client::IpfsClient;
 use massbit::ipfs_link_resolver::LinkResolver;
 use massbit::prelude::anyhow::Context;
-use massbit::prelude::{Arc, LoggerFactory, Stream};
+use massbit::prelude::Arc;
 use massbit::prelude::{DeploymentHash, Logger};
 use massbit_common::prelude::diesel::{
     r2d2::{self, ConnectionManager},
@@ -32,34 +31,35 @@ use massbit_solana_sdk::plugin::{
     AdapterDeclaration, BlockResponse, MessageHandler, PluginRegistrar,
 };
 use massbit_solana_sdk::store::IndexStore;
-use massbit_solana_sdk::types::{SolanaBlock, SolanaFilter};
-use std::collections::HashMap;
+use massbit_solana_sdk::types::{ExtBlock, SolanaBlock};
+use solana_sdk::signature::Signature;
 use std::env::temp_dir;
 use std::error::Error;
-use std::ffi::OsStr;
 use std::fs;
 use std::ops::Deref;
 use std::path::PathBuf;
-use std::time::Instant;
+use std::str::FromStr;
+use std::sync::Mutex;
 use tonic::transport::Channel;
 use tonic::{Request, Streaming};
 use tower::timeout::Timeout;
 use uuid::Uuid;
-pub struct AdapterHandler {
+
+pub struct IndexerHandler {
     pub lib: Arc<Library>,
-    pub handler_proxies: Option<SolanaHandlerProxy>,
+    pub handler_proxies: Option<Arc<SolanaHandlerProxy>>,
 }
-impl AdapterHandler {
-    fn new(lib: Arc<Library>) -> AdapterHandler {
-        AdapterHandler {
+impl IndexerHandler {
+    fn new(lib: Arc<Library>) -> IndexerHandler {
+        IndexerHandler {
             lib,
             handler_proxies: None,
         }
     }
 }
-impl PluginRegistrar for AdapterHandler {
+impl PluginRegistrar for IndexerHandler {
     fn register_solana_handler(&mut self, handler: Box<dyn SolanaHandler + Send + Sync>) {
-        self.handler_proxies = Some(SolanaHandlerProxy::new(handler));
+        self.handler_proxies = Some(Arc::new(SolanaHandlerProxy::new(handler)));
     }
 }
 
@@ -68,7 +68,8 @@ pub struct IndexerRuntime {
     pub manifest: SolanaIndexerManifest,
     pub schema_path: Option<PathBuf>,
     pub mapping_path: Option<PathBuf>,
-    pub adapter_handler: Option<AdapterHandler>,
+    pub indexer_handler: Option<IndexerHandler>,
+    pub network_adapter: Arc<SolanaNetworkAdapter>,
     pub connection_pool: Arc<r2d2::Pool<ConnectionManager<PgConnection>>>,
 }
 /// Static methods
@@ -80,7 +81,6 @@ impl IndexerRuntime {
         logger: Logger,
     ) -> Option<Self> {
         let link_resolver = LinkResolver::from(ipfs_client.clone());
-        //let deployment_hash = DeploymentHash::new("_indexer").unwrap();
         let mapping_path = Self::get_ipfs_file(ipfs_client.clone(), &indexer.mapping, "so").await;
         let schema_path =
             Self::get_ipfs_file(ipfs_client.clone(), &indexer.graphql, "graphql").await;
@@ -92,19 +92,22 @@ impl IndexerRuntime {
             }
             Err(err) => None,
         };
-        let verified = if let Some(manifest) = opt_manifest.as_ref() {
-            Self::verify_manifest(manifest)
-        } else {
-            false
-        };
+        let verified = opt_manifest
+            .as_ref()
+            .and_then(|manifest| Some(Self::verify_manifest(manifest)))
+            .unwrap_or(false);
         //get schema and mapping content from ipfs to temporary dir
         if verified && mapping_path.is_some() && schema_path.is_some() {
+            let adapter = SolanaNetworkAdapter::from(indexer.network.clone().unwrap_or_default());
+            let manifest = opt_manifest.unwrap();
+            let data_source = manifest.data_sources.get(0).unwrap();
             let runtime = IndexerRuntime {
                 indexer,
-                manifest: opt_manifest.unwrap(),
+                manifest,
                 mapping_path,
                 schema_path,
-                adapter_handler: None,
+                indexer_handler: None,
+                network_adapter: Arc::new(adapter),
                 connection_pool,
             };
             return Some(runtime);
@@ -162,14 +165,14 @@ impl IndexerRuntime {
             })
     }
     pub fn verify_manifest(manifest: &SolanaIndexerManifest) -> bool {
-        /// Manifest must contain single datasource
+        // Manifest must contain single datasource
         if manifest.data_sources.len() != 1 {
             return false;
         }
         true
     }
 }
-impl IndexerRuntime {
+impl<'a> IndexerRuntime {
     pub fn get_connection(
         &self,
     ) -> Result<
@@ -214,7 +217,7 @@ impl IndexerRuntime {
             deployment_hash,
         ) {
             unsafe {
-                match self.load_mapping_library(&store).await {
+                match self.load_mapping_library(&mut store).await {
                     Ok(_) => {
                         log::info!("{} Load library successfully", &*COMPONENT_NAME);
                     }
@@ -224,7 +227,10 @@ impl IndexerRuntime {
                     }
                 };
             }
-            self.start_mapping(&mut store).await;
+            {
+                let store: Arc<Mutex<Box<dyn IndexStore>>> = Arc::new(Mutex::new(Box::new(store)));
+                self.start_mapping(store).await;
+            }
         }
         Ok(())
     }
@@ -235,7 +241,7 @@ impl IndexerRuntime {
     /// behaviour.use massbit::ipfs_link_resolver::LinkResolver;
     pub async unsafe fn load_mapping_library(
         &mut self,
-        store: &dyn IndexStore,
+        store: &mut dyn IndexStore,
     ) -> Result<(), Box<dyn Error>> {
         let library_path = self.mapping_path.as_ref().unwrap().as_os_str();
         let lib = Arc::new(Library::new(library_path)?);
@@ -245,13 +251,16 @@ impl IndexerRuntime {
         let adapter_decl = lib
             .get::<*mut AdapterDeclaration>(b"adapter_declaration\0")?
             .read();
-        let mut registrar = AdapterHandler::new(lib);
+        let mut registrar = IndexerHandler::new(lib);
         (adapter_decl.register)(&mut registrar);
-        self.adapter_handler = Some(registrar);
+        self.indexer_handler = Some(registrar);
         Ok(())
     }
-    async fn start_mapping(&mut self, store: &mut dyn IndexStore) -> Result<(), Box<dyn Error>> {
-        if let Some(adapter) = &self.adapter_handler {
+    async fn start_mapping(
+        &mut self,
+        store: Arc<Mutex<Box<dyn IndexStore>>>,
+    ) -> Result<(), Box<dyn Error>> {
+        if let Some(adapter) = &self.indexer_handler {
             if let Some(proxy) = &adapter.handler_proxies {
                 let data_source = self.manifest.data_sources.get(0).unwrap();
                 let mut opt_stream: Option<Streaming<BlockResponse>> = None;
@@ -282,18 +291,29 @@ impl IndexerRuntime {
                                     if let Some(mut data) = res {
                                         let blocks: Vec<SolanaBlock> =
                                             serde_json::from_slice(&mut data.payload).unwrap();
+                                        //Get history block from first transaction in first block
                                         if let Some(block) = blocks.get(0) {
                                             if let Some(start_block_number) = start_block {
                                                 if block.block_number > start_block_number {
-                                                    self.collect_history_data(
+                                                    let from_signature = block
+                                                        .block
+                                                        .transactions
+                                                        .first()
+                                                        .unwrap()
+                                                        .transaction
+                                                        .signatures
+                                                        .first()
+                                                        .and_then(|sig| Some(sig.clone()));
+                                                    self.mapping_history_data(
+                                                        store.clone(),
                                                         start_block_number,
-                                                        block.block_number,
+                                                        from_signature,
                                                     )
                                                     .await;
                                                 }
                                             }
                                         }
-                                        match proxy.handle_block_mapping(blocks, store) {
+                                        match proxy.handle_block_mapping(blocks, store.clone()) {
                                             Err(err) => {
                                                 log::error!(
                                                     "{} Error while handle received message",
@@ -335,101 +355,67 @@ impl IndexerRuntime {
         Ok(())
     }
     /// Collect history blocks in range [from_block, to_block)
-    async fn collect_history_data(&self, from_block: u64, to_block: u64) {
+    async fn mapping_history_data(
+        &self,
+        store: Arc<Mutex<Box<dyn IndexStore>>>,
+        from_block: u64,
+        last_signature: Option<Signature>,
+    ) {
         //******************* Backward check ***************************//
         info!(
             "Start get transaction backward with filter address: {:?}",
             &self.indexer
         );
-        // if start_block.is_some() {
-        //     loop {
-        //         let now = Instant::now();
-        //         let mut res = getFilterConfirmedTransactionStatus(
-        //             &filter,
-        //             client,
-        //             &before_tx_signature,
-        //             start_block,
-        //         );
-        //         debug!("res: {:?}", res);
-        //         before_tx_signature = res.last_tx_signature;
-        //         filter_txs.append(res.txs.as_mut());
-        //
-        //         info!("Time to get filter transactions: {:?}. Got {:?} filtered addresses, last address: {:?}",now.elapsed(), filter_txs.len(),
-        // filter_txs.last());
-        //         // No record in txs
-        //         if res.is_done {
-        //             break;
-        //         }
-        //     }
-        // }
-        //******************* Forward run ***************************//
-        // info!("Start get {} transaction forward.", filter_txs.len());
-        //
-        // let mut start_tx: usize = filter_txs.len();
-        // while start_tx > 0 {
-        //     let transactions = getTransactions(client, &filter_txs, &mut start_tx);
-        //     // Check transactions
-        //     match transactions {
-        //         Ok(transactions) => {
-        //             // Decode and group transactions into the same block groups
-        //             let mut group_transactions: HashMap<Slot, Vec<TransactionWithStatusMeta>> =
-        //                 HashMap::new();
-        //             for transaction in transactions {
-        //                 match transaction {
-        //                     Ok(transaction) => {
-        //                         // Decode the transaction
-        //                         match decode_transaction(&transaction.transaction) {
-        //                             Some(decoded_transaction) => {
-        //                                 group_transactions
-        //                                     .entry(transaction.slot)
-        //                                     .or_insert(vec![])
-        //                                     .push(decoded_transaction);
-        //                             }
-        //                             None => {
-        //                                 warn!(
-        //                                     "transaction in block {:#?} cannot decode!",
-        //                                     &transaction.slot
-        //                                 );
-        //                                 continue;
-        //                             }
-        //                         };
-        //                     }
-        //                     Err(e) => continue,
-        //                 }
-        //             }
-        //
-        //             let filtered_confirmed_blocks_with_number: Vec<(ConfirmedBlock, u64)> =
-        //                 group_transactions
-        //                     .into_iter()
-        //                     .map(|(block_number, transactions)| {
-        //                         let filtered_confirmed_block = ConfirmedBlock {
-        //                             previous_blockhash: Default::default(),
-        //                             blockhash: Default::default(),
-        //                             parent_slot: Default::default(),
-        //                             transactions,
-        //                             rewards: Default::default(),
-        //                             block_time: Default::default(),
-        //                             block_height: Default::default(),
-        //                         };
-        //                         (filtered_confirmed_block, block_number)
-        //                     })
-        //                     .collect();
-        //             if !filtered_confirmed_blocks_with_number.is_empty() {
-        //                 info!(
-        //                     "There are {} filtered Block in array.",
-        //                     filtered_confirmed_blocks_with_number.len()
-        //                 );
-        //                 let generic_block =
-        //                     _to_generic_block(filtered_confirmed_blocks_with_number);
-        //                 grpc_send_block(generic_block, &chan).await?
-        //             }
-        //         }
-        //         Err(e) => {
-        //             warn!("Call batch transaction error: {:?}", e);
-        //         }
-        //     }
-        // }
+        let chain_adapter = self.network_adapter.get_adapter();
+        let address = self
+            .manifest
+            .data_sources
+            .get(0)
+            .unwrap()
+            .source
+            .address
+            .as_ref()
+            .and_then(|addr| Pubkey::from_str(addr.as_str()).ok());
+        //Create a cloned reference to proxy for sub thread
+        let proxy = self
+            .indexer_handler
+            .as_ref()
+            .unwrap()
+            .handler_proxies
+            .as_ref()
+            .unwrap()
+            .clone();
+        tokio::spawn(async move {
+            if let Some(pubkey) = address {
+                let signatures = chain_adapter.get_signatures_for_address(
+                    &pubkey,
+                    Some(from_block),
+                    last_signature,
+                );
+                //******************* Forward run ***************************//
+                info!("Start get {} transaction forward.", signatures.len());
+                //Get all transactions by history signatures
+                let confirmed_blocks = chain_adapter.get_confirmed_blocks(&signatures);
+                let ext_blocks = confirmed_blocks
+                    .into_iter()
+                    .filter_map(|confirmed_block| {
+                        let block_number = confirmed_block.block_slot;
+                        confirmed_block.block.and_then(|block| {
+                            Some(ExtBlock {
+                                version: "".to_string(),
+                                timestamp: 0,
+                                block_number,
+                                block,
+                                list_log_messages: vec![],
+                            })
+                        })
+                    })
+                    .collect();
+                proxy.handle_block_mapping(ext_blocks, store);
+            }
+        });
     }
+
     async fn try_create_block_stream(
         &self,
         data_source: &DataSource,

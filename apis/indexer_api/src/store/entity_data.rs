@@ -2,11 +2,8 @@ use crate::store::converter::{FromColumnValue, FromEntityData};
 use diesel::sql_types::{Jsonb, Text};
 use massbit::components::store::EntityType;
 use massbit::prelude::StoreError;
-use massbit_common::prelude::diesel::{
-    result::Error as DieselError, ExpressionMethods, QueryResult,
-};
+use massbit_common::prelude::diesel::{result::Error as DieselError, QueryResult};
 use massbit_common::prelude::serde_json;
-use massbit_solana_sdk::entity::Entity;
 use massbit_solana_sdk::scalar;
 use massbit_store_postgres::relational::{ColumnType, Layout, SqlName};
 use std::str::FromStr;
