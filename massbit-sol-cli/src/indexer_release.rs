@@ -1,22 +1,16 @@
+use crate::{
+    RELEASES_FOLDER, SCHEMA_FILE_NAME, SO_FILE_NAME, SO_FOLDER, SRC_FOLDER, SUBGRAPH_FILE_NAME,
+};
 use anyhow::anyhow;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process;
 
-const SO_FILE_NAME: &str = "libblock.so";
-const SO_FOLDER: &str = "target/release";
-
-const SCHEMA_FILE_NAME: &str = "schema.graphql";
-const SUBGRAPH_FILE_NAME: &str = "subgraph.yaml";
-const SRC_FOLDER: &str = "src";
-
-const RELEASES_FOLDER: &str = "releases";
-
 pub fn release_indexer(project_dir: &str) -> Result<String, anyhow::Error> {
     let project_dir = PathBuf::from(project_dir);
-    let so_file_path = project_dir.join(SO_FOLDER).join(SO_FILE_NAME);
-    let schema_file_path = project_dir.join(SRC_FOLDER).join(SCHEMA_FILE_NAME);
-    let manifest_file_path = project_dir.join(SRC_FOLDER).join(SUBGRAPH_FILE_NAME);
+    let so_file_path: PathBuf = project_dir.join(SO_FOLDER).join(SO_FILE_NAME);
+    let schema_file_path: PathBuf = project_dir.join(SRC_FOLDER).join(SCHEMA_FILE_NAME);
+    let manifest_file_path: PathBuf = project_dir.join(SRC_FOLDER).join(SUBGRAPH_FILE_NAME);
     let release_folder = project_dir.join(RELEASES_FOLDER);
     // Create folder
     println!("Release folder: {:?}", &release_folder);
