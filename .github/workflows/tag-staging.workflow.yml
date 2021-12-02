@@ -1,4 +1,4 @@
-name: Tag Deployment
+name: Tag Deployment - Production
 
 on:
   push:
@@ -37,6 +37,9 @@ jobs:
       - uses: Swatinem/rust-cache@v1 
       - name: Checking Cargo version
         run: cargo --version
+      - name: Run test
+        run: |
+          cargo test --verbose --workspace --exclude massbit-tests -- --nocapture
       - name: Build release
         run: cargo build --release
       - name: Allow chain-reader binary to be executable
@@ -80,7 +83,18 @@ jobs:
           path: target/release/indexer-api
       - name: Allow binary to be executable
         run: sudo chmod +x target/release/indexer-api/indexer-api
-      - name: Install SSH Key
+      - name: Instaing remote SSH and start our services
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            sudo systemctl daemon-reload
+            sudo systemctl start chain-reader.service
+            sudo systemctl start indexer-api.service
+            systemctl | grep Solanall SSH Key
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.SSH_PRIVATE_KEY }} 

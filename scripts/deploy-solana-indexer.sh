@@ -34,3 +34,48 @@ cd /etc/nginx/sites-available
 sudo vi default
     proxy_pass http://localhost:3031;
 sudo nginx -s reload
+
+# Setup systemd for chain-reader
+cd /etc/systemd/system
+sudo touch chain-reader.service
+sudo vi chain-reader.service
+-----
+[Unit]
+Description=Chain Reader For Solana
+
+[Service]
+User=root
+WorkingDirectory=/home/hughie/massbitprotocol/deployment/binary/chain-reader
+ExecStart=/home/hughie/massbitprotocol/deployment/binary/chain-reader/chain-reader
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+-----
+
+# Setup systemd for indexer-api
+cd /etc/systemd/system
+sudo touch indexer-api.service
+sudo vi indexer-api.service
+-----
+[Unit]
+Description=Indexer API For Solana
+
+[Service]
+User=root
+WorkingDirectory=/home/hughie/massbitprotocol/deployment/binary/indexer-api
+ExecStart=/home/hughie/massbitprotocol/deployment/binary/indexer-api/indexer-api
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+-----
+
+# Config SSH 
+cd ~/.ssh
+# Go to Google Cloud metadata and add the SSH key
+# Add SSH_PRIVATE_KEY with github-action value - so Github action can deploy
+# ADD SSH_HOST with the IP Address - so Github action can deploy
+# ADD SSH_USER in github repo's secret
+
+# Deploy with merge to master or by creating tags 
