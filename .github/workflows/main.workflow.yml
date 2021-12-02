@@ -1,4 +1,4 @@
-name: Worflow for Master branch
+name: Main
 
 on:
    push:

@@ -1,4 +1,4 @@
-name: Workflow for Tag
+name: Tag Deployment
 
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
     name: Build Chain Reader & Indexer
     env:
       CHAIN_READER: chain-reader
-      INDEXER: index-manager-main
+      INDEXER: indexer-api
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -37,8 +37,8 @@ jobs:
 
       - name: Allow chain-reader binary to be executable
         run: sudo chmod +x target/release/chain-reader
-      - name: Allow index-manager-main binary to be executable
-        run: sudo chmod +x target/release/index-manager-main
+      - name: Allow indexer-api binary to be executable
+        run: sudo chmod +x target/release/indexer-api
 
       - name: List release files
         run: ls -ll target/release
@@ -50,29 +50,19 @@ jobs:
       - name: Upload indexer artifact
         uses: actions/upload-artifact@v2
         with:
-          name: index-manager-main
-          path: target/release/index-manager-main
+          name: indexer-api
+          path: target/release/indexer-api
 
   ##################
-  # Running docker #
+  # Running Deploy #
   ##################
-  docker-chain-reader:
+  deploy:
     needs: [build-cargo]
-    name: Docker chain reader
+    name: Deploy
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
         uses: actions/checkout@v2
-      - name: Log in to Docker Hub
-        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
-        with:
-          images: sprise/chain-reader
       - name: Download artifact
         uses: actions/download-artifact@v2
         with:
@@ -80,80 +70,14 @@ jobs:
           path: target/release/chain-reader
       - name: Allow binary to be executable
         run: sudo chmod +x target/release/chain-reader/chain-reader
-      - name: Get our docker file to the main source
-        run: cp deployment/chain-reader/Dockerfile Dockerfile
-      - name: Remove the .dockerignore file if it exists because we need the /target folder in prod
-        run: rm -f -- .dockerignore
-      - name: List files
-        run: ls -ll
-      - name: Build and push image
-        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-
-  docker-indexer:
-    needs: [build-cargo]
-    name: Docker indexer
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out the repo
-        uses: actions/checkout@v2
-      - name: Log in to Docker Hub
-        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
-        with:
-          images: sprise/indexer
       - name: Download artifact
         uses: actions/download-artifact@v2
         with:
-          name: index-manager-main
-          path: target/release/index-manager-main
+          name: indexer-api
+          path: target/release/indexer-api
       - name: Allow binary to be executable
-        run: sudo chmod +x target/release/index-manager-main/index-manager-main
-      - name: Get our docker file to the main source
-        run: cp deployment/index-manager/Dockerfile Dockerfile
-      - name: Remove the .dockerignore file if it exists because we need the /target folder in prod
-        run: rm -f -- .dockerignore
+        run: sudo chmod +x target/release/indexer-api/indexer-api
       - name: List files
         run: ls -ll
-      - name: Build and push image
-        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-
-  docker-python:
-    name: Docker code compiler
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out the repo
-        uses: actions/checkout@v2
-      - name: Log in to Docker Hub
-        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
-        with:
-          images: sprise/code-compiler
-      - name: Get our docker file to the main source so we have the massbitprotcol app context
-        run: cp deployment/code-compiler/Dockerfile Dockerfile
-      - name: Build and push image
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+      - name: Deploy with rsync
+        run: rsync -avz ./target/release/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/
