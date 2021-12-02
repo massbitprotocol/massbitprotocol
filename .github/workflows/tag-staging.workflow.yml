@@ -1,9 +1,11 @@
-name: Main
+name: Tag Deployment - Production
 
 on:
-   push:
-     branches:
-       - main
+  push:
+    branches:
+      - '!*'
+    tags:
+      - "v*"
 
 jobs:
   #################

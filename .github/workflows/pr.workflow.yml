@@ -1,4 +1,4 @@
-name: Workflow for Pull Request
+name: Pull Request
 
 on:
   pull_request:
@@ -17,7 +17,8 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: 1.56.0
+          target: wasm32-unknown-unknown
           override: true
       - name: Install missing dependencies
         run: |
@@ -26,6 +27,8 @@ jobs:
           rustup toolchain install nightly-2021-05-21
           rustup target add wasm32-unknown-unknown --toolchain nightly-2021-05-21
           rustup component add rustfmt
+          rustup default stable
+          rustup update stable
       - uses: Swatinem/rust-cache@v1
       - name: Run test
         run: |

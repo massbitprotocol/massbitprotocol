@@ -50,3 +50,13 @@ e2e-test/bin*
 /tests/integration-tests/**/generated
 /tests/integration-tests/**/node_modules
 /tests/integration-tests/**/yarn.lock
+
+# Terraform
+.terraform
+.terraform.lock.hcl
+.terraform.tfstate.lock.info
+terraform.tfstate
+terraform.tfstate.backup
+
+# Google
+google-token.json
