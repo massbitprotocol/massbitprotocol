@@ -11,4 +11,7 @@ pub trait SolanaHandler {
     fn handle_log_messages(&self, _message: &SolanaLogMessages) -> Result<(), Box<dyn Error>> {
         Ok(())
     }
+    fn handle_blocks(&self, _blocks: &Vec<SolanaBlock>) -> Result<i64, Box<dyn Error>> {
+        Ok(0)
+    }
 }
