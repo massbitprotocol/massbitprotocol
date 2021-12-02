@@ -27,19 +27,17 @@ use massbit_grpc::firehose::bstream::stream_client::StreamClient;
 use massbit_grpc::firehose::bstream::{BlockRequest, ChainType};
 use massbit_solana_sdk::plugin::handler::SolanaHandler;
 use massbit_solana_sdk::plugin::proxy::SolanaHandlerProxy;
-use massbit_solana_sdk::plugin::{
-    AdapterDeclaration, BlockResponse, MessageHandler, PluginRegistrar,
-};
+use massbit_solana_sdk::plugin::{AdapterDeclaration, BlockResponse, PluginRegistrar};
 use massbit_solana_sdk::store::IndexStore;
 use massbit_solana_sdk::types::{ExtBlock, SolanaBlock};
 use solana_sdk::signature::Signature;
 use std::env::temp_dir;
 use std::error::Error;
-use std::fs;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Mutex;
+use std::{fs, thread};
 use tonic::transport::Channel;
 use tonic::{Request, Streaming};
 use tower::timeout::Timeout;
@@ -228,8 +226,9 @@ impl<'a> IndexerRuntime {
                 };
             }
             {
-                let store: Arc<Mutex<Box<dyn IndexStore>>> = Arc::new(Mutex::new(Box::new(store)));
-                self.start_mapping(store).await;
+                // let store: Arc<Mutex<Box<&mut dyn IndexStore>>> =
+                //     Arc::new(Mutex::new(Box::new(&mut store)));
+                self.start_mapping().await;
             }
         }
         Ok(())
@@ -258,7 +257,7 @@ impl<'a> IndexerRuntime {
     }
     async fn start_mapping(
         &mut self,
-        store: Arc<Mutex<Box<dyn IndexStore>>>,
+        //store: Arc<Mutex<Box<&mut dyn IndexStore>>>,
     ) -> Result<(), Box<dyn Error>> {
         if let Some(adapter) = &self.indexer_handler {
             if let Some(proxy) = &adapter.handler_proxies {
@@ -305,7 +304,7 @@ impl<'a> IndexerRuntime {
                                                         .first()
                                                         .and_then(|sig| Some(sig.clone()));
                                                     self.mapping_history_data(
-                                                        store.clone(),
+                                                        //store.clone(),
                                                         start_block_number,
                                                         from_signature,
                                                     )
@@ -313,7 +312,7 @@ impl<'a> IndexerRuntime {
                                                 }
                                             }
                                         }
-                                        match proxy.handle_block_mapping(blocks, store.clone()) {
+                                        match proxy.handle_blocks(&blocks) {
                                             Err(err) => {
                                                 log::error!(
                                                     "{} Error while handle received message",
@@ -357,7 +356,7 @@ impl<'a> IndexerRuntime {
     /// Collect history blocks in range [from_block, to_block)
     async fn mapping_history_data(
         &self,
-        store: Arc<Mutex<Box<dyn IndexStore>>>,
+        //store: Arc<Mutex<Box<&mut dyn IndexStore>>>,
         from_block: u64,
         last_signature: Option<Signature>,
     ) {
@@ -411,7 +410,7 @@ impl<'a> IndexerRuntime {
                         })
                     })
                     .collect();
-                proxy.handle_block_mapping(ext_blocks, store);
+                proxy.handle_blocks(&ext_blocks);
             }
         });
     }
