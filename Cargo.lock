@@ -3550,6 +3550,7 @@ dependencies = [
  "massbit",
  "massbit-common",
  "massbit-grpc",
+ "massbit-hasura-client",
  "massbit-solana-sdk",
  "massbit-store-postgres",
  "octocrab",
@@ -4326,6 +4327,20 @@ dependencies = [
  "rand 0.6.5",
  "tonic",
  "tonic-build",
+]
+
+[[package]]
+name = "massbit-hasura-client"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "env_logger 0.8.4",
+ "http 0.2.5",
+ "log 0.4.14",
+ "massbit-common",
+ "reqwest 0.10.10",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -6759,9 +6774,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.68"
+version = "1.0.72"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f690853975602e1bfe1ccbf50504d67174e3bcf340f23b5ea9992e0587a52d8"
+checksum = "d0ffa0837f2dfa6fb90868c2b5468cad482e175f7dad97e7421951e663f2b527"
 dependencies = [
  "itoa",
  "ryu",

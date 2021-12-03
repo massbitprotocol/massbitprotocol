@@ -35,7 +35,7 @@ lazy_static! {
     pub static ref CHAIN_READER_URL: String =
         env::var("CHAIN_READER_URL").unwrap_or(String::from("http://127.0.0.1:50051"));
     pub static ref HASURA_URL: String =
-        env::var("HASURA_URL").unwrap_or(String::from("http://127.0.0.1:8080/v1/query"));
+        env::var("HASURA_URL").unwrap_or(String::from("http://127.0.0.1:8080"));
     pub static ref IPFS_ADDRESS: String =
         env::var("IPFS_ADDRESS").unwrap_or(String::from("0.0.0.0:5001"));
     pub static ref GENERATED_FOLDER: String = String::from("index-manager/generated");

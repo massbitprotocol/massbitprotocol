@@ -7,6 +7,7 @@ members = [
     "core/chain/solana",
     "core/drive",
     "core/index-store",
+    "core/hasura-client",
     "cli",
     "chain/ethereum",
     "chain/solana",

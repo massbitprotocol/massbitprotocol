@@ -19,6 +19,7 @@ logger = { path = "../../core/logger" }
 log = "0.4.14"
 massbit = { path = "../../massbit" }
 massbit-common = { path = "../../core/common" }
+massbit-hasura-client = { path = "../../core/hasura-client" }
 massbit-store-postgres = { path = "../../store/postgres"}
 Inflector = "0.11.3"
 chain-solana = { path = "../../chain/solana" }
