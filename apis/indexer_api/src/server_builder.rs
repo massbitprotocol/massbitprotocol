@@ -13,6 +13,7 @@ use massbit_common::prelude::r2d2;
 use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use warp::http::Method;
 use warp::{http::StatusCode, multipart::FormData, Filter, Rejection, Reply};
 
 #[derive(Default)]
@@ -40,7 +41,9 @@ impl<'a> IndexerServer {
         };
     }
     pub async fn serve(&self) {
-        let cors = warp::cors().allow_any_origin();
+        let cors = warp::cors()
+            .allow_any_origin()
+            .allow_methods(&[Method::GET, Method::POST]);
         let router = self
             .create_route_indexer_cli_deploy(
                 self.indexer_service.clone(),
