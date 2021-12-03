@@ -41,9 +41,13 @@ impl<'a> IndexerServer {
         };
     }
     pub async fn serve(&self) {
-        let cors = warp::cors()
-            .allow_any_origin()
-            .allow_methods(&[Method::GET, Method::POST]);
+        let cors = warp::cors().allow_any_origin().allow_methods(&[
+            Method::GET,
+            Method::POST,
+            Method::OPTIONS,
+            Method::DELETE,
+            Method::PUT,
+        ]);
         let router = self
             .create_route_indexer_cli_deploy(
                 self.indexer_service.clone(),
