@@ -46,7 +46,6 @@ Description=Chain Reader For Solana
 User=root
 WorkingDirectory=/home/hughie/massbitprotocol/deployment/binary/chain-reader
 ExecStart=/home/hughie/massbitprotocol/deployment/binary/chain-reader/chain-reader
-Restart=always
 
 [Install]
 WantedBy=multi-user.target
@@ -63,7 +62,6 @@ Description=Indexer API For Solana
 User=root
 WorkingDirectory=/home/hughie/massbitprotocol/deployment/binary/indexer-api
 ExecStart=/home/hughie/massbitprotocol/deployment/binary/indexer-api/indexer-api
-Restart=always
 
 [Install]
 WantedBy=multi-user.target
