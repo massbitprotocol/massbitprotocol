@@ -36,8 +36,19 @@ extern "C" fn register(registrar: &mut dyn PluginRegistrar) {
 pub struct SolanaHandlerAdapter;
 
 impl SolanaHandler for SolanaHandlerAdapter {
-    fn handle_block(&self, block: &SolanaBlock) -> Result<(), Box<dyn Error>> {
-        mapping::handle_block(block)
+    fn handle_blocks(&self, blocks: &Vec<SolanaBlock>) -> Result<i64, Box<dyn Error>> {
+        let mut block_slot = -1_i64;
+        // Todo: Rewrite the flush so it will flush after finish the array of blocks for better performance. For now, we flush after each block.
+        for block in blocks {
+            mapping::handle_block(block);
+            block_slot = block_slot.max(block.block_number as i64);
+            unsafe {
+                if let Some(store) = &mut STORE {
+                    store.flush(&block.block.blockhash, block.block_number);
+                }
+            }
+        }
+        Ok(block_slot)
     }
 }
 "#;

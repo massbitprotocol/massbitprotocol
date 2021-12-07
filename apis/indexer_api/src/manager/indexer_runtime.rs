@@ -27,19 +27,18 @@ use massbit_grpc::firehose::bstream::stream_client::StreamClient;
 use massbit_grpc::firehose::bstream::{BlockRequest, ChainType};
 use massbit_solana_sdk::plugin::handler::SolanaHandler;
 use massbit_solana_sdk::plugin::proxy::SolanaHandlerProxy;
-use massbit_solana_sdk::plugin::{
-    AdapterDeclaration, BlockResponse, MessageHandler, PluginRegistrar,
-};
+use massbit_solana_sdk::plugin::{AdapterDeclaration, BlockResponse, PluginRegistrar};
 use massbit_solana_sdk::store::IndexStore;
 use massbit_solana_sdk::types::{ExtBlock, SolanaBlock};
 use solana_sdk::signature::Signature;
 use std::env::temp_dir;
 use std::error::Error;
-use std::fs;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::Mutex;
+use std::{fs, thread};
+use tokio::sync::mpsc;
+use tokio::sync::mpsc::Sender;
 use tonic::transport::Channel;
 use tonic::{Request, Streaming};
 use tower::timeout::Timeout;
@@ -228,8 +227,9 @@ impl<'a> IndexerRuntime {
                 };
             }
             {
-                let store: Arc<Mutex<Box<dyn IndexStore>>> = Arc::new(Mutex::new(Box::new(store)));
-                self.start_mapping(store).await;
+                // let store: Arc<Mutex<Box<&mut dyn IndexStore>>> =
+                //     Arc::new(Mutex::new(Box::new(&mut store)));
+                self.start_mapping().await;
             }
         }
         Ok(())
@@ -258,7 +258,7 @@ impl<'a> IndexerRuntime {
     }
     async fn start_mapping(
         &mut self,
-        store: Arc<Mutex<Box<dyn IndexStore>>>,
+        //store: Arc<Mutex<Box<&mut dyn IndexStore>>>,
     ) -> Result<(), Box<dyn Error>> {
         if let Some(adapter) = &self.indexer_handler {
             if let Some(proxy) = &adapter.handler_proxies {
@@ -269,7 +269,23 @@ impl<'a> IndexerRuntime {
                 } else {
                     None
                 };
+                let (history_block_tx, mut history_block_rx) =
+                    mpsc::channel::<Vec<SolanaBlock>>(64);
                 loop {
+                    // Todo: decide how indexer handle if some error occurred during phase get history data.
+                    // And sometime there are many gaps of blocks need to filled.
+                    // For example: chain reader send blocks B_1, B_n, B_m, need to get [B2..B_n), (B_n, B_m)
+                    //Process all history blocks before handle current blocks
+                    while let Ok(blocks) = history_block_rx.try_recv() {
+                        match proxy.handle_blocks(&blocks) {
+                            Err(err) => {
+                                log::error!("{:?} Error while handle history blocks", &err);
+                            }
+                            Ok(block_slot) => {
+                                log::info!("Process to block: {:?}", block_slot);
+                            }
+                        }
+                    }
                     match opt_stream {
                         None => {
                             opt_stream = self
@@ -293,27 +309,28 @@ impl<'a> IndexerRuntime {
                                             serde_json::from_slice(&mut data.payload).unwrap();
                                         //Get history block from first transaction in first block
                                         if let Some(block) = blocks.get(0) {
-                                            if let Some(start_block_number) = start_block {
-                                                if block.block_number > start_block_number {
-                                                    let from_signature = block
-                                                        .block
-                                                        .transactions
-                                                        .first()
-                                                        .unwrap()
-                                                        .transaction
-                                                        .signatures
-                                                        .first()
-                                                        .and_then(|sig| Some(sig.clone()));
-                                                    self.mapping_history_data(
-                                                        store.clone(),
-                                                        start_block_number,
-                                                        from_signature,
-                                                    )
-                                                    .await;
-                                                }
+                                            if block.block.parent_slot
+                                                > self.indexer.got_block as u64
+                                            {
+                                                let from_signature = block
+                                                    .block
+                                                    .transactions
+                                                    .first()
+                                                    .unwrap()
+                                                    .transaction
+                                                    .signatures
+                                                    .first()
+                                                    .and_then(|sig| Some(sig.clone()));
+                                                self.load_history_data(
+                                                    history_block_tx.clone(),
+                                                    self.indexer.got_block as u64,
+                                                    from_signature,
+                                                )
+                                                .await;
                                             }
                                         }
-                                        match proxy.handle_block_mapping(blocks, store.clone()) {
+
+                                        match proxy.handle_blocks(&blocks) {
                                             Err(err) => {
                                                 log::error!(
                                                     "{} Error while handle received message",
@@ -355,9 +372,9 @@ impl<'a> IndexerRuntime {
         Ok(())
     }
     /// Collect history blocks in range [from_block, to_block)
-    async fn mapping_history_data(
+    async fn load_history_data(
         &self,
-        store: Arc<Mutex<Box<dyn IndexStore>>>,
+        sender: Sender<Vec<SolanaBlock>>,
         from_block: u64,
         last_signature: Option<Signature>,
     ) {
@@ -411,7 +428,8 @@ impl<'a> IndexerRuntime {
                         })
                     })
                     .collect();
-                proxy.handle_block_mapping(ext_blocks, store);
+                sender.send(ext_blocks);
+                //proxy.handle_blocks(&ext_blocks);
             }
         });
     }

@@ -13,6 +13,7 @@ use massbit_common::prelude::r2d2;
 use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use warp::http::Method;
 use warp::{http::StatusCode, multipart::FormData, Filter, Rejection, Reply};
 
 #[derive(Default)]
@@ -40,16 +41,39 @@ impl<'a> IndexerServer {
         };
     }
     pub async fn serve(&self) {
-        let cors = warp::cors().allow_any_origin();
+        let cors = warp::cors()
+            .allow_any_origin()
+            .allow_headers(vec![
+                "Access-Control-Allow-Headers",
+                "Access-Control-Request-Method",
+                "Access-Control-Request-Headers",
+                "Origin",
+                "Accept",
+                "X-Requested-With",
+                "Content-Type",
+            ])
+            .allow_methods(&[
+                Method::GET,
+                Method::POST,
+                Method::PUT,
+                Method::PATCH,
+                Method::DELETE,
+                Method::OPTIONS,
+                Method::HEAD,
+            ]);
+
         let router = self
             .create_route_indexer_cli_deploy(
                 self.indexer_service.clone(),
                 self.indexer_manager.clone(),
             )
-            .or(self.create_route_indexer_github_deploy(
-                self.indexer_service.clone(),
-                self.indexer_manager.clone(),
-            ))
+            .with(&cors)
+            .or(self
+                .create_route_indexer_github_deploy(
+                    self.indexer_service.clone(),
+                    self.indexer_manager.clone(),
+                )
+                .with(&cors))
             .or(self
                 .create_route_indexer_list(self.indexer_service.clone())
                 .with(&cors))
