@@ -45,7 +45,7 @@ impl IndexerService {
     }
     pub fn get_indexers(&self) -> Option<Vec<Indexer>> {
         self.get_connection().ok().and_then(|conn| {
-            dsl::indexers
+            dsl::indexers3
                 .filter(dsl::deleted.eq(false))
                 .load::<Indexer>(conn.deref())
                 .ok()

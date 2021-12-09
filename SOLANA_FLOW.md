@@ -30,7 +30,7 @@ Or docker image (update later)
 ```
 8. Deploy 
 ```
-massbit-sol deploy --url http://127.0.0.1:3031/indexer/deploy --directory indexer
+massbit-sol deploy --url http://127.0.0.1:3032/indexer/deploy --directory indexer
 ```
 9. Check indexed data at
 ```

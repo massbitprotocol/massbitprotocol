@@ -28,7 +28,7 @@ lazy_static! {
         .and_then(|val| val.parse().ok())
         .unwrap_or(20);
     pub static ref API_ENDPOINT: String =
-        env::var("API_ENDPOINT").unwrap_or(String::from("0.0.0.0:3031"));
+        env::var("API_ENDPOINT").unwrap_or(String::from("0.0.0.0:3032"));
     pub static ref DATABASE_URL: String = env::var("DATABASE_URL").unwrap_or(String::from(
         "postgres://graph-node:let-me-in@localhost/graph-node"
     ));
@@ -47,4 +47,5 @@ lazy_static! {
         (String::from("schema.graphql"), String::from("schema")),
         (String::from("subgraph.yaml"), String::from("manifest")),
     ]);
+    
 }

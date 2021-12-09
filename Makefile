@@ -140,7 +140,7 @@ deploy-so:
 
 deploy:
 	@echo "Deploy already build indexer $(id)"
-	cargo run --bin massbit-sol -- deploy -u http://127.0.0.1:3031/indexers/deploy -d code-compiler/generated/$(id)
+	cargo run --bin massbit-sol -- deploy -u http://127.0.0.1:3032/indexers/deploy -d code-compiler/generated/$(id)
 
 
 run-index-manager:

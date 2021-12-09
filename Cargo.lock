@@ -3527,6 +3527,51 @@ dependencies = [
 ]
 
 [[package]]
+name = "indexer-info"
+version = "0.1.0"
+dependencies = [
+ "Inflector",
+ "async-trait",
+ "base64 0.13.0",
+ "bigdecimal 0.3.0",
+ "bs58 0.4.0",
+ "bytes 1.1.0",
+ "chain-solana",
+ "derive_more",
+ "diesel",
+ "diesel-derive-enum",
+ "diesel_migrations",
+ "futures 0.3.17",
+ "itertools 0.10.1",
+ "lazy_static",
+ "libloading 0.7.1",
+ "log 0.4.14",
+ "logger",
+ "massbit",
+ "massbit-common",
+ "massbit-grpc",
+ "massbit-solana-sdk",
+ "massbit-store-postgres",
+ "octocrab",
+ "priority-queue",
+ "prost 0.7.0",
+ "reqwest 0.11.6",
+ "serde",
+ "serde_derive",
+ "serde_yaml",
+ "solana-client",
+ "solana-sdk 1.9.0",
+ "solana-transaction-status",
+ "tokio 1.12.0",
+ "tokio-compat-02",
+ "tokio02-spawn",
+ "tonic",
+ "tower",
+ "uuid 0.8.2",
+ "warp",
+]
+
+[[package]]
 name = "indexer_api"
 version = "0.1.0"
 dependencies = [
