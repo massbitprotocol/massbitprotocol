@@ -25,3 +25,4 @@ structopt = { version = "0.3", features = ["wrap_help"] }
 #strum_macros = "0.21.0"
 massbit-common = { path = "../core/common" }
 massbit-data = { path= "../core/data" }
+massbit-storage = { path= "../core/storage" }

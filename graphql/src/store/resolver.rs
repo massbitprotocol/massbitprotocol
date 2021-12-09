@@ -11,7 +11,7 @@ use massbit_data::graphql::ObjectOrInterface;
 use massbit_data::object;
 use massbit_data::prelude::{q, s, QueryError, QueryResult, StoreEventStreamBox};
 use massbit_data::query::QueryExecutionError;
-use massbit_data::schema::META_FIELD_TYPE;
+use massbit_data::schema::{BLOCK_FIELD_TYPE, META_FIELD_TYPE};
 use massbit_data::store::chain::{BlockNumber, BlockPtr, BLOCK_NUMBER_MAX};
 use massbit_data::store::deployment::DeploymentHash;
 use massbit_data::store::{QueryStore, StoreError};
@@ -20,17 +20,11 @@ use std::iter::FromIterator;
 use std::result;
 use std::sync::Arc;
 
-// use graph::data::{
-//     graphql::{object, ObjectOrInterface},
-//     schema::META_FIELD_TYPE,
-// };
-// use graph::prelude::*;
-// use graph::{components::store::*, data::schema::BLOCK_FIELD_TYPE};
-
 use crate::query::ext::BlockConstraint;
 use crate::schema::api::ErrorPolicy;
 use crate::schema::ast as sast;
 use crate::store::query::collect_entities_from_query_field;
+use crate::store::SUBSCRIPTION_THROTTLE_INTERVAL;
 //use crate::{prelude::*, schema::api::ErrorPolicy};
 
 //use crate::store::query::collect_entities_from_query_field;
@@ -150,7 +144,7 @@ impl StoreResolver {
                 }),
             BlockConstraint::Hash(hash) => {
                 store
-                    .block_number(hash)
+                    .block_number(&hash)
                     .map_err(Into::into)
                     .and_then(|number| {
                         number
@@ -173,59 +167,58 @@ impl StoreResolver {
         }
     }
 
-    // fn handle_meta(
-    //     &self,
-    //     prefetched_object: Option<q::Value>,
-    //     object_type: &ObjectOrInterface<'_>,
-    // ) -> Result<(Option<q::Value>, Option<q::Value>), QueryExecutionError> {
-    //     // Pretend that the whole `_meta` field was loaded by prefetch. Eager
-    //     // loading this is ok until we add more information to this field
-    //     // that would force us to query the database; when that happens, we
-    //     // need to switch to loading on demand
-    //     if object_type.is_meta() {
-    //         let hash = self
-    //             .block_ptr
-    //             .as_ref()
-    //             .and_then(|ptr| {
-    //                 // locate_block indicates that we do not have a block hash
-    //                 // by setting the hash to `zero`
-    //                 // See 7a7b9708-adb7-4fc2-acec-88680cb07ec1
-    //                 let hash_h256 = ptr.hash_as_h256();
-    //                 if hash_h256 == web3::types::H256::zero() {
-    //                     None
-    //                 } else {
-    //                     Some(q::Value::String(format!("0x{:x}", hash_h256)))
-    //                 }
-    //             })
-    //             .unwrap_or(q::Value::Null);
-    //         let number = self
-    //             .block_ptr
-    //             .as_ref()
-    //             .map(|ptr| q::Value::Int((ptr.number as i32).into()))
-    //             .unwrap_or(q::Value::Null);
-    //         let mut map = BTreeMap::new();
-    //         let block = object! {
-    //             hash: hash,
-    //             number: number,
-    //             __typename: BLOCK_FIELD_TYPE
-    //         };
-    //         map.insert("prefetch:block".to_string(), q::Value::List(vec![block]));
-    //         map.insert(
-    //             "deployment".to_string(),
-    //             q::Value::String(self.deployment.to_string()),
-    //         );
-    //         map.insert(
-    //             "hasIndexingErrors".to_string(),
-    //             q::Value::Boolean(self.has_non_fatal_errors),
-    //         );
-    //         map.insert(
-    //             "__typename".to_string(),
-    //             q::Value::String(META_FIELD_TYPE.to_string()),
-    //         );
-    //         return Ok((None, Some(q::Value::Object(map))));
-    //     }
-    //     return Ok((prefetched_object, None));
-    // }
+    fn handle_meta(
+        &self,
+        prefetched_object: Option<q::Value>,
+        object_type: &ObjectOrInterface<'_>,
+    ) -> Result<(Option<q::Value>, Option<q::Value>), QueryExecutionError> {
+        // Pretend that the whole `_meta` field was loaded by prefetch. Eager
+        // loading this is ok until we add more information to this field
+        // that would force us to query the database; when that happens, we
+        // need to switch to loading on demand
+        if object_type.is_meta() {
+            let hash = self
+                .block_ptr
+                .as_ref()
+                .and_then(|ptr| {
+                    // locate_block indicates that we do not have a block hash
+                    // by setting the hash to `zero`
+                    // See 7a7b9708-adb7-4fc2-acec-88680cb07ec1
+                    if ptr.hash.as_slice().len() == 0 {
+                        None
+                    } else {
+                        Some(q::Value::String(format!("0x{}", &ptr.hash)))
+                    }
+                })
+                .unwrap_or(q::Value::Null);
+            let number = self
+                .block_ptr
+                .as_ref()
+                .map(|ptr| q::Value::Int((ptr.number as i32).into()))
+                .unwrap_or(q::Value::Null);
+            let mut map = BTreeMap::new();
+            let block = object! {
+                hash: hash,
+                number: number,
+                __typename: BLOCK_FIELD_TYPE
+            };
+            map.insert("prefetch:block".to_string(), q::Value::List(vec![block]));
+            map.insert(
+                "deployment".to_string(),
+                q::Value::String(self.deployment.to_string()),
+            );
+            map.insert(
+                "hasIndexingErrors".to_string(),
+                q::Value::Boolean(self.has_non_fatal_errors),
+            );
+            map.insert(
+                "__typename".to_string(),
+                q::Value::String(META_FIELD_TYPE.to_string()),
+            );
+            return Ok((None, Some(q::Value::Object(map))));
+        }
+        return Ok((prefetched_object, None));
+    }
 }
 
 #[async_trait]
@@ -301,26 +294,26 @@ impl Resolver for StoreResolver {
         }
     }
 
-    async fn resolve_field_stream(
-        &self,
-        schema: &s::Document,
-        object_type: &s::ObjectType,
-        field: &q::Field,
-    ) -> result::Result<StoreEventStreamBox, QueryExecutionError> {
-        // Collect all entities involved in the query field
-        let entities = collect_entities_from_query_field(schema, object_type, field);
-
-        // Subscribe to the store and return the entity change stream
-        Ok(self
-            .subscription_manager
-            .subscribe(entities)
-            .throttle_while_syncing(
-                &self.logger,
-                self.store.clone(),
-                *SUBSCRIPTION_THROTTLE_INTERVAL,
-            )
-            .await)
-    }
+    // async fn resolve_field_stream(
+    //     &self,
+    //     schema: &s::Document,
+    //     object_type: &s::ObjectType,
+    //     field: &q::Field,
+    // ) -> result::Result<StoreEventStreamBox, QueryExecutionError> {
+    //     // Collect all entities involved in the query field
+    //     let entities = collect_entities_from_query_field(schema, object_type, field);
+    //
+    //     // Subscribe to the store and return the entity change stream
+    //     Ok(self
+    //         .subscription_manager
+    //         .subscribe(entities)
+    //         .throttle_while_syncing(
+    //             &self.logger,
+    //             self.store.clone(),
+    //             *SUBSCRIPTION_THROTTLE_INTERVAL,
+    //         )
+    //         .await)
+    // }
 
     fn post_process(&self, result: &mut QueryResult) -> Result<(), anyhow::Error> {
         // Post-processing is only necessary for queries with indexing errors, and no query errors.

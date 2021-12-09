@@ -1,7 +1,6 @@
 use crate::graphql::shape_hash::shape_hash;
 use crate::prelude::q;
-use crate::store::deployment::DeploymentHash;
-use massbit_common::indexer::IndexerName;
+use crate::store::deployment::{DeploymentHash, IndexerName};
 use massbit_common::prelude::serde_json;
 use serde::de::Deserializer;
 use serde::Deserialize;

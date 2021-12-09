@@ -6,13 +6,13 @@ use graphql_parser::Pos;
 use inflector::Inflector;
 
 use crate::schema::ast;
-use massbit_common::indexer::IndexerFeature;
 use massbit_common::prelude::{anyhow, lazy_static::lazy_static};
 use massbit_data::prelude::s::{Value, *};
 use massbit_data::prelude::*;
 use massbit_data::{
     prelude::ext::{DirectiveExt, DocumentExt, ValueExt},
     schema::{META_FIELD_NAME, META_FIELD_TYPE, SCHEMA_TYPE_NAME},
+    store::deployment::IndexerFeature,
 };
 use thiserror::Error;
 

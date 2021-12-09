@@ -10,6 +10,7 @@ pub mod stopwatch;
 
 /// Aggregates over individual values.
 pub mod aggregate;
+pub mod registry;
 
 fn deployment_labels(subgraph: &str) -> HashMap<String, String> {
     labels! { String::from("deployment") => String::from(subgraph), }

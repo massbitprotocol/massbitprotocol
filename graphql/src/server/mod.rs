@@ -18,7 +18,6 @@ use massbit_data::log::factory::{
     ComponentLoggerConfig, ElasticComponentLoggerConfig, LoggerFactory,
 };
 use massbit_data::metrics::MetricsRegistry;
-use massbit_data::store::deployment::NodeId;
 use std::net::{Ipv4Addr, SocketAddrV4};
 use std::sync::Arc;
 use thiserror::Error;
@@ -53,7 +52,6 @@ pub struct GraphQLServer<Q> {
     logger: Logger,
     metrics: Arc<GraphQLServiceMetrics>,
     graphql_runner: Arc<Q>,
-    node_id: NodeId,
 }
 
 impl<Q> GraphQLServer<Q> {
@@ -62,7 +60,6 @@ impl<Q> GraphQLServer<Q> {
         logger_factory: &LoggerFactory,
         metrics_registry: Arc<impl MetricsRegistry>,
         graphql_runner: Arc<Q>,
-        node_id: NodeId,
     ) -> Self {
         let logger = logger_factory.component_logger(
             "GraphQLServer",
@@ -77,7 +74,6 @@ impl<Q> GraphQLServer<Q> {
             logger,
             metrics,
             graphql_runner,
-            node_id,
         }
     }
 }
@@ -107,14 +103,12 @@ where
         let logger_for_service = self.logger.clone();
         let graphql_runner = self.graphql_runner.clone();
         let metrics = self.metrics.clone();
-        let node_id = self.node_id.clone();
         let new_service = make_service_fn(move |_| {
             futures03::future::ok::<_, Error>(GraphQLService::new(
                 logger_for_service.clone(),
                 metrics.clone(),
                 graphql_runner.clone(),
                 ws_port,
-                node_id.clone(),
             ))
         });
 

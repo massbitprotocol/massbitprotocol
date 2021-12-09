@@ -5,12 +5,15 @@ pub mod event;
 pub mod scalar;
 pub mod value;
 
-use crate::prelude::{QueryExecutionError, QueryTarget};
-use crate::schema::Schema;
-use crate::store::deployment::{DeploymentHash, IndexerName};
+use crate::prelude::{q, QueryExecutionError, QueryTarget};
+use crate::schema::{ApiSchema, Schema};
+use crate::store::chain::{BlockNumber, BlockPtr};
+use crate::store::deployment::{DeploymentHash, DeploymentState, IndexerName};
+use crate::store::entity::EntityQuery;
 pub use event::*;
-use massbit_common::prelude::{anyhow::Error, async_trait::async_trait};
+use massbit_common::prelude::{anyhow::Error, async_trait::async_trait, serde_json, tokio};
 use massbit_common::util::MovingStats;
+use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 use thiserror::Error;
 pub use value::Value;
@@ -54,6 +57,47 @@ pub enum StoreError {
     #[error("database unavailable")]
     DatabaseUnavailable,
 }
+
+// Convenience to report a constraint violation
+#[macro_export]
+macro_rules! constraint_violation {
+    ($msg:expr) => {{
+        StoreError::ConstraintViolation(format!("{}", $msg))
+    }};
+    ($fmt:expr, $($arg:tt)*) => {{
+        StoreError::ConstraintViolation(format!($fmt, $($arg)*))
+    }}
+}
+
+impl From<::diesel::result::Error> for StoreError {
+    fn from(e: ::diesel::result::Error) -> Self {
+        StoreError::Unknown(e.into())
+    }
+}
+
+impl From<::diesel::r2d2::PoolError> for StoreError {
+    fn from(e: ::diesel::r2d2::PoolError) -> Self {
+        StoreError::Unknown(e.into())
+    }
+}
+
+impl From<Error> for StoreError {
+    fn from(e: Error) -> Self {
+        StoreError::Unknown(e)
+    }
+}
+
+impl From<serde_json::Error> for StoreError {
+    fn from(e: serde_json::Error) -> Self {
+        StoreError::Unknown(e.into())
+    }
+}
+
+impl From<QueryExecutionError> for StoreError {
+    fn from(e: QueryExecutionError) -> Self {
+        StoreError::QueryExecutionError(e.to_string())
+    }
+}
 /// Common trait for store implementations.
 #[async_trait]
 pub trait IndexerStore: Send + Sync + 'static {
@@ -94,7 +138,32 @@ pub trait IndexerStore: Send + Sync + 'static {
 /// Store operations used when serving queries for a specific deployment
 #[async_trait]
 pub trait QueryStore: Send + Sync {
+    fn find_query_values(
+        &self,
+        query: EntityQuery,
+    ) -> Result<Vec<BTreeMap<String, q::Value>>, QueryExecutionError>;
+
     async fn is_deployment_synced(&self) -> Result<bool, Error>;
+
+    fn block_ptr(&self) -> Result<Option<BlockPtr>, Error>;
+
+    fn block_number(&self, block_hash: &String) -> Result<Option<BlockNumber>, StoreError>;
+
+    fn wait_stats(&self) -> &PoolWaitStats;
+
+    /// If `block` is `None`, assumes the latest block.
+    async fn has_non_fatal_errors(&self, block: Option<BlockNumber>) -> Result<bool, StoreError>;
+
+    /// Find the current state for the subgraph deployment `id` and
+    /// return details about it needed for executing queries
+    async fn deployment_state(&self) -> Result<DeploymentState, QueryExecutionError>;
+
+    fn api_schema(&self) -> Result<Arc<ApiSchema>, QueryExecutionError>;
+
+    fn network_name(&self) -> &str;
+
+    /// A permit should be acquired before starting query execution.
+    async fn query_permit(&self) -> tokio::sync::OwnedSemaphorePermit;
 }
 
 #[async_trait]

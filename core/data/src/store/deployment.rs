@@ -1,6 +1,7 @@
 use crate::graphql::TryFromValue;
 use crate::impl_slog_value;
 use crate::prelude::q;
+use crate::store::chain::BlockNumber;
 use massbit_common::cheap_clone::CheapClone;
 use massbit_common::prelude::anyhow::{self, anyhow, Error};
 use massbit_common::prelude::stable_hash::{SequenceNumber, StableHash, StableHasher};
@@ -9,6 +10,8 @@ use serde_derive::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::Display;
 use std::ops::Deref;
+use std::str::FromStr;
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct IndexerName(String);
 
@@ -86,6 +89,31 @@ impl<'de> de::Deserialize<'de> for IndexerName {
         let s: String = de::Deserialize::deserialize(deserializer)?;
         IndexerName::new(s.clone())
             .map_err(|()| de::Error::invalid_value(de::Unexpected::Str(&s), &"valid indexer name"))
+    }
+}
+
+#[derive(Debug, Deserialize, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[allow(non_camel_case_types)]
+pub enum IndexerFeature {
+    nonFatalErrors,
+}
+
+impl std::fmt::Display for IndexerFeature {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            IndexerFeature::nonFatalErrors => write!(f, "nonFatalErrors"),
+        }
+    }
+}
+
+impl FromStr for IndexerFeature {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> anyhow::Result<Self> {
+        match s {
+            "nonFatalErrors" => Ok(IndexerFeature::nonFatalErrors),
+            _ => Err(anyhow::anyhow!("invalid subgraph feature {}", s)),
+        }
     }
 }
 
@@ -259,4 +287,31 @@ impl TryFromValue for DeploymentHash {
 pub struct DeploymentLocator {
     pub id: DeploymentId,
     pub hash: DeploymentHash,
+}
+
+/// Important details about the current state of a subgraph deployment
+/// used while executing queries against a deployment
+///
+/// The `reorg_count` and `max_reorg_depth` fields are maintained (in the
+/// database) by `store::metadata::forward_block_ptr` and
+/// `store::metadata::revert_block_ptr` which get called as part of transacting
+/// new entities into the store or reverting blocks.
+#[derive(Debug, Clone)]
+pub struct DeploymentState {
+    pub id: DeploymentHash,
+    /// The number of blocks that were ever reverted in this subgraph. This
+    /// number increases monotonically every time a block is reverted
+    pub reorg_count: u32,
+    /// The maximum number of blocks we ever reorged without moving a block
+    /// forward in between
+    pub max_reorg_depth: u32,
+    /// The number of the last block that the subgraph has processed
+    pub latest_ethereum_block_number: BlockNumber,
+}
+
+impl DeploymentState {
+    /// Is this subgraph deployed and has it processed any blocks?
+    pub fn is_deployed(&self) -> bool {
+        self.latest_ethereum_block_number > 0
+    }
 }

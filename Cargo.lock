@@ -4412,6 +4412,7 @@ dependencies = [
  "indexmap",
  "massbit-common",
  "massbit-data",
+ "massbit-storage",
  "serde",
  "structopt",
  "thiserror",
@@ -4497,6 +4498,14 @@ dependencies = [
  "solana-program 1.9.0",
  "solana-transaction-status",
  "thiserror",
+]
+
+[[package]]
+name = "massbit-storage"
+version = "0.1.0"
+dependencies = [
+ "massbit-common",
+ "massbit-data",
 ]
 
 [[package]]

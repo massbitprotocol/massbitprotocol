@@ -1,6 +1,6 @@
 use graphql_parser::{self, Pos};
 use massbit_common::prelude::anyhow::{self, Context, Error};
-use serde::{Deserialize, Serialize};
+use serde_derive::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt;
 use std::hash::Hash;
@@ -8,9 +8,6 @@ use std::iter::FromIterator;
 use std::sync::Arc;
 use thiserror::Error;
 
-//use crate::data::graphql::ext::{DirectiveExt, DirectiveFinder, DocumentExt, TypeExt};
-//use crate::data::indexer::{DeploymentHash, IndexerName};
-//use crate::data::store::ValueType;
 use crate::graphql::{DirectiveExt, DirectiveFinder, DocumentExt, TypeExt};
 use crate::store::deployment::{DeploymentHash, IndexerName};
 use crate::store::entity::EntityType;

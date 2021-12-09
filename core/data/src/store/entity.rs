@@ -7,6 +7,7 @@ use crate::utils::cache_weight::CacheWeight;
 use core::cmp::Eq;
 use massbit_common::cheap_clone::CheapClone;
 use massbit_common::prelude::anyhow::{anyhow, Error};
+use massbit_common::prelude::stable_hash::{SequenceNumber, StableHash, StableHasher};
 use serde_derive::{Deserialize, Serialize};
 use slog::Logger;
 use std::collections::btree_map::Entry;
@@ -79,7 +80,7 @@ impl CacheWeight for EntityType {
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct EntityKey {
     /// ID of the subgraph.
-    pub subgraph_id: DeploymentHash,
+    pub indexer_hash: DeploymentHash,
 
     /// Name of the entity type.
     pub entity_type: EntityType,
@@ -87,9 +88,30 @@ pub struct EntityKey {
     /// ID of the individual entity.
     pub entity_id: String,
 }
+impl StableHash for EntityKey {
+    fn stable_hash<H: StableHasher>(&self, mut sequence_number: H::Seq, state: &mut H) {
+        self.indexer_hash
+            .stable_hash(sequence_number.next_child(), state);
+        self.entity_type
+            .as_str()
+            .stable_hash(sequence_number.next_child(), state);
+        self.entity_id
+            .stable_hash(sequence_number.next_child(), state);
+    }
+}
+
+impl EntityKey {
+    pub fn data(indexer_hash: DeploymentHash, entity_type: String, entity_id: String) -> Self {
+        Self {
+            indexer_hash,
+            entity_type: EntityType::new(entity_type),
+            entity_id,
+        }
+    }
+}
 impl CacheWeight for EntityKey {
     fn indirect_weight(&self) -> usize {
-        self.subgraph_id.indirect_weight()
+        self.indexer_hash.indirect_weight()
             + self.entity_id.indirect_weight()
             + self.entity_type.indirect_weight()
     }
@@ -407,7 +429,7 @@ pub enum EntityChangeOperation {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum EntityChange {
     Data {
-        subgraph_id: DeploymentHash,
+        indexer_hash: DeploymentHash,
         /// Entity type name of the changed entity.
         entity_type: EntityType,
     },
@@ -420,7 +442,7 @@ pub enum EntityChange {
 impl EntityChange {
     pub fn for_data(key: EntityKey) -> Self {
         Self::Data {
-            subgraph_id: key.subgraph_id,
+            indexer_hash: key.indexer_hash,
             entity_type: key.entity_type,
         }
     }
@@ -436,10 +458,10 @@ impl EntityChange {
         use EntityChange::*;
         match self {
             Data {
-                subgraph_id,
+                indexer_hash,
                 entity_type,
                 ..
-            } => SubscriptionFilter::Entities(subgraph_id.clone(), entity_type.clone()),
+            } => SubscriptionFilter::Entities(indexer_hash.clone(), entity_type.clone()),
             Assignment { .. } => SubscriptionFilter::Assignment,
         }
     }
@@ -471,11 +493,11 @@ impl SubscriptionFilter {
             (
                 Self::Entities(eid, etype),
                 EntityChange::Data {
-                    subgraph_id,
+                    indexer_hash,
                     entity_type,
                     ..
                 },
-            ) => subgraph_id == eid && entity_type == etype,
+            ) => indexer_hash == eid && entity_type == etype,
             (Self::Assignment, EntityChange::Assignment { .. }) => true,
             _ => false,
         }

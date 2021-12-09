@@ -6,6 +6,7 @@ members = [
     "chain-reader",
     "core/chain/solana",
     "core/drive",
+    "core/storage",
     "core/index-store",
     "core/hasura-client",
     "core/data",

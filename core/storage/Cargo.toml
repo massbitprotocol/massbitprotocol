@@ -1,0 +1,9 @@
+[package]
+name = "massbit-storage"
+version = "0.1.0"
+edition = "2018"
+
+
+[dependencies]
+massbit-common = { path = "../common" }
+massbit-data = { path= "../data" }

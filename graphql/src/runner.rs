@@ -1,17 +1,21 @@
 use crate::query::{execute_query, QueryExecutionOptions};
 use crate::server::GraphQlRunner as GraphQlRunnerTrait;
 use crate::store::resolver::StoreResolver;
+use massbit_common::cheap_clone::CheapClone;
 use massbit_common::prelude::{
     async_trait::async_trait,
     lazy_static::lazy_static,
     slog::{o, Logger},
 };
-use massbit_data::prelude::LoadManager;
+use massbit_data::prelude::{LoadManager, QueryExecutionError};
 use massbit_data::query::{Query, QueryResults, QueryTarget};
-use massbit_data::store::QueryStoreManager;
+use massbit_data::store::deployment::DeploymentState;
+use massbit_data::store::{QueryStore, QueryStoreManager};
 use std::env;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+
 lazy_static! {
     static ref GRAPHQL_QUERY_TIMEOUT: Option<Duration> = env::var("GRAPH_GRAPHQL_QUERY_TIMEOUT")
         .ok()
@@ -48,17 +52,50 @@ lazy_static! {
 }
 pub struct GraphQlRunner<S> {
     logger: Logger,
-    //store: Arc<S>,
+    store: Arc<S>,
+    load_manager: Arc<LoadManager>,
 }
 
-impl<S> GraphQlRunner<S> {
-    // pub fn new(logger: &Logger, store: Arc<S>) -> Self {
-    //     let logger = logger.new(o!("component" => "GraphQlRunner"));
-    //     GraphQlRunner { logger, store }
-    // }
-    pub fn new(logger: &Logger) -> Self {
+impl<S> GraphQlRunner<S>
+where
+    S: QueryStoreManager,
+{
+    pub fn new(logger: &Logger, store: Arc<S>, load_manager: Arc<LoadManager>) -> Self {
         let logger = logger.new(o!("component" => "GraphQlRunner"));
-        GraphQlRunner { logger }
+        GraphQlRunner {
+            logger,
+            store,
+            load_manager,
+        }
+    }
+    /// Check if the subgraph state differs from `state` now in a way that
+    /// would affect a query that looked at data as fresh as `latest_block`.
+    /// If the subgraph did change, return the `Err` that should be sent back
+    /// to clients to indicate that condition
+    async fn deployment_changed(
+        &self,
+        store: &dyn QueryStore,
+        state: DeploymentState,
+        latest_block: u64,
+    ) -> Result<(), QueryExecutionError> {
+        if *GRAPHQL_ALLOW_DEPLOYMENT_CHANGE {
+            return Ok(());
+        }
+        let new_state = store.deployment_state().await?;
+        assert!(new_state.reorg_count >= state.reorg_count);
+        if new_state.reorg_count > state.reorg_count {
+            // One or more reorgs happened; each reorg can't have gone back
+            // farther than `max_reorg_depth`, so that querying at blocks
+            // far enough away from the previous latest block is fine. Taking
+            // this into consideration is important, since most of the time
+            // there is only one reorg of one block, and we therefore avoid
+            // flagging a lot of queries a bit behind the head
+            let n_blocks = new_state.max_reorg_depth * (new_state.reorg_count - state.reorg_count);
+            if latest_block + n_blocks as u64 > state.latest_ethereum_block_number as u64 {
+                return Err(QueryExecutionError::DeploymentReverted);
+            }
+        }
+        Ok(())
     }
     async fn execute(
         &self,
@@ -78,6 +115,7 @@ impl<S> GraphQlRunner<S> {
         // while the query is running. `self.store` can not be used after this
         // point, and everything needs to go through the `store` we are
         // setting up here
+        println!("{:?}", &query);
         let store = self.store.query_store(target, false).await?;
         let state = store.deployment_state().await?;
         let network = Some(store.network_name().to_string());
@@ -116,7 +154,7 @@ impl<S> GraphQlRunner<S> {
             let resolver = StoreResolver::at_block(
                 &self.logger,
                 store.cheap_clone(),
-                self.subscription_manager.cheap_clone(),
+                //self.subscription_manager.cheap_clone(),
                 bc,
                 error_policy,
                 query.schema.id().clone(),

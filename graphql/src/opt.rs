@@ -14,6 +14,13 @@ pub struct Opt {
         help = "Port for the GraphQL HTTP server"
     )]
     pub http_port: u16,
+    #[structopt(
+        long,
+        default_value = "8001",
+        value_name = "PORT",
+        help = "Port for the GraphQL WebSocket server"
+    )]
+    pub ws_port: u16,
     #[structopt(long, help = "Enable debug logging")]
     pub debug: bool,
 }

@@ -1,6 +1,5 @@
 pub mod cheap_clone;
 pub mod consts;
-pub mod indexer;
 pub mod util;
 
 pub mod prelude {

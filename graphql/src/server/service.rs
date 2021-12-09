@@ -1,9 +1,9 @@
 use core::task::Poll;
-use http::header;
 use http::header::{
     ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_METHODS, ACCESS_CONTROL_ALLOW_ORIGIN,
     CONTENT_TYPE, LOCATION,
 };
+use http::{header, Method};
 use hyper::service::Service;
 use hyper::{Body, Request, Response, StatusCode};
 use massbit_common::prelude::futures03::compat::Future01CompatExt;
@@ -11,7 +11,7 @@ use massbit_common::prelude::futures03::{FutureExt, TryFutureExt};
 use massbit_common::prelude::slog::{error, Logger};
 use massbit_data::metrics::{HistogramVec, MetricsRegistry};
 use massbit_data::query::{QueryResult, QueryTarget};
-use massbit_data::store::deployment::NodeId;
+use massbit_data::store::deployment::IndexerName;
 use std::convert::TryFrom;
 use std::fmt;
 use std::pin::Pin;
@@ -85,7 +85,6 @@ pub struct GraphQLService<Q> {
     metrics: Arc<GraphQLServiceMetrics>,
     graphql_runner: Arc<Q>,
     ws_port: u16,
-    node_id: NodeId,
 }
 
 impl<Q> Clone for GraphQLService<Q> {
@@ -95,7 +94,6 @@ impl<Q> Clone for GraphQLService<Q> {
             metrics: self.metrics.clone(),
             graphql_runner: self.graphql_runner.clone(),
             ws_port: self.ws_port,
-            node_id: self.node_id.clone(),
         }
     }
 }
@@ -110,14 +108,12 @@ where
         metrics: Arc<GraphQLServiceMetrics>,
         graphql_runner: Arc<Q>,
         ws_port: u16,
-        node_id: NodeId,
     ) -> Self {
         GraphQLService {
             logger,
             metrics,
             graphql_runner,
             ws_port,
-            node_id,
         }
     }
 
@@ -172,18 +168,15 @@ where
     //     self.serve_dynamic_file(self.graphiql_html())
     // }
 
-    // async fn handle_graphql_query_by_name(
-    //     self,
-    //     subgraph_name: String,
-    //     request: Request<Body>,
-    // ) -> GraphQLServiceResult {
-    //     let subgraph_name = SubgraphName::new(subgraph_name.as_str()).map_err(|()| {
-    //         GraphQLServerError::ClientError(format!("Invalid subgraph name {:?}", subgraph_name))
-    //     })?;
-    //
-    //     self.handle_graphql_query(subgraph_name.into(), request.into_body())
-    //         .await
-    // }
+    async fn handle_graphql_query_by_name(
+        self,
+        indexer_hash: String,
+        request: Request<Body>,
+    ) -> GraphQLServiceResult {
+        let indexer = IndexerName::new(indexer_hash).unwrap();
+        self.handle_graphql_query(indexer.into(), request.into_body())
+            .await
+    }
     //
     // fn handle_graphql_query_by_id(
     //     self,
@@ -287,6 +280,11 @@ where
         };
 
         match (method, path_segments.as_slice()) {
+            (Method::POST, ["indexers", hash, "graphql"]) => {
+                let indexer_hash = hash.to_string();
+                self.handle_graphql_query_by_name(indexer_hash, req).boxed()
+            }
+            (Method::OPTIONS, ["indexers", _, "graphql"]) => self.handle_graphql_options(req),
             // (Method::GET, [""]) => self.index().boxed(),
             // (Method::GET, ["graphiql.css"]) => {
             //     self.serve_file(include_str!("../assets/graphiql.css"), "text/css")

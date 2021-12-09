@@ -1,9 +1,19 @@
-use crate::slog::{info, log};
-use async_trait::async_trait;
-use massbit_common::prelude::slog::{o, Logger};
-use massbit_common::prelude::{slog, tokio};
+use core::future::pending;
+use massbit_common::cheap_clone::CheapClone;
+use massbit_common::prelude::futures03::compat::Future01CompatExt;
+use massbit_common::prelude::prometheus::Registry;
+use massbit_common::prelude::{
+    async_trait::async_trait,
+    slog::{self, info, log, o, Logger},
+    tokio,
+};
+use massbit_common::util::task_spawn;
+use massbit_data::log::factory::LoggerFactory;
 use massbit_data::log::logger;
-use massbit_data::metrics::{Collector, Counter, Gauge, MetricsRegistry, Opts, PrometheusError};
+use massbit_data::metrics::{
+    registry::MetricsRegistry, Collector, Counter, Gauge, MetricsRegistry as MetricsRegistryTrait,
+    Opts, PrometheusError,
+};
 use massbit_data::prelude::{
     q, s, LoadManager, ObjectOrInterface, Query, QueryExecutionError, QueryResult,
 };
@@ -14,10 +24,15 @@ use massbit_graphql::query::{execute_query, QueryExecutionOptions};
 use massbit_graphql::{
     opt,
     runner::GraphQlRunner,
-    server::{graphql::GraphQlRunner as GraphQlRunnerTrait, GraphQLServer as GraphQLQueryServer},
+    server::{
+        graphql::GraphQlRunner as GraphQlRunnerTrait, GraphQLServer as GraphQLQueryServer,
+        GraphQLServerTrait,
+    },
 };
+use massbit_storage::store_builder::StoreBuilder;
 use std::collections::HashMap;
 use std::sync::Arc;
+use structopt::StructOpt;
 
 const SCHEMA: &str = r#"type InitializeMarket @entity {
     id: ID!,
@@ -583,23 +598,51 @@ const QUERY: &str = r#"
 #[tokio::main]
 async fn main() {
     let opt = opt::Opt::from_args();
+    println!("{:?}", &opt);
+    // Obtain ports to use for the GraphQL server(s)
+    let http_port = opt.http_port;
+    let ws_port = opt.ws_port;
     let logger = logger(opt.debug);
     info!(&logger, "Start graphql HTTP server!");
-    let graphql_runner = Arc::new(GraphQlRunner::new(&logger));
+    // Create a component and subgraph logger factory
+    let logger_factory = LoggerFactory::new(logger.clone(), None);
+    // Set up Prometheus registry
+    let prometheus_registry = Arc::new(Registry::new());
+    let metrics_registry = Arc::new(MetricsRegistry::new(
+        logger.clone(),
+        prometheus_registry.clone(),
+    ));
+    let store_builder = StoreBuilder::new(&logger, metrics_registry.cheap_clone()).await;
+    //Todo: Read expensive queries from a static file
+    let expensive_queries = vec![]; //read_expensive_queries().unwrap();
+    let load_manager = Arc::new(LoadManager::new(
+        &logger,
+        expensive_queries,
+        metrics_registry.clone(),
+    ));
+    let indexer_store = store_builder.indexer_store().await;
+    let arc_indexer_store = Arc::new(indexer_store);
+    let graphql_runner = Arc::new(GraphQlRunner::new(&logger, arc_indexer_store, load_manager));
+    let graphql_metrics_registry = metrics_registry.clone();
     let mut graphql_server = GraphQLQueryServer::new(
         &logger_factory,
         graphql_metrics_registry,
         graphql_runner.clone(),
-        node_id.clone(),
     );
-    match Schema::parse(MOCK_SCHEMA, DeploymentHash::new("sgd0").unwrap()) {
-        Ok(schema) => {
-            let result = introspection_query(schema, QUERY).await;
-            println!("{:?}", &result);
-            //println!("{:?}", &schema);
-        }
-        Err(err) => println!("{:?}", &err),
-    }
+    graphql_server
+        .serve(http_port, ws_port)
+        .expect("Failed to start GraphQL query server")
+        .compat()
+        .await;
+
+    // match Schema::parse(MOCK_SCHEMA, DeploymentHash::new("sgd0").unwrap()) {
+    //     Ok(schema) => {
+    //         let result = introspection_query(schema, QUERY).await;
+    //         println!("{:?}", &result);
+    //         //println!("{:?}", &schema);
+    //     }
+    //     Err(err) => println!("{:?}", &err),
+    // }
 }
 
 pub struct MockMetricsRegistry {}
@@ -616,7 +659,7 @@ impl Clone for MockMetricsRegistry {
     }
 }
 
-impl MetricsRegistry for MockMetricsRegistry {
+impl MetricsRegistryTrait for MockMetricsRegistry {
     fn register(&self, _name: &str, _c: Box<dyn Collector>) {
         // Ignore, we do not register metrics
     }

@@ -6,10 +6,7 @@ use massbit_common::prelude::{
 };
 use massbit_data::graphql::ObjectOrInterface;
 use massbit_data::prelude::ext::{DirectiveFinder, DocumentExt};
-use massbit_data::prelude::{
-    s::{Value, *},
-    *,
-};
+use massbit_data::prelude::s::{Value, *};
 use massbit_data::schema::Schema;
 use massbit_data::store;
 use massbit_data::store::deployment::DeploymentHash;
