@@ -35,6 +35,15 @@ cd ../../../
 massbit-sol deploy -u http://127.0.0.1:3031/indexers/deploy -d ~/Massbit/massbitprotocol/code-compiler/generated/serum-index
 ```
 
+## Create releases folder for deploy from FE
+```bash
+cargo run --bin massbit-sol  -- release -d ~/Massbit/massbitprotocol/code-compiler/generated/serum-index
+```
+or
+```bash
+massbit-sol release -d ~/Massbit/massbitprotocol/code-compiler/generated/serum-index
+```
+
 ## Publish new version of `massbit-sol` to `crate.io` 
 (for Massbit developer only)
 ```bash

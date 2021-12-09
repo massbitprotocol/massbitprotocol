@@ -20,7 +20,7 @@ use massbit_common::prelude::diesel::{
     r2d2, ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl,
 };
 use massbit_common::prelude::r2d2::PooledConnection;
-use massbit_hasura_client::HasuraClient;
+use massbit_common::prelude::serde_json::json;
 use std::ops::Deref;
 use std::sync::Arc;
 use warp::{
@@ -166,6 +166,7 @@ impl IndexerService {
             }
         }
         debug!("indexer: {:?}", &indexer);
+        let hash = indexer.hash.clone();
         if let Some(manifest) = &manifest {
             if let Ok(indexer) = self.store_indexer(manifest, indexer).await {
                 if let Err(err) = indexer_manager.lock().await.start_indexer(indexer).await {
@@ -173,7 +174,7 @@ impl IndexerService {
                 };
             }
         };
-        Ok("success")
+        Ok(warp::reply::json(&json!({ "id": hash })))
     }
     async fn store_indexer(
         &self,
