@@ -8,6 +8,7 @@ members = [
     "core/drive",
     "core/index-store",
     "core/hasura-client",
+    "core/data",
     "cli",
     "chain/ethereum",
     "chain/solana",
@@ -21,7 +22,8 @@ members = [
     "plugin/adapter",
     "plugin/plugin",
     "tests",
-    "massbit-sol-cli"
+    "massbit-sol-cli",
+    "graphql"
 ]
 exclude = ["code-compiler/generated"]
 
