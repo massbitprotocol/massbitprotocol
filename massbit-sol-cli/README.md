@@ -1,4 +1,4 @@
-## RUN chain-reader and index-manager indexer
+## RUN chain-reader and indexer-manager indexer
 ```bash
 tmux new -d -s services "make services-dev-up"
 tmux new -d -s chain-reader scripts/run-chain-reader.sh

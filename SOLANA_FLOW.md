@@ -22,7 +22,7 @@ git clone https://github.com/massbitprotocol/massbitprotocol.git
 cd massbitprotocol
 make run-code-compiler
 make run-chain-reader
-make run-index-manager
+make run-indexer-manager
 cd ..
 ```
 Or docker image (update later)
