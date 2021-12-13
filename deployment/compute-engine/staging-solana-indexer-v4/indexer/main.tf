@@ -7,7 +7,7 @@ provider "google" {
 
 
 resource "google_compute_instance" "default" {
-  name         = "staging-substrate-indexer-v2"
+  name         = "staging-solana-indexer-v4-indexer"
   machine_type = "e2-standard-4"
   zone         = "europe-west3-a"
 
@@ -16,7 +16,7 @@ resource "google_compute_instance" "default" {
   boot_disk {
     initialize_params {      
       image = "projects/ubuntu-os-cloud/global/images/ubuntu-2004-focal-v20210720"
-      size = 100
+      size = 20
     }
   }
 
