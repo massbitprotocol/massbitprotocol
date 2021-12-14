@@ -36,5 +36,6 @@ tokio                       = {version = "1.10.1", features = ["full"]} # Requir
 tokio-compat-02             = "0.2"
 tokio-postgres              = "0.7.2"
 prometheus = "0.12.0"
+url = "2.2.2"
 futures03 = { version = "0.3.1", package = "futures", features = ["compat"] }
 stable-hash = { git = "https://github.com/graphprotocol/stable-hash" }

@@ -5,15 +5,15 @@ use graphql_parser::schema::TypeDefinition;
 use graphql_parser::Pos;
 use inflector::Inflector;
 
+use crate::prelude::s::{Value, *};
+use crate::prelude::*;
 use crate::schema::ast;
-use massbit_common::prelude::{anyhow, lazy_static::lazy_static};
-use massbit_data::prelude::s::{Value, *};
-use massbit_data::prelude::*;
-use massbit_data::{
-    prelude::ext::{DirectiveExt, DocumentExt, ValueExt},
+use crate::{
+    graphql::ext::{DirectiveExt, DocumentExt, ValueExt},
+    indexer::IndexerFeature,
     schema::{META_FIELD_NAME, META_FIELD_TYPE, SCHEMA_TYPE_NAME},
-    store::deployment::IndexerFeature,
 };
+use massbit_common::prelude::{anyhow, lazy_static::lazy_static};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -856,9 +856,9 @@ mod tests {
     use std::collections::BTreeSet;
     use std::iter::FromIterator;
 
+    use crate::indexer::IndexerFeature;
+    use crate::prelude::DocumentExt;
     use graphql_parser::schema::*;
-    use massbit_common::indexer::IndexerFeature;
-    use massbit_data::prelude::DocumentExt;
 
     use super::api_schema;
     use crate::schema::ast;

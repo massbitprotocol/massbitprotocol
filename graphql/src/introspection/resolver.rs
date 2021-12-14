@@ -2,11 +2,11 @@ use graphql_parser::Pos;
 use std::collections::{BTreeMap, HashMap};
 
 use crate::execution::{ExecutionContext, Resolver};
-use crate::schema::ast as sast;
 use massbit_common::prelude::slog::{o, Logger};
 use massbit_common::prelude::{async_trait::async_trait, tokio};
 use massbit_data::object;
 use massbit_data::prelude::{s, DocumentExt, ObjectOrInterface, *};
+use massbit_data::schema::ast as sast;
 use massbit_data::schema::Schema;
 
 type TypeObjectsMap = BTreeMap<String, q::Value>;

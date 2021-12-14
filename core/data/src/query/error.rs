@@ -1,4 +1,4 @@
-use crate::store::deployment::DeploymentHash;
+use crate::indexer::deployment::DeploymentHash;
 use graphql_parser::Pos;
 use hex::FromHexError;
 use massbit_common::prelude::anyhow;

@@ -1,0 +1,26 @@
+table! {
+    indexer_deployments (id) {
+        id -> Integer,
+        hash -> Text,
+        namespace -> Text,
+        schema -> Text,
+        failed -> Bool,
+        health -> crate::deployment::IndexerHealthMapping,
+        synced -> Bool,
+        fatal_error -> Nullable<Text>,
+        non_fatal_errors -> Array<Text>,
+        earliest_block_hash -> Nullable<Binary>,
+        earliest_block_number -> Nullable<Numeric>,
+        latest_block_hash -> Nullable<Binary>,
+        latest_block_number -> Nullable<Numeric>,
+        last_healthy_block_hash -> Nullable<Binary>,
+        last_healthy_block_number -> Nullable<Numeric>,
+        entity_count -> Numeric,
+        graft_base -> Nullable<Text>,
+        graft_block_hash -> Nullable<Binary>,
+        graft_block_number -> Nullable<Numeric>,
+        reorg_count -> Integer,
+        current_reorg_depth -> Integer,
+        max_reorg_depth -> Integer,
+    }
+}

@@ -1,16 +1,12 @@
 use crate::graphql::shape_hash::shape_hash;
+use crate::indexer::{DeploymentHash, IndexerName};
 use crate::prelude::q;
-use crate::store::deployment::{DeploymentHash, IndexerName};
 use massbit_common::prelude::serde_json;
 use serde::de::Deserializer;
 use serde::Deserialize;
 use std::collections::{BTreeMap, HashMap};
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
-
-// use crate::{
-//     prelude::{q, DeploymentHash, SubgraphName},
-// };
 
 fn deserialize_number<'de, D>(deserializer: D) -> Result<q::Number, D::Error>
 where

@@ -1,21 +1,21 @@
+use crate::graphql::ObjectOrInterface;
+use crate::indexer::DeploymentHash;
+use crate::prelude::ext::{DirectiveFinder, DocumentExt};
+use crate::prelude::s::{Value, *};
 use crate::query::ast as qast;
+use crate::schema::Schema;
+use crate::store;
+use crate::store::entity::{Entity, EntityKey};
+use crate::store::value::ValueType;
 use graphql_parser::Pos;
 use massbit_common::prelude::{
     anyhow::{self, anyhow, Context, Error},
     lazy_static::lazy_static,
 };
-use massbit_data::graphql::ObjectOrInterface;
-use massbit_data::prelude::ext::{DirectiveFinder, DocumentExt};
-use massbit_data::prelude::s::{Value, *};
-use massbit_data::schema::Schema;
-use massbit_data::store;
-use massbit_data::store::deployment::DeploymentHash;
-use massbit_data::store::entity::{Entity, EntityKey};
-use massbit_data::store::value::ValueType;
 use std::ops::Deref;
 use std::str::FromStr;
 
-pub(crate) enum FilterOp {
+pub enum FilterOp {
     Not,
     GreaterThan,
     LessThan,
@@ -33,7 +33,7 @@ pub(crate) enum FilterOp {
 }
 
 /// Split a "name_eq" style name into an attribute ("name") and a filter op (`Equal`).
-pub(crate) fn parse_field_as_filter(key: &str) -> (String, FilterOp) {
+pub fn parse_field_as_filter(key: &str) -> (String, FilterOp) {
     let (suffix, op) = match key {
         k if k.ends_with("_not") => ("_not", FilterOp::Not),
         k if k.ends_with("_gt") => ("_gt", FilterOp::GreaterThan),

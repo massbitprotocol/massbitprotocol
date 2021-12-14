@@ -1,15 +1,16 @@
 pub mod chain;
-pub mod deployment;
 pub mod entity;
 pub mod event;
 pub mod scalar;
 pub mod value;
 
+use crate::indexer::error::IndexerError;
+use crate::indexer::{DeploymentHash, DeploymentState, IndexerName};
+use crate::metrics::stopwatch::StopwatchMetrics;
 use crate::prelude::{q, QueryExecutionError, QueryTarget};
 use crate::schema::{ApiSchema, Schema};
-use crate::store::chain::{BlockNumber, BlockPtr};
-use crate::store::deployment::{DeploymentHash, DeploymentState, IndexerName};
-use crate::store::entity::EntityQuery;
+pub use crate::store::chain::{BlockNumber, BlockPtr};
+pub use crate::store::entity::{Entity, EntityKey, EntityModification, EntityQuery, EntityType};
 pub use event::*;
 use massbit_common::prelude::{anyhow::Error, async_trait::async_trait, serde_json, tokio};
 use massbit_common::util::MovingStats;
@@ -147,7 +148,7 @@ pub trait QueryStore: Send + Sync {
 
     fn block_ptr(&self) -> Result<Option<BlockPtr>, Error>;
 
-    fn block_number(&self, block_hash: &String) -> Result<Option<BlockNumber>, StoreError>;
+    //fn block_number(&self, block_hash: &String) -> Result<Option<BlockNumber>, StoreError>;
 
     fn wait_stats(&self) -> &PoolWaitStats;
 
@@ -162,10 +163,65 @@ pub trait QueryStore: Send + Sync {
 
     fn network_name(&self) -> &str;
 
-    /// A permit should be acquired before starting query execution.
+    // A permit should be acquired before starting query execution.
     async fn query_permit(&self) -> tokio::sync::OwnedSemaphorePermit;
 }
+#[async_trait]
+pub trait WritableStore: Send + Sync + 'static {
+    /// Get a pointer to the most recently processed block in the subgraph.
+    fn block_ptr(&self) -> Result<Option<BlockPtr>, Error>;
 
+    ///// Start an existing subgraph deployment.
+    //fn start_subgraph_deployment(&self, logger: &Logger) -> Result<(), StoreError>;
+
+    /// Revert the entity changes from a single block atomically in the store, and update the
+    /// subgraph block pointer to `block_ptr_to`.
+    ///
+    /// `block_ptr_to` must point to the parent block of the subgraph block pointer.
+    fn revert_block_operations(&self, block_ptr_to: BlockPtr) -> Result<(), StoreError>;
+
+    /// Remove the fatal error from a subgraph and check if it is healthy or unhealthy.
+    fn unfail(&self) -> Result<(), StoreError>;
+
+    /// Set subgraph status to failed with the given error as the cause.
+    async fn fail_subgraph(&self, error: IndexerError) -> Result<(), StoreError>;
+
+    /// Looks up an entity using the given store key at the latest block.
+    fn get(&self, key: EntityKey) -> Result<Option<Entity>, QueryExecutionError>;
+
+    /// Transact the entity changes from a single block atomically into the store, and update the
+    /// subgraph block pointer to `block_ptr_to`.
+    ///
+    /// `block_ptr_to` must point to a child block of the current subgraph block pointer.
+    fn transact_block_operations(
+        &self,
+        block_ptr_to: BlockPtr,
+        mods: Vec<EntityModification>,
+        stopwatch: StopwatchMetrics,
+        deterministic_errors: Vec<IndexerError>,
+    ) -> Result<(), StoreError>;
+
+    /// Look up multiple entities as of the latest block. Returns a map of
+    /// entities by type.
+    fn get_many(
+        &self,
+        ids_for_type: BTreeMap<&EntityType, Vec<&str>>,
+    ) -> Result<BTreeMap<EntityType, Vec<Entity>>, StoreError>;
+
+    /// The deployment `id` finished syncing, mark it as synced in the database
+    /// and promote it to the current version in the subgraphs where it was the
+    /// pending version so far
+    fn deployment_synced(&self) -> Result<(), Error>;
+
+    /// Return true if the deployment with the given id is fully synced,
+    /// and return false otherwise. Errors from the store are passed back up
+    async fn is_deployment_synced(&self) -> Result<bool, Error>;
+
+    //fn unassign_subgraph(&self) -> Result<(), StoreError>;
+
+    ///// Load the dynamic data sources for the given deployment
+    //async fn load_dynamic_data_sources(&self) -> Result<Vec<StoredDynamicDataSource>, StoreError>;
+}
 #[async_trait]
 pub trait QueryStoreManager: Send + Sync + 'static {
     /// Get a new `QueryStore`. A `QueryStore` is tied to a DB replica, so if Graph Node is
@@ -179,7 +235,7 @@ pub trait QueryStoreManager: Send + Sync + 'static {
     /// If `for_subscription` is true, the main replica will always be used.
     async fn query_store(
         &self,
-        target: QueryTarget,
+        hash: DeploymentHash,
         for_subscription: bool,
     ) -> Result<Arc<dyn QueryStore + Send + Sync>, QueryExecutionError>;
 }

@@ -2,6 +2,7 @@ use graphql_parser::{self, Pos};
 use massbit_common::prelude::anyhow::{self, Context, Error};
 use serde_derive::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::convert::TryFrom;
 use std::fmt;
 use std::hash::Hash;
 use std::iter::FromIterator;
@@ -9,7 +10,7 @@ use std::sync::Arc;
 use thiserror::Error;
 
 use crate::graphql::{DirectiveExt, DirectiveFinder, DocumentExt, TypeExt};
-use crate::store::deployment::{DeploymentHash, IndexerName};
+use crate::indexer::{DeploymentHash, IndexerName};
 use crate::store::entity::EntityType;
 use crate::store::value::ValueType;
 use crate::store::IndexerStore;
@@ -17,6 +18,7 @@ use crate::store::IndexerStore;
 use crate::prelude::{
     q::Value,
     s::{self, Definition, InterfaceType, ObjectType, TypeDefinition, *},
+    ValueExt,
 };
 
 pub const SCHEMA_TYPE_NAME: &str = "_Schema_";
@@ -71,6 +73,153 @@ pub enum SchemaValidationError {
     FieldTypeUnknown(String, String, String), // (type_name, field_name, field_type)
     #[error("Imported type `{0}` does not exist in the `{1}` schema")]
     ImportedTypeUndefined(String, String), // (type_name, schema)
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum FulltextLanguage {
+    Simple,
+    Danish,
+    Dutch,
+    English,
+    Finnish,
+    French,
+    German,
+    Hungarian,
+    Italian,
+    Norwegian,
+    Portugese,
+    Romanian,
+    Russian,
+    Spanish,
+    Swedish,
+    Turkish,
+}
+
+impl TryFrom<&str> for FulltextLanguage {
+    type Error = String;
+    fn try_from(language: &str) -> Result<Self, Self::Error> {
+        match &language[..] {
+            "simple" => Ok(FulltextLanguage::Simple),
+            "da" => Ok(FulltextLanguage::Danish),
+            "nl" => Ok(FulltextLanguage::Dutch),
+            "en" => Ok(FulltextLanguage::English),
+            "fi" => Ok(FulltextLanguage::Finnish),
+            "fr" => Ok(FulltextLanguage::French),
+            "de" => Ok(FulltextLanguage::German),
+            "hu" => Ok(FulltextLanguage::Hungarian),
+            "it" => Ok(FulltextLanguage::Italian),
+            "no" => Ok(FulltextLanguage::Norwegian),
+            "pt" => Ok(FulltextLanguage::Portugese),
+            "ro" => Ok(FulltextLanguage::Romanian),
+            "ru" => Ok(FulltextLanguage::Russian),
+            "es" => Ok(FulltextLanguage::Spanish),
+            "sv" => Ok(FulltextLanguage::Swedish),
+            "tr" => Ok(FulltextLanguage::Turkish),
+            invalid => Err(format!(
+                "Provided language for fulltext search is invalid: {}",
+                invalid
+            )),
+        }
+    }
+}
+
+impl FulltextLanguage {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Simple => "simple",
+            Self::Danish => "danish",
+            Self::Dutch => "dutch",
+            Self::English => "english",
+            Self::Finnish => "finnish",
+            Self::French => "french",
+            Self::German => "german",
+            Self::Hungarian => "hungarian",
+            Self::Italian => "italian",
+            Self::Norwegian => "norwegian",
+            Self::Portugese => "portugese",
+            Self::Romanian => "romanian",
+            Self::Russian => "russian",
+            Self::Spanish => "spanish",
+            Self::Swedish => "swedish",
+            Self::Turkish => "turkish",
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum FulltextAlgorithm {
+    Rank,
+    ProximityRank,
+}
+
+impl TryFrom<&str> for FulltextAlgorithm {
+    type Error = String;
+    fn try_from(algorithm: &str) -> Result<Self, Self::Error> {
+        match &algorithm[..] {
+            "rank" => Ok(FulltextAlgorithm::Rank),
+            "proximityRank" => Ok(FulltextAlgorithm::ProximityRank),
+            invalid => Err(format!(
+                "The provided fulltext search algorithm {} is invalid. It must be one of: rank, proximityRank",
+                invalid,
+            )),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct FulltextConfig {
+    pub language: FulltextLanguage,
+    pub algorithm: FulltextAlgorithm,
+}
+
+pub struct FulltextDefinition {
+    pub config: FulltextConfig,
+    pub included_fields: HashSet<String>,
+    pub name: String,
+}
+
+impl From<&s::Directive> for FulltextDefinition {
+    // Assumes the input is a Fulltext Directive that has already been validated because it makes
+    // liberal use of unwrap() where specific types are expected
+    fn from(directive: &Directive) -> Self {
+        let name = directive.argument("name").unwrap().as_str().unwrap();
+
+        let algorithm = FulltextAlgorithm::try_from(
+            directive.argument("algorithm").unwrap().as_enum().unwrap(),
+        )
+        .unwrap();
+
+        let language =
+            FulltextLanguage::try_from(directive.argument("language").unwrap().as_enum().unwrap())
+                .unwrap();
+
+        let included_entity_list = directive.argument("include").unwrap().as_list().unwrap();
+        // Currently fulltext query fields are limited to 1 entity, so we just take the first (and only) included Entity
+        let included_entity = included_entity_list.first().unwrap().as_object().unwrap();
+        let included_field_values = included_entity.get("fields").unwrap().as_list().unwrap();
+        let included_fields: HashSet<String> = included_field_values
+            .into_iter()
+            .map(|field| {
+                field
+                    .as_object()
+                    .unwrap()
+                    .get("name")
+                    .unwrap()
+                    .as_str()
+                    .unwrap()
+                    .into()
+            })
+            .collect();
+
+        FulltextDefinition {
+            config: FulltextConfig {
+                language,
+                algorithm,
+            },
+            included_fields,
+            name: name.into(),
+        }
+    }
 }
 
 #[derive(Debug, Error, PartialEq, Eq, Clone)]
@@ -950,5 +1099,30 @@ impl Schema {
             .get_object_type_definitions()
             .into_iter()
             .find(|object_type| object_type.name.eq(SCHEMA_TYPE_NAME))
+    }
+    pub fn entity_fulltext_definitions<'a>(
+        entity: &str,
+        document: &'a Document,
+    ) -> Result<Vec<FulltextDefinition>, anyhow::Error> {
+        Ok(document
+            .get_fulltext_directives()?
+            .into_iter()
+            .filter(|directive| match directive.argument("include") {
+                Some(Value::List(includes)) if !includes.is_empty() => includes
+                    .iter()
+                    .find(|include| match include {
+                        Value::Object(include) => match include.get("entity") {
+                            Some(Value::String(fulltext_entity)) if fulltext_entity == entity => {
+                                true
+                            }
+                            _ => false,
+                        },
+                        _ => false,
+                    })
+                    .is_some(),
+                _ => false,
+            })
+            .map(FulltextDefinition::from)
+            .collect())
     }
 }

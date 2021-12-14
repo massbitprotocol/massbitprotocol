@@ -1,5 +1,5 @@
+use crate::indexer::deployment::DeploymentHash;
 use crate::metrics::MetricsRegistry;
-use crate::store::deployment::DeploymentHash;
 use massbit_common::cheap_clone::CheapClone;
 use massbit_common::prelude::slog::{error, Logger};
 use prometheus::CounterVec;

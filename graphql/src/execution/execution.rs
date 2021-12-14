@@ -12,9 +12,9 @@ use massbit_common::prelude::{
     slog::{error, Logger},
 };
 use massbit_common::util::{task_spawn, TimedMutex};
+use massbit_data::indexer::DeploymentHash;
 use massbit_data::prelude::{q, DocumentExt, ObjectOrInterface, QueryExecutionError};
 use massbit_data::query::QueryResult;
-use massbit_data::store::deployment::DeploymentHash;
 use massbit_data::{prelude::s, schema::META_FIELD_NAME};
 use std::borrow::ToOwned;
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -35,8 +35,8 @@ use crate::introspection::{
 };
 use crate::values::{coercion, MaybeCoercible};
 // use crate::prelude::*;
-use crate::query::ast as qast;
-use crate::schema::ast as sast;
+use massbit_data::query::ast as qast;
+use massbit_data::schema::ast as sast;
 
 lazy_static! {
     // Comma separated subgraph ids to cache queries for.

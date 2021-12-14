@@ -8,23 +8,21 @@ use massbit_common::prelude::{
 };
 use massbit_common::util::task_spawn;
 use massbit_data::graphql::ObjectOrInterface;
+use massbit_data::indexer::DeploymentHash;
 use massbit_data::object;
 use massbit_data::prelude::{q, s, QueryError, QueryResult, StoreEventStreamBox};
 use massbit_data::query::QueryExecutionError;
 use massbit_data::schema::{BLOCK_FIELD_TYPE, META_FIELD_TYPE};
 use massbit_data::store::chain::{BlockNumber, BlockPtr, BLOCK_NUMBER_MAX};
-use massbit_data::store::deployment::DeploymentHash;
 use massbit_data::store::{QueryStore, StoreError};
 use std::collections::{BTreeMap, HashMap};
 use std::iter::FromIterator;
-use std::result;
 use std::sync::Arc;
 
-use crate::query::ext::BlockConstraint;
-use crate::schema::api::ErrorPolicy;
-use crate::schema::ast as sast;
 use crate::store::query::collect_entities_from_query_field;
 use crate::store::SUBSCRIPTION_THROTTLE_INTERVAL;
+use massbit_data::query::query_ext::BlockConstraint;
+use massbit_data::schema::{api::ErrorPolicy, ast as sast};
 //use crate::{prelude::*, schema::api::ErrorPolicy};
 
 //use crate::store::query::collect_entities_from_query_field;
@@ -143,19 +141,21 @@ impl StoreResolver {
                     }
                 }),
             BlockConstraint::Hash(hash) => {
-                store
-                    .block_number(&hash)
-                    .map_err(Into::into)
-                    .and_then(|number| {
-                        number
-                            .ok_or_else(|| {
-                                QueryExecutionError::ValueParseError(
-                                    "block.hash".to_owned(),
-                                    "no block with that hash found".to_owned(),
-                                )
-                            })
-                            .map(|number| BlockPtr::from((hash.into_bytes(), number)))
-                    })
+                //Todo: check this case: get block ptr from block hash
+                Ok(BlockPtr::from((hash.into_bytes(), 0_i64)))
+                // store
+                //     .block_number(&hash)
+                //     .map_err(Into::into)
+                //     .and_then(|number| {
+                //         number
+                //             .ok_or_else(|| {
+                //                 QueryExecutionError::ValueParseError(
+                //                     "block.hash".to_owned(),
+                //                     "no block with that hash found".to_owned(),
+                //                 )
+                //             })
+                //             .map(|number| BlockPtr::from((hash.into_bytes(), number)))
+                //     })
             }
             BlockConstraint::Latest => store
                 .block_ptr()

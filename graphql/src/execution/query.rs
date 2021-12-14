@@ -6,7 +6,7 @@ use massbit_data::prelude::{
     ext::{DocumentExt, TypeExt},
     ObjectOrInterface, QueryExecutionError, QueryVariables, TryFromValue,
 };
-use massbit_data::query::Query as IndexerDataQuery;
+use massbit_data::query::{ast as qast, Query as IndexerDataQuery};
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
@@ -17,15 +17,12 @@ use std::{collections::hash_map::DefaultHasher, convert::TryFrom};
 // use graph::prelude::{
 //     info, o, q, s, BlockNumber, CheapClone, Logger, QueryExecutionError, TryFromValue,
 // };
+use crate::execution::{get_field, get_named_type, object_or_interface};
 use crate::introspection::introspection_schema;
-use crate::query::{ast as qast, ext::BlockConstraint};
-use crate::schema::ast as sast;
-use crate::{
-    execution::{get_field, get_named_type, object_or_interface},
-    schema::api::ErrorPolicy,
-};
 use massbit_data::prelude::{q, s};
+use massbit_data::query::query_ext::BlockConstraint;
 use massbit_data::schema::ApiSchema;
+use massbit_data::schema::{api::ErrorPolicy, ast as sast};
 use massbit_data::store::chain::BlockNumber;
 
 #[derive(Clone, Debug)]

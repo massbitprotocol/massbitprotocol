@@ -7,9 +7,9 @@ use massbit_common::prelude::{
     lazy_static::lazy_static,
     slog::{o, Logger},
 };
+use massbit_data::indexer::{DeploymentHash, DeploymentState};
 use massbit_data::prelude::{LoadManager, QueryExecutionError};
 use massbit_data::query::{Query, QueryResults, QueryTarget};
-use massbit_data::store::deployment::DeploymentState;
 use massbit_data::store::{QueryStore, QueryStoreManager};
 use std::env;
 use std::str::FromStr;
@@ -91,7 +91,7 @@ where
             // there is only one reorg of one block, and we therefore avoid
             // flagging a lot of queries a bit behind the head
             let n_blocks = new_state.max_reorg_depth * (new_state.reorg_count - state.reorg_count);
-            if latest_block + n_blocks as u64 > state.latest_ethereum_block_number as u64 {
+            if latest_block + n_blocks as u64 > state.latest_block_number as u64 {
                 return Err(QueryExecutionError::DeploymentReverted);
             }
         }
@@ -100,7 +100,7 @@ where
     async fn execute(
         &self,
         query: Query,
-        target: QueryTarget,
+        hash: DeploymentHash,
         max_complexity: Option<u64>,
         max_depth: Option<u8>,
         max_first: Option<u32>,
@@ -116,7 +116,7 @@ where
         // point, and everything needs to go through the `store` we are
         // setting up here
         println!("{:?}", &query);
-        let store = self.store.query_store(target, false).await?;
+        let store = self.store.query_store(hash, false).await?;
         let state = store.deployment_state().await?;
         let network = Some(store.network_name().to_string());
         let schema = store.api_schema()?;
@@ -191,10 +191,10 @@ where
     S: QueryStoreManager,
     //    SM: SubscriptionManager,
 {
-    async fn run_query(self: Arc<Self>, query: Query, target: QueryTarget) -> QueryResults {
+    async fn run_query(self: Arc<Self>, query: Query, hash: DeploymentHash) -> QueryResults {
         self.run_query_with_complexity(
             query,
-            target,
+            hash,
             *GRAPHQL_MAX_COMPLEXITY,
             Some(*GRAPHQL_MAX_DEPTH),
             Some(*GRAPHQL_MAX_FIRST),
@@ -206,22 +206,15 @@ where
     async fn run_query_with_complexity(
         self: Arc<Self>,
         query: Query,
-        target: QueryTarget,
+        hash: DeploymentHash,
         max_complexity: Option<u64>,
         max_depth: Option<u8>,
         max_first: Option<u32>,
         max_skip: Option<u32>,
     ) -> QueryResults {
-        self.execute(
-            query,
-            target,
-            max_complexity,
-            max_depth,
-            max_first,
-            max_skip,
-        )
-        .await
-        .unwrap_or_else(|e| e)
+        self.execute(query, hash, max_complexity, max_depth, max_first, max_skip)
+            .await
+            .unwrap_or_else(|e| e)
     }
 
     // async fn run_subscription(

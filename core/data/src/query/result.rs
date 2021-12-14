@@ -1,14 +1,13 @@
 use super::error::{QueryError, QueryExecutionError};
-use crate::store::deployment::DeploymentHash;
+use crate::indexer::DeploymentHash;
 use crate::utils::cache_weight::CacheWeight;
 use crate::{graphql::SerializableValue, prelude::q};
 use http::header::{
     ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_METHODS, ACCESS_CONTROL_ALLOW_ORIGIN,
     CONTENT_TYPE,
 };
-use massbit_common::prelude::serde_json;
-use massbit_common::prelude::serde_json::json;
-use serde;
+use massbit_common::prelude::serde_json::{self, json};
+
 use serde::ser::*;
 use serde::Serialize;
 use std::collections::BTreeMap;

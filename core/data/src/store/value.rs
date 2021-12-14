@@ -2,7 +2,7 @@ use crate::prelude::{q, s, QueryExecutionError};
 use crate::store::scalar;
 use crate::utils::cache_weight::CacheWeight;
 use massbit_common::prelude::anyhow::{anyhow, Error};
-use serde::{Deserialize, Serialize};
+use serde_derive::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::fmt;
 use std::str::FromStr;

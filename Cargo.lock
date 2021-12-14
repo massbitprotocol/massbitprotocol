@@ -913,7 +913,7 @@ dependencies = [
  "hex-literal",
  "http 0.1.21",
  "ipfs-client",
- "itertools 0.10.1",
+ "itertools 0.10.3",
  "jsonrpc-core 14.2.0",
  "lazy_static",
  "log 0.4.14",
@@ -954,7 +954,7 @@ dependencies = [
  "futures 0.1.31",
  "futures 0.3.18",
  "http 0.1.21",
- "itertools 0.10.1",
+ "itertools 0.10.3",
  "jsonrpc-core 14.2.0",
  "lazy_static",
  "log 0.4.14",
@@ -1254,7 +1254,7 @@ dependencies = [
  "cranelift-codegen",
  "cranelift-entity",
  "cranelift-frontend",
- "itertools 0.10.1",
+ "itertools 0.10.3",
  "log 0.4.14",
  "serde",
  "smallvec 1.7.0",
@@ -2500,7 +2500,7 @@ dependencies = [
  "hex",
  "http 0.2.5",
  "isatty",
- "itertools 0.10.1",
+ "itertools 0.10.3",
  "lazy_static",
  "mockall 0.8.3",
  "num-bigint 0.2.6",
@@ -2556,7 +2556,7 @@ dependencies = [
  "hex",
  "http 0.2.5",
  "isatty",
- "itertools 0.10.1",
+ "itertools 0.10.3",
  "lazy_static",
  "mockall 0.8.3",
  "num-bigint 0.2.6",
@@ -2606,7 +2606,7 @@ dependencies = [
  "graph-runtime-wasm",
  "hex",
  "http 0.1.21",
- "itertools 0.10.1",
+ "itertools 0.10.3",
  "jsonrpc-core 14.2.0",
  "lazy_static",
  "mockall 0.9.1",
@@ -2836,7 +2836,7 @@ dependencies = [
  "graph-chain-ethereum",
  "graph-graphql",
  "graphql-parser 0.3.0",
- "itertools 0.10.1",
+ "itertools 0.10.3",
  "lazy_static",
  "lru_time_cache",
  "maybe-owned",
@@ -3556,6 +3556,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "indexer-orm"
+version = "0.1.0"
+dependencies = [
+ "diesel",
+ "diesel-derive-enum",
+ "diesel_migrations",
+ "massbit-common",
+ "serde",
+ "serde_derive",
+]
+
+[[package]]
 name = "indexer_api"
 version = "0.1.0"
 dependencies = [
@@ -3571,7 +3583,7 @@ dependencies = [
  "diesel-derive-enum",
  "diesel_migrations",
  "futures 0.3.18",
- "itertools 0.10.1",
+ "itertools 0.10.3",
  "lazy_static",
  "libloading 0.7.1",
  "log 0.4.14",
@@ -3725,9 +3737,9 @@ dependencies = [
 
 [[package]]
 name = "itertools"
-version = "0.10.1"
+version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69ddb889f9d0d08a67338271fa9b62996bc788c7796a5c18cf057420aaed5eaf"
+checksum = "a9a9d19fa1e79b6215ff29b9d6880b706147f16e9b1dbb1e4e5947b5b02bc5e3"
 dependencies = [
  "either",
 ]
@@ -4255,7 +4267,7 @@ dependencies = [
  "hex",
  "http 0.2.5",
  "isatty",
- "itertools 0.10.1",
+ "itertools 0.10.3",
  "lazy_static",
  "log 0.4.14",
  "lru_time_cache",
@@ -4348,12 +4360,14 @@ dependencies = [
  "tokio 1.12.0",
  "tokio-compat-02",
  "tokio-postgres",
+ "url 2.2.2",
 ]
 
 [[package]]
 name = "massbit-data"
 version = "0.1.0"
 dependencies = [
+ "Inflector",
  "bigdecimal 0.1.2",
  "chrono",
  "diesel",
@@ -4376,6 +4390,8 @@ dependencies = [
  "reqwest 0.11.6",
  "serde",
  "serde_derive",
+ "serde_json",
+ "serde_yaml",
  "slog",
  "slog-async",
  "slog-envlogger",
@@ -4404,6 +4420,7 @@ dependencies = [
  "crossbeam 0.8.1",
  "deadpool",
  "defer",
+ "diesel",
  "dotenv",
  "futures 0.1.31",
  "graphql-parser 0.4.0",
@@ -4412,10 +4429,15 @@ dependencies = [
  "indexmap",
  "massbit-common",
  "massbit-data",
- "massbit-storage",
+ "massbit-storage-postgres",
+ "regex",
  "serde",
+ "serde_regex",
+ "shellexpand",
  "structopt",
  "thiserror",
+ "toml",
+ "url 2.2.2",
 ]
 
 [[package]]
@@ -4485,7 +4507,7 @@ dependencies = [
  "diesel",
  "diesel_derives",
  "hex",
- "itertools 0.10.1",
+ "itertools 0.10.3",
  "lazy_static",
  "libloading 0.7.1",
  "log 0.4.14",
@@ -4501,11 +4523,27 @@ dependencies = [
 ]
 
 [[package]]
-name = "massbit-storage"
+name = "massbit-storage-postgres"
 version = "0.1.0"
 dependencies = [
+ "Inflector",
+ "backtrace",
+ "derive_more",
+ "diesel",
+ "diesel-derive-enum",
+ "diesel-dynamic-schema",
+ "diesel_derives",
+ "diesel_migrations",
+ "graphql-parser 0.4.0",
+ "hex",
+ "itertools 0.10.3",
+ "lru_time_cache",
  "massbit-common",
  "massbit-data",
+ "maybe-owned",
+ "postgres",
+ "rand 0.8.4",
+ "serde_derive",
 ]
 
 [[package]]
@@ -4529,7 +4567,7 @@ dependencies = [
  "git-testament",
  "graph-graphql",
  "graphql-parser 0.3.0",
- "itertools 0.10.1",
+ "itertools 0.10.3",
  "lazy_static",
  "lru_time_cache",
  "massbit",
@@ -5961,7 +5999,7 @@ checksum = "355f634b43cdd80724ee7848f95770e7e70eefa6dcf14fea676216573b8fd603"
 dependencies = [
  "bytes 1.1.0",
  "heck",
- "itertools 0.10.1",
+ "itertools 0.10.3",
  "log 0.4.14",
  "multimap",
  "petgraph 0.5.1",
@@ -5991,7 +6029,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "600d2f334aa05acb02a755e217ef1ab6dea4d51b58b7846588b747edec04efba"
 dependencies = [
  "anyhow",
- "itertools 0.10.1",
+ "itertools 0.10.3",
  "proc-macro2 1.0.30",
  "quote 1.0.10",
  "syn 1.0.80",
@@ -7599,7 +7637,7 @@ dependencies = [
  "bytemuck",
  "curve25519-dalek 3.2.0",
  "hex",
- "itertools 0.10.1",
+ "itertools 0.10.3",
  "lazy_static",
  "libsecp256k1 0.6.0",
  "log 0.4.14",
@@ -7685,7 +7723,7 @@ dependencies = [
  "flate2",
  "fnv",
  "histogram",
- "itertools 0.10.1",
+ "itertools 0.10.3",
  "lazy_static",
  "log 0.4.14",
  "memmap2 0.5.0",
@@ -7788,7 +7826,7 @@ dependencies = [
  "generic-array 0.14.4",
  "hex",
  "hmac 0.11.0",
- "itertools 0.10.1",
+ "itertools 0.10.3",
  "lazy_static",
  "libsecp256k1 0.6.0",
  "log 0.4.14",
@@ -7932,7 +7970,7 @@ dependencies = [
  "bs58 0.4.0",
  "diesel",
  "diesel-derive-enum",
- "itertools 0.10.1",
+ "itertools 0.10.3",
  "jsonrpc-core 18.0.0",
  "jsonrpc-core-client",
  "jsonrpc-derive",

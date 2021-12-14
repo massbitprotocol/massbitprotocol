@@ -1,5 +1,6 @@
 use core::future::pending;
 use massbit_common::cheap_clone::CheapClone;
+use massbit_common::prelude::diesel::PgConnection;
 use massbit_common::prelude::futures03::compat::Future01CompatExt;
 use massbit_common::prelude::prometheus::Registry;
 use massbit_common::prelude::{
@@ -8,6 +9,7 @@ use massbit_common::prelude::{
     tokio,
 };
 use massbit_common::util::task_spawn;
+use massbit_data::indexer::{DeploymentHash, NodeId};
 use massbit_data::log::factory::LoggerFactory;
 use massbit_data::log::logger;
 use massbit_data::metrics::{
@@ -18,9 +20,10 @@ use massbit_data::prelude::{
     q, s, LoadManager, ObjectOrInterface, Query, QueryExecutionError, QueryResult,
 };
 use massbit_data::schema::{ApiSchema, Schema};
-use massbit_data::store::deployment::DeploymentHash;
+use massbit_graphql::config::Config;
 use massbit_graphql::execution::{ExecutionContext, Query as PreparedQuery, Resolver};
 use massbit_graphql::query::{execute_query, QueryExecutionOptions};
+use massbit_graphql::store_builder::StoreBuilder;
 use massbit_graphql::{
     opt,
     runner::GraphQlRunner,
@@ -28,8 +31,9 @@ use massbit_graphql::{
         graphql::GraphQlRunner as GraphQlRunnerTrait, GraphQLServer as GraphQLQueryServer,
         GraphQLServerTrait,
     },
+    CONNECTION_POOL_SIZE, DATABASE_URL,
 };
-use massbit_storage::store_builder::StoreBuilder;
+use massbit_storage_postgres::create_r2d2_connection_pool;
 use std::collections::HashMap;
 use std::sync::Arc;
 use structopt::StructOpt;
@@ -599,10 +603,21 @@ const QUERY: &str = r#"
 async fn main() {
     let opt = opt::Opt::from_args();
     println!("{:?}", &opt);
+    // let hash = String::from("q42VCQyR7SA3ivHuq1rhUiEErSotqkHXCocMwrKC13Q");
+    // println!("{:?}", hash.as_bytes());
     // Obtain ports to use for the GraphQL server(s)
     let http_port = opt.http_port;
     let ws_port = opt.ws_port;
     let logger = logger(opt.debug);
+    let node_id =
+        NodeId::new(opt.node_id.clone()).expect("Node ID must contain only a-z, A-Z, 0-9, and '_'");
+    let config = match Config::load(&logger, &opt.clone().into()) {
+        Err(e) => {
+            eprintln!("configuration error: {}", e);
+            std::process::exit(1);
+        }
+        Ok(config) => config,
+    };
     info!(&logger, "Start graphql HTTP server!");
     // Create a component and subgraph logger factory
     let logger_factory = LoggerFactory::new(logger.clone(), None);
@@ -612,7 +627,10 @@ async fn main() {
         logger.clone(),
         prometheus_registry.clone(),
     ));
-    let store_builder = StoreBuilder::new(&logger, metrics_registry.cheap_clone()).await;
+    let connection_pool =
+        create_r2d2_connection_pool::<PgConnection>(DATABASE_URL.as_str(), *CONNECTION_POOL_SIZE);
+    let store_builder =
+        StoreBuilder::new(&logger, &node_id, &config, metrics_registry.cheap_clone()).await;
     //Todo: Read expensive queries from a static file
     let expensive_queries = vec![]; //read_expensive_queries().unwrap();
     let load_manager = Arc::new(LoadManager::new(
@@ -620,9 +638,9 @@ async fn main() {
         expensive_queries,
         metrics_registry.clone(),
     ));
-    let indexer_store = store_builder.indexer_store().await;
-    let arc_indexer_store = Arc::new(indexer_store);
-    let graphql_runner = Arc::new(GraphQlRunner::new(&logger, arc_indexer_store, load_manager));
+    let store_manager = store_builder.store_manager().await;
+    let arc_store_manager = Arc::new(store_manager);
+    let graphql_runner = Arc::new(GraphQlRunner::new(&logger, arc_store_manager, load_manager));
     let graphql_metrics_registry = metrics_registry.clone();
     let mut graphql_server = GraphQLQueryServer::new(
         &logger_factory,

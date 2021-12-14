@@ -6,17 +6,22 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+diesel = { version = "1.4.7", features = ["postgres", "serde_json", "numeric", "r2d2"] }
 crossbeam = "0.8"
 deadpool = "0.8.0"
 defer = "0.1"
 dotenv = "0.15.0"
 serde = "1.0.126"
-#futures03 = { version = "0.3.1", package = "futures", features = ["compat"] }
 graphql-parser = "0.4.0"
 Inflector = "0.11.3"
 thiserror = "1.0.30"
 indexmap = "1.7"
 http = "0.2"
+url = "2.2.1"
+regex = "1.5.4"
+toml = "0.5.7"
+serde_regex = "1.1.0"
+shellexpand = "2.1.0"
 hyper = {version = "0.14", features = ["server"] }
 futures = "0.1.21"
 structopt = { version = "0.3", features = ["wrap_help"] }
@@ -25,4 +30,4 @@ structopt = { version = "0.3", features = ["wrap_help"] }
 #strum_macros = "0.21.0"
 massbit-common = { path = "../core/common" }
 massbit-data = { path= "../core/data" }
-massbit-storage = { path= "../core/storage" }
+massbit-storage-postgres = { path= "../core/storage/postgres" }

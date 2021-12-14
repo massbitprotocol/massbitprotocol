@@ -1,6 +1,6 @@
-use massbit_data::prelude::{q, s, ObjectOrInterface, QueryExecutionError};
+use massbit_data::indexer::DeploymentHash;
+use massbit_data::prelude::{q, s, s::Field, ObjectOrInterface, QueryExecutionError};
 use massbit_data::store::chain::BlockNumber;
-use massbit_data::store::deployment::DeploymentHash;
 use massbit_data::store::entity::{
     AttributeNames, EntityCollection, EntityFilter, EntityOrder, EntityQuery, EntityRange,
     EntityType, SubscriptionFilter,
@@ -13,8 +13,8 @@ use std::mem::discriminant;
 // use graph::prelude::*;
 // use graph::{components::store::EntityType, data::graphql::ObjectOrInterface};
 
-use crate::schema::ast as sast;
 use crate::store::prefetch::ObjectCondition;
+use massbit_data::schema::ast as sast;
 
 #[derive(Debug)]
 enum OrderDirection {
@@ -360,10 +360,11 @@ mod tests {
 
     use graphql_parser::schema::Directive;
     use graphql_parser::Pos;
+    use massbit_data::prelude::q::Field;
     use std::collections::{BTreeMap, HashMap};
 
-    use massbit_data::prelude::s;
     use massbit_data::prelude::s::{InputValue, ObjectType, Type};
+    use massbit_data::prelude::{q, s};
 
     use super::build_query;
 

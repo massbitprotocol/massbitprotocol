@@ -3,7 +3,7 @@ use diesel::serialize::ToSql;
 use diesel_derives::{AsExpression, FromSqlRow};
 use hex;
 use num_bigint;
-use serde::{self, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use std::convert::{TryFrom, TryInto};
@@ -14,7 +14,7 @@ use std::str::FromStr;
 
 use crate::utils::cache_weight::CacheWeight;
 use massbit_common::prelude::stable_hash::utils::AsInt;
-use massbit_common::prelude::stable_hash::{StableHash, StableHasher};
+use massbit_common::prelude::stable_hash::{SequenceNumber, StableHash, StableHasher};
 pub use num_bigint::Sign as BigIntSign;
 
 /// All operations on `BigDecimal` return a normalized value.
@@ -183,15 +183,15 @@ impl bigdecimal::ToPrimitive for BigDecimal {
     }
 }
 
-// impl StableHash for BigDecimal {
-//     fn stable_hash<H: StableHasher>(&self, mut sequence_number: H::Seq, state: &mut H) {
-//         let (int, exp) = self.as_bigint_and_exponent();
-//         // This only allows for backward compatible changes between
-//         // BigDecimal and unsigned ints
-//         exp.stable_hash(sequence_number.next_child(), state);
-//         BigInt(int).stable_hash(sequence_number, state);
-//     }
-// }
+impl StableHash for BigDecimal {
+    fn stable_hash<H: StableHasher>(&self, mut sequence_number: H::Seq, state: &mut H) {
+        let (int, exp) = self.as_bigint_and_exponent();
+        // This only allows for backward compatible changes between
+        // BigDecimal and unsigned ints
+        exp.stable_hash(sequence_number.next_child(), state);
+        BigInt(int).stable_hash(sequence_number, state);
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct BigInt(num_bigint::BigInt);

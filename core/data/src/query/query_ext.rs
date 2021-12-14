@@ -5,11 +5,11 @@ use graphql_parser::Pos;
 use std::collections::{BTreeMap, HashMap};
 use std::convert::TryFrom;
 
+use crate::graphql::TryFromValue;
+use crate::prelude::q;
+use crate::prelude::QueryExecutionError;
+use crate::store::BlockNumber;
 use massbit_common::prelude::anyhow::{anyhow, Error};
-use massbit_data::graphql::TryFromValue;
-use massbit_data::prelude::q;
-use massbit_data::query::QueryExecutionError;
-use massbit_data::store::chain::BlockNumber;
 
 pub trait ValueExt: Sized {
     fn as_object(&self) -> &BTreeMap<String, q::Value>;

@@ -9,9 +9,9 @@ use hyper::{Body, Request, Response, StatusCode};
 use massbit_common::prelude::futures03::compat::Future01CompatExt;
 use massbit_common::prelude::futures03::{FutureExt, TryFutureExt};
 use massbit_common::prelude::slog::{error, Logger};
+use massbit_data::indexer::{DeploymentHash, IndexerName};
 use massbit_data::metrics::{HistogramVec, MetricsRegistry};
 use massbit_data::query::{QueryResult, QueryTarget};
-use massbit_data::store::deployment::IndexerName;
 use std::convert::TryFrom;
 use std::fmt;
 use std::pin::Pin;
@@ -173,9 +173,8 @@ where
         indexer_hash: String,
         request: Request<Body>,
     ) -> GraphQLServiceResult {
-        let indexer = IndexerName::new(indexer_hash).unwrap();
-        self.handle_graphql_query(indexer.into(), request.into_body())
-            .await
+        let hash = DeploymentHash::new(indexer_hash).unwrap();
+        self.handle_graphql_query(hash, request.into_body()).await
     }
     //
     // fn handle_graphql_query_by_id(
@@ -195,7 +194,7 @@ where
 
     async fn handle_graphql_query(
         self,
-        target: QueryTarget,
+        indexer_hash: DeploymentHash,
         request_body: Body,
     ) -> GraphQLServiceResult {
         let service = self.clone();
@@ -208,7 +207,7 @@ where
         let query = GraphQLRequest::new(body).compat().await;
 
         let result = match query {
-            Ok(query) => service.graphql_runner.run_query(query, target).await,
+            Ok(query) => service.graphql_runner.run_query(query, indexer_hash).await,
             Err(GraphQLServerError::QueryError(e)) => QueryResult::from(e).into(),
             Err(e) => return Err(e),
         };
@@ -217,7 +216,7 @@ where
             service_metrics
                 .observe_query_execution_time(start.elapsed().as_secs_f64(), id.to_string());
         }
-
+        println!("{:?}", &result);
         Ok(result.as_http_response())
     }
 

@@ -1,5 +1,5 @@
-use massbit_data::prelude::q::*;
-use massbit_data::prelude::QueryExecutionError;
+use crate::prelude::q::*;
+use crate::prelude::QueryExecutionError;
 use std::collections::HashMap;
 use std::ops::Deref;
 

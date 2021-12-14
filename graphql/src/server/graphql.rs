@@ -1,8 +1,8 @@
 use massbit_common::prelude::async_trait::async_trait;
 //use graphql_parser::query::Subscription;
+use massbit_data::indexer::DeploymentHash;
 use massbit_data::prelude::LoadManager;
 use massbit_data::query::{CacheStatus, Query, QueryResults, QueryTarget};
-use massbit_data::store::deployment::DeploymentHash;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -19,13 +19,13 @@ pub enum GraphQlTarget {
 #[async_trait]
 pub trait GraphQlRunner: Send + Sync + 'static {
     /// Runs a GraphQL query and returns its result.
-    async fn run_query(self: Arc<Self>, query: Query, target: QueryTarget) -> QueryResults;
+    async fn run_query(self: Arc<Self>, query: Query, hash: DeploymentHash) -> QueryResults;
 
     /// Runs a GraphqL query up to the given complexity. Overrides the global complexity limit.
     async fn run_query_with_complexity(
         self: Arc<Self>,
         query: Query,
-        target: QueryTarget,
+        hash: DeploymentHash,
         max_complexity: Option<u64>,
         max_depth: Option<u8>,
         max_first: Option<u32>,

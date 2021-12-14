@@ -1,7 +1,7 @@
 use super::Value;
+use crate::indexer::{DeploymentHash, DeploymentLocator};
 use crate::prelude::{q, s};
 use crate::store::chain::BlockNumber;
-use crate::store::deployment::{DeploymentHash, DeploymentLocator};
 use crate::store::value::ValueType;
 use crate::utils::cache_weight::CacheWeight;
 use core::cmp::Eq;

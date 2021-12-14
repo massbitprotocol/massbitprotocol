@@ -1,6 +1,6 @@
-use crate::schema;
 use massbit_data::prelude::s::{EnumType, InputValue, ScalarType, Type, TypeDefinition, Value};
 use massbit_data::prelude::{q, QueryExecutionError};
+use massbit_data::schema;
 use std::collections::{BTreeMap, HashMap};
 
 /// A GraphQL value that can be coerced according to a type.

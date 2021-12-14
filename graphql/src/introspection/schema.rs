@@ -2,8 +2,8 @@ use massbit_data::prelude::s::{Document, ObjectType};
 use massbit_data::prelude::{DocumentExt, ObjectTypeExt};
 
 use massbit_common::prelude::lazy_static::lazy_static;
+use massbit_data::indexer::DeploymentHash;
 use massbit_data::schema::{ApiSchema, Schema};
-use massbit_data::store::deployment::DeploymentHash;
 
 const INTROSPECTION_SCHEMA: &str = "
 scalar Boolean

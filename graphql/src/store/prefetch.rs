@@ -21,8 +21,8 @@ use std::time::Instant;
 
 use super::{build_query, StoreResolver};
 use crate::execution::{ExecutionContext, Resolver};
-use crate::query::ast as qast;
-use crate::schema::ast as sast;
+use massbit_data::query::ast as qast;
+use massbit_data::schema::ast as sast;
 
 lazy_static! {
     static ref ARG_FIRST: String = String::from("first");

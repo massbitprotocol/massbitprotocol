@@ -1,19 +1,9 @@
+use crate::execution::{execute_root_selection_set, ExecutionContext, Query, Resolver};
 use massbit_common::cheap_clone::CheapClone;
-use massbit_data::prelude::QueryExecutionError;
-use massbit_data::prelude::{q, QueryResult};
-use massbit_data::store::chain::BlockPtr;
+use massbit_data::prelude::{q, LoadManager, QueryExecutionError, QueryResult};
+use massbit_data::store::BlockPtr;
 use std::sync::Arc;
 use std::time::Instant;
-
-use massbit_data::graphql::effort::LoadManager;
-
-use crate::execution::*;
-
-/// Utilities for working with GraphQL query ASTs.
-pub mod ast;
-
-/// Extension traits
-pub mod ext;
 
 /// Options available for query execution.
 pub struct QueryExecutionOptions<R> {
