@@ -25,6 +25,7 @@ use massbit_common::prelude::diesel::{
 use massbit_common::prelude::r2d2::PooledConnection;
 use massbit_common::prelude::serde_json::json;
 use massbit_common::prelude::tokio::macros::support::Future;
+use octocrab::models::activity::Reason;
 use std::ops::Deref;
 use std::sync::Arc;
 use warp::reply::Json;
@@ -74,7 +75,7 @@ impl IndexerService {
     }
 
     /// for api deploy indexer from massbit-sol cli
-    pub async fn deploy_indexer(&self, form: FormData) -> Result<impl Reply, Rejection> {
+    pub async fn deploy_indexer_cli(&self, form: FormData) -> Result<impl Reply, Rejection> {
         log::info!("Deploy new indexer");
         let parts: Vec<Part> = form.try_collect().await.map_err(|e| {
             eprintln!("form error: {}", e);
@@ -119,69 +120,85 @@ impl IndexerService {
                 _ => {}
             }
         }
-
-        self.call_deploy_indexer_manager(indexer).await
-    }
-    async fn call_deploy_indexer_manager(&self, indexer: Indexer) -> Result<impl Reply, Rejection> {
         if let Ok(indexer) = self.store_indexer(indexer).await {
-            // Call Indexer-manager
-            println!("Call deploy api on Indexer-manager: {:?}", &indexer);
-            let res = reqwest::Client::new()
-                .post(&*INDEXER_MANAGER_DEPLOY_ENDPOINT)
-                .json(&indexer)
-                .send()
-                .await;
-            println!("response: {:?}", &res);
-            match res {
-                Ok(res) => {
-                    if let Ok(json) = res.json::<Value>().await {
-                        return Ok(warp::reply::json(&json));
-                    }
-                }
-                Err(e) => return Ok(warp::reply::json(&json!({ "error": e.to_string() }))),
-            };
+            return self.call_deploy_indexer_manager(indexer).await;
         }
         Ok(warp::reply::json(&json!("{'error': 'Cannot store to DB'}")))
     }
 
-    /// for api deploy indexer from front-end
-    pub async fn deploy_git_indexer(&self, content: IndexerData) -> Result<impl Reply, Rejection> {
-        log::info!("Deploy new indexer from git {:?}.", &content);
-        let mut indexer = Indexer::new();
-        if let Some(git_url) = &content.repository {
-            let git_helper = GitHelper::new(git_url);
-            if let Ok(map) = git_helper.load_indexer().await {
-                log::debug!(
-                    "Finished load indexer from git, content {:#?}.",
-                    &map.keys()
-                );
-                indexer.repository = content.repository;
-                indexer.image_url = content.image_url;
-                indexer.description = content.description;
-                if let Some(name) = content.name {
-                    indexer.name = name;
-                }
+    async fn call_deploy_indexer_manager(
+        &self,
+        indexer: Indexer,
+    ) -> Result<warp::reply::Json, Rejection> {
+        // Call Indexer-manager
+        println!("Call deploy api on Indexer-manager: {:?}", &indexer);
+        let res = reqwest::Client::new()
+            .post(&*INDEXER_MANAGER_DEPLOY_ENDPOINT)
+            .json(&indexer)
+            .send()
+            .await;
+        println!("response: {:?}", &res);
+        match res {
+            Ok(res) => match res.json::<Value>().await {
+                Ok(res) => Ok(warp::reply::json(&res)),
+                Err(e) => Ok(warp::reply::json(&json!({ "error": e.to_string() }))),
+            },
+            Err(e) => return Ok(warp::reply::json(&json!({ "error": e.to_string() }))),
+        }
+    }
 
-                for (file_name, file_content) in map {
-                    let values = file_content.to_vec();
-                    // Return manifest content for parser
-                    match self.ipfs_client.add(values).await {
-                        Ok(response) => match file_name.as_str() {
-                            "mapping" => indexer.mapping = response.hash,
-                            "manifest" => indexer.manifest = response.hash,
-                            "schema" => indexer.graphql = response.hash,
-                            _ => {}
-                        },
-                        Err(err) => {
-                            log::error!("{:?}", &err);
+    /// for api deploy indexer from front-end
+    pub async fn deploy_git_indexer(&self, content: DeployParam) -> Result<impl Reply, Rejection> {
+        log::info!("Deploy new indexer from git {:?}.", &content);
+        if let Ok(conn) = self.get_connection() {
+            let results = dsl::indexers
+                .filter(dsl::hash.eq(content.id.as_str()))
+                .filter(dsl::status.eq(IndexerStatus::Draft))
+                .limit(1)
+                .load::<Indexer>(conn.deref())
+                .expect("Error loading indexers");
+            match results.get(0) {
+                Some(res) => {
+                    let mut indexer = res.clone();
+                    if let Some(git_url) = &indexer.repository {
+                        let git_helper = GitHelper::new(git_url);
+
+                        if let Ok(map) = git_helper.load_indexer().await {
+                            log::debug!(
+                                "Finished load indexer from git, content {:#?}.",
+                                &map.keys()
+                            );
+
+                            for (file_name, file_content) in map {
+                                let values = file_content.to_vec();
+                                // Return manifest content for parser
+                                match self.ipfs_client.add(values).await {
+                                    Ok(response) => match file_name.as_str() {
+                                        "mapping" => indexer.mapping = response.hash,
+                                        "manifest" => indexer.manifest = response.hash,
+                                        "schema" => indexer.graphql = response.hash,
+                                        _ => {}
+                                    },
+                                    Err(err) => {
+                                        log::error!("{:?}", &err);
+                                    }
+                                }
+                            }
                         }
                     }
+                    debug!("indexer: {:?}", &indexer);
+                    // Update indexer status
+                    indexer.status = IndexerStatus::Deploying;
+                    if self.update_indexer(&indexer).await.is_ok() {
+                        return self.call_deploy_indexer_manager(indexer).await;
+                    }
+                    Ok(warp::reply::json(&json!("{'error': 'Cannot store to DB'}")))
                 }
+                None => Ok(warp::reply::json(&json!("{}"))),
             }
+        } else {
+            Ok(warp::reply::json(&String::from("")))
         }
-        debug!("indexer: {:?}", &indexer);
-
-        self.call_deploy_indexer_manager(indexer).await
     }
     async fn store_indexer(&self, mut indexer: Indexer) -> Result<Indexer, anyhow::Error> {
         match self.get_connection() {
@@ -194,6 +211,31 @@ impl IndexerService {
                     .get_result::<Indexer>(&conn)
                     .map_err(|err| anyhow!(format!("{:?}", &err)))
                 //.expect("Error while create new indexer");
+            }
+            Err(err) => Err(anyhow!(format!("{:?}", &err))),
+        }
+    }
+    async fn update_indexer(&self, mut indexer: &Indexer) -> Result<(), anyhow::Error> {
+        match self.get_connection() {
+            Ok(conn) => {
+                if let Err(err) = diesel::update(dsl::indexers.filter(dsl::hash.eq(&indexer.hash)))
+                    .set((
+                        dsl::namespace.eq(&indexer.namespace),
+                        dsl::manifest.eq(&indexer.manifest),
+                        dsl::mapping.eq(&indexer.mapping),
+                        dsl::graphql.eq(&indexer.graphql),
+                        dsl::address.eq(&indexer.address),
+                        dsl::start_block.eq(&indexer.start_block),
+                        dsl::network.eq(&indexer.network),
+                        dsl::version.eq(&indexer.version),
+                        dsl::status.eq(&indexer.status),
+                    ))
+                    .execute(conn.deref())
+                {
+                    log::error!("{:?}", &err);
+                    return Err(anyhow!(format!("{:?}", &err)));
+                }
+                Ok(())
             }
             Err(err) => Err(anyhow!(format!("{:?}", &err))),
         }

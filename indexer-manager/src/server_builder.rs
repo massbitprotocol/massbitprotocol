@@ -66,12 +66,6 @@ impl<'a> IndexerServer {
         let router = self
             .create_route_indexer_deploy(self.indexer_service.clone(), self.indexer_manager.clone())
             .with(&cors)
-            .or(self
-                .create_route_indexer_list(self.indexer_service.clone())
-                .with(&cors))
-            .or(self
-                .create_route_indexer_detail(self.indexer_service.clone())
-                .with(&cors))
             .recover(handle_rejection);
         let socket_addr: SocketAddr = self.entry_point.parse().unwrap();
 
@@ -95,46 +89,6 @@ impl<'a> IndexerServer {
                         .deploy_indexer_request(content, clone_manager)
                         .await
                 }
-            })
-    }
-    /// Indexer create api
-    fn create_route_indexer_create(
-        &self,
-        service: Arc<IndexerService>,
-        manager: Arc<Mutex<IndexerManager>>,
-    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-        warp::path!("indexers")
-            .and(warp::post())
-            .and(warp::multipart::form().max_length(MAX_UPLOAD_FILE_SIZE.clone()))
-            .and_then(move |form: FormData| {
-                let clone_service = service.clone();
-                let clone_manager = manager.clone();
-                async move { clone_service.deploy_indexer(form, clone_manager).await }
-            })
-    }
-    /// Indexer list api
-    fn create_route_indexer_list(
-        &self,
-        service: Arc<IndexerService>,
-    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-        warp::path!("indexers")
-            .and(warp::get())
-            .and(warp::query::<ListOptions>())
-            .and_then(move |options: ListOptions| {
-                let clone_service = service.clone();
-                async move { clone_service.list_indexer(options).await }
-            })
-    }
-    /// Indexer detail api
-    fn create_route_indexer_detail(
-        &self,
-        service: Arc<IndexerService>,
-    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-        warp::path!("indexers" / String)
-            .and(warp::get())
-            .and_then(move |hash: String| {
-                let clone_service = service.clone();
-                async move { clone_service.get_indexer(hash).await }
             })
     }
 }

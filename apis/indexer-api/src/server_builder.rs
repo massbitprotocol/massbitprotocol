@@ -31,7 +31,7 @@ pub struct IndexerServer {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct DeployParam {
-    id: String,
+    pub id: String,
 }
 
 impl<'a> IndexerServer {
@@ -90,7 +90,7 @@ impl<'a> IndexerServer {
             .and(warp::multipart::form().max_length(MAX_UPLOAD_FILE_SIZE.clone()))
             .and_then(move |form: FormData| {
                 let clone_service = service.clone();
-                async move { clone_service.deploy_indexer(form).await }
+                async move { clone_service.deploy_indexer_cli(form).await }
             })
     }
     /// Indexer deploy from github api
@@ -100,8 +100,8 @@ impl<'a> IndexerServer {
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("indexers" / "gitdeploy")
             .and(warp::post())
-            .and(json_body())
-            .and_then(move |content: IndexerData| {
+            .and(json_deploy_body())
+            .and_then(move |content: DeployParam| {
                 let clone_service = service.clone();
                 async move { clone_service.deploy_git_indexer(content).await }
             })

@@ -55,71 +55,7 @@ impl IndexerService {
                 .ok()
         })
     }
-    /// for api deploy indexer from Indexer-API
-    pub async fn deploy_indexer(
-        &self,
-        form: FormData,
-        indexer_manager: Arc<Mutex<IndexerManager>>,
-    ) -> Result<impl Reply, Rejection> {
-        log::info!("Deploy new indexer");
-        let parts: Vec<Part> = form.try_collect().await.map_err(|e| {
-            eprintln!("form error: {}", e);
-            warp::reject::reject()
-        })?;
-        let mut indexer = Indexer::new();
-        let mut manifest: Option<SolanaIndexerManifest> = None;
-        for p in parts {
-            log::info!("Receive file: {}/{}", &p.name(), p.filename().unwrap());
-            let name = format!("{}", &p.name());
-            let p_name = name.as_str();
-            match p_name {
-                "mapping" | "schema" | "manifest" => {
-                    let value = p
-                        .stream()
-                        .try_fold(Vec::new(), |mut vec, data| {
-                            vec.put(data);
-                            async move { Ok(vec) }
-                        })
-                        .await
-                        .map_err(|e| {
-                            eprintln!("reading file error: {}", e);
-                            warp::reject::reject()
-                        })?;
-                    if p_name == "manifest" {
-                        let link_resolver = LinkResolver::from(self.ipfs_client.clone());
-                        manifest = IndexerRuntime::parse_manifest(
-                            &indexer.hash,
-                            &value,
-                            link_resolver,
-                            &self.logger,
-                        )
-                        .await
-                        .ok();
-                    }
-                    match self.ipfs_client.add(value).await {
-                        Ok(response) => match p_name {
-                            "mapping" => indexer.mapping = response.hash.clone(),
-                            "schema" => indexer.graphql = response.hash.clone(),
-                            "manifest" => indexer.manifest = response.hash.clone(),
-                            &_ => {}
-                        },
-                        Err(err) => {
-                            log::error!("{:?}", &err);
-                        }
-                    }
-                }
-                _ => {}
-            }
-        }
-        if let Some(manifest) = &manifest {
-            if let Ok(indexer) = self.store_indexer(manifest, indexer).await {
-                if let Err(err) = indexer_manager.lock().await.start_indexer(indexer).await {
-                    log::error!("{:?}", &err);
-                };
-            }
-        };
-        Ok("success")
-    }
+
     /// for api deploy indexer from front-end
     pub async fn deploy_indexer_request(
         &self,
@@ -159,8 +95,8 @@ impl IndexerService {
             &map.keys()
         );
 
-        for (file_name, content) in map {
-            let values = content.to_vec();
+        for (file_name, file_content) in map {
+            let values = file_content.to_vec();
             // Return manifest content for parser
             if file_name == "manifest" {
                 let link_resolver = LinkResolver::from(self.ipfs_client.clone());
@@ -175,18 +111,31 @@ impl IndexerService {
             }
         }
 
-        debug!("indexer: {:?}", &indexer);
         let hash = indexer.hash.clone();
         if let Some(manifest) = &manifest {
-            if let Ok(indexer) = self.store_indexer(manifest, indexer).await {
-                if let Err(err) = indexer_manager.lock().await.start_indexer(indexer).await {
+            match self.update_indexer(manifest, indexer).await {
+                Err(err) => {
                     log::error!("{:?}", &err);
-                };
-            }
+                    return Ok(warp::reply::json(&json!({ "error": &err.to_string() })));
+                }
+                Ok(indexer) => {
+                    if let Err(err) = indexer_manager
+                        .lock()
+                        .await
+                        .start_indexer(indexer.clone())
+                        .await
+                    {
+                        log::error!("{:?}", &err);
+                        return Ok(warp::reply::json(&json!({ "error": &err.to_string() })));
+                    } else {
+                        return Ok(warp::reply::json(&json!({ "id": hash })));
+                    }
+                }
+            };
         };
-        Ok(warp::reply::json(&json!({ "id": hash })))
+        return Ok(warp::reply::json(&json!({ "error": "Cannot deploy" })));
     }
-    async fn store_indexer(
+    async fn update_indexer(
         &self,
         manifest: &SolanaIndexerManifest,
         mut indexer: Indexer,
@@ -220,16 +169,37 @@ impl IndexerService {
                     ))
                     .execute(conn.deref());
                 Ok(indexer)
-                // let indexer = indexer.clone();
-                // diesel::insert_into(indexers::table)
-                //     .values(&indexer)
-                //     .get_result::<Indexer>(&conn)
-                //     .map_err(|err| anyhow!(format!("{:?}", &err)))
-                // .expect("Error while create new indexer");
             }
             Err(err) => Err(anyhow!(format!("{:?}", &err))),
         }
     }
+
+    // async fn update_indexer(&self, mut indexer: &Indexer) -> Result<(), anyhow::Error> {
+    //     match self.get_connection() {
+    //         Ok(conn) => {
+    //             if let Err(err) = diesel::update(dsl::indexers.filter(dsl::hash.eq(&indexer.hash)))
+    //                 .set((
+    //                     dsl::namespace.eq(&indexer.namespace),
+    //                     dsl::manifest.eq(&indexer.manifest),
+    //                     dsl::mapping.eq(&indexer.mapping),
+    //                     dsl::graphql.eq(&indexer.graphql),
+    //                     dsl::address.eq(&indexer.address),
+    //                     dsl::start_block.eq(&indexer.start_block),
+    //                     dsl::network.eq(&indexer.network),
+    //                     dsl::version.eq(&indexer.version),
+    //                     dsl::status.eq(&indexer.status),
+    //                 ))
+    //                 .execute(conn.deref())
+    //             {
+    //                 log::error!("{:?}", &err);
+    //                 return Err(anyhow!(format!("{:?}", &err)));
+    //             }
+    //             Ok(())
+    //         }
+    //         Err(err) => Err(anyhow!(format!("{:?}", &err))),
+    //     }
+    // }
+
     /// for api list indexer: /indexers?limit=?&offset=?
     pub async fn list_indexer(&self, options: ListOptions) -> Result<impl Reply, Rejection> {
         let content: Vec<Indexer> = vec![];
