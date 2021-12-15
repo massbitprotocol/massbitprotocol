@@ -16,7 +16,6 @@ pub mod connection_pool;
 pub mod deployment;
 pub mod deployment_store;
 pub mod indexer_store;
-pub mod orm;
 pub mod primary;
 pub mod query_store;
 pub mod relational;
@@ -29,15 +28,11 @@ pub use self::indexer_store::{unused, DeploymentPlacer, IndexerStore, Shard, PRI
 pub mod command_support {
     pub mod catalog {
         pub use crate::catalog::{account_like, set_account_like};
-        pub use crate::primary::{
-            active_copies, deployment_schemas, ens_names, subgraph, subgraph_deployment_assignment,
-            subgraph_version, Site,
-        };
+        pub use crate::primary::Site;
     }
-    pub use crate::primary::Namespace;
     pub use crate::relational::{Catalog, Column, ColumnType, Layout, SqlName};
 }
-
+use indexer_orm::models::Namespace;
 use massbit_common::prelude::diesel::{
     r2d2::{self, ConnectionManager},
     Connection,

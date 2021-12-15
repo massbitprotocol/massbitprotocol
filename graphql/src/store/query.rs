@@ -53,7 +53,7 @@ pub fn build_query<'a>(
             })
             .collect(),
     });
-    let mut query = EntityQuery::new(parse_subgraph_id(entity)?, block, entity_types)
+    let mut query = EntityQuery::new(parse_indexer_id(entity)?, block, entity_types)
         .range(build_range(arguments, max_first, max_skip)?);
     if let Some(filter) = build_filter(entity, arguments)? {
         query = query.filter(filter);
@@ -280,7 +280,7 @@ fn build_order_direction(
 }
 
 /// Parses the subgraph ID from the ObjectType directives.
-pub fn parse_subgraph_id<'a>(
+pub fn parse_indexer_id<'a>(
     entity: impl Into<ObjectOrInterface<'a>>,
 ) -> Result<DeploymentHash, QueryExecutionError> {
     let entity = entity.into();
@@ -288,7 +288,7 @@ pub fn parse_subgraph_id<'a>(
     entity
         .directives()
         .iter()
-        .find(|directive| directive.name == "subgraphId")
+        .find(|directive| directive.name == "indexerId")
         .and_then(|directive| {
             directive
                 .arguments
@@ -331,7 +331,7 @@ pub fn collect_entities_from_query_field(
                         .is_some()
                     {
                         // Obtain the subgraph ID from the object type
-                        if let Ok(subgraph_id) = parse_subgraph_id(object_type) {
+                        if let Ok(subgraph_id) = parse_indexer_id(object_type) {
                             // Add the (subgraph_id, entity_name) tuple to the result set
                             entities.insert((subgraph_id, object_type.name.to_owned()));
                         }

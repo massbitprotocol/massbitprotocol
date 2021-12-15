@@ -28,14 +28,14 @@ pub struct Opt {
     pub postgres_url: Option<String>,
     #[structopt(
         long,
-        default_value = "8000",
+        default_value = "3031",
         value_name = "PORT",
         help = "Port for the GraphQL HTTP server"
     )]
     pub http_port: u16,
     #[structopt(
         long,
-        default_value = "8001",
+        default_value = "3032",
         value_name = "PORT",
         help = "Port for the GraphQL WebSocket server"
     )]

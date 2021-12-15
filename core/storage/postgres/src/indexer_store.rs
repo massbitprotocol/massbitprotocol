@@ -1,11 +1,5 @@
 use crate::deployment_store::{DeploymentStore, ReplicaId};
-use crate::primary::UnusedDeployment;
-use crate::{
-    connection_pool::ConnectionPool,
-    primary,
-    primary::{DeploymentId, Site},
-    relational::Layout,
-};
+use crate::{connection_pool::ConnectionPool, primary, primary::Site, relational::Layout};
 use diesel::{
     pg::Pg,
     serialize::Output,
@@ -13,6 +7,7 @@ use diesel::{
     types::{FromSql, ToSql},
     PgConnection,
 };
+use indexer_orm::models::{DeploymentId, UnusedDeployment};
 use massbit_common::cheap_clone::CheapClone;
 use massbit_common::prelude::anyhow::anyhow;
 use massbit_common::prelude::diesel::r2d2::{self, ConnectionManager};
@@ -204,14 +199,14 @@ impl IndexerStoreInner {
         }
 
         let conn = self.primary_conn()?;
-        // let site = conn
-        //     .find_active_site(hash)?
-        //     .ok_or_else(|| StoreError::DeploymentNotFound(hash.to_string()))?;
-        let site = Site::new(
-            hash.cheap_clone(),
-            PRIMARY_SHARD.clone(),
-            String::from("sgd0"),
-        );
+        let site = conn
+            .find_active_site(hash)?
+            .ok_or_else(|| StoreError::DeploymentNotFound(hash.to_string()))?;
+        // let site = Site::new(
+        //     hash.cheap_clone(),
+        //     PRIMARY_SHARD.clone(),
+        //     String::from("sgd0"),
+        // );
         let site = Arc::new(site);
 
         self.cache_active(&site);

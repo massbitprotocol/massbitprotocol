@@ -22,4 +22,5 @@ hex = "0.4.3"
 backtrace = "0.3"
 serde_derive        = { version = "1.0", optional = false }
 massbit-common = { path = "../../common" }
+indexer-orm = { path = "../../orm" }
 massbit-data = { path= "../../data" }

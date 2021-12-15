@@ -164,7 +164,10 @@ impl QueryResults {
         http::Response::builder()
             .status(status_code)
             .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-            .header(ACCESS_CONTROL_ALLOW_HEADERS, "Content-Type, User-Agent")
+            .header(
+                ACCESS_CONTROL_ALLOW_HEADERS,
+                "Content-Type, User-Agent, Authorization",
+            )
             .header(ACCESS_CONTROL_ALLOW_METHODS, "GET, OPTIONS, POST")
             .header(CONTENT_TYPE, "application/json")
             .body(T::from(json))

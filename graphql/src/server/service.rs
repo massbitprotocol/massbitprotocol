@@ -226,7 +226,10 @@ where
             Ok(Response::builder()
                 .status(200)
                 .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .header(ACCESS_CONTROL_ALLOW_HEADERS, "Content-Type, User-Agent")
+                .header(
+                    ACCESS_CONTROL_ALLOW_HEADERS,
+                    "Content-Type, User-Agent, Authorization",
+                )
                 .header(ACCESS_CONTROL_ALLOW_METHODS, "GET, OPTIONS, POST")
                 .header(CONTENT_TYPE, "text/html")
                 .body(Body::from(""))

@@ -2,6 +2,7 @@ use crate::graphql::TryFromValue;
 use crate::impl_slog_value;
 use crate::prelude::q;
 use crate::store::chain::{BlockNumber, BlockPtr};
+use indexer_orm::models::DeploymentId as ModelDeploymentId;
 use massbit_common::cheap_clone::CheapClone;
 use massbit_common::prelude::anyhow::{self, anyhow, Error};
 use massbit_common::prelude::stable_hash::{SequenceNumber, StableHash, StableHasher};
@@ -85,6 +86,17 @@ impl DeploymentId {
     }
 }
 
+impl From<DeploymentId> for ModelDeploymentId {
+    fn from(id: DeploymentId) -> Self {
+        ModelDeploymentId::new(id.0)
+    }
+}
+
+impl From<ModelDeploymentId> for DeploymentId {
+    fn from(id: ModelDeploymentId) -> Self {
+        DeploymentId(id.value())
+    }
+}
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct DeploymentHash(String);
 

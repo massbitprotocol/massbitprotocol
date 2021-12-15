@@ -228,10 +228,7 @@ impl DeploymentStore {
         indexer_hash: &DeploymentHash,
         conn: &PgConnection,
     ) -> Result<Option<BlockPtr>, Error> {
-        deployment::block_ptr(&conn, indexer_hash).map_err(|err| {
-            println!("{:?}", &err);
-            anyhow!("{:?}", &err)
-        })
+        deployment::block_ptr(&conn, indexer_hash).map_err(|err| anyhow!("{:?}", &err))
     }
 
     pub(crate) async fn deployment_state_from_id(

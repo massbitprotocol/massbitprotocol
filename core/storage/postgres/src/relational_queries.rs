@@ -29,15 +29,14 @@ use std::fmt::{self, Display};
 use std::iter::FromIterator;
 use std::str::FromStr;
 
+use crate::block_range::{
+    BlockRange, BlockRangeContainsClause, BLOCK_RANGE_COLUMN, BLOCK_RANGE_CURRENT,
+};
 use crate::relational::{
     Column, ColumnType, IdType, Layout, SqlName, Table, PRIMARY_KEY_COLUMN, STRING_PREFIX_SIZE,
 };
 use crate::sql_value::SqlValue;
-use crate::{
-    block_range::{BlockRange, BlockRangeContainsClause, BLOCK_RANGE_COLUMN, BLOCK_RANGE_CURRENT},
-    primary::Namespace,
-};
-
+use indexer_orm::models::Namespace;
 lazy_static! {
     /// Use a variant of the query for child_type_a when we are looking up
     /// fewer than this many entities. This variable is only here temporarily

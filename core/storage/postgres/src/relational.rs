@@ -8,7 +8,7 @@
 //! information about mapping a GraphQL schema to database tables
 use crate::{
     deployment,
-    primary::{Namespace, Site},
+    primary::Site,
     relational_queries::{
         ClampRangeQuery, ConflictingEntityQuery, EntityData, FilterCollection, FilterQuery,
         FindManyQuery, FindQuery, InsertQuery, RevertClampQuery, RevertRemoveQuery,
@@ -16,6 +16,7 @@ use crate::{
 };
 use diesel::{connection::SimpleConnection, Connection};
 use diesel::{debug_query, OptionalExtension, PgConnection, RunQueryDsl};
+use indexer_orm::models::Namespace;
 use inflector::Inflector;
 use massbit_common::cheap_clone::CheapClone;
 use massbit_common::prelude::slog::{info, warn, Logger};
@@ -815,29 +816,30 @@ impl Layout {
     /// now, an update only changes the `is_account_like` flag for tables.
     /// If no update is needed, just return `self`.
     pub fn refresh(self: Arc<Self>, conn: &PgConnection) -> Result<Arc<Self>, StoreError> {
-        let account_like = crate::catalog::account_like(conn, &self.site)?;
-        let is_account_like = {
-            |table: &Table| {
-                ACCOUNT_TABLES.contains(table.qualified_name.as_str())
-                    || account_like.contains(table.name.as_str())
-            }
-        };
-
-        let changed_tables: Vec<_> = self
-            .tables
-            .values()
-            .filter(|table| table.is_account_like != is_account_like(table.as_ref()))
-            .collect();
-        if changed_tables.is_empty() {
-            return Ok(self);
-        }
-        let mut layout = (*self).clone();
-        for table in changed_tables.into_iter() {
-            let mut table = (*table.as_ref()).clone();
-            table.is_account_like = is_account_like(&table);
-            layout.tables.insert(table.object.clone(), Arc::new(table));
-        }
-        Ok(Arc::new(layout))
+        // let account_like = crate::catalog::account_like(conn, &self.site)?;
+        // let is_account_like = {
+        //     |table: &Table| {
+        //         ACCOUNT_TABLES.contains(table.qualified_name.as_str())
+        //             || account_like.contains(table.name.as_str())
+        //     }
+        // };
+        //
+        // let changed_tables: Vec<_> = self
+        //     .tables
+        //     .values()
+        //     .filter(|table| table.is_account_like != is_account_like(table.as_ref()))
+        //     .collect();
+        // if changed_tables.is_empty() {
+        //     return Ok(self);
+        // }
+        // let mut layout = (*self).clone();
+        // for table in changed_tables.into_iter() {
+        //     let mut table = (*table.as_ref()).clone();
+        //     table.is_account_like = is_account_like(&table);
+        //     layout.tables.insert(table.object.clone(), Arc::new(table));
+        // }
+        // Ok(Arc::new(layout))
+        Ok(self)
     }
 }
 
@@ -1258,7 +1260,7 @@ impl Table {
         write!(
             out,
             "\n        {vid}                  bigserial primary key,\
-             \n        {block_range}          int4range not null,
+             \n        {block_range}          int8range not null,
         exclude using gist   (id with =, {block_range} with &&)\n);\n",
             vid = VID_COLUMN,
             block_range = BLOCK_RANGE_COLUMN
@@ -1667,7 +1669,7 @@ create table sgd0815.\"thing\" (
         \"big_thing\"          text not null,
 
         vid                  bigserial primary key,
-        block_range          int4range not null,
+        block_range          int8range not null,
         exclude using gist   (id with =, block_range with &&)
 );
 create index brin_thing
@@ -1692,7 +1694,7 @@ create table sgd0815.\"scalar\" (
         \"color\"              \"sgd0815\".\"color\",
 
         vid                  bigserial primary key,
-        block_range          int4range not null,
+        block_range          int8range not null,
         exclude using gist   (id with =, block_range with &&)
 );
 create index brin_scalar
@@ -1754,7 +1756,7 @@ type SongStat @entity {
         \"bands\"              text[] not null,
 
         vid                  bigserial primary key,
-        block_range          int4range not null,
+        block_range          int8range not null,
         exclude using gist   (id with =, block_range with &&)
 );
 create index brin_musician
@@ -1778,7 +1780,7 @@ create table sgd0815.\"band\" (
         \"original_songs\"     text[] not null,
 
         vid                  bigserial primary key,
-        block_range          int4range not null,
+        block_range          int8range not null,
         exclude using gist   (id with =, block_range with &&)
 );
 create index brin_band
@@ -1800,7 +1802,7 @@ create table sgd0815.\"song\" (
         \"written_by\"         text not null,
 
         vid                  bigserial primary key,
-        block_range          int4range not null,
+        block_range          int8range not null,
         exclude using gist   (id with =, block_range with &&)
 );
 create index brin_song
@@ -1821,7 +1823,7 @@ create table sgd0815.\"song_stat\" (
         \"played\"             integer not null,
 
         vid                  bigserial primary key,
-        block_range          int4range not null,
+        block_range          int8range not null,
         exclude using gist   (id with =, block_range with &&)
 );
 create index brin_song_stat
@@ -1863,7 +1865,7 @@ type Habitat @entity {
         \"forest\"             text,
 
         vid                  bigserial primary key,
-        block_range          int4range not null,
+        block_range          int8range not null,
         exclude using gist   (id with =, block_range with &&)
 );
 create index brin_animal
@@ -1881,7 +1883,7 @@ create table sgd0815.\"forest\" (
         \"id\"                 text not null,
 
         vid                  bigserial primary key,
-        block_range          int4range not null,
+        block_range          int8range not null,
         exclude using gist   (id with =, block_range with &&)
 );
 create index brin_forest
@@ -1899,7 +1901,7 @@ create table sgd0815.\"habitat\" (
         \"dwellers\"           text[] not null,
 
         vid                  bigserial primary key,
-        block_range          int4range not null,
+        block_range          int8range not null,
         exclude using gist   (id with =, block_range with &&)
 );
 create index brin_habitat
@@ -1955,7 +1957,7 @@ type Habitat @entity {
         \"search\"             tsvector,
 
         vid                  bigserial primary key,
-        block_range          int4range not null,
+        block_range          int8range not null,
         exclude using gist   (id with =, block_range with &&)
 );
 create index brin_animal
@@ -1979,7 +1981,7 @@ create table sgd0815.\"forest\" (
         \"id\"                 text not null,
 
         vid                  bigserial primary key,
-        block_range          int4range not null,
+        block_range          int8range not null,
         exclude using gist   (id with =, block_range with &&)
 );
 create index brin_forest
@@ -1997,7 +1999,7 @@ create table sgd0815.\"habitat\" (
         \"dwellers\"           text[] not null,
 
         vid                  bigserial primary key,
-        block_range          int4range not null,
+        block_range          int8range not null,
         exclude using gist   (id with =, block_range with &&)
 );
 create index brin_habitat
@@ -2033,7 +2035,7 @@ create table sgd0815.\"thing\" (
         \"orientation\"        \"sgd0815\".\"orientation\" not null,
 
         vid                  bigserial primary key,
-        block_range          int4range not null,
+        block_range          int8range not null,
         exclude using gist   (id with =, block_range with &&)
 );
 create index brin_thing

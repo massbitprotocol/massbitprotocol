@@ -11,6 +11,7 @@ members = [
     "core/index-store",
     "core/hasura-client",
     "core/data",
+    "core/orm",
     "cli",
     "chain/ethereum",
     "chain/solana",

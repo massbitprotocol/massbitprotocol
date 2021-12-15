@@ -9,10 +9,8 @@ use std::sync::Arc;
 
 //use crate::connection_pool::ForeignServer;
 use crate::connection_pool::ForeignServer;
-use crate::{
-    primary::{Namespace, Site},
-    relational::SqlName,
-};
+use crate::{primary::Site, relational::SqlName};
+use indexer_orm::models::Namespace;
 
 // This is a view not a table. We only read from it
 table! {

@@ -1,9 +1,9 @@
-use crate::orm::schema::indexer_deployments;
 use crate::primary::Site;
 use diesel::dsl::sql;
 use diesel::pg::PgConnection;
 use diesel::query_dsl::methods::{FilterDsl, SelectDsl};
 use diesel::{ExpressionMethods, OptionalExtension, RunQueryDsl};
+use indexer_orm::schema::indexer_deployments;
 use massbit_common::prelude::anyhow::anyhow;
 use massbit_common::prelude::bigdecimal::ToPrimitive;
 use massbit_data::constraint_violation;

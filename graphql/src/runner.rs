@@ -115,7 +115,6 @@ where
         // while the query is running. `self.store` can not be used after this
         // point, and everything needs to go through the `store` we are
         // setting up here
-        println!("{:?}", &query);
         let store = self.store.query_store(hash, false).await?;
         let state = store.deployment_state().await?;
         let network = Some(store.network_name().to_string());

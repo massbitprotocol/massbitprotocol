@@ -310,7 +310,7 @@ impl EntityOp {
 #[derive(Clone, Debug)]
 pub struct EntityQuery {
     /// ID of the subgraph.
-    pub subgraph_id: DeploymentHash,
+    pub indexer_hash: DeploymentHash,
 
     /// The block height at which to execute the query. Set this to
     /// `BLOCK_NUMBER_MAX` to run the query at the latest available block.
@@ -342,12 +342,12 @@ pub struct EntityQuery {
 
 impl EntityQuery {
     pub fn new(
-        subgraph_id: DeploymentHash,
+        indexer_hash: DeploymentHash,
         block: BlockNumber,
         collection: EntityCollection,
     ) -> Self {
         EntityQuery {
-            subgraph_id,
+            indexer_hash,
             block,
             collection,
             filter: None,
