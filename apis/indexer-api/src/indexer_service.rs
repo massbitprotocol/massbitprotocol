@@ -261,7 +261,7 @@ impl IndexerService {
             Ok(warp::reply::json(&content))
         }
     }
-    /// for api get indexer detail: /indexers/:hash
+    /// for api get indexer detail: /indexers/hash
     pub async fn get_indexer(&self, hash: String) -> Result<impl Reply, Rejection> {
         if let Ok(conn) = self.get_connection() {
             let results = dsl::indexers
