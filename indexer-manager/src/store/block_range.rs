@@ -1,3 +1,4 @@
+use crate::orm::DieselBlockSlot;
 use chain_solana::types::{BlockPtr, BlockSlot};
 use derive_more::Constructor;
 use diesel::pg::Pg;
@@ -10,6 +11,7 @@ use massbit_solana_sdk::model::BLOCK_NUMBER_MAX;
 use massbit_store_postgres::relational::Table;
 use std::io::Write;
 use std::ops::{Bound, RangeBounds, RangeFrom};
+
 /// The name of the column in which we store the block range
 pub(crate) const BLOCK_RANGE_COLUMN: &str = "block_range";
 
@@ -18,7 +20,7 @@ pub(crate) const BLOCK_RANGE_COLUMN: &str = "block_range";
 /// `upper_inf(block_range)` is slow and can't use the exclusion
 /// index we have on entity tables; we therefore check if i32::MAX is
 /// in the range
-pub(crate) const BLOCK_RANGE_CURRENT: &str = "block_range @> 2147483647";
+pub(crate) const BLOCK_RANGE_CURRENT: &str = "block_range @> 9223372036854775807";
 
 /// Most indexer metadata entities are not versioned. For such entities, we
 /// want two things:
@@ -28,9 +30,9 @@ pub(crate) const BLOCK_RANGE_CURRENT: &str = "block_range @> 2147483647";
 /// We therefore mark such entities with a block range `[-1,\infinity)`; we
 /// use `-1` as the lower bound to make it easier to identify such entities
 /// for troubleshooting/debugging
-pub(crate) const BLOCK_UNVERSIONED: i32 = -1;
+pub(crate) const BLOCK_UNVERSIONED: BlockSlot = -1;
 
-pub(crate) const UNVERSIONED_RANGE: (Bound<i32>, Bound<i32>) =
+pub(crate) const UNVERSIONED_RANGE: (Bound<BlockSlot>, Bound<BlockSlot>) =
     (Bound::Included(BLOCK_UNVERSIONED), Bound::Unbounded);
 
 /// The range of blocks for which an entity is valid. We need this struct
@@ -72,7 +74,7 @@ impl<'a> QueryFragment<Pg> for BlockRangeContainsClause<'a> {
         out.push_sql(self.table_prefix);
         out.push_identifier(BLOCK_RANGE_COLUMN)?;
         out.push_sql(" @> ");
-        out.push_bind_param::<Integer, _>(&self.block)?;
+        out.push_bind_param::<DieselBlockSlot, _>(&self.block)?;
         if self.table.is_account_like && self.block < BLOCK_NUMBER_MAX {
             // When block is BLOCK_NUMBER_MAX, these checks would be wrong; we
             // don't worry about adding the equivalent in that case since
@@ -80,12 +82,12 @@ impl<'a> QueryFragment<Pg> for BlockRangeContainsClause<'a> {
             // queries where block ranges don't matter anyway
             out.push_sql(" and coalesce(upper(");
             out.push_identifier(BLOCK_RANGE_COLUMN)?;
-            out.push_sql("), 2147483647) > ");
-            out.push_bind_param::<Integer, _>(&self.block)?;
+            out.push_sql("), 9223372036854775807) > ");
+            out.push_bind_param::<DieselBlockSlot, _>(&self.block)?;
             out.push_sql(" and lower(");
             out.push_identifier(BLOCK_RANGE_COLUMN)?;
             out.push_sql(") <= ");
-            out.push_bind_param::<Integer, _>(&self.block)
+            out.push_bind_param::<DieselBlockSlot, _>(&self.block)
         } else {
             Ok(())
         }
@@ -101,9 +103,9 @@ impl From<RangeFrom<BlockSlot>> for BlockRange {
     }
 }
 
-impl ToSql<Range<Integer>, Pg> for BlockRange {
+impl ToSql<Range<DieselBlockSlot>, Pg> for BlockRange {
     fn to_sql<W: Write>(&self, out: &mut Output<W, Pg>) -> diesel::serialize::Result {
         let pair = (self.0, self.1);
-        ToSql::<Range<Integer>, Pg>::to_sql(&pair, out)
+        ToSql::<Range<DieselBlockSlot>, Pg>::to_sql(&pair, out)
     }
 }

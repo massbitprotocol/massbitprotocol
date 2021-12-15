@@ -6,9 +6,9 @@ use std::fmt::Display;
 /// The type we use for block numbers. This has to be a signed integer type
 /// since Postgres does not support unsigned integer types. But 2G ought to
 /// be enough for everybody
-pub type BlockSlot = i32;
+pub type BlockSlot = i64;
 
-pub const BLOCK_NUMBER_MAX: BlockSlot = i32::MAX;
+pub const BLOCK_NUMBER_MAX: BlockSlot = i64::MAX;
 
 /// An internal identifer for the specific instance of a deployment. The
 /// identifier only has meaning in the context of a specific instance of

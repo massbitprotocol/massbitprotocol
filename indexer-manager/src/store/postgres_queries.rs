@@ -1,3 +1,4 @@
+use crate::orm::DieselBlockSlot;
 use crate::store::block_range::BlockRange;
 use crate::store::entity_data::EntityData;
 use crate::store::sql_value::SqlValue;
@@ -7,6 +8,7 @@ use diesel::pg::{Pg, PgConnection};
 use diesel::query_builder::{AstPass, QueryFragment, QueryId};
 use diesel::query_dsl::LoadQuery;
 use diesel::result::{Error as DieselError, QueryResult};
+use diesel::sql_types::BigInt;
 use massbit::components::store::StoreError;
 use massbit::prelude::CheapClone;
 use massbit_common::prelude::diesel::sql_types::{Array, Binary, Bool, Integer, Range, Text};
@@ -193,7 +195,7 @@ impl<'a> QueryFragment<Pg> for InsertQuery<'a> {
                 out.push_sql(", ");
             }
             let block_range: BlockRange = (self.block..).into();
-            out.push_bind_param::<Range<Integer>, _>(&block_range)?;
+            out.push_bind_param::<Range<DieselBlockSlot>, _>(&block_range)?;
             out.push_sql(")");
 
             // finalize line according to remaining entities to insert
@@ -336,7 +338,7 @@ impl<'a> QueryFragment<Pg> for BlockRangeContainsClause<'a> {
         out.push_sql(self.table_prefix);
         out.push_identifier(BLOCK_RANGE_COLUMN)?;
         out.push_sql(" @> ");
-        out.push_bind_param::<Integer, _>(&self.block)?;
+        out.push_bind_param::<DieselBlockSlot, _>(&self.block)?;
         if self.table.is_account_like && self.block < BLOCK_NUMBER_MAX {
             // When block is BLOCK_NUMBER_MAX, these checks would be wrong; we
             // don't worry about adding the equivalent in that case since
@@ -344,12 +346,12 @@ impl<'a> QueryFragment<Pg> for BlockRangeContainsClause<'a> {
             // queries where block ranges don't matter anyway
             out.push_sql(" and coalesce(upper(");
             out.push_identifier(BLOCK_RANGE_COLUMN)?;
-            out.push_sql("), 2147483647) > ");
-            out.push_bind_param::<Integer, _>(&self.block)?;
+            out.push_sql("), 9223372036854775807) > ");
+            out.push_bind_param::<DieselBlockSlot, _>(&self.block)?;
             out.push_sql(" and lower(");
             out.push_identifier(BLOCK_RANGE_COLUMN)?;
             out.push_sql(") <= ");
-            out.push_bind_param::<Integer, _>(&self.block)
+            out.push_bind_param::<DieselBlockSlot, _>(&self.block)
         } else {
             Ok(())
         }
@@ -372,7 +374,7 @@ where
 {
     fn walk_ast(&self, mut out: AstPass<Pg>) -> QueryResult<()> {
         // update table
-        //    set block_range = int4rangee(lower(block_range), $block)
+        //    set block_range = int8rangee(lower(block_range), $block)
         //  where id in (id1, id2, ..., idN)
         //    and block_range @> INTMAX
         out.unsafe_to_cache_prepared();
@@ -380,10 +382,10 @@ where
         out.push_sql(self.table.qualified_name.as_str());
         out.push_sql("\n   set ");
         out.push_identifier(BLOCK_RANGE_COLUMN)?;
-        out.push_sql(" = int4range(lower(");
+        out.push_sql(" = int8range(lower(");
         out.push_identifier(BLOCK_RANGE_COLUMN)?;
         out.push_sql("), ");
-        out.push_bind_param::<Integer, _>(&self.block)?;
+        out.push_bind_param::<BigInt, _>(&self.block)?;
         out.push_sql(")\n where ");
 
         self.table.primary_key().is_in(self.entity_ids, &mut out)?;

@@ -5,7 +5,7 @@ use crate::store::entity_data::EntityData;
 use crate::store::postgres_queries::DELETE_OPERATION_CHUNK_SIZE;
 use crate::store::{EntityCache, POSTGRES_MAX_PARAMETERS};
 use async_trait::async_trait;
-use chain_solana::types::BlockPtr;
+use chain_solana::types::{BlockPtr, BlockSlot};
 use massbit::components::store::EntityType;
 use massbit::data::query::{CloneableAnyhowError, QueryExecutionError};
 use massbit::prelude::Logger;
@@ -345,7 +345,7 @@ impl IndexStore for CacheableStore {
                 let start = Instant::now();
                 let block_ptr = BlockPtr {
                     hash: block_hash.clone(),
-                    number: block_slot as i32,
+                    number: block_slot as BlockSlot,
                 };
                 match self.store.transact_block_operations(block_ptr, mods) {
                     Ok(_) => {
