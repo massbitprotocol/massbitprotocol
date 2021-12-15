@@ -21,7 +21,7 @@ lazy_static                 = "1.4"
 log                         = "0.4.14"
 ethabi                      = { git = "https://github.com/graphprotocol/ethabi.git", branch = "master" }
 regex                       = "1.5.4"
-reqwest                     = "0.10.8"
+reqwest                     = {version = "0.10.8", features = ["json","serde_json"] }
 serde                       = { version = "1.0"}
 serde_json                  = { version = "1.0", optional = false }
 serde_yaml                  = "0.8"

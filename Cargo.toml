@@ -2,7 +2,8 @@
 members = [
     "analytics",
     "apis/solana_api",
-    "apis/indexer_api",
+    "apis/indexer-api",
+    "apis/indexer-api",
     "chain-reader",
     "core/chain/solana",
     "core/drive",
@@ -16,13 +17,13 @@ members = [
     "runtime/derive",
     "store/postgres",
     "manager",
-    "index-manager/main",
+    "indexer-manager",
     "plugin/adapter",
     "plugin/plugin",
     "tests",
     "massbit-sol-cli"
 ]
-exclude = ["code-compiler/generated"]
+exclude = ["code-compiler/generated","apis/indexer-info_bak","core/orm"]
 
 [patch.crates-io]
 # Include protection against stack overflow when parsing from this PR: https://github.com/graphql-rust/graphql-parser/commit/45167b53e9533c331298683577ba8df7e43480ac
