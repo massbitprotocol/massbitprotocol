@@ -1,4 +1,4 @@
-## RUN chain-reader and index-manager indexer
+## RUN chain-reader and indexer-manager indexer
 ```bash
 tmux new -d -s services "make services-dev-up"
 tmux new -d -s chain-reader scripts/run-chain-reader.sh
@@ -27,12 +27,12 @@ cargo build --release
 ## Deploy indexer
 ```bash
 cd ../../../
-cargo run --bin massbit-sol  -- deploy -u http://127.0.0.1:3031/indexers/deploy -d ~/Massbit/massbitprotocol/code-compiler/generated/serum-index
+cargo run --bin massbit-sol  -- deploy -u http://127.0.0.1:3032/indexers/deploy -d ~/Massbit/massbitprotocol/code-compiler/generated/serum-index
 ```
 or
 ```bash
 cd ../../../
-massbit-sol deploy -u http://127.0.0.1:3031/indexers/deploy -d ~/Massbit/massbitprotocol/code-compiler/generated/serum-index
+massbit-sol deploy -u http://127.0.0.1:3032/indexers/deploy -d ~/Massbit/massbitprotocol/code-compiler/generated/serum-index
 ```
 
 ## Create releases folder for deploy from FE

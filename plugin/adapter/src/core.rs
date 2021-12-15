@@ -35,7 +35,7 @@ lazy_static! {
         env::var("CHAIN_READER_URL").unwrap_or(String::from("http://127.0.0.1:50051"));
     static ref IPFS_ADDRESS: String =
         env::var("IPFS_ADDRESS").unwrap_or(String::from("0.0.0.0:5001"));
-    static ref GENERATED_FOLDER: String = String::from("index-manager/generated/");
+    static ref GENERATED_FOLDER: String = String::from("indexer-manager/generated/");
     static ref COMPONENT_NAME: String = String::from("[Adapter-Manager]");
 }
 const GET_BLOCK_TIMEOUT_SEC: u64 = 600;

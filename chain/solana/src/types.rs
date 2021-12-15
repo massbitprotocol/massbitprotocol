@@ -5,7 +5,7 @@ use solana_transaction_status::{ConfirmedBlock, TransactionWithStatusMeta};
 use std::str::FromStr;
 
 pub type Pubkey = solana_program::pubkey::Pubkey;
-pub type BlockSlot = i32;
+pub type BlockSlot = i64;
 
 #[derive(Clone, Debug)]
 pub struct ChainConfig {
