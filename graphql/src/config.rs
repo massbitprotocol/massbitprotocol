@@ -18,16 +18,20 @@ const ANY_NAME: &str = ".*";
 /// A regular expression that matches nothing
 const NO_NAME: &str = ".^";
 
+#[derive(Debug)]
 pub struct Opt {
     pub postgres_url: Option<String>,
     pub config: Option<String>,
-    // This is only used when we cosntruct a config purely from command
+    // This is only used when we construct a config purely from command
     // line options. When using a configuration file, pool sizes must be
     // set in the configuration file alone
-    pub store_connection_pool_size: u32,
+    pub connection_pool_size: u32,
     pub postgres_secondary_hosts: Vec<String>,
     pub postgres_host_weights: Vec<usize>,
     pub node_id: String,
+    pub http_port: u16,
+    pub ws_port: u16,
+    pub debug: bool,
 }
 
 impl Default for Opt {
@@ -35,10 +39,13 @@ impl Default for Opt {
         Opt {
             postgres_url: None,
             config: None,
-            store_connection_pool_size: 10,
+            connection_pool_size: 10,
             postgres_secondary_hosts: vec![],
             postgres_host_weights: vec![],
             node_id: "default".to_string(),
+            http_port: 0,
+            ws_port: 0,
+            debug: false,
         }
     }
 }
@@ -203,7 +210,7 @@ impl Shard {
             .postgres_url
             .as_ref()
             .expect("validation checked that postgres_url is set");
-        let pool_size = PoolSize::Fixed(opt.store_connection_pool_size);
+        let pool_size = PoolSize::Fixed(opt.connection_pool_size);
         pool_size.validate(&postgres_url)?;
         let mut replicas = BTreeMap::new();
         for (i, host) in opt.postgres_secondary_hosts.iter().enumerate() {

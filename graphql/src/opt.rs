@@ -28,14 +28,14 @@ pub struct Opt {
     pub postgres_url: Option<String>,
     #[structopt(
         long,
-        default_value = "3031",
+        default_value = "8000",
         value_name = "PORT",
         help = "Port for the GraphQL HTTP server"
     )]
     pub http_port: u16,
     #[structopt(
         long,
-        default_value = "3032",
+        default_value = "8001",
         value_name = "PORT",
         help = "Port for the GraphQL WebSocket server"
     )]
@@ -57,7 +57,7 @@ pub struct Opt {
         env = "STORE_CONNECTION_POOL_SIZE",
         help = "Limits the number of connections in the store's connection pool"
     )]
-    pub store_connection_pool_size: u32,
+    pub connection_pool_size: u32,
 }
 
 impl From<Opt> for config::Opt {
@@ -65,17 +65,23 @@ impl From<Opt> for config::Opt {
         let Opt {
             postgres_url,
             config,
-            store_connection_pool_size,
+            connection_pool_size,
             node_id,
+            http_port,
+            ws_port,
+            debug,
             ..
         } = opt;
         config::Opt {
             postgres_url,
             config,
-            store_connection_pool_size,
+            connection_pool_size,
             postgres_secondary_hosts: vec![],
             postgres_host_weights: vec![],
             node_id,
+            http_port: 0,
+            ws_port: 0,
+            debug: false,
         }
     }
 }

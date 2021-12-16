@@ -36,7 +36,6 @@ use warp::{
 
 pub struct IndexerService {
     pub ipfs_client: Arc<IpfsClient>,
-    pub hasura_client: Option<Arc<HasuraClient>>,
     pub connection_pool: Arc<r2d2::Pool<ConnectionManager<PgConnection>>>,
     pub logger: Logger,
 }
@@ -297,22 +296,22 @@ impl IndexerService {
         log::info!("{}, {:?}", &sql, &next_seq);
         next_seq.unwrap_or_default().value
     }
-    ///For Hasura api
-    pub async fn get_hasura_schema(&self, hash: String) -> Result<impl Reply, Rejection> {
-        if let Ok(conn) = self.get_connection() {
-            let results = dsl::indexers
-                .filter(dsl::hash.eq(hash.as_str()))
-                .limit(1)
-                .load::<Indexer>(conn.deref())
-                .expect("Error loading indexers");
-            if let (Some(indexer), Some(hasura_client)) =
-                (results.get(0), self.hasura_client.as_ref())
-            {
-                if let Ok(value) = hasura_client.get_metadata(&indexer.namespace).await {
-                    return Ok(warp::reply::json(&value));
-                }
-            }
-        }
-        Ok(warp::reply::json(&String::from("")))
-    }
+    // ///For Hasura api
+    // pub async fn get_hasura_schema(&self, hash: String) -> Result<impl Reply, Rejection> {
+    //     if let Ok(conn) = self.get_connection() {
+    //         let results = dsl::indexers
+    //             .filter(dsl::hash.eq(hash.as_str()))
+    //             .limit(1)
+    //             .load::<Indexer>(conn.deref())
+    //             .expect("Error loading indexers");
+    //         if let (Some(indexer), Some(hasura_client)) =
+    //             (results.get(0), self.hasura_client.as_ref())
+    //         {
+    //             if let Ok(value) = hasura_client.get_metadata(&indexer.namespace).await {
+    //                 return Ok(warp::reply::json(&value));
+    //             }
+    //         }
+    //     }
+    //     Ok(warp::reply::json(&String::from("")))
+    // }
 }

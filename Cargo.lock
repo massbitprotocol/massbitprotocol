@@ -4211,6 +4211,7 @@ name = "massbit-graphql"
 version = "0.1.0"
 dependencies = [
  "Inflector",
+ "clap",
  "crossbeam 0.8.1",
  "deadpool",
  "defer",

@@ -24,7 +24,8 @@ serde_regex = "1.1.0"
 shellexpand = "2.1.0"
 hyper = {version = "0.14", features = ["server"] }
 futures = "0.1.21"
-structopt = { version = "0.3", features = ["wrap_help"] }
+clap = { version = "2.33.3", features = ["yaml"] }
+structopt = { version = "0.3.25", features = ["wrap_help"] }
 #sqlx = { version = "0.5.5", features = [ "runtime-tokio-rustls", "postgres", "macros" ] }
 #strum = "0.21.0"
 #strum_macros = "0.21.0"
