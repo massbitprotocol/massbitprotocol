@@ -19,7 +19,8 @@ logger = { path = "../core/logger" }
 log = "0.4.14"
 massbit = { path = "../massbit" }
 massbit-common = { path = "../core/common" }
-massbit-store-postgres = { path = "../store/postgres"}
+massbit-data = { path = "../core/data" }
+massbit-storage-postgres = { path = "../core/storage/postgres"}
 Inflector = "0.11.3"
 chain-solana = { path = "../chain/solana" }
 

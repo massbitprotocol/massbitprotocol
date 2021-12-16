@@ -24,3 +24,4 @@ serde_derive        = { version = "1.0", optional = false }
 massbit-common = { path = "../../common" }
 indexer-orm = { path = "../../orm" }
 massbit-data = { path= "../../data" }
+massbit-solana-sdk = { path = "../../../chain/solana-sdk" }

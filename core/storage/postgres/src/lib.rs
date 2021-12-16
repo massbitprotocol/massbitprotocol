@@ -15,6 +15,7 @@ pub mod catalog;
 pub mod connection_pool;
 pub mod deployment;
 pub mod deployment_store;
+pub mod helper;
 pub mod indexer_store;
 pub mod primary;
 pub mod query_store;
@@ -22,7 +23,6 @@ pub mod relational;
 pub mod relational_queries;
 pub mod sql_value;
 pub mod store;
-
 pub use self::indexer_store::{unused, DeploymentPlacer, IndexerStore, Shard, PRIMARY_SHARD};
 
 pub mod command_support {

@@ -20,7 +20,7 @@ use indexer_orm::models::Namespace;
 use inflector::Inflector;
 use massbit_common::cheap_clone::CheapClone;
 use massbit_common::prelude::slog::{info, warn, Logger};
-use massbit_common::prelude::{anyhow::anyhow, lazy_static::lazy_static};
+use massbit_common::prelude::{anyhow::anyhow, lazy_static::lazy_static, serde_json};
 use massbit_data::indexer::DeploymentHash;
 use massbit_data::metrics::stopwatch::StopwatchMetrics;
 use massbit_data::prelude::{
@@ -57,8 +57,8 @@ use crate::catalog;
 pub use crate::catalog::Catalog;
 use crate::connection_pool::ForeignServer;
 
-const POSTGRES_MAX_PARAMETERS: usize = u16::MAX as usize; // 65535
-const DELETE_OPERATION_CHUNK_SIZE: usize = 1_000;
+pub const POSTGRES_MAX_PARAMETERS: usize = u16::MAX as usize; // 65535
+pub const DELETE_OPERATION_CHUNK_SIZE: usize = 1_000;
 
 /// The size of string prefixes that we index. This is chosen so that we
 /// will index strings that people will do string comparisons like
@@ -247,12 +247,7 @@ impl Layout {
     /// Generate a layout for a relational schema for entities in the
     /// GraphQL schema `schema`. The name of the database schema in which
     /// the subgraph's tables live is in `schema`.
-    pub fn new(
-        site: Arc<Site>,
-        schema: &Schema,
-        catalog: Catalog,
-        create_proof_of_indexing: bool,
-    ) -> Result<Self, StoreError> {
+    pub fn new(site: Arc<Site>, schema: &Schema, catalog: Catalog) -> Result<Self, StoreError> {
         // Extract enum types
         let enums: EnumMap = schema
             .document
@@ -331,9 +326,6 @@ impl Layout {
                 )
             })
             .collect::<Result<Vec<_>, _>>()?;
-        // if create_proof_of_indexing {
-        //     tables.push(Self::make_poi_table(&catalog, tables.len()))
-        // }
 
         let tables: Vec<_> = tables.into_iter().map(|table| Arc::new(table)).collect();
 
@@ -411,7 +403,7 @@ impl Layout {
         schema: &Schema,
     ) -> Result<Layout, StoreError> {
         let catalog = Catalog::new(conn, site.clone())?;
-        let layout = Self::new(site, schema, catalog, true)?;
+        let layout = Self::new(site, schema, catalog)?;
         let sql = layout
             .as_ddl()
             .map_err(|_| StoreError::Unknown(anyhow!("failed to generate DDL for layout")))?;
@@ -843,6 +835,164 @@ impl Layout {
     }
 }
 
+impl Layout {
+    pub fn create_hasura_tracking(&self) -> serde_json::Value {
+        let (track_tables, _) = self.create_hasura_tracking_tables();
+        let (track_relationships, _) = self.create_hasura_tracking_relationships();
+        let reload_metadata = serde_json::json!({
+            "type": "reload_metadata",
+            "args": {
+                "reload_remote_schemas": true,
+            },
+        });
+        serde_json::json!({
+            "type": "bulk",
+            "args" : vec![track_tables, track_relationships, reload_metadata]
+        })
+    }
+
+    pub fn create_hasura_tracking_tables(&self) -> (serde_json::Value, serde_json::Value) {
+        //Generate hasura request to track tables + relationships
+        let mut hasura_tables: Vec<serde_json::Value> = Vec::new();
+        let mut hasura_down_tables: Vec<serde_json::Value> = Vec::new();
+        let schema = self.site.namespace.as_str();
+        self.tables.iter().for_each(|(_name, table)| {
+            hasura_tables.push(serde_json::json!({
+                "type": "track_table",
+                "args": {
+                    "table": {
+                        "schema": schema,
+                        "name": table.name.as_str()
+                    },
+                    "source": "default",
+                },
+            }));
+            hasura_down_tables.push(serde_json::json!({
+                "type": "untrack_table",
+                "args": {
+                    "table" : {
+                        "schema": schema,
+                        "name": table.name.as_str()
+                    },
+                    "source": "default",
+                    "cascade": true
+                },
+            }));
+        });
+
+        (
+            serde_json::json!({
+                "type": "bulk",
+                "args" : hasura_tables
+            }),
+            serde_json::json!({
+                "type": "bulk",
+                "args" : hasura_down_tables
+            }),
+        )
+    }
+
+    pub fn create_hasura_tracking_relationships(&self) -> (serde_json::Value, serde_json::Value) {
+        let mut hasura_relations: Vec<serde_json::Value> = Vec::new();
+        let mut hasura_down_relations: Vec<serde_json::Value> = Vec::new();
+        let schema = self.site.namespace.as_str();
+        self.tables.iter().for_each(|(_name, table)| {
+            table
+                .columns
+                .iter()
+                .filter(|col| col.is_reference() && !col.is_list())
+                .for_each(|column| {
+                    let field_type = named_type(&column.field_type);
+                    let reference = field_type.to_snake_case();
+                    // This is be a unique identifier to avoid the problem: An entity can have multiple reference to another entity.
+                    // Example: Pair Entity (token0: Token!, token1: Token!)
+                    let rel_name = format!("{}_{}", field_type, column.name.as_str());
+                    // Don't create relationship for child table because if it's type is array the parent already has the foreign key constraint (I think)
+                    hasura_relations.push(serde_json::json!({
+                       "type": "create_object_relationship",
+                       "args": {
+                           "table": {
+                               "name": table.name.as_str(),
+                               "schema": schema
+                           },
+                           "name": rel_name.as_str(),
+                           "using" : {
+                                "manual_configuration":{
+                                    "remote_table":{
+                                        "name":reference,
+                                        "schema": schema
+                                    },
+                                    "column_mapping":{
+                                        column.name.as_str(): PRIMARY_KEY_COLUMN,
+                                    }
+                                }
+                           }
+                       }
+                    }));
+                    hasura_down_relations.push(serde_json::json!({
+                        "type": "drop_relationship",
+                        "args": {
+                            "relationship": rel_name,
+                            "source": "default",
+                            "table": {
+                                "schema": schema,
+                                "name": table.name.as_str()
+                            }
+                        }
+                    }));
+                    let ref_table = named_type(&column.field_type).to_snake_case();
+                    // This is be a unique identifier to avoid the problem: An entity can have multiple reference to another entity.
+                    //Example: Pair Entity (token0: Token!, token1: Token!)
+                    let rel_name = format!("{}_{}", table.name.as_str(), column.name.as_str());
+                    // Don't create relationship for child table because if it's type is array the parent already has the foreign key constraint (I think)
+                    hasura_relations.push(serde_json::json!({
+                        "type": "create_array_relationship",
+                        "args": {
+                            "name": rel_name.as_str(),
+                            "table": {
+                                "name": ref_table.clone(),
+                                "schema": schema,
+                            },
+                            "using" : {
+                                "manual_configuration":{
+                                    "remote_table":{
+                                        "name": table.name.as_str(),
+                                        "schema": schema
+                                    },
+                                    "source":"default",
+                                    "column_mapping":{
+                                        "id":column.name.as_str(),
+                                    }
+                                }
+                            }
+                        }
+                    }));
+
+                    hasura_down_relations.push(serde_json::json!({
+                        "type": "drop_relationship",
+                        "args": {
+                            "relationship": rel_name,
+                            "source": "default",
+                            "table": {
+                                "name": ref_table,
+                                "schema": schema,
+                            },
+                         }
+                    }));
+                });
+        });
+        (
+            serde_json::json!({
+                "type": "bulk",
+                "args" : hasura_relations
+            }),
+            serde_json::json!({
+                "type": "bulk",
+                "args" : hasura_down_relations
+            }),
+        )
+    }
+}
 /// A user-defined enum
 #[derive(Clone, Debug, PartialEq)]
 pub struct EnumType {
@@ -1402,14 +1552,9 @@ impl LayoutCache {
 
     fn load(conn: &PgConnection, site: Arc<Site>) -> Result<Arc<Layout>, StoreError> {
         let indexer_schema = deployment::schema(conn, site.as_ref())?;
-        let has_poi = crate::catalog::supports_proof_of_indexing(conn, &site.namespace)?;
+        //let has_poi = crate::catalog::supports_proof_of_indexing(conn, &site.namespace)?;
         let catalog = Catalog::new(conn, site.clone())?;
-        let layout = Arc::new(Layout::new(
-            site.clone(),
-            &indexer_schema,
-            catalog,
-            has_poi,
-        )?);
+        let layout = Arc::new(Layout::new(site.clone(), &indexer_schema, catalog)?);
         layout.refresh(conn)
     }
 
@@ -1503,6 +1648,7 @@ mod tests {
     use massbit_data::schema::Schema;
 
     use crate::layout_for_tests::make_dummy_site;
+    use crate::primary::make_dummy_site;
 
     const ID_TYPE: ColumnType = ColumnType::String;
 
@@ -1512,7 +1658,7 @@ mod tests {
         let namespace = Namespace::new("sgd0815".to_owned()).unwrap();
         let site = Arc::new(make_dummy_site(subgraph, namespace, "anet".to_string()));
         let catalog = Catalog::make_empty(site.clone()).expect("Can not create catalog");
-        Layout::new(site, &schema, catalog, false).expect("Failed to construct Layout")
+        Layout::new(site, &schema, catalog).expect("Failed to construct Layout")
     }
 
     #[test]

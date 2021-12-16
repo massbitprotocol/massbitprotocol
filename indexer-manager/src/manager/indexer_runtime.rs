@@ -13,16 +13,18 @@ use massbit::components::link_resolver::LinkResolver as _;
 use massbit::data::indexer::MAX_SPEC_VERSION;
 use massbit::ipfs_client::IpfsClient;
 use massbit::ipfs_link_resolver::LinkResolver;
-use massbit::prelude::anyhow::Context;
-use massbit::prelude::Arc;
-use massbit::prelude::{DeploymentHash, Logger};
 use massbit_common::prelude::diesel::{
     r2d2::{self, ConnectionManager},
     ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl,
 };
 use massbit_common::prelude::r2d2::PooledConnection;
 use massbit_common::prelude::tokio::time::{sleep, timeout, Duration};
-use massbit_common::prelude::{anyhow, serde_json};
+use massbit_common::prelude::{
+    anyhow::{self, Context},
+    serde_json,
+    slog::Logger,
+};
+use massbit_data::indexer::DeploymentHash;
 use massbit_grpc::firehose::bstream::stream_client::StreamClient;
 use massbit_grpc::firehose::bstream::{BlockRequest, ChainType};
 use massbit_solana_sdk::plugin::handler::SolanaHandler;
@@ -36,6 +38,7 @@ use std::error::Error;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::sync::Arc;
 use std::{fs, thread};
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::Sender;
@@ -134,7 +137,6 @@ impl IndexerRuntime {
             raw_map.clone(),
             // Allow for infinite retries for indexer definition files.
             &link_resolver.with_retries(),
-            MAX_SPEC_VERSION.clone(),
         )
         .await
         .context("Failed to resolve manifest from upload data")

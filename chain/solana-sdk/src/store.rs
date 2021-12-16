@@ -1,4 +1,4 @@
-use crate::entity::Entity;
+use massbit_data::store::Entity;
 use std::error::Error;
 
 pub trait IndexStore: Sync + Send {

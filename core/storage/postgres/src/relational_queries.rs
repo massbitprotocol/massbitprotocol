@@ -130,7 +130,7 @@ fn bytes_as_str(id: &str) -> String {
 /// how we generate SQL queries. Using a method like `bind_ids` from this
 /// trait on a given column means "send these values to the database in a form
 /// that can later be used for comparisons with that column"
-trait ForeignKeyClauses {
+pub trait ForeignKeyClauses {
     /// The type of the column
     fn column_type(&self) -> &ColumnType;
 
@@ -1450,7 +1450,7 @@ impl<'a, Conn> RunQueryDsl<Conn> for ConflictingEntityQuery<'a> {}
 /// the database as a bind variable, and therefore need to embed them in
 /// the query literally
 #[derive(Debug, Clone)]
-struct SafeString(String);
+pub struct SafeString(String);
 
 /// A `ParentLink` where we've made sure for the `List` variant that each
 /// `Vec<Option<String>>` has the same length
@@ -2594,7 +2594,10 @@ pub struct ReturnedEntityData {
 impl ReturnedEntityData {
     /// Convert primary key ids from Postgres' internal form to the format we
     /// use by stripping `\\x` off the front of bytes strings
-    fn bytes_as_str(table: &Table, mut data: Vec<ReturnedEntityData>) -> Vec<ReturnedEntityData> {
+    pub fn bytes_as_str(
+        table: &Table,
+        mut data: Vec<ReturnedEntityData>,
+    ) -> Vec<ReturnedEntityData> {
         match table.primary_key().column_type.id_type() {
             IdType::String => data,
             IdType::Bytes => {
@@ -2721,14 +2724,6 @@ impl<'a> LoadQuery<PgConnection, ReturnedEntityData> for RevertClampQuery<'a> {
 }
 
 impl<'a, Conn> RunQueryDsl<Conn> for RevertClampQuery<'a> {}
-
-#[test]
-fn block_number_max_is_i32_max() {
-    // The code in RevertClampQuery::walk_ast embeds i32::MAX
-    // aka BLOCK_NUMBER_MAX in strings for efficiency. This assertion
-    // makes sure that BLOCK_NUMBER_MAX still is what we think it is
-    assert_eq!(2147483647, graph::prelude::BLOCK_NUMBER_MAX);
-}
 
 /// Remove all entities from the given table whose id has a prefix that
 /// matches one of the given prefixes. This query is mostly useful to

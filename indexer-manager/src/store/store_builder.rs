@@ -1,7 +1,7 @@
 use crate::store::{CacheableStore, IndexerStore};
 use crate::HASURA_URL;
 use log::error;
-use massbit::prelude::{anyhow, CheapClone, DeploymentHash, Logger, Schema, StoreError};
+use massbit_common::cheap_clone::CheapClone;
 use massbit_common::prelude::diesel::connection::SimpleConnection;
 use massbit_common::prelude::diesel::{
     r2d2::{self, ConnectionManager},
@@ -9,11 +9,19 @@ use massbit_common::prelude::diesel::{
 };
 use massbit_common::prelude::reqwest::Client;
 use massbit_common::prelude::tokio_compat_02::FutureExt;
-use massbit_common::prelude::{serde_json, slog};
+use massbit_common::prelude::{
+    anyhow::{self, anyhow},
+    serde_json,
+    slog::{self, Logger},
+};
+use massbit_data::indexer::DeploymentHash;
+use massbit_data::schema::Schema;
+use massbit_data::store::StoreError;
 use massbit_solana_sdk::store::IndexStore;
-use massbit_store_postgres::command_support::catalog::Site;
-use massbit_store_postgres::relational::Catalog;
-use massbit_store_postgres::relational::Layout;
+use massbit_storage_postgres::command_support::catalog::Site;
+use massbit_storage_postgres::relational::Catalog;
+use massbit_storage_postgres::relational::Layout;
+use massbit_storage_postgres::{Shard, PRIMARY_SHARD};
 use std::fs::File;
 use std::io::Read;
 use std::ops::Deref;
@@ -84,7 +92,11 @@ impl StoreBuilder {
         let schema = Schema::parse(schema_buffer.as_str(), deployment_hash.cheap_clone()).unwrap();
         //let logger = Logger::root(slog::Discard, slog::o!());
         //Create simple site
-        let site = Site::new(&deployment_hash, schema_name, network);
+        let site = Site::new(
+            deployment_hash,
+            PRIMARY_SHARD.clone(),
+            String::from(schema_name),
+        );
         let arc_site = Arc::new(site);
         let catalog = Catalog::new(conn, arc_site.clone()).unwrap();
         Layout::new(arc_site, &schema, catalog)

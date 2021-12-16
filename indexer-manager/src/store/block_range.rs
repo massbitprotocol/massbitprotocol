@@ -7,8 +7,8 @@ use diesel::result::QueryResult;
 ///! Utilities to deal with block numbers and block ranges
 use diesel::serialize::{Output, ToSql};
 use diesel::sql_types::{Integer, Range};
-use massbit_solana_sdk::model::BLOCK_NUMBER_MAX;
-use massbit_store_postgres::relational::Table;
+use massbit_data::store::chain::BLOCK_NUMBER_MAX;
+use massbit_storage_postgres::relational::Table;
 use std::io::Write;
 use std::ops::{Bound, RangeBounds, RangeFrom};
 

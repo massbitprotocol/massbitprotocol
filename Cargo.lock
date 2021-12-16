@@ -930,6 +930,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "config"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b1b9d958c2b1368a663f05538fc1b5975adce1e19f435acceae987aceeeb369"
+dependencies = [
+ "lazy_static",
+ "nom",
+ "serde",
+]
+
+[[package]]
 name = "console"
 version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3319,17 +3330,18 @@ dependencies = [
  "diesel",
  "diesel-derive-enum",
  "diesel_migrations",
- "futures 0.3.17",
- "itertools 0.10.1",
+ "futures 0.3.18",
+ "itertools 0.10.3",
  "lazy_static",
  "libloading 0.7.1",
  "log 0.4.14",
  "logger",
  "massbit",
  "massbit-common",
+ "massbit-data",
  "massbit-grpc",
  "massbit-solana-sdk",
- "massbit-store-postgres",
+ "massbit-storage-postgres",
  "priority-queue",
  "prost 0.7.0",
  "serde",
@@ -4293,6 +4305,7 @@ dependencies = [
  "lazy_static",
  "libloading 0.7.1",
  "log 0.4.14",
+ "massbit-data",
  "massbit-grpc",
  "num-bigint 0.2.6",
  "num-traits",
@@ -4323,6 +4336,7 @@ dependencies = [
  "lru_time_cache",
  "massbit-common",
  "massbit-data",
+ "massbit-solana-sdk",
  "maybe-owned",
  "postgres",
  "rand 0.8.4",

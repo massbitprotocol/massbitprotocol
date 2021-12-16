@@ -5,8 +5,7 @@ use std::io::Write;
 use std::str::FromStr;
 
 use massbit::prelude::anyhow::anyhow;
-use massbit_solana_sdk::entity::Value;
-use massbit_solana_sdk::scalar;
+use massbit_data::store::{scalar, Value};
 
 #[derive(Clone, Debug, PartialEq, AsExpression)]
 pub struct SqlValue(Value);
