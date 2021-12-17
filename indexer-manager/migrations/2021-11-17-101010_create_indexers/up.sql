@@ -1,4 +1,5 @@
-CREATE EXTENSION btree_gist;
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+DROP TYPE IF EXISTS indexer_status;
 CREATE TYPE indexer_status AS ENUM ('draft', 'deploying', 'deployed', 'stopped','invalid');
 create table indexers
 (

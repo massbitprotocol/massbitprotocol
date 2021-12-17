@@ -10,10 +10,11 @@ create table indexer_deployment_schemas
     active       boolean default true                         not null
 );
 
-CREATE TYPE indexer_health AS ENUM ('health', 'failed', 'unhealth');
+DROP TYPE IF EXISTS indexer_health;
+CREATE TYPE indexer_health AS ENUM ('healthy', 'failed', 'unhealthy');
 create table indexer_deployments
 (
-    id                        integer not null
+    id                        serial not null
         primary key,
     hash                      varchar,
     namespace                 varchar not null,

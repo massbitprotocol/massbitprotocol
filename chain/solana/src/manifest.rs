@@ -67,7 +67,10 @@ impl ManifestResolve for SolanaIndexerManifest {
         resolver: &impl LinkResolver,
     ) -> Result<SolanaIndexerManifest, IndexerManifestResolveError> {
         // Inject the IPFS hash as the ID of the indexer into the definition.
-        raw.insert(serde_yaml::Value::from("id"), serde_yaml::Value::from(id));
+        raw.insert(
+            serde_yaml::Value::from("id"),
+            serde_yaml::Value::from(id.replace("-", "")),
+        );
 
         // Parse the YAML data into an UnresolvedIndexerManifest
         let unresolved: UnresolvedSolanaIndexerManifest = serde_yaml::from_value(raw.into())?;

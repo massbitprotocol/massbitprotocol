@@ -5,13 +5,16 @@ use chain_solana::data_source::{DataSource, DataSourceTemplate};
 use chain_solana::manifest::ManifestResolve;
 use chain_solana::types::{Pubkey, SolanaFilter};
 use chain_solana::SolanaIndexerManifest;
-use indexer_orm::{models::Indexer, schema::indexers::dsl as idx};
+use diesel::{Connection, EqAll};
+use indexer_orm::{models::Indexer, schema::*};
 use libloading::Library;
 use log::info;
 use massbit::components::link_resolver::LinkResolver as _;
 use massbit::data::indexer::MAX_SPEC_VERSION;
 use massbit::ipfs_client::IpfsClient;
 use massbit::ipfs_link_resolver::LinkResolver;
+use massbit_common::prelude::anyhow::anyhow;
+use massbit_common::prelude::bigdecimal::BigDecimal;
 use massbit_common::prelude::diesel::{
     r2d2::{self, ConnectionManager},
     ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl,
@@ -343,13 +346,37 @@ impl<'a> IndexerRuntime {
                                                 start_block = Some(block_slot as u64 + 1);
                                                 //Store got_block to db
                                                 if let Ok(conn) = self.get_connection() {
-                                                    if let Err(err) =
-                                                        diesel::update(idx::indexers.filter(
-                                                            idx::hash.eq(&self.indexer.hash),
-                                                        ))
-                                                        .set(idx::got_block.eq(block_slot))
-                                                        .execute(conn.deref())
-                                                    {
+                                                    use indexer_deployments::dsl as d;
+                                                    use indexers::dsl as idx;
+                                                    if let Err(err) = conn.transaction(
+                                                        || -> Result<_, anyhow::Error> {
+                                                            diesel::update(idx::indexers.filter(
+                                                                idx::hash.eq(&self.indexer.hash),
+                                                            ))
+                                                            .set(idx::got_block.eq(block_slot))
+                                                            .execute(conn.deref())
+                                                            .map_err(|err| {
+                                                                log::error!("{:?}", &err);
+                                                                anyhow!(format!("{:?}", &err))
+                                                            });
+                                                            diesel::update(
+                                                                d::indexer_deployments.filter(
+                                                                    d::hash.eq(&self.indexer.hash),
+                                                                ),
+                                                            )
+                                                            .set(
+                                                                (d::latest_block_number.eq(
+                                                                    BigDecimal::from(block_slot),
+                                                                )),
+                                                            )
+                                                            .execute(conn.deref())
+                                                            .map_err(|err| {
+                                                                log::error!("{:?}", &err);
+                                                                anyhow!(format!("{:?}", &err))
+                                                            });
+                                                            Ok(())
+                                                        },
+                                                    ) {
                                                         log::error!("{:?}", &err);
                                                     }
                                                 }

@@ -118,7 +118,7 @@ impl IndexerService {
 
         let hash = indexer.hash.clone();
         if let Some(manifest) = &manifest {
-            match self.deploy_indexer(indexer, manifest, schema).await {
+            match self.update_indexer(indexer, manifest, schema).await {
                 Err(err) => {
                     log::error!("{:?}", &err);
                     return Ok(warp::reply::json(&json!({ "error": &err.to_string() })));
@@ -140,7 +140,7 @@ impl IndexerService {
         };
         return Ok(warp::reply::json(&json!({ "error": "Cannot deploy" })));
     }
-    async fn deploy_indexer(
+    async fn update_indexer(
         &self,
         mut indexer: Indexer,
         manifest: &SolanaIndexerManifest,
@@ -186,7 +186,10 @@ impl IndexerService {
                             d::max_reorg_depth.eq(0),
                         ))
                         .execute(&conn)
-                        .map_err(|err| anyhow!(format!("{:?}", &err)));
+                        .map_err(|err| {
+                            log::error!("{:?}", &err);
+                            anyhow!(format!("{:?}", &err))
+                        });
                     diesel::insert_into(indexer_deployment_schemas::table)
                         .values((
                             s::created_at.eq(pg_timestamp),
@@ -197,7 +200,10 @@ impl IndexerService {
                             s::active.eq(true),
                         ))
                         .execute(&conn)
-                        .map_err(|err| anyhow!(format!("{:?}", &err)));
+                        .map_err(|err| {
+                            log::error!("{:?}", &err);
+                            anyhow!(format!("{:?}", &err))
+                        });
                     diesel::update(dsl::indexers.filter(dsl::hash.eq(&indexer.hash)))
                         .set((
                             dsl::got_block.eq(&indexer.got_block),
@@ -207,7 +213,10 @@ impl IndexerService {
                             dsl::status.eq(IndexerStatus::Deployed),
                         ))
                         .execute(conn.deref())
-                        .map_err(|err| anyhow!(format!("{:?}", &err)));
+                        .map_err(|err| {
+                            log::error!("{:?}", &err);
+                            anyhow!(format!("{:?}", &err))
+                        });
                     Ok(indexer)
                 })
                 // indexer.namespace = format!("sgd{:?}", &indexer.v_id);

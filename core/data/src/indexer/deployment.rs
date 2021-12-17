@@ -125,7 +125,10 @@ impl DeploymentHash {
         }
 
         // Check that the ID contains only allowed characters.
-        if !s.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+        if !s
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+        {
             return Err(s);
         }
         Ok(DeploymentHash(s))
