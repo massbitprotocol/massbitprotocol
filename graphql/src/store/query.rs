@@ -1,5 +1,7 @@
+use crate::store::prefetch::ObjectCondition;
 use massbit_data::indexer::DeploymentHash;
-use massbit_data::prelude::{q, s, s::Field, ObjectOrInterface, QueryExecutionError};
+use massbit_data::prelude::{q, s, ObjectOrInterface, QueryExecutionError};
+use massbit_data::schema::ast as sast;
 use massbit_data::store::chain::BlockNumber;
 use massbit_data::store::entity::{
     AttributeNames, EntityCollection, EntityFilter, EntityOrder, EntityQuery, EntityRange,
@@ -9,12 +11,6 @@ use massbit_data::store::value::ValueType;
 use massbit_data::store::Value;
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::mem::discriminant;
-
-// use graph::prelude::*;
-// use graph::{components::store::EntityType, data::graphql::ObjectOrInterface};
-
-use crate::store::prefetch::ObjectCondition;
-use massbit_data::schema::ast as sast;
 
 #[derive(Debug)]
 enum OrderDirection {

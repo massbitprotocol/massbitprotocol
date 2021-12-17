@@ -9,7 +9,7 @@ use massbit_common::prelude::{
 };
 use massbit_data::indexer::{DeploymentHash, DeploymentState};
 use massbit_data::prelude::{LoadManager, QueryExecutionError};
-use massbit_data::query::{Query, QueryResults, QueryTarget};
+use massbit_data::query::{Query, QueryResults};
 use massbit_data::store::{QueryStore, QueryStoreManager};
 use std::env;
 use std::str::FromStr;

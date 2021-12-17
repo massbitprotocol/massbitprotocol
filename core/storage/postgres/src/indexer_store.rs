@@ -17,12 +17,7 @@ use massbit_common::prelude::tokio::sync::OwnedSemaphorePermit;
 use massbit_common::prelude::{anyhow::Error, async_trait::async_trait, lazy_static::lazy_static};
 use massbit_data::indexer::{DeploymentHash, DeploymentLocator, DeploymentState, NodeId};
 use massbit_data::metrics::stopwatch::StopwatchMetrics;
-use massbit_data::prelude::q::Value;
 use massbit_data::prelude::{QueryExecutionError, QueryTarget, StoreError};
-use massbit_data::schema::{ApiSchema, Schema};
-use massbit_data::store::chain::{BlockNumber, BlockPtr};
-use massbit_data::store::entity::EntityOrder::Default;
-use massbit_data::store::entity::{Entity, EntityKey, EntityModification, EntityQuery, EntityType};
 use massbit_data::store::{
     PoolWaitStats, QueryStore as QueryStoreTrait, QueryStore, QueryStoreManager, StoreEvent,
 };

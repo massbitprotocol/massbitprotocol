@@ -1,5 +1,5 @@
 use crate::CLEANUP_BLOCKS;
-use http::{HeaderMap, Uri};
+use http::HeaderMap;
 use massbit_common::prelude::anyhow::{anyhow, bail, Context, Result};
 use massbit_common::prelude::serde_json;
 use massbit_common::prelude::slog::{info, Logger};
@@ -8,11 +8,8 @@ use massbit_storage_postgres::indexer_store::Shard as ShardName;
 use massbit_storage_postgres::{DeploymentPlacer, PRIMARY_SHARD};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::fs::read_to_string;
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    fmt,
-};
 use url::Url;
 const ANY_NAME: &str = ".*";
 /// A regular expression that matches nothing

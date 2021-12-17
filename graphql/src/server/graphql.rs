@@ -2,7 +2,7 @@ use massbit_common::prelude::async_trait::async_trait;
 //use graphql_parser::query::Subscription;
 use massbit_data::indexer::DeploymentHash;
 use massbit_data::prelude::LoadManager;
-use massbit_data::query::{CacheStatus, Query, QueryResults, QueryTarget};
+use massbit_data::query::{CacheStatus, Query, QueryResults};
 use std::sync::Arc;
 use std::time::Duration;
 

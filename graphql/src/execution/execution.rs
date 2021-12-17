@@ -43,14 +43,14 @@ lazy_static! {
     // If `*` is present in the list, queries are cached for all subgraphs.
     // Defaults to "*".
     static ref CACHED_SUBGRAPH_IDS: Vec<String> = {
-        std::env::var("GRAPH_CACHED_SUBGRAPH_IDS")
+        std::env::var("CACHED_SUBGRAPH_IDS")
         .unwrap_or("*".to_string())
         .split(',')
         .map(ToOwned::to_owned)
         .collect()
     };
 
-    static ref CACHE_ALL: bool = CACHED_SUBGRAPH_IDS.contains(&"*".to_string());
+    static ref CACHE_ALL: bool = false; //CACHED_SUBGRAPH_IDS.contains(&"*".to_string());
 
     // How many blocks per network should be kept in the query cache. When the limit is reached,
     // older blocks are evicted. This should be kept small since a lookup to the cache is O(n) on
