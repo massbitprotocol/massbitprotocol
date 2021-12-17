@@ -1,5 +1,3 @@
-use crate::orm::models::Indexer;
-use crate::orm::schema::indexers::dsl as idx;
 use crate::store::StoreBuilder;
 use crate::{CHAIN_READER_URL, COMPONENT_NAME, GET_BLOCK_TIMEOUT_SEC, GET_STREAM_TIMEOUT_SEC};
 use chain_solana::adapter::SolanaNetworkAdapter;
@@ -7,6 +5,7 @@ use chain_solana::data_source::{DataSource, DataSourceTemplate};
 use chain_solana::manifest::ManifestResolve;
 use chain_solana::types::{Pubkey, SolanaFilter};
 use chain_solana::SolanaIndexerManifest;
+use indexer_orm::{models::Indexer, schema::indexers::dsl as idx};
 use libloading::Library;
 use log::info;
 use massbit::components::link_resolver::LinkResolver as _;
@@ -19,6 +18,7 @@ use massbit_common::prelude::diesel::{
 };
 use massbit_common::prelude::r2d2::PooledConnection;
 use massbit_common::prelude::tokio::time::{sleep, timeout, Duration};
+use massbit_common::prelude::uuid::Uuid;
 use massbit_common::prelude::{
     anyhow::{self, Context},
     serde_json,
@@ -45,7 +45,6 @@ use tokio::sync::mpsc::Sender;
 use tonic::transport::Channel;
 use tonic::{Request, Streaming};
 use tower::timeout::Timeout;
-use uuid::Uuid;
 
 pub struct IndexerHandler {
     pub lib: Arc<Library>,

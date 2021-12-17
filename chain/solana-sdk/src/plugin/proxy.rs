@@ -1,9 +1,7 @@
 use crate::plugin::handler::SolanaHandler;
-use crate::store::IndexStore;
-use crate::types::{SolanaBlock, SolanaLogMessages, SolanaTransaction};
-use crate::COMPONENT_NAME;
+use crate::types::{SolanaBlock, SolanaTransaction};
 use std::error::Error;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
 /// A proxy object which wraps a [`Handler`] and makes sure it can't outlive
 /// the library it came from.

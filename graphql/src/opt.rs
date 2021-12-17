@@ -20,7 +20,7 @@ pub struct Opt {
     #[structopt(
         long,
         value_name = "URL",
-        env = "POSTGRES_URL",
+        env = "DATABASE_URL",
         conflicts_with = "config",
         required_unless = "config",
         help = "Location of the Postgres database used for storing entities"
@@ -29,14 +29,16 @@ pub struct Opt {
     #[structopt(
         long,
         default_value = "8000",
-        value_name = "PORT",
+        value_name = "HTTP_PORT",
+        env = "HTTP_PORT",
         help = "Port for the GraphQL HTTP server"
     )]
     pub http_port: u16,
     #[structopt(
         long,
         default_value = "8001",
-        value_name = "PORT",
+        value_name = "WS_PORT",
+        env = "WS_PORT",
         help = "Port for the GraphQL WebSocket server"
     )]
     pub ws_port: u16,
@@ -52,9 +54,9 @@ pub struct Opt {
     pub node_id: String,
     #[structopt(
         long,
-        value_name = "STORE_CONNECTION_POOL_SIZE",
+        value_name = "CONNECTION_POOL_SIZE",
         default_value = "10",
-        env = "STORE_CONNECTION_POOL_SIZE",
+        env = "CONNECTION_POOL_SIZE",
         help = "Limits the number of connections in the store's connection pool"
     )]
     pub connection_pool_size: u32,

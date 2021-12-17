@@ -2,7 +2,6 @@ use super::model::ListOptions;
 use super::MAX_UPLOAD_FILE_SIZE;
 use crate::indexer_service::IndexerService;
 use crate::model::IndexerData;
-use crate::orm::models::Indexer;
 use crate::MAX_JSON_BODY_SIZE;
 use futures::lock::Mutex;
 use massbit::ipfs_client::IpfsClient;

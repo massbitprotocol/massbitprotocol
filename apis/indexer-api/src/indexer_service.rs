@@ -1,17 +1,18 @@
 use crate::git_helper::GitHelper;
 use crate::model::{IndexerData, ListOptions};
-use crate::orm::models::Indexer;
-use crate::orm::schema::indexers;
-use crate::orm::schema::indexers::dsl;
+
+use crate::server_builder::DeployParam;
 use crate::API_LIST_LIMIT;
+use crate::INDEXER_MANAGER_DEPLOY_ENDPOINT;
+use crate::{
+    models::Indexer,
+    schema::indexers::{self, dsl},
+};
 use chain_solana::SolanaIndexerManifest;
 use diesel::sql_types::BigInt;
 use futures::lock::Mutex;
+use indexer_orm::models::IndexerStatus;
 use log::debug;
-//use massbit::components::link_resolver::LinkResolver as _;
-use crate::orm::IndexerStatus;
-use crate::server_builder::DeployParam;
-use crate::INDEXER_MANAGER_DEPLOY_ENDPOINT;
 use massbit::ipfs_client::IpfsClient;
 use massbit::ipfs_link_resolver::LinkResolver;
 use massbit::prelude::prost::bytes::BufMut;
@@ -59,7 +60,7 @@ impl IndexerService {
     }
     pub async fn create_indexer(&self, content: IndexerData) -> Result<impl Reply, Rejection> {
         log::info!("Create new indexer");
-        let mut indexer = Indexer::new();
+        let mut indexer = Indexer::default();
         indexer.network = content.network;
         indexer.name = content.name.unwrap_or_default();
         indexer.description = content.description;
@@ -82,7 +83,7 @@ impl IndexerService {
             warp::reject::reject()
         })?;
 
-        let mut indexer = Indexer::new();
+        let mut indexer = Indexer::default();
         indexer.got_block = -1_i64;
         indexer.address = Default::default();
         indexer.start_block = Default::default();

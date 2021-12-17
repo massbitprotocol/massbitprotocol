@@ -7,7 +7,7 @@ pub mod value;
 use crate::indexer::error::IndexerError;
 use crate::indexer::{DeploymentHash, DeploymentState, IndexerName};
 use crate::metrics::stopwatch::StopwatchMetrics;
-use crate::prelude::{q, QueryExecutionError, QueryTarget};
+use crate::prelude::{q, QueryExecutionError};
 use crate::schema::{ApiSchema, Schema};
 pub use crate::store::chain::{BlockNumber, BlockPtr};
 pub use crate::store::entity::{Entity, EntityKey, EntityModification, EntityQuery, EntityType};

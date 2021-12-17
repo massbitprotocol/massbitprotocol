@@ -1,4 +1,6 @@
 table! {
+    use diesel::sql_types::{Nullable,Varchar,Bool,Int8};
+    use crate::models::IndexerStatusMapping;
     indexers (v_id) {
         network -> Nullable<Varchar>,
         name -> Varchar,
@@ -9,7 +11,7 @@ table! {
         manifest -> Varchar,
         mapping -> Varchar,
         graphql -> Varchar,
-        status -> Nullable<Varchar>,
+        status -> IndexerStatusMapping,
         deleted -> Bool,
         address -> Nullable<Varchar>,
         start_block -> Int8,

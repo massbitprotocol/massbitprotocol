@@ -5,9 +5,8 @@ extern crate diesel_migrations;
 pub mod git_helper;
 pub mod indexer_service;
 pub mod model;
-pub mod orm;
 pub mod server_builder;
-
+use indexer_orm::{models, schema};
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::env;

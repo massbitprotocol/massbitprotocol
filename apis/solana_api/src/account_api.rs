@@ -1,4 +1,4 @@
-//use crate::orm::schema::solana_inst_assigns::columns::account;
+//use crate::indexer-orm::schema::solana_inst_assigns::columns::account;
 
 use diesel::r2d2::PooledConnection;
 use jsonrpc_core::Result as JsonRpcResult;

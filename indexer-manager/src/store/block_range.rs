@@ -1,4 +1,3 @@
-use crate::orm::DieselBlockSlot;
 use chain_solana::types::{BlockPtr, BlockSlot};
 use derive_more::Constructor;
 use diesel::pg::Pg;
@@ -7,6 +6,7 @@ use diesel::result::QueryResult;
 ///! Utilities to deal with block numbers and block ranges
 use diesel::serialize::{Output, ToSql};
 use diesel::sql_types::{Integer, Range};
+use indexer_orm::DieselBlockSlot;
 use massbit_data::store::chain::BLOCK_NUMBER_MAX;
 use massbit_storage_postgres::relational::Table;
 use std::io::Write;

@@ -1,5 +1,4 @@
 pub mod cheap_clone;
-pub mod consts;
 pub mod util;
 
 pub mod prelude {
@@ -28,5 +27,6 @@ pub mod prelude {
     pub use tokio;
     pub use tokio_compat_02;
     pub use tokio_postgres;
+    pub use uuid;
 }
 pub type NetworkType = String;
