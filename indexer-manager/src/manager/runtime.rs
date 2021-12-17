@@ -364,11 +364,13 @@ impl<'a> IndexerRuntime {
                                                                     d::hash.eq(&self.indexer.hash),
                                                                 ),
                                                             )
-                                                            .set(
-                                                                (d::latest_block_number.eq(
+                                                            .set((
+                                                                d::latest_block_number.eq(
                                                                     BigDecimal::from(block_slot),
-                                                                )),
-                                                            )
+                                                                ),
+                                                                d::latest_block_hash
+                                                                    .eq(Vec::<u8>::new()),
+                                                            ))
                                                             .execute(conn.deref())
                                                             .map_err(|err| {
                                                                 log::error!("{:?}", &err);
