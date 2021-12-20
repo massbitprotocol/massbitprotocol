@@ -1818,10 +1818,10 @@ create table sgd0815.\"thing\" (
 );
 create index brin_thing
     on sgd0815.thing
- using brin(lower(block_range), coalesce(upper(block_range), 2147483647), vid);
+ using brin(lower(block_range), coalesce(upper(block_range), 9223372036854775807), vid);
 create index thing_block_range_closed
-    on sgd0815.thing(coalesce(upper(block_range), 2147483647))
- where coalesce(upper(block_range), 2147483647) < 2147483647;
+    on sgd0815.thing(coalesce(upper(block_range), 9223372036854775807))
+ where coalesce(upper(block_range), 9223372036854775807) < 9223372036854775807;
 create index attr_0_0_thing_id
     on sgd0815.\"thing\" using btree(\"id\");
 create index attr_0_1_thing_big_thing
@@ -1843,10 +1843,10 @@ create table sgd0815.\"scalar\" (
 );
 create index brin_scalar
     on sgd0815.scalar
- using brin(lower(block_range), coalesce(upper(block_range), 2147483647), vid);
+ using brin(lower(block_range), coalesce(upper(block_range), 9223372036854775807), vid);
 create index scalar_block_range_closed
-    on sgd0815.scalar(coalesce(upper(block_range), 2147483647))
- where coalesce(upper(block_range), 2147483647) < 2147483647;
+    on sgd0815.scalar(coalesce(upper(block_range), 9223372036854775807))
+ where coalesce(upper(block_range), 9223372036854775807) < 9223372036854775807;
 create index attr_1_0_scalar_id
     on sgd0815.\"scalar\" using btree(\"id\");
 create index attr_1_1_scalar_bool
@@ -1905,10 +1905,10 @@ type SongStat @entity {
 );
 create index brin_musician
     on sgd0815.musician
- using brin(lower(block_range), coalesce(upper(block_range), 2147483647), vid);
+ using brin(lower(block_range), coalesce(upper(block_range), 9223372036854775807), vid);
 create index musician_block_range_closed
-    on sgd0815.musician(coalesce(upper(block_range), 2147483647))
- where coalesce(upper(block_range), 2147483647) < 2147483647;
+    on sgd0815.musician(coalesce(upper(block_range), 9223372036854775807))
+ where coalesce(upper(block_range), 9223372036854775807) < 9223372036854775807;
 create index attr_0_0_musician_id
     on sgd0815.\"musician\" using btree(\"id\");
 create index attr_0_1_musician_name
@@ -1929,10 +1929,10 @@ create table sgd0815.\"band\" (
 );
 create index brin_band
     on sgd0815.band
- using brin(lower(block_range), coalesce(upper(block_range), 2147483647), vid);
+ using brin(lower(block_range), coalesce(upper(block_range), 9223372036854775807), vid);
 create index band_block_range_closed
-    on sgd0815.band(coalesce(upper(block_range), 2147483647))
- where coalesce(upper(block_range), 2147483647) < 2147483647;
+    on sgd0815.band(coalesce(upper(block_range), 9223372036854775807))
+ where coalesce(upper(block_range), 9223372036854775807) < 9223372036854775807;
 create index attr_1_0_band_id
     on sgd0815.\"band\" using btree(\"id\");
 create index attr_1_1_band_name
@@ -1951,10 +1951,10 @@ create table sgd0815.\"song\" (
 );
 create index brin_song
     on sgd0815.song
- using brin(lower(block_range), coalesce(upper(block_range), 2147483647), vid);
+ using brin(lower(block_range), coalesce(upper(block_range), 9223372036854775807), vid);
 create index song_block_range_closed
-    on sgd0815.song(coalesce(upper(block_range), 2147483647))
- where coalesce(upper(block_range), 2147483647) < 2147483647;
+    on sgd0815.song(coalesce(upper(block_range), 9223372036854775807))
+ where coalesce(upper(block_range), 9223372036854775807) < 9223372036854775807;
 create index attr_2_0_song_id
     on sgd0815.\"song\" using btree(\"id\");
 create index attr_2_1_song_title
@@ -1972,10 +1972,10 @@ create table sgd0815.\"song_stat\" (
 );
 create index brin_song_stat
     on sgd0815.song_stat
- using brin(lower(block_range), coalesce(upper(block_range), 2147483647), vid);
+ using brin(lower(block_range), coalesce(upper(block_range), 9223372036854775807), vid);
 create index song_stat_block_range_closed
-    on sgd0815.song_stat(coalesce(upper(block_range), 2147483647))
- where coalesce(upper(block_range), 2147483647) < 2147483647;
+    on sgd0815.song_stat(coalesce(upper(block_range), 9223372036854775807))
+ where coalesce(upper(block_range), 9223372036854775807) < 9223372036854775807;
 create index attr_3_0_song_stat_id
     on sgd0815.\"song_stat\" using btree(\"id\");
 create index attr_3_1_song_stat_played
@@ -2014,10 +2014,10 @@ type Habitat @entity {
 );
 create index brin_animal
     on sgd0815.animal
- using brin(lower(block_range), coalesce(upper(block_range), 2147483647), vid);
+ using brin(lower(block_range), coalesce(upper(block_range), 9223372036854775807), vid);
 create index animal_block_range_closed
-    on sgd0815.animal(coalesce(upper(block_range), 2147483647))
- where coalesce(upper(block_range), 2147483647) < 2147483647;
+    on sgd0815.animal(coalesce(upper(block_range), 9223372036854775807))
+ where coalesce(upper(block_range), 9223372036854775807) < 9223372036854775807;
 create index attr_0_0_animal_id
     on sgd0815.\"animal\" using btree(\"id\");
 create index attr_0_1_animal_forest
@@ -2032,10 +2032,10 @@ create table sgd0815.\"forest\" (
 );
 create index brin_forest
     on sgd0815.forest
- using brin(lower(block_range), coalesce(upper(block_range), 2147483647), vid);
+ using brin(lower(block_range), coalesce(upper(block_range), 9223372036854775807), vid);
 create index forest_block_range_closed
-    on sgd0815.forest(coalesce(upper(block_range), 2147483647))
- where coalesce(upper(block_range), 2147483647) < 2147483647;
+    on sgd0815.forest(coalesce(upper(block_range), 9223372036854775807))
+ where coalesce(upper(block_range), 9223372036854775807) < 9223372036854775807;
 create index attr_1_0_forest_id
     on sgd0815.\"forest\" using btree(\"id\");
 
@@ -2050,10 +2050,10 @@ create table sgd0815.\"habitat\" (
 );
 create index brin_habitat
     on sgd0815.habitat
- using brin(lower(block_range), coalesce(upper(block_range), 2147483647), vid);
+ using brin(lower(block_range), coalesce(upper(block_range), 9223372036854775807), vid);
 create index habitat_block_range_closed
-    on sgd0815.habitat(coalesce(upper(block_range), 2147483647))
- where coalesce(upper(block_range), 2147483647) < 2147483647;
+    on sgd0815.habitat(coalesce(upper(block_range), 9223372036854775807))
+ where coalesce(upper(block_range), 9223372036854775807) < 9223372036854775807;
 create index attr_2_0_habitat_id
     on sgd0815.\"habitat\" using btree(\"id\");
 create index attr_2_1_habitat_most_common
@@ -2106,10 +2106,10 @@ type Habitat @entity {
 );
 create index brin_animal
     on sgd0815.animal
- using brin(lower(block_range), coalesce(upper(block_range), 2147483647), vid);
+ using brin(lower(block_range), coalesce(upper(block_range), 9223372036854775807), vid);
 create index animal_block_range_closed
-    on sgd0815.animal(coalesce(upper(block_range), 2147483647))
- where coalesce(upper(block_range), 2147483647) < 2147483647;
+    on sgd0815.animal(coalesce(upper(block_range), 9223372036854775807))
+ where coalesce(upper(block_range), 9223372036854775807) < 9223372036854775807;
 create index attr_0_0_animal_id
     on sgd0815.\"animal\" using btree(\"id\");
 create index attr_0_1_animal_name
@@ -2130,10 +2130,10 @@ create table sgd0815.\"forest\" (
 );
 create index brin_forest
     on sgd0815.forest
- using brin(lower(block_range), coalesce(upper(block_range), 2147483647), vid);
+ using brin(lower(block_range), coalesce(upper(block_range), 9223372036854775807), vid);
 create index forest_block_range_closed
-    on sgd0815.forest(coalesce(upper(block_range), 2147483647))
- where coalesce(upper(block_range), 2147483647) < 2147483647;
+    on sgd0815.forest(coalesce(upper(block_range), 9223372036854775807))
+ where coalesce(upper(block_range), 9223372036854775807) < 9223372036854775807;
 create index attr_1_0_forest_id
     on sgd0815.\"forest\" using btree(\"id\");
 
@@ -2148,10 +2148,10 @@ create table sgd0815.\"habitat\" (
 );
 create index brin_habitat
     on sgd0815.habitat
- using brin(lower(block_range), coalesce(upper(block_range), 2147483647), vid);
+ using brin(lower(block_range), coalesce(upper(block_range), 9223372036854775807), vid);
 create index habitat_block_range_closed
-    on sgd0815.habitat(coalesce(upper(block_range), 2147483647))
- where coalesce(upper(block_range), 2147483647) < 2147483647;
+    on sgd0815.habitat(coalesce(upper(block_range), 9223372036854775807))
+ where coalesce(upper(block_range), 9223372036854775807) < 9223372036854775807;
 create index attr_2_0_habitat_id
     on sgd0815.\"habitat\" using btree(\"id\");
 create index attr_2_1_habitat_most_common
@@ -2184,10 +2184,10 @@ create table sgd0815.\"thing\" (
 );
 create index brin_thing
     on sgd0815.thing
- using brin(lower(block_range), coalesce(upper(block_range), 2147483647), vid);
+ using brin(lower(block_range), coalesce(upper(block_range), 9223372036854775807), vid);
 create index thing_block_range_closed
-    on sgd0815.thing(coalesce(upper(block_range), 2147483647))
- where coalesce(upper(block_range), 2147483647) < 2147483647;
+    on sgd0815.thing(coalesce(upper(block_range), 9223372036854775807))
+ where coalesce(upper(block_range), 9223372036854775807) < 9223372036854775807;
 create index attr_0_0_thing_id
     on sgd0815.\"thing\" using btree(\"id\");
 create index attr_0_1_thing_orientation
