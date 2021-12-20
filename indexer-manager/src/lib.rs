@@ -5,7 +5,6 @@ extern crate diesel_migrations;
 pub mod indexer_service;
 pub mod manager;
 pub mod model;
-pub mod orm;
 pub mod server_builder;
 pub mod store;
 
@@ -21,7 +20,7 @@ pub const GET_BLOCK_TIMEOUT_SEC: u64 = 600;
 pub const GET_STREAM_TIMEOUT_SEC: u64 = 30;
 pub const MAX_JSON_BODY_SIZE: u64 = 1024 * 1024;
 lazy_static! {
-    pub static ref COMPONENT_NAME: String = String::from("[IndexerApi]");
+    pub static ref COMPONENT_NAME: String = String::from("[IndexerManager]");
     pub static ref CONNECTION_POOL_SIZE: u32 = env::var("CONNECTION_POOL_SIZE")
         .ok()
         .and_then(|val| val.parse().ok())
@@ -33,7 +32,7 @@ lazy_static! {
     pub static ref CHAIN_READER_URL: String =
         env::var("CHAIN_READER_URL").unwrap_or(String::from("http://127.0.0.1:50051"));
     pub static ref HASURA_URL: String =
-        env::var("HASURA_URL").unwrap_or(String::from("http://127.0.0.1:8080/v1/query"));
+        env::var("HASURA_URL").unwrap_or(String::from("http://127.0.0.1:8080"));
     pub static ref IPFS_ADDRESS: String =
         env::var("IPFS_ADDRESS").unwrap_or(String::from("0.0.0.0:5001"));
     pub static ref GENERATED_FOLDER: String = String::from("indexer-manager/generated");

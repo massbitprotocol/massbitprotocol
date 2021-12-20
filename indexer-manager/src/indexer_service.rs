@@ -1,20 +1,19 @@
 use crate::manager::{IndexerManager, IndexerRuntime};
 use crate::model::{IndexerData, ListOptions};
-use crate::orm::schema::indexers;
-use crate::orm::schema::indexers::dsl;
-use crate::orm::IndexerStatus;
 use crate::API_LIST_LIMIT;
-use chain_solana::SolanaIndexerManifest;
-use diesel::sql_types::BigInt;
-use futures::lock::Mutex;
-use log::debug;
-//use massbit::components::link_resolver::LinkResolver as _;
-use crate::orm::models::Indexer;
 use crate::FILES;
+use chain_solana::SolanaIndexerManifest;
+use diesel::data_types::PgTimestamp;
+use diesel::sql_types::BigInt;
+use diesel::{Connection, EqAll};
+use futures::lock::Mutex;
+use indexer_orm::{models::*, schema::*};
+use log::debug;
+use massbit::components::indexer;
 use massbit::ipfs_client::IpfsClient;
 use massbit::ipfs_link_resolver::LinkResolver;
 use massbit::prelude::prost::bytes::BufMut;
-use massbit::prelude::{anyhow, TryStreamExt};
+use massbit::prelude::{anyhow, BigDecimal, TryStreamExt};
 use massbit::slog::Logger;
 use massbit_common::prelude::diesel::r2d2::ConnectionManager;
 use massbit_common::prelude::diesel::{
@@ -22,10 +21,13 @@ use massbit_common::prelude::diesel::{
 };
 use massbit_common::prelude::r2d2::PooledConnection;
 use massbit_common::prelude::serde_json::json;
+use massbit_data::prelude::StoreError;
+use massbit_storage_postgres::PRIMARY_SHARD;
 use solana_sdk::stake::instruction::StakeInstruction::Deactivate;
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 use warp::{
     multipart::{FormData, Part},
     Rejection, Reply,
@@ -47,6 +49,7 @@ impl IndexerService {
         self.connection_pool.get()
     }
     pub fn get_indexers(&self) -> Option<Vec<Indexer>> {
+        use indexers::dsl;
         self.get_connection().ok().and_then(|conn| {
             dsl::indexers
                 .filter(dsl::deleted.eq(false))
@@ -65,7 +68,7 @@ impl IndexerService {
         log::info!("Deploy new indexer from git {:?}.", &content);
         let mut indexer = content;
         let mut manifest: Option<SolanaIndexerManifest> = None;
-
+        let mut schema: Option<String> = None;
         //if let Ok(map) = git_helper.load_indexer().await {
         let mut map = HashMap::new();
         map.insert(
@@ -108,12 +111,14 @@ impl IndexerService {
                 )
                 .await
                 .ok();
+            } else if file_name == "graphql" {
+                schema = Some(String::from_utf8(values).unwrap())
             }
         }
 
         let hash = indexer.hash.clone();
         if let Some(manifest) = &manifest {
-            match self.update_indexer(manifest, indexer).await {
+            match self.update_indexer(indexer, manifest, schema).await {
                 Err(err) => {
                     log::error!("{:?}", &err);
                     return Ok(warp::reply::json(&json!({ "error": &err.to_string() })));
@@ -137,8 +142,9 @@ impl IndexerService {
     }
     async fn update_indexer(
         &self,
-        manifest: &SolanaIndexerManifest,
         mut indexer: Indexer,
+        manifest: &SolanaIndexerManifest,
+        schema: Option<String>,
     ) -> Result<Indexer, anyhow::Error> {
         indexer.got_block = -1_i64;
         if let Some(datasource) = manifest.data_sources.get(0) {
@@ -155,20 +161,75 @@ impl IndexerService {
         } else {
             indexer.status = IndexerStatus::Invalid
         }
+        let now = SystemTime::now();
+        let pg_timestamp = PgTimestamp(now.duration_since(UNIX_EPOCH).unwrap().as_secs() as i64);
         match self.get_connection() {
             Ok(conn) => {
-                //indexer.v_id = self.get_next_sequence(&conn, "indexers", "v_id");
+                let schema_name = format!("sgd{:?}", &indexer.v_id);
                 indexer.namespace = format!("sgd{:?}", &indexer.v_id);
-                diesel::update(dsl::indexers.filter(dsl::hash.eq(&indexer.hash)))
-                    .set((
-                        dsl::got_block.eq(&indexer.got_block),
-                        dsl::name.eq(&indexer.name),
-                        dsl::network.eq(&indexer.network),
-                        dsl::address.eq(&indexer.address),
-                        dsl::status.eq(IndexerStatus::Deployed),
-                    ))
-                    .execute(conn.deref());
-                Ok(indexer)
+                use indexer_deployment_schemas::dsl as s;
+                use indexer_deployments::dsl as d;
+                use indexers::dsl;
+                conn.transaction(|| -> Result<_, anyhow::Error> {
+                    diesel::insert_into(indexer_deployments::table)
+                        .values((
+                            d::hash.eq(indexer.hash.clone()),
+                            d::namespace.eq(schema_name.clone()),
+                            d::schema.eq(schema.unwrap_or_default()),
+                            d::failed.eq(false),
+                            d::health.eq(IndexerHealth::default()),
+                            d::synced.eq(true),
+                            d::non_fatal_errors.eq(Vec::<String>::new()),
+                            d::entity_count.eq(BigDecimal::from(0i64)),
+                            d::reorg_count.eq(0),
+                            d::current_reorg_depth.eq(0),
+                            d::max_reorg_depth.eq(0),
+                        ))
+                        .execute(&conn)
+                        .map_err(|err| {
+                            log::error!("{:?}", &err);
+                            anyhow!(format!("{:?}", &err))
+                        });
+                    diesel::insert_into(indexer_deployment_schemas::table)
+                        .values((
+                            s::created_at.eq(pg_timestamp),
+                            s::indexer_hash.eq(indexer.hash.clone()),
+                            s::schema_name.eq(schema_name.clone()),
+                            s::shard.eq(PRIMARY_SHARD.as_str().to_string()),
+                            s::network.eq(String::default()),
+                            s::active.eq(true),
+                        ))
+                        .execute(&conn)
+                        .map_err(|err| {
+                            log::error!("{:?}", &err);
+                            anyhow!(format!("{:?}", &err))
+                        });
+                    diesel::update(dsl::indexers.filter(dsl::hash.eq(&indexer.hash)))
+                        .set((
+                            dsl::got_block.eq(&indexer.got_block),
+                            dsl::name.eq(&indexer.name),
+                            dsl::network.eq(&indexer.network),
+                            dsl::address.eq(&indexer.address),
+                            dsl::status.eq(IndexerStatus::Deployed),
+                        ))
+                        .execute(conn.deref())
+                        .map_err(|err| {
+                            log::error!("{:?}", &err);
+                            anyhow!(format!("{:?}", &err))
+                        });
+                    Ok(indexer)
+                })
+                // indexer.namespace = format!("sgd{:?}", &indexer.v_id);
+                // diesel::update(dsl::indexers.filter(dsl::hash.eq(&indexer.hash)))
+                //     .set((
+                //         dsl::got_block.eq(&indexer.got_block),
+                //         dsl::name.eq(&indexer.name),
+                //         dsl::network.eq(&indexer.network),
+                //         dsl::address.eq(&indexer.address),
+                //         dsl::status.eq(IndexerStatus::Deployed),
+                //     ))
+                //     .execute(conn.deref());
+                // Ok(indexer)
             }
             Err(err) => Err(anyhow!(format!("{:?}", &err))),
         }
@@ -202,6 +263,7 @@ impl IndexerService {
 
     /// for api list indexer: /indexers?limit=?&offset=?
     pub async fn list_indexer(&self, options: ListOptions) -> Result<impl Reply, Rejection> {
+        use indexers::dsl;
         let content: Vec<Indexer> = vec![];
         if let Ok(conn) = self.get_connection() {
             match dsl::indexers
@@ -224,8 +286,8 @@ impl IndexerService {
     /// for api get indexer detail: /indexers/:hash
     pub async fn get_indexer(&self, hash: String) -> Result<impl Reply, Rejection> {
         if let Ok(conn) = self.get_connection() {
-            let results = dsl::indexers
-                .filter(dsl::hash.eq(hash.as_str()))
+            let results = indexers::dsl::indexers
+                .filter(indexers::dsl::hash.eq(hash.as_str()))
                 .limit(1)
                 .load::<Indexer>(conn.deref())
                 .expect("Error loading indexers");

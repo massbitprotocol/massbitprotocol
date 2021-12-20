@@ -17,16 +17,18 @@ diesel_migrations   = "1.4.0"
 derive_more = { version = "0.99.14" }
 logger = { path = "../core/logger" }
 log = "0.4.14"
+Inflector = "0.11.3"
 massbit = { path = "../massbit" }
 massbit-common = { path = "../core/common" }
-massbit-store-postgres = { path = "../store/postgres"}
-Inflector = "0.11.3"
+massbit-data = { path = "../core/data" }
+indexer-orm = { path = "../core/indexer-orm" }
+massbit-grpc = { path = "../core/grpc" }
+massbit-storage-postgres = { path = "../core/storage/postgres"}
 chain-solana = { path = "../chain/solana" }
+massbit-solana-sdk = { path = "../chain/solana-sdk" }
 
 priority-queue = "0.7.0"
 libloading      =   "0.7.0"
-massbit-solana-sdk = { path = "../chain/solana-sdk" }
-massbit-grpc = { path = "../core/grpc" }
 itertools = "0.10.1"
 lazy_static     = "1.4.0"
 serde_yaml = "0.8.21"
@@ -38,9 +40,7 @@ tokio02-spawn = { path = "../core/tokio02-spawn" }
 tonic           =   "0.5" # Chain Reader Client
 prost           =   "0.7" # Chain Reader Client
 tower           = { version = "0.4" }
-uuid = "0.8.2"
 warp = "0.3.2"
-
 
 [dependencies.solana-sdk]
 package = "solana-sdk"

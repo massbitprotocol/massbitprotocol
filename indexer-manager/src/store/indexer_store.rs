@@ -1,27 +1,29 @@
-use super::postgres_queries::{ClampRangeQuery, FindManyQuery, FindQuery, InsertQuery};
+//use super::postgres_queries::{ClampRangeQuery, FindManyQuery, FindQuery, InsertQuery};
 use crate::diesel::OptionalExtension;
 use crate::store::entity_cache::ModificationsAndCache;
-use crate::store::entity_data::EntityData;
-use crate::store::postgres_queries::DELETE_OPERATION_CHUNK_SIZE;
-use crate::store::{EntityCache, POSTGRES_MAX_PARAMETERS};
-use async_trait::async_trait;
-use chain_solana::types::BlockPtr;
-use massbit::components::store::EntityType;
-use massbit::data::query::{CloneableAnyhowError, QueryExecutionError};
-use massbit::prelude::Logger;
-use massbit::prelude::StoreError;
+use crate::store::EntityCache;
+use chain_solana::types::{BlockPtr, BlockSlot};
+use diesel::{ExpressionMethods, QueryDsl};
+use indexer_orm::{models::Indexer, schema::*};
+use massbit_common::prelude::bigdecimal::BigDecimal;
 use massbit_common::prelude::diesel::r2d2::{ConnectionManager, PooledConnection};
 use massbit_common::prelude::diesel::{Connection, PgConnection, RunQueryDsl};
 use massbit_common::prelude::tokio::time::Instant;
-use massbit_common::prelude::{anyhow, r2d2};
-use massbit_solana_sdk::entity::Entity;
-use massbit_solana_sdk::model::{EntityKey, EntityModification, BLOCK_NUMBER_MAX};
+use massbit_common::prelude::{anyhow, async_trait::async_trait, r2d2, slog::Logger};
+use massbit_data::indexer::DeploymentHash;
+use massbit_data::prelude::{CloneableAnyhowError, QueryExecutionError, StoreError};
+use massbit_data::store::chain::BLOCK_NUMBER_MAX;
+use massbit_data::store::{Entity, EntityKey, EntityModification, EntityType};
 use massbit_solana_sdk::store::IndexStore;
-use massbit_store_postgres::relational::Layout;
-//use massbit_store_postgres::relational_queries::EntityData;
+use massbit_storage_postgres::{
+    relational::{Layout, DELETE_OPERATION_CHUNK_SIZE, POSTGRES_MAX_PARAMETERS},
+    relational_queries::{ClampRangeQuery, EntityData, FindManyQuery, FindQuery, InsertQuery},
+};
 use std::collections::{BTreeMap, HashMap};
 use std::error::Error;
+use std::ops::Deref;
 use std::sync::Arc;
+
 #[async_trait]
 pub trait IndexerStoreTrait: Sync + Send {
     /// Looks up an entity using the given store key at the latest block.
@@ -31,8 +33,8 @@ pub trait IndexerStoreTrait: Sync + Send {
     /// entities by type.
     fn get_many(
         &self,
-        ids_for_type: BTreeMap<&String, Vec<&str>>,
-    ) -> Result<BTreeMap<String, Vec<Entity>>, StoreError>;
+        ids_for_type: BTreeMap<&EntityType, Vec<&str>>,
+    ) -> Result<BTreeMap<EntityType, Vec<Entity>>, StoreError>;
 
     /// Transact the entity changes from a single block atomically into the store, and update the
     /// indexer block pointer to `block_ptr_to`.
@@ -46,6 +48,7 @@ pub trait IndexerStoreTrait: Sync + Send {
 }
 #[derive(Clone)]
 pub struct IndexerStore {
+    pub indexer_hash: String,
     pub connection_pool: Arc<r2d2::Pool<ConnectionManager<PgConnection>>>,
     pub logger: Logger,
     pub layout: Layout,
@@ -60,7 +63,7 @@ impl IndexerStoreTrait for IndexerStore {
         // that is fully plumbed in, we just use the biggest possible block
         // number so that we will always return the latest version,
         // i.e., the one with an infinite upper bound
-        let entity_type = EntityType::new(key.entity_type.clone());
+        let entity_type = key.entity_type.clone();
         let table = self.layout.table_for_entity(&entity_type)?;
         FindQuery::new(table.as_ref(), &key.entity_id, BLOCK_NUMBER_MAX)
             .get_result::<EntityData>(&conn)
@@ -79,32 +82,33 @@ impl IndexerStoreTrait for IndexerStore {
 
     fn get_many(
         &self,
-        ids_for_type: BTreeMap<&String, Vec<&str>>,
-    ) -> Result<BTreeMap<String, Vec<Entity>>, StoreError> {
+        ids_for_type: BTreeMap<&EntityType, Vec<&str>>,
+    ) -> Result<BTreeMap<EntityType, Vec<Entity>>, StoreError> {
         if ids_for_type.is_empty() {
             return Ok(BTreeMap::new());
         }
         let conn = self
             .get_conn()
             .map_err(|err| StoreError::QueryExecutionError(format!("{:?}", &err)))?;
-        let mut tables = Vec::new();
-        for entity_name in ids_for_type.keys() {
-            let entity_type = EntityType::new((*entity_name).clone());
-            tables.push(self.layout.table_for_entity(&entity_type)?.as_ref());
-        }
-        let query = FindManyQuery {
-            ids_for_type,
-            tables,
-            block: BLOCK_NUMBER_MAX,
-        };
-        let mut entities_for_type: BTreeMap<String, Vec<Entity>> = BTreeMap::new();
-        for data in query.load::<EntityData>(&conn)? {
-            entities_for_type
-                .entry(data.entity_type().into_string())
-                .or_default()
-                .push(data.deserialize_with_layout(&self.layout)?);
-        }
-        Ok(entities_for_type)
+        self.layout.find_many(&conn, ids_for_type, BLOCK_NUMBER_MAX)
+        // let mut tables = Vec::new();
+        // for entity_name in ids_for_type.keys() {
+        //     let entity_type = EntityType::new((*entity_name).clone());
+        //     tables.push(self.layout.table_for_entity(&entity_type)?.as_ref());
+        // }
+        // let query = FindManyQuery {
+        //     ids_for_type,
+        //     tables,
+        //     block: BLOCK_NUMBER_MAX,
+        // };
+        // let mut entities_for_type: BTreeMap<String, Vec<Entity>> = BTreeMap::new();
+        // for data in query.load::<EntityData>(&conn)? {
+        //     entities_for_type
+        //         .entry(data.entity_type().into_string())
+        //         .or_default()
+        //         .push(data.deserialize_with_layout(&self.layout)?);
+        // }
+        // Ok(entities_for_type)
     }
 
     fn transact_block_operations(
@@ -113,6 +117,8 @@ impl IndexerStoreTrait for IndexerStore {
         mods: Vec<EntityModification>,
     ) -> Result<(), StoreError> {
         let conn = self.get_conn()?;
+        use indexer_deployments::dsl as d;
+        use indexers::dsl as idx;
         conn.transaction(|| -> Result<_, StoreError> {
             // Emit a store event for the changes we are about to make. We
             // wait with sending it until we have done all our other work
@@ -122,6 +128,16 @@ impl IndexerStoreTrait for IndexerStore {
             //let section = stopwatch.start_section("apply_entity_modifications");
             let _count = self.apply_entity_modifications(&conn, mods, &block_ptr_to)?;
             //section.end();
+            //Update context infos: synced block_hash, block_slot
+            diesel::update(idx::indexers.filter(idx::hash.eq(&self.indexer_hash)))
+                .set(idx::got_block.eq(block_ptr_to.number))
+                .execute(&conn);
+            diesel::update(d::indexer_deployments.filter(d::hash.eq(&self.indexer_hash)))
+                .set((
+                    d::latest_block_number.eq(BigDecimal::from(block_ptr_to.number)),
+                    d::latest_block_hash.eq(block_ptr_to.hash.into_bytes()),
+                ))
+                .execute(&conn);
             Ok(())
         })
         //log::info!("{:?}", &event);
@@ -192,7 +208,7 @@ impl IndexerStore {
 
     fn insert_entities(
         &self,
-        entity_name: &String,
+        entity_type: &EntityType,
         data: &mut [(EntityKey, Entity)],
         conn: &PgConnection,
         block_ptr: &BlockPtr,
@@ -206,8 +222,7 @@ impl IndexerStore {
         section.end();
          */
         //let _section = stopwatch.start_section("apply_entity_modifications_insert");
-        let entity_type = EntityType::new(entity_name.clone());
-        let table = self.layout.table_for_entity(&entity_type)?;
+        let table = self.layout.table_for_entity(entity_type)?;
         let mut count = 0;
         // Each operation must respect the maximum number of bindings allowed in PostgreSQL queries,
         // so we need to act in chunks whose size is defined by the number of entities times the
@@ -224,7 +239,7 @@ impl IndexerStore {
 
     fn overwrite_entities(
         &self,
-        entity_name: &String,
+        entity_type: &EntityType,
         data: &mut [(EntityKey, Entity)],
         conn: &PgConnection,
         block_ptr: &BlockPtr,
@@ -238,12 +253,11 @@ impl IndexerStore {
         section.end();
         */
         //let _section = stopwatch.start_section("apply_entity_modifications_update");
-        let entity_type = EntityType::new(entity_name.clone());
-        let table = self.layout.table_for_entity(&entity_type)?;
+        let table = self.layout.table_for_entity(entity_type)?;
         let entity_keys: Vec<&str> = data.iter().map(|(key, _)| key.entity_id.as_str()).collect();
 
         //let section = stopwatch.start_section("update_modification_clamp_range_query");
-        ClampRangeQuery::new(table, &entity_name, &entity_keys, block_ptr.number).execute(conn)?;
+        ClampRangeQuery::new(table, entity_type, &entity_keys, block_ptr.number).execute(conn)?;
         //section.end();
 
         //let _section = stopwatch.start_section("update_modification_insert_query");
@@ -262,7 +276,7 @@ impl IndexerStore {
 
     fn remove_entities(
         &self,
-        entity_name: &String,
+        entity_type: &EntityType,
         entity_keys: &[String],
         conn: &PgConnection,
         block_ptr: &BlockPtr,
@@ -273,12 +287,11 @@ impl IndexerStore {
         //     .map_err(|_error| {
         //         anyhow::anyhow!("Failed to remove entities: {:?}", entity_keys).into()
         //     })
-        let entity_type = EntityType::new(entity_name.clone());
-        let table = self.layout.table_for_entity(&entity_type)?;
+        let table = self.layout.table_for_entity(entity_type)?;
         let mut count = 0;
         for chunk in entity_keys.chunks(DELETE_OPERATION_CHUNK_SIZE) {
             count +=
-                ClampRangeQuery::new(table, entity_name, chunk, block_ptr.number).execute(conn)?
+                ClampRangeQuery::new(table, entity_type, chunk, block_ptr.number).execute(conn)?
         }
         Ok(count)
     }
@@ -303,8 +316,8 @@ impl IndexStore for CacheableStore {
     fn save(&mut self, entity_name: String, data: Entity) {
         if let Ok(entity_id) = data.id() {
             let key = EntityKey {
-                indexer_id: self.indexer_id.clone(),
-                entity_type: entity_name,
+                indexer_hash: DeploymentHash::new(self.indexer_id.clone()).unwrap(),
+                entity_type: EntityType::new(entity_name),
                 entity_id,
             };
             self.entity_cache.set(key.clone(), data);
@@ -313,8 +326,8 @@ impl IndexStore for CacheableStore {
 
     fn get(&mut self, entity_name: String, entity_id: &String) -> Option<Entity> {
         let key = EntityKey {
-            indexer_id: self.indexer_id.clone(),
-            entity_type: entity_name,
+            indexer_hash: DeploymentHash::new(self.indexer_id.clone()).unwrap(),
+            entity_type: EntityType::new(entity_name),
             entity_id: entity_id.clone(),
         };
         self.entity_cache.get(&key).unwrap_or({
@@ -345,7 +358,7 @@ impl IndexStore for CacheableStore {
                 let start = Instant::now();
                 let block_ptr = BlockPtr {
                     hash: block_hash.clone(),
-                    number: block_slot as i32,
+                    number: block_slot as BlockSlot,
                 };
                 match self.store.transact_block_operations(block_ptr, mods) {
                     Ok(_) => {

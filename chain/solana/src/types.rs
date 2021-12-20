@@ -5,7 +5,7 @@ use solana_transaction_status::{ConfirmedBlock, TransactionWithStatusMeta};
 use std::str::FromStr;
 
 pub type Pubkey = solana_program::pubkey::Pubkey;
-pub type BlockSlot = i32;
+pub type BlockSlot = i64;
 
 #[derive(Clone, Debug)]
 pub struct ChainConfig {
@@ -17,7 +17,7 @@ pub struct ChainConfig {
 
 /// A block hash and block number from a specific block.
 ///
-/// Block numbers are signed 32 bit integers
+/// Block numbers are signed 64 bit integers
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct BlockPtr {
     pub hash: String,

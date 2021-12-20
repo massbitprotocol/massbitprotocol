@@ -1,1 +1,1 @@
-drop table if exists indexers_;
+drop table if exists indexer_deployments;

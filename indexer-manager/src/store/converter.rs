@@ -1,10 +1,8 @@
 use diesel::result::{Error as DieselError, QueryResult};
-use massbit::components::store::StoreError;
-use massbit::prelude::anyhow;
-use massbit_common::prelude::serde_json;
-use massbit_solana_sdk::entity::{Entity, Value};
-use massbit_solana_sdk::scalar;
-use massbit_store_postgres::relational::ColumnType;
+use massbit_common::prelude::{anyhow::anyhow, serde_json};
+use massbit_data::prelude::StoreError;
+use massbit_data::store::{scalar, Entity, Value};
+use massbit_storage_postgres::relational::ColumnType;
 use std::convert::TryFrom;
 use std::str::FromStr;
 

@@ -1,13 +1,13 @@
 use crate::store::converter::{FromColumnValue, FromEntityData};
 use diesel::sql_types::{Jsonb, Text};
-use massbit::components::store::EntityType;
-use massbit::prelude::StoreError;
 use massbit_common::prelude::diesel::{result::Error as DieselError, QueryResult};
 use massbit_common::prelude::serde_json;
+use massbit_data::prelude::StoreError;
+use massbit_data::store::EntityType;
 use massbit_solana_sdk::scalar;
-use massbit_store_postgres::relational::{ColumnType, Layout, SqlName};
+use massbit_storage_postgres::relational::{ColumnType, Layout, SqlName};
+use massbit_store_postgres::relational_queries::EntityData;
 use std::str::FromStr;
-//use massbit_store_postgres::relational_queries::EntityData;
 
 /// Helper struct for retrieving entities from the database. With diesel, we
 /// can only run queries that return columns whose number and type are known

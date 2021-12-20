@@ -10,7 +10,7 @@ use indexer_manager::{
 use logger::core::init_logger;
 use massbit::ipfs_client::IpfsClient;
 use massbit::log::logger;
-use massbit_store_postgres::helper::create_r2d2_connection_pool;
+use massbit_storage_postgres::helper::create_r2d2_connection_pool;
 
 embed_migrations!("./migrations");
 

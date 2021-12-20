@@ -1,12 +1,13 @@
 use crate::store::IndexerStoreTrait;
 use core::fmt::Debug;
-use massbit::data::query::{CloneableAnyhowError, QueryExecutionError};
-use massbit::prelude::FromIterator;
 use massbit_common::prelude::anyhow;
-use massbit_solana_sdk::entity::Entity;
-use massbit_solana_sdk::model::{EntityKey, EntityModification, EntityOperation};
+use massbit_data::query::{CloneableAnyhowError, QueryExecutionError};
+use massbit_data::store::{Entity, EntityKey, EntityModification, EntityType};
+//use massbit_solana_sdk::model::{EntityModification, EntityOperation};
+use massbit_data::store::entity::EntityOperation;
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
+use std::iter::FromIterator;
 use std::sync::Arc;
 
 /// A representation of entity operations that can be accumulated.
@@ -196,10 +197,10 @@ impl EntityCache {
             .keys()
             .filter(|key| !self.current.contains_key(key));
 
-        let mut missing_by_indexer: BTreeMap<_, BTreeMap<&String, Vec<&str>>> = BTreeMap::new();
+        let mut missing_by_indexer: BTreeMap<_, BTreeMap<&EntityType, Vec<&str>>> = BTreeMap::new();
         for key in missing {
             missing_by_indexer
-                .entry(&key.indexer_id)
+                .entry(&key.indexer_hash)
                 .or_default()
                 .entry(&key.entity_type)
                 .or_default()
@@ -213,7 +214,7 @@ impl EntityCache {
             })? {
                 for entity in entities {
                     let key = EntityKey {
-                        indexer_id: indexer_id.clone(),
+                        indexer_hash: indexer_id.clone(),
                         entity_type: entity_type.clone(),
                         entity_id: entity.id().unwrap(),
                     };

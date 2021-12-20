@@ -19,7 +19,9 @@ logger = { path = "../../core/logger" }
 log = "0.4.14"
 massbit = { path = "../../massbit" }
 massbit-common = { path = "../../core/common" }
-massbit-store-postgres = { path = "../../store/postgres"}
+indexer-orm = { path = "../../core/indexer-orm" }
+massbit-hasura-client = { path = "../../core/hasura-client" }
+massbit-storage-postgres = { path = "../../core/storage/postgres"}
 Inflector = "0.11.3"
 chain-solana = { path = "../../chain/solana" }
 
@@ -41,7 +43,6 @@ tokio02-spawn = { path = "../../core/tokio02-spawn" }
 tonic           =   "0.5" # Chain Reader Client
 prost           =   "0.7" # Chain Reader Client
 tower           = { version = "0.4" }
-uuid = "0.8.2"
 warp = "0.3.2"
 [dependencies.reqwest]
 version = "0.11.3"
