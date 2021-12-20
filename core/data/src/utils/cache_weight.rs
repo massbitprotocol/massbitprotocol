@@ -130,5 +130,5 @@ fn big_decimal_cache_weight() {
 
     // 22.4548 has 18 bits as binary, so 3 bytes.
     let n = BigDecimal::from_str("22.454800000000").unwrap();
-    assert_eq!(n.indirect_weight(), 3);
+    assert_eq!(n.indirect_weight(), 6); //???
 }

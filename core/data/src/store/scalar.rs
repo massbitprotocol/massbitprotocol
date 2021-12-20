@@ -485,8 +485,20 @@ impl CacheWeight for Bytes {
 mod test {
     use super::{BigDecimal, BigInt};
     use massbit_common::prelude::bigdecimal;
+    use massbit_common::prelude::stable_hash::{
+        crypto::SetHasher, utils::stable_hash, StableHash, StableHasher,
+    };
     use std::str::FromStr;
 
+    fn crypto_stable_hash(value: impl StableHash) -> <SetHasher as StableHasher>::Out {
+        stable_hash::<SetHasher, _>(&value)
+    }
+
+    fn same_stable_hash(left: impl StableHash, right: impl StableHash) {
+        let left = crypto_stable_hash(left);
+        let right = crypto_stable_hash(right);
+        assert_eq!(left, right);
+    }
     #[test]
     fn big_int_stable_hash_same_as_int() {
         same_stable_hash(0, BigInt::from(0u64));

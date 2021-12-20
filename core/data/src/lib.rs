@@ -11,6 +11,7 @@ pub mod prelude {
     pub use crate::graphql::*;
     pub use crate::query::*;
     pub use crate::store::{EntityQuery, IndexerStore, StoreError, StoreEventStreamBox};
+    pub use graphql_parser;
     macro_rules! static_graphql {
     ($m:ident, $m2:ident, {$($n:ident,)*}) => {
         pub mod $m {

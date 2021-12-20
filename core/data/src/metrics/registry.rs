@@ -189,7 +189,7 @@ impl MetricsRegistryTrait for MetricsRegistry {
 
 #[test]
 fn global_counters_are_shared() {
-    use crate::prelude::log;
+    use crate::log;
     let logger = log::logger(false);
     let prom_reg = Arc::new(Registry::new());
     let registry = MetricsRegistry::new(logger, prom_reg.clone());

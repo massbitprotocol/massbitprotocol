@@ -1645,10 +1645,8 @@ impl LayoutCache {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use massbit_data::schema::Schema;
-
-    use crate::layout_for_tests::make_dummy_site;
     use crate::primary::make_dummy_site;
+    use massbit_data::schema::Schema;
 
     const ID_TYPE: ColumnType = ColumnType::String;
 

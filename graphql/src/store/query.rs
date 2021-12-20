@@ -353,26 +353,31 @@ pub fn collect_entities_from_query_field(
 
 #[cfg(test)]
 mod tests {
-
-    use graphql_parser::schema::Directive;
-    use graphql_parser::Pos;
-    use massbit_data::prelude::q::Field;
     use std::collections::{BTreeMap, HashMap};
+    use std::iter::FromIterator;
 
-    use massbit_data::prelude::s::{InputValue, ObjectType, Type};
-    use massbit_data::prelude::{q, s};
+    use massbit_data::prelude::s::{
+        Directive, Field, InputValue, ObjectType, Type, Value as SchemaValue,
+    };
+    use massbit_data::prelude::{graphql_parser::Pos, q, s};
+    use massbit_data::store::chain::BLOCK_NUMBER_MAX;
+    use massbit_data::store::entity::{
+        AttributeNames, EntityCollection, EntityFilter, EntityOrder, EntityRange,
+    };
+    use massbit_data::store::value::ValueType;
+    use massbit_data::store::{EntityType, Value};
 
     use super::build_query;
 
     fn default_object() -> ObjectType {
-        let subgraph_id_argument = (
+        let indexer_id_argument = (
             String::from("id"),
             s::Value::String("QmZ5dsusHwD1PEbx6L4dLCWkDsk1BLhrx9mPsGyPvTxPCM".to_string()),
         );
-        let subgraph_id_directive = Directive {
-            name: "subgraphId".to_string(),
+        let indexer_id_directive = Directive {
+            name: "indexerId".to_string(),
             position: Pos::default(),
-            arguments: vec![subgraph_id_argument],
+            arguments: vec![indexer_id_argument],
         };
         let name_input_value = InputValue {
             position: Pos::default(),
@@ -404,7 +409,7 @@ mod tests {
             description: None,
             name: String::new(),
             implements_interfaces: vec![],
-            directives: vec![subgraph_id_directive],
+            directives: vec![indexer_id_directive],
             fields: vec![name_field, email_field],
         }
     }
@@ -444,8 +449,8 @@ mod tests {
                 BLOCK_NUMBER_MAX,
                 &default_arguments(),
                 &BTreeMap::new(),
-                std::u32::MAX,
-                std::u32::MAX,
+                u32::MAX,
+                u32::MAX,
                 Default::default()
             )
             .unwrap()

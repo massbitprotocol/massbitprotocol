@@ -2,7 +2,6 @@ use massbit_common::cheap_clone::CheapClone;
 use massbit_common::prelude::futures03::compat::Future01CompatExt;
 use massbit_common::prelude::prometheus::Registry;
 use massbit_common::prelude::{slog::info, tokio};
-use massbit_common::util::task_spawn;
 use massbit_data::indexer::NodeId;
 use massbit_data::log::factory::LoggerFactory;
 use massbit_data::log::logger;
