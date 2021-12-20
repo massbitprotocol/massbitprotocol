@@ -3,6 +3,9 @@ use crate::diesel::OptionalExtension;
 use crate::store::entity_cache::ModificationsAndCache;
 use crate::store::EntityCache;
 use chain_solana::types::{BlockPtr, BlockSlot};
+use diesel::{ExpressionMethods, QueryDsl};
+use indexer_orm::{models::Indexer, schema::*};
+use massbit_common::prelude::bigdecimal::BigDecimal;
 use massbit_common::prelude::diesel::r2d2::{ConnectionManager, PooledConnection};
 use massbit_common::prelude::diesel::{Connection, PgConnection, RunQueryDsl};
 use massbit_common::prelude::tokio::time::Instant;
@@ -18,6 +21,7 @@ use massbit_storage_postgres::{
 };
 use std::collections::{BTreeMap, HashMap};
 use std::error::Error;
+use std::ops::Deref;
 use std::sync::Arc;
 
 #[async_trait]
@@ -44,6 +48,7 @@ pub trait IndexerStoreTrait: Sync + Send {
 }
 #[derive(Clone)]
 pub struct IndexerStore {
+    pub indexer_hash: String,
     pub connection_pool: Arc<r2d2::Pool<ConnectionManager<PgConnection>>>,
     pub logger: Logger,
     pub layout: Layout,
@@ -112,6 +117,8 @@ impl IndexerStoreTrait for IndexerStore {
         mods: Vec<EntityModification>,
     ) -> Result<(), StoreError> {
         let conn = self.get_conn()?;
+        use indexer_deployments::dsl as d;
+        use indexers::dsl as idx;
         conn.transaction(|| -> Result<_, StoreError> {
             // Emit a store event for the changes we are about to make. We
             // wait with sending it until we have done all our other work
@@ -121,6 +128,16 @@ impl IndexerStoreTrait for IndexerStore {
             //let section = stopwatch.start_section("apply_entity_modifications");
             let _count = self.apply_entity_modifications(&conn, mods, &block_ptr_to)?;
             //section.end();
+            //Update context infos: synced block_hash, block_slot
+            diesel::update(idx::indexers.filter(idx::hash.eq(&self.indexer_hash)))
+                .set(idx::got_block.eq(block_ptr_to.number))
+                .execute(&conn);
+            diesel::update(d::indexer_deployments.filter(d::hash.eq(&self.indexer_hash)))
+                .set((
+                    d::latest_block_number.eq(BigDecimal::from(block_ptr_to.number)),
+                    d::latest_block_hash.eq(block_ptr_to.hash.into_bytes()),
+                ))
+                .execute(&conn);
             Ok(())
         })
         //log::info!("{:?}", &event);

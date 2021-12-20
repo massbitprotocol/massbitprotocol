@@ -342,46 +342,46 @@ impl<'a> IndexerRuntime {
                                                 );
                                             }
                                             Ok(block_slot) => {
-                                                self.indexer.got_block = block_slot;
-                                                start_block = Some(block_slot as u64 + 1);
-                                                //Store got_block to db
-                                                if let Ok(conn) = self.get_connection() {
-                                                    use indexer_deployments::dsl as d;
-                                                    use indexers::dsl as idx;
-                                                    if let Err(err) = conn.transaction(
-                                                        || -> Result<_, anyhow::Error> {
-                                                            diesel::update(idx::indexers.filter(
-                                                                idx::hash.eq(&self.indexer.hash),
-                                                            ))
-                                                            .set(idx::got_block.eq(block_slot))
-                                                            .execute(conn.deref())
-                                                            .map_err(|err| {
-                                                                log::error!("{:?}", &err);
-                                                                anyhow!(format!("{:?}", &err))
-                                                            });
-                                                            diesel::update(
-                                                                d::indexer_deployments.filter(
-                                                                    d::hash.eq(&self.indexer.hash),
-                                                                ),
-                                                            )
-                                                            .set((
-                                                                d::latest_block_number.eq(
-                                                                    BigDecimal::from(block_slot),
-                                                                ),
-                                                                d::latest_block_hash
-                                                                    .eq(Vec::<u8>::new()),
-                                                            ))
-                                                            .execute(conn.deref())
-                                                            .map_err(|err| {
-                                                                log::error!("{:?}", &err);
-                                                                anyhow!(format!("{:?}", &err))
-                                                            });
-                                                            Ok(())
-                                                        },
-                                                    ) {
-                                                        log::error!("{:?}", &err);
-                                                    }
-                                                }
+                                                // self.indexer.got_block = block_slot;
+                                                // start_block = Some(block_slot as u64 + 1);
+                                                // //Store got_block to db
+                                                // if let Ok(conn) = self.get_connection() {
+                                                //     use indexer_deployments::dsl as d;
+                                                //     use indexers::dsl as idx;
+                                                //     if let Err(err) = conn.transaction(
+                                                //         || -> Result<_, anyhow::Error> {
+                                                //             diesel::update(idx::indexers.filter(
+                                                //                 idx::hash.eq(&self.indexer.hash),
+                                                //             ))
+                                                //             .set(idx::got_block.eq(block_slot))
+                                                //             .execute(conn.deref())
+                                                //             .map_err(|err| {
+                                                //                 log::error!("{:?}", &err);
+                                                //                 anyhow!(format!("{:?}", &err))
+                                                //             });
+                                                //             diesel::update(
+                                                //                 d::indexer_deployments.filter(
+                                                //                     d::hash.eq(&self.indexer.hash),
+                                                //                 ),
+                                                //             )
+                                                //             .set((
+                                                //                 d::latest_block_number.eq(
+                                                //                     BigDecimal::from(block_slot),
+                                                //                 ),
+                                                //                 d::latest_block_hash
+                                                //                     .eq(Vec::<u8>::new()),
+                                                //             ))
+                                                //             .execute(conn.deref())
+                                                //             .map_err(|err| {
+                                                //                 log::error!("{:?}", &err);
+                                                //                 anyhow!(format!("{:?}", &err))
+                                                //             });
+                                                //             Ok(())
+                                                //         },
+                                                //     ) {
+                                                //         log::error!("{:?}", &err);
+                                                //     }
+                                                // }
                                             }
                                         }
                                     }

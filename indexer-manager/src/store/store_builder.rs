@@ -64,6 +64,7 @@ impl StoreBuilder {
                         }
                         let logger = Logger::root(slog::Discard, slog::o!());
                         let store = Arc::new(IndexerStore {
+                            indexer_hash: indexer_hash.clone(),
                             connection_pool,
                             layout,
                             logger,

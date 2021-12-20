@@ -17,7 +17,7 @@ pub struct ChainConfig {
 
 /// A block hash and block number from a specific block.
 ///
-/// Block numbers are signed 32 bit integers
+/// Block numbers are signed 64 bit integers
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct BlockPtr {
     pub hash: String,
