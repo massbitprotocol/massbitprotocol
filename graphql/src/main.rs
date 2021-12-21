@@ -7,7 +7,7 @@ use massbit_data::log::factory::LoggerFactory;
 use massbit_data::log::logger;
 use massbit_data::metrics::registry::MetricsRegistry;
 use massbit_data::prelude::LoadManager;
-use massbit_graphql::config::Config;
+use massbit_graphql::config::{AccessControl, Config};
 use massbit_graphql::store_builder::StoreBuilder;
 use massbit_graphql::{
     opt,
@@ -24,6 +24,7 @@ async fn main() {
     // Obtain ports to use for the GraphQL server(s)
     let http_port = opt.http_port;
     let ws_port = opt.ws_port;
+    let access_control = AccessControl::from(&opt);
     let logger = logger(true);
     let node_id =
         NodeId::new(opt.node_id.clone()).expect("Node ID must contain only a-z, A-Z, 0-9, and '_'");
@@ -62,7 +63,7 @@ async fn main() {
         graphql_runner.clone(),
     );
     graphql_server
-        .serve(http_port, ws_port)
+        .serve(http_port, ws_port, access_control)
         .expect("Failed to start GraphQL query server")
         .compat()
         .await;

@@ -3,6 +3,7 @@ pub mod graphql;
 pub mod request;
 pub mod service;
 
+use crate::config::AccessControl;
 pub use crate::server::graphql::GraphQlRunner;
 use crate::server::service::{GraphQLService, GraphQLServiceMetrics};
 use futures::prelude::*;
@@ -31,6 +32,7 @@ pub trait GraphQLServerTrait {
         &mut self,
         port: u16,
         ws_port: u16,
+        access_control: AccessControl,
     ) -> Result<Box<dyn Future<Item = (), Error = ()> + Send>, Self::ServeError>;
 }
 
@@ -88,6 +90,7 @@ where
         &mut self,
         port: u16,
         ws_port: u16,
+        access_control: AccessControl,
     ) -> Result<Box<dyn Future<Item = (), Error = ()> + Send>, Self::ServeError> {
         let logger = self.logger.clone();
 
@@ -109,6 +112,7 @@ where
                 metrics.clone(),
                 graphql_runner.clone(),
                 ws_port,
+                access_control.clone(),
             ))
         });
 

@@ -556,3 +556,10 @@ fn primary_store() -> String {
 fn one() -> usize {
     1
 }
+#[derive(Debug, Clone, Default)]
+pub struct AccessControl {
+    pub access_control_allow_headers: String,
+    pub access_control_allow_origin: String,
+    pub access_control_allow_methods: String,
+    pub content_type: String,
+}
