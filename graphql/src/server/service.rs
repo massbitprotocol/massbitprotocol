@@ -1,3 +1,4 @@
+use crate::config::AccessControl;
 use core::task::Poll;
 use http::header::{
     ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_METHODS, ACCESS_CONTROL_ALLOW_ORIGIN,
@@ -85,6 +86,7 @@ pub struct GraphQLService<Q> {
     metrics: Arc<GraphQLServiceMetrics>,
     graphql_runner: Arc<Q>,
     ws_port: u16,
+    access_control: AccessControl,
 }
 
 impl<Q> Clone for GraphQLService<Q> {
@@ -94,6 +96,7 @@ impl<Q> Clone for GraphQLService<Q> {
             metrics: self.metrics.clone(),
             graphql_runner: self.graphql_runner.clone(),
             ws_port: self.ws_port,
+            access_control: self.access_control.clone(),
         }
     }
 }
@@ -108,12 +111,14 @@ where
         metrics: Arc<GraphQLServiceMetrics>,
         graphql_runner: Arc<Q>,
         ws_port: u16,
+        access_control: AccessControl,
     ) -> Self {
         GraphQLService {
             logger,
             metrics,
             graphql_runner,
             ws_port,
+            access_control,
         }
     }
 
@@ -222,16 +227,17 @@ where
 
     // Handles OPTIONS requests
     fn handle_graphql_options(&self, _request: Request<Body>) -> GraphQLServiceResponse {
-        async {
+        let access_control_allow_origin = self.access_control.access_control_allow_origin.clone();
+        let access_control_allow_headers = self.access_control.access_control_allow_headers.clone();
+        let access_control_allow_methods = self.access_control.access_control_allow_methods.clone();
+        let content_type = self.access_control.content_type.clone();
+        async move {
             Ok(Response::builder()
                 .status(200)
-                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .header(
-                    ACCESS_CONTROL_ALLOW_HEADERS,
-                    "Content-Type, User-Agent, Authorization",
-                )
-                .header(ACCESS_CONTROL_ALLOW_METHODS, "GET, OPTIONS, POST")
-                .header(CONTENT_TYPE, "text/html")
+                .header(ACCESS_CONTROL_ALLOW_ORIGIN, access_control_allow_origin)
+                .header(ACCESS_CONTROL_ALLOW_HEADERS, access_control_allow_headers)
+                .header(ACCESS_CONTROL_ALLOW_METHODS, access_control_allow_methods)
+                .header(CONTENT_TYPE, content_type)
                 .body(Body::from(""))
                 .unwrap())
         }
