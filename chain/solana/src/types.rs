@@ -11,6 +11,7 @@ pub type BlockSlot = i64;
 pub struct ChainConfig {
     pub url: String,
     pub ws: String,
+    pub name: String,
     pub network: String,
     pub supports_eip_1898: bool,
 }
@@ -90,6 +91,27 @@ impl SolanaFilter {
             })
             .collect();
         filtered_block
+    }
+}
+
+pub enum BlockInfo {
+    BlockSlot(u64),
+    ConfirmBlockWithSlot(ConfirmedBlockWithSlot),
+}
+
+impl From<u64> for BlockInfo {
+    fn from(slot: u64) -> Self {
+        BlockInfo::BlockSlot(slot)
+    }
+}
+
+impl From<(u64, ConfirmedBlock)> for BlockInfo {
+    fn from(val: (u64, ConfirmedBlock)) -> Self {
+        let (slot, block) = val;
+        BlockInfo::ConfirmBlockWithSlot(ConfirmedBlockWithSlot {
+            block_slot: slot,
+            block: Some(block),
+        })
     }
 }
 

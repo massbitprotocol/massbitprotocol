@@ -1,6 +1,5 @@
 use crate::command::ChainConfig;
-use crate::stream_service::BlockInfo;
-use chain_solana::types::ConfirmedBlockWithSlot;
+use chain_solana::types::{BlockInfo, ConfirmedBlockWithSlot};
 use log::{debug, info, warn};
 use massbit::firehose::bstream::{BlockRequest, BlockResponse};
 use massbit::prelude::{Arc, Duration};
