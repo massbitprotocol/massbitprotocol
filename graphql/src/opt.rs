@@ -79,7 +79,7 @@ pub struct Opt {
     #[structopt(
         long,
         value_name = "ACCESS_CONTROL_ALLOW_METHODS",
-        default_value = "CGET, OPTIONS, POST",
+        default_value = "GET, OPTIONS, POST",
         env = "ACCESS_CONTROL_ALLOW_METHODS",
         help = "List of access control allow methods"
     )]
