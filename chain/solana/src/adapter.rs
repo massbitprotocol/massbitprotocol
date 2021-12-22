@@ -363,17 +363,18 @@ impl SolanaAdapter {
 pub struct SolanaNetworkAdapter {
     pub network: String,
     pub adapter: Arc<SolanaAdapter>,
-    pub tx: Sender<BlockInfo>,
+    pub tx: Option<Sender<BlockInfo>>,
 }
 
 impl SolanaNetworkAdapter {
-    pub fn new(network: String, config: &ChainConfig, tx: Sender<BlockInfo>) -> Self {
+    pub fn new(network: String, config: &ChainConfig, tx: Option<Sender<BlockInfo>>) -> Self {
         SolanaNetworkAdapter {
             network,
             adapter: Arc::new(SolanaAdapter::new(config)),
             tx,
         }
     }
+
     pub fn get_adapter(&self) -> Arc<SolanaAdapter> {
         self.adapter.clone()
     }
@@ -381,14 +382,14 @@ impl SolanaNetworkAdapter {
 #[derive(Clone)]
 pub struct SolanaNetworkAdapters {
     pub adapters: Vec<SolanaNetworkAdapter>,
-    sender: Sender<BlockInfo>,
+    sender: Option<Sender<BlockInfo>>,
     ///Map contains adapter for next call.
     next_adapter: HashMap<String, usize>,
     sem: Arc<Semaphore>,
 }
 
 impl SolanaNetworkAdapters {
-    pub fn new(network: &str, tx: Sender<BlockInfo>) -> Self {
+    pub fn new(network: &str, tx: Option<Sender<BlockInfo>>) -> Self {
         let mut adapters = Vec::default();
         SOLANA_NETWORKS.iter().for_each(|(_, config)| {
             if config.network.as_str() == network {
@@ -407,7 +408,7 @@ impl SolanaNetworkAdapters {
         }
     }
     ///Return 2 different adapters, second one will be used in case of error while get block from first one.
-    fn get_adapters(&mut self, method: &str) -> Vec<Option<Arc<SolanaAdapter>>> {
+    pub fn get_adapters(&mut self, method: &str) -> Vec<Option<Arc<SolanaAdapter>>> {
         let ind = match self.next_adapter.get(method) {
             Some(val) => val.clone(),
             None => 0,
@@ -467,10 +468,14 @@ impl SolanaNetworkAdapters {
                         sleep(Duration::from_millis(GET_NEW_SLOT_DELAY_MS)).await;
                         continue;
                     }
-                    if last_block.is_none() && slots.len() == 1 {
+                    if last_block.is_none() && slots.len() == 1 && self.sender.is_some() {
                         let current_block = slots.get(0).unwrap().clone();
                         log::info!("Current block {:?}", &current_block);
-                        self.sender.send(BlockInfo::from(current_block)).await;
+                        self.sender
+                            .as_ref()
+                            .unwrap()
+                            .send(BlockInfo::from(current_block))
+                            .await;
                     }
                     log::info!("Pending blocks {:?}", &slots);
                     //Prepare parameter for next iteration
@@ -505,9 +510,10 @@ impl SolanaNetworkAdapters {
                                                 "*** ChainAdapter sending block: {}",
                                                 block.block_slot
                                             );
-                                            sender
-                                                .send(BlockInfo::ConfirmBlockWithSlot(block))
-                                                .await;
+                                            if let Some(tx) = sender.as_ref() {
+                                                tx.send(BlockInfo::ConfirmBlockWithSlot(block))
+                                                    .await;
+                                            }
                                             break;
                                         }
                                         Ok(Err(err)) => {
@@ -520,14 +526,15 @@ impl SolanaNetworkAdapters {
                                                 info!(
                                                 "Can not get data of the block {:?} from all available node in network",
                                                 &slot);
-                                                sender
-                                                    .send(BlockInfo::ConfirmBlockWithSlot(
+                                                if let Some(tx) = sender.as_ref() {
+                                                    tx.send(BlockInfo::ConfirmBlockWithSlot(
                                                         ConfirmedBlockWithSlot {
                                                             block_slot: slot,
                                                             block: None,
                                                         },
                                                     ))
                                                     .await;
+                                                }
                                             }
                                         }
                                         Err(err) => {
@@ -547,6 +554,37 @@ impl SolanaNetworkAdapters {
                 }
             }
         }
+    }
+}
+impl SolanaNetworkAdapters {
+    pub fn get_signatures_for_address(
+        &mut self,
+        address: &Pubkey,
+        first_slot: Option<u64>,
+        end_signature: Option<Signature>,
+    ) -> Vec<String> {
+        let adapters = self.get_adapters("get_signatures_for_address");
+        //Todo: add round rubin between adapters
+        for sol_adapter in adapters {
+            if let Some(adapter) = sol_adapter {
+                return adapter.get_signatures_for_address(address, first_slot, end_signature);
+            }
+        }
+        Vec::default()
+    }
+    //Get transactions by hashes from chain and group by block_slot
+    pub fn get_confirmed_blocks(
+        &mut self,
+        signatures: &Vec<String>,
+    ) -> Vec<ConfirmedBlockWithSlot> {
+        let adapters = self.get_adapters("get_confirmed_blocks");
+        //Todo: add round rubin between adapters
+        for sol_adapter in adapters {
+            if let Some(adapter) = sol_adapter {
+                return adapter.get_confirmed_blocks(signatures);
+            }
+        }
+        Vec::default()
     }
 }
 pub struct RuntimeAdapter {

@@ -75,7 +75,7 @@ impl NetworkService {
         let broadcaster = Arc::new(Mutex::new(IndexerBroadcast::new(rx)));
         NetworkService {
             network: network.to_string(),
-            chain_adapters: Arc::new(Mutex::new(SolanaNetworkAdapters::new(network, tx))),
+            chain_adapters: Arc::new(Mutex::new(SolanaNetworkAdapters::new(network, Some(tx)))),
             broadcaster,
         }
     }
