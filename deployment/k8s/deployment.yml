@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: indexer-manager
+  labels:
+    app: indexer-manager
+spec:
+  selector:
+    matchLabels:
+      app: indexer-manager
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: indexer-manager
+    spec:
+      containers:
+        - name: indexer-manager
+          imagePullPolicy: IfNotPresent
+          image: anhhuy0501/indexer-manager
+          ports:
+            - containerPort: 3032
+          env:
+            - name: DATABASE_URL
+              # Todo: Move this to secret
+              value: postgres://user:pass@localhost/index-data
+            - name: CHAIN_READER_URL
+              # Todo: Use Internal IP for better performance
+              value: ""
+            - name: IPFS_ADDRESS
+              # Todo: Use Internal IP for better performance
+              value: ""
+          securityContext:
+            runAsUser: 1000
+      securityContext:
+        fsGroup: 1000
+      imagePullSecrets:
+        - name: regcred
