@@ -17,3 +17,19 @@ services:
     volumes:
       - ./data/postgres-massbit:/var/lib/postgresql/data
 
+  metabase:
+    build: deployment/metabase
+    restart: always
+    # Account for login can be found in the folder /metabase/setup-mb-account.sh
+    entrypoint: ["./init.sh"]
+    ports:
+      - 3002:3000
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: graph-node
+      MB_DB_PORT: 5432
+      MB_DB_USER: graph-node
+      MB_DB_PASS: let-me-in
+      MB_DB_HOST: postgres
+    depends_on:
+      - postgres

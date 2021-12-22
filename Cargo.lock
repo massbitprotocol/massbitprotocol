@@ -3006,6 +3006,7 @@ dependencies = [
  "solana-client",
  "solana-sdk 1.9.0",
  "solana-transaction-status",
+ "structopt",
  "tokio 1.12.0",
  "tokio-compat-02",
  "tokio02-spawn",
