@@ -24,7 +24,7 @@ massbit-hasura-client = { path = "../../core/hasura-client" }
 massbit-storage-postgres = { path = "../../core/storage/postgres"}
 Inflector = "0.11.3"
 chain-solana = { path = "../../chain/solana" }
-
+structopt = "0.3.25"
 
 
 octocrab = "0.15.1"

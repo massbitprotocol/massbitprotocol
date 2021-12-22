@@ -61,7 +61,7 @@ if __name__ == '__main__':
                'nguyenmanhdat2903@gmail.com']
     text = f"The test on {homedir} PC stopped running"
     chain_reader = "../log/chain-reader.log"
-    index_manager = "../log/index-manager.log"
+    index_manager = "../log/indexer-manager.log"
     last_chain_reader_size = 0
     last_index_manager_size = 0
     while True:

@@ -3,15 +3,20 @@ extern crate diesel_migrations;
 
 use diesel::PgConnection;
 use diesel_migrations::embed_migrations;
+use indexer_api::config::AccessControl;
+use indexer_api::opt;
 use indexer_api::server_builder::ServerBuilder;
 use indexer_api::{COMPONENT_NAME, CONNECTION_POOL_SIZE, DATABASE_URL, IPFS_ADDRESS};
 use logger::core::init_logger;
 use massbit::ipfs_client::IpfsClient;
 use massbit::log::logger;
 use massbit_storage_postgres::helper::create_r2d2_connection_pool;
+use structopt::StructOpt;
 
 #[tokio::main]
 async fn main() {
+    let opt = opt::Opt::from_args();
+    let access_control = AccessControl::from(&opt);
     let _res = init_logger(&COMPONENT_NAME);
     let connection_pool =
         create_r2d2_connection_pool::<PgConnection>(DATABASE_URL.as_str(), *CONNECTION_POOL_SIZE);
@@ -24,7 +29,7 @@ async fn main() {
         .with_logger(logger(false))
         .build();
     //Start all stored indexer
-    server.serve().await;
+    server.serve(access_control).await;
     log::info!("Indexer is started. Ready for request processing...");
 }
 

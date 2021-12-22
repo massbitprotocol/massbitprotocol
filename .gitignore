@@ -56,3 +56,5 @@ terraform.tfstate.backup
 
 # Google
 google-token.json
+
+.env
