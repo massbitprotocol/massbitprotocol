@@ -1,6 +1,6 @@
 use crate::store::StoreBuilder;
 use crate::{CHAIN_READER_URL, COMPONENT_NAME, GET_BLOCK_TIMEOUT_SEC, GET_STREAM_TIMEOUT_SEC};
-use chain_solana::adapter::SolanaNetworkAdapter;
+use chain_solana::adapter::{SolanaNetworkAdapter, SolanaNetworkAdapters};
 use chain_solana::data_source::{DataSource, DataSourceTemplate};
 use chain_solana::manifest::ManifestResolve;
 use chain_solana::types::{Pubkey, SolanaFilter};
@@ -41,7 +41,7 @@ use std::error::Error;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::{fs, thread};
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::Sender;
@@ -49,6 +49,7 @@ use tonic::transport::Channel;
 use tonic::{Request, Streaming};
 use tower::timeout::Timeout;
 
+const DEFAULT_NETWORK: &str = "mainnet";
 pub struct IndexerHandler {
     pub lib: Arc<Library>,
     pub handler_proxies: Option<Arc<SolanaHandlerProxy>>,
@@ -73,7 +74,7 @@ pub struct IndexerRuntime {
     pub schema_path: Option<PathBuf>,
     pub mapping_path: Option<PathBuf>,
     pub indexer_handler: Option<IndexerHandler>,
-    pub network_adapter: Arc<SolanaNetworkAdapter>,
+    pub network_adapters: Arc<Mutex<SolanaNetworkAdapters>>,
     pub connection_pool: Arc<r2d2::Pool<ConnectionManager<PgConnection>>>,
 }
 /// Static methods
@@ -102,7 +103,14 @@ impl IndexerRuntime {
             .unwrap_or(false);
         //get schema and mapping content from ipfs to temporary dir
         if verified && mapping_path.is_some() && schema_path.is_some() {
-            let adapter = SolanaNetworkAdapter::from(indexer.network.clone().unwrap_or_default());
+            let adapters = SolanaNetworkAdapters::new(
+                indexer
+                    .network
+                    .as_ref()
+                    .and_then(|val| Some(val.as_str()))
+                    .unwrap_or(DEFAULT_NETWORK),
+                None,
+            );
             let manifest = opt_manifest.unwrap();
             let data_source = manifest.data_sources.get(0).unwrap();
             let runtime = IndexerRuntime {
@@ -111,7 +119,7 @@ impl IndexerRuntime {
                 mapping_path,
                 schema_path,
                 indexer_handler: None,
-                network_adapter: Arc::new(adapter),
+                network_adapters: Arc::new(Mutex::new(adapters)),
                 connection_pool,
             };
             return Some(runtime);
@@ -264,135 +272,91 @@ impl<'a> IndexerRuntime {
         &mut self,
         //store: Arc<Mutex<Box<&mut dyn IndexStore>>>,
     ) -> Result<(), Box<dyn Error>> {
-        if let Some(adapter) = &self.indexer_handler {
-            if let Some(proxy) = &adapter.handler_proxies {
-                let data_source = self.manifest.data_sources.get(0).unwrap();
-                let mut opt_stream: Option<Streaming<BlockResponse>> = None;
-                let mut start_block = if self.indexer.got_block >= 0 {
-                    Some(self.indexer.got_block.clone() as u64 + 1)
-                } else {
-                    None
-                };
-                let (history_block_tx, mut history_block_rx) =
-                    mpsc::channel::<Vec<SolanaBlock>>(64);
-                loop {
-                    // Todo: decide how indexer handle if some error occurred during phase get history data.
-                    // And sometime there are many gaps of blocks need to filled.
-                    // For example: chain reader send blocks B_1, B_n, B_m, need to get [B2..B_n), (B_n, B_m)
-                    //Process all history blocks before handle current blocks
-                    while let Ok(blocks) = history_block_rx.try_recv() {
-                        match proxy.handle_blocks(&blocks) {
-                            Err(err) => {
-                                log::error!("{:?} Error while handle history blocks", &err);
-                            }
-                            Ok(block_slot) => {
-                                log::info!("Process to block: {:?}", block_slot);
-                            }
+        let mut handler_proxy = self
+            .indexer_handler
+            .as_ref()
+            .and_then(|adapter| adapter.handler_proxies.clone());
+        let data_source = self.manifest.data_sources.get(0).unwrap().clone();
+        if let Some(proxy) = handler_proxy {
+            let mut opt_stream: Option<Streaming<BlockResponse>> = None;
+            let mut start_block = if self.indexer.got_block >= 0 {
+                Some(self.indexer.got_block.clone() as u64 + 1)
+            } else {
+                None
+            };
+            let (history_block_tx, mut history_block_rx) = mpsc::channel::<Vec<SolanaBlock>>(64);
+            loop {
+                // Todo: decide how indexer handle if some error occurred during phase get history data.
+                // And sometime there are many gaps of blocks need to filled.
+                // For example: chain reader send blocks B_1, B_n, B_m, need to get [B2..B_n), (B_n, B_m)
+                //Process all history blocks before handle current blocks
+                while let Ok(blocks) = history_block_rx.try_recv() {
+                    match proxy.handle_blocks(&blocks) {
+                        Err(err) => {
+                            log::error!("{:?} Error while handle history blocks", &err);
+                        }
+                        Ok(block_slot) => {
+                            log::info!("Process to block: {:?}", block_slot);
                         }
                     }
-                    match opt_stream {
-                        None => {
-                            opt_stream = self
-                                .try_create_block_stream(data_source, start_block.clone())
-                                .await;
-                            if opt_stream.is_none() {
-                                //Sleep for a while and reconnect
-                                sleep(Duration::from_secs(GET_STREAM_TIMEOUT_SEC)).await;
-                            }
-                        }
-                        Some(ref mut stream) => {
-                            let response = timeout(
-                                Duration::from_secs(GET_BLOCK_TIMEOUT_SEC),
-                                stream.message(),
-                            )
+                }
+                match opt_stream {
+                    None => {
+                        opt_stream = self
+                            .try_create_block_stream(&data_source, start_block.clone())
                             .await;
-                            match response {
-                                Ok(Ok(res)) => {
-                                    if let Some(mut data) = res {
-                                        let blocks: Vec<SolanaBlock> =
-                                            serde_json::from_slice(&mut data.payload).unwrap();
-                                        //Get history block from first transaction in first block
-                                        if let Some(block) = blocks.get(0) {
-                                            if block.block.parent_slot
-                                                > self.indexer.got_block as u64
-                                            {
-                                                let from_signature = block
-                                                    .block
-                                                    .transactions
-                                                    .first()
-                                                    .unwrap()
-                                                    .transaction
-                                                    .signatures
-                                                    .first()
-                                                    .and_then(|sig| Some(sig.clone()));
-                                                self.load_history_data(
-                                                    history_block_tx.clone(),
-                                                    self.indexer.got_block as u64,
-                                                    from_signature,
-                                                )
-                                                .await;
-                                            }
-                                        }
-
-                                        match proxy.handle_blocks(&blocks) {
-                                            Err(err) => {
-                                                log::error!(
-                                                    "{} Error while handle received message",
-                                                    err
-                                                );
-                                            }
-                                            Ok(block_slot) => {
-                                                // self.indexer.got_block = block_slot;
-                                                // start_block = Some(block_slot as u64 + 1);
-                                                // //Store got_block to db
-                                                // if let Ok(conn) = self.get_connection() {
-                                                //     use indexer_deployments::dsl as d;
-                                                //     use indexers::dsl as idx;
-                                                //     if let Err(err) = conn.transaction(
-                                                //         || -> Result<_, anyhow::Error> {
-                                                //             diesel::update(idx::indexers.filter(
-                                                //                 idx::hash.eq(&self.indexer.hash),
-                                                //             ))
-                                                //             .set(idx::got_block.eq(block_slot))
-                                                //             .execute(conn.deref())
-                                                //             .map_err(|err| {
-                                                //                 log::error!("{:?}", &err);
-                                                //                 anyhow!(format!("{:?}", &err))
-                                                //             });
-                                                //             diesel::update(
-                                                //                 d::indexer_deployments.filter(
-                                                //                     d::hash.eq(&self.indexer.hash),
-                                                //                 ),
-                                                //             )
-                                                //             .set((
-                                                //                 d::latest_block_number.eq(
-                                                //                     BigDecimal::from(block_slot),
-                                                //                 ),
-                                                //                 d::latest_block_hash
-                                                //                     .eq(Vec::<u8>::new()),
-                                                //             ))
-                                                //             .execute(conn.deref())
-                                                //             .map_err(|err| {
-                                                //                 log::error!("{:?}", &err);
-                                                //                 anyhow!(format!("{:?}", &err))
-                                                //             });
-                                                //             Ok(())
-                                                //         },
-                                                //     ) {
-                                                //         log::error!("{:?}", &err);
-                                                //     }
-                                                // }
-                                            }
+                        if opt_stream.is_none() {
+                            //Sleep for a while and reconnect
+                            sleep(Duration::from_secs(GET_STREAM_TIMEOUT_SEC)).await;
+                        }
+                    }
+                    Some(ref mut stream) => {
+                        let response =
+                            timeout(Duration::from_secs(GET_BLOCK_TIMEOUT_SEC), stream.message())
+                                .await;
+                        match response {
+                            Ok(Ok(res)) => {
+                                if let Some(mut data) = res {
+                                    let blocks: Vec<SolanaBlock> =
+                                        serde_json::from_slice(&mut data.payload).unwrap();
+                                    //Get history block from first transaction in first block
+                                    if let Some(block) = blocks.get(0) {
+                                        if block.block.parent_slot > self.indexer.got_block as u64 {
+                                            let from_signature = block
+                                                .block
+                                                .transactions
+                                                .first()
+                                                .unwrap()
+                                                .transaction
+                                                .signatures
+                                                .first()
+                                                .and_then(|sig| Some(sig.clone()));
+                                            self.load_history_data(
+                                                history_block_tx.clone(),
+                                                self.indexer.got_block as u64,
+                                                from_signature,
+                                            )
+                                            .await;
                                         }
                                     }
+
+                                    match proxy.handle_blocks(&blocks) {
+                                        Err(err) => {
+                                            log::error!(
+                                                "{} Error while handle received message",
+                                                err
+                                            );
+                                        }
+                                        Ok(block_slot) => {}
+                                    }
                                 }
-                                _ => {
-                                    log::info!(
-                                "Error while get message from reader stream {:?}. Recreate stream",
-                                &response
-                            );
-                                    opt_stream = None;
-                                }
+                            }
+                            _ => {
+                                log::info!(
+                            "Error while get message from reader stream {:?}. Recreate stream",
+                            &response
+                        );
+                                opt_stream = None;
                             }
                         }
                     }
@@ -403,7 +367,7 @@ impl<'a> IndexerRuntime {
     }
     /// Collect history blocks in range [from_block, to_block)
     async fn load_history_data(
-        &self,
+        &mut self,
         sender: Sender<Vec<SolanaBlock>>,
         from_block: u64,
         last_signature: Option<Signature>,
@@ -413,7 +377,7 @@ impl<'a> IndexerRuntime {
             "Start get transaction backward with filter address: {:?}",
             &self.indexer
         );
-        let chain_adapter = self.network_adapter.get_adapter();
+        let chain_adapters = self.network_adapters.clone();
         let address = self
             .manifest
             .data_sources
@@ -434,15 +398,14 @@ impl<'a> IndexerRuntime {
             .clone();
         tokio::spawn(async move {
             if let Some(pubkey) = address {
-                let signatures = chain_adapter.get_signatures_for_address(
-                    &pubkey,
-                    Some(from_block),
-                    last_signature,
-                );
+                let mut adapters = chain_adapters.lock().unwrap();
+                let signatures =
+                    adapters.get_signatures_for_address(&pubkey, Some(from_block), last_signature);
                 //******************* Forward run ***************************//
                 info!("Start get {} transaction forward.", signatures.len());
                 //Get all transactions by history signatures
-                let confirmed_blocks = chain_adapter.get_confirmed_blocks(&signatures);
+                let mut adapters = chain_adapters.lock().unwrap();
+                let confirmed_blocks = adapters.get_confirmed_blocks(&signatures);
                 let ext_blocks = confirmed_blocks
                     .into_iter()
                     .filter_map(|confirmed_block| {
