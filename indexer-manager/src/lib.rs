@@ -25,8 +25,8 @@ lazy_static! {
         .ok()
         .and_then(|val| val.parse().ok())
         .unwrap_or(20);
-    pub static ref API_ENDPOINT: String =
-        env::var("API_ENDPOINT").unwrap_or(String::from("0.0.0.0:3032"));
+    pub static ref INDEXER_MANAGER_ENDPOINT: String =
+        env::var("INDEXER_MANAGER_ENDPOINT").unwrap_or(String::from("0.0.0.0:3032"));
     pub static ref DATABASE_URL: String = env::var("DATABASE_URL")
         .unwrap_or(String::from("postgres://graph-node:let-me-in@localhost"));
     pub static ref CHAIN_READER_URL: String =

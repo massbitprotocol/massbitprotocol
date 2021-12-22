@@ -145,7 +145,7 @@ deploy:
 
 run-indexer-manager:
 	@echo "Run indexer-manager"
-	cargo run --bin indexer-manager-main
+	cargo run --bin indexer-manager
 
 run-chain-reader:
 	@echo "Run chain-reader"

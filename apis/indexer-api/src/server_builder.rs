@@ -1,9 +1,11 @@
 use super::model::ListOptions;
 use super::MAX_UPLOAD_FILE_SIZE;
+use crate::config::AccessControl;
 use crate::indexer_service::IndexerService;
 use crate::model::IndexerData;
 use crate::MAX_JSON_BODY_SIZE;
 use futures::lock::Mutex;
+use log::info;
 use massbit::ipfs_client::IpfsClient;
 use massbit::slog::Logger;
 use massbit_common::prelude::diesel::r2d2::ConnectionManager;
@@ -37,18 +39,12 @@ impl<'a> IndexerServer {
     pub fn builder() -> ServerBuilder {
         ServerBuilder::default()
     }
-    pub async fn serve(&self) {
+    pub async fn serve(&self, access_control: AccessControl) {
+        let mut allow_headers: Vec<String> = access_control.get_access_control_allow_headers();
+        info!("allow_headers: {:?}", allow_headers);
         let cors = warp::cors()
             .allow_any_origin()
-            .allow_headers(vec![
-                "Access-Control-Allow-Headers",
-                "Access-Control-Request-Method",
-                "Access-Control-Request-Headers",
-                "Origin",
-                "Accept",
-                "X-Requested-With",
-                "Content-Type",
-            ])
+            .allow_headers(allow_headers)
             .allow_methods(&[
                 Method::GET,
                 Method::POST,

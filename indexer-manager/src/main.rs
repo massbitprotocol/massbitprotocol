@@ -26,7 +26,7 @@ async fn main() {
         };
     }
     let ipfs_client = create_ipfs_client();
-    let socket_addr = indexer_manager::API_ENDPOINT.as_str();
+    let socket_addr = indexer_manager::INDEXER_MANAGER_ENDPOINT.as_str();
     let mut server = ServerBuilder::default()
         .with_entry_point(socket_addr)
         .with_ipfs_clients(ipfs_client)
