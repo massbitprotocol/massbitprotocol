@@ -132,13 +132,17 @@ impl IndexerService {
         indexer: Indexer,
     ) -> Result<warp::reply::Json, Rejection> {
         // Call Indexer-manager
-        println!("Call deploy api on Indexer-manager: {:?}", &indexer);
+        log::info!(
+            "Call deploy api on Indexer-manager {:?}: {:?}",
+            &*INDEXER_MANAGER_DEPLOY_ENDPOINT,
+            &indexer
+        );
         let res = reqwest::Client::new()
             .post(&*INDEXER_MANAGER_DEPLOY_ENDPOINT)
             .json(&indexer)
             .send()
             .await;
-        println!("response: {:?}", &res);
+        log::info!("response: {:?}", &res);
         match res {
             Ok(res) => match res.json::<Value>().await {
                 Ok(res) => Ok(warp::reply::json(&res)),
@@ -189,7 +193,7 @@ impl IndexerService {
                     }
                     debug!("indexer: {:?}", &indexer);
                     // Update indexer status
-                    indexer.status = IndexerStatus::Deploying;
+                    // indexer.status = IndexerStatus::Deploying;
                     if self.update_indexer(&indexer).await.is_ok() {
                         return self.call_deploy_indexer_manager(indexer).await;
                     }

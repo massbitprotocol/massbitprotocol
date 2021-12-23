@@ -54,18 +54,22 @@ impl GitHelper {
             .get_content()
             .send()
             .await?;
+        log::info!("content: {:?}", &content);
         if let Some(first_item) = content
             .items
             .iter()
             .filter(|item| item.r#type.as_str() == "dir" && item.r#name.as_str() == "releases")
             .next()
         {
+            log::info!("first_item: {:?}", first_item);
             let response = self.get_github_content(&first_item.url).await?;
+            log::info!("response: {:?}", response);
             match response.json::<Vec<Content>>().await {
                 Ok(contents) => {
                     for content in contents.iter() {
                         if FILES.contains_key(&content.name) {
                             if let Some(bytes) = self.download_file(content).await {
+                                log::info!("map.insert into: {:?}", &content.name);
                                 map.insert(FILES.get(&content.name).unwrap().clone(), bytes);
                             }
                         }
@@ -76,12 +80,13 @@ impl GitHelper {
                 }
             }
         }
+        log::info!("Ok(map): {:?}", map.keys());
         Ok(map)
     }
     async fn download_file(&self, content: &Content) -> Option<Bytes> {
         let mut resp = None;
         if let Some(url) = &content.download_url {
-            println!("download_file url:{}", &url);
+            log::info!("download_file url:{}", &url);
             if let Ok(response) = self.get_github_content(url).await {
                 resp = response.bytes().await.ok();
             }
