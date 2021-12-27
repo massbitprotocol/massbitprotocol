@@ -17,12 +17,15 @@ embed_migrations!("./migrations");
 #[tokio::main]
 async fn main() {
     let _res = init_logger(&COMPONENT_NAME);
+    println!("Start indexer manager");
+    log::info!("Start indexer manager log::info");
+
     let connection_pool =
         create_r2d2_connection_pool::<PgConnection>(DATABASE_URL.as_str(), *CONNECTION_POOL_SIZE);
     if let Ok(conn) = &connection_pool.get() {
         match embedded_migrations::run(conn) {
-            Ok(res) => println!("Finished embedded_migration {:?}", &res),
-            Err(err) => println!("{:?}", &err),
+            Ok(res) => log::info!("Finished embedded_migration {:?}", &res),
+            Err(err) => log::info!("{:?}", &err),
         };
     }
     let ipfs_client = create_ipfs_client();

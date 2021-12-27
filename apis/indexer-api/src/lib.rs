@@ -30,7 +30,7 @@ lazy_static! {
     pub static ref INDEXER_MANAGER_ENDPOINT: String =
         env::var("INDEXER_MANAGER_ENDPOINT").unwrap_or(String::from("localhost:3032"));
     pub static ref INDEXER_MANAGER_DEPLOY_ENDPOINT: String = format!(
-        "http://{}/indexers/deploy)",
+        "http://{}/indexers/deploy",
         INDEXER_MANAGER_ENDPOINT.clone()
     );
     pub static ref DATABASE_URL: String = env::var("DATABASE_URL").unwrap_or(String::from(

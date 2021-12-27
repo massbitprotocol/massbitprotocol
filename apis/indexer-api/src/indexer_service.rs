@@ -145,8 +145,14 @@ impl IndexerService {
         log::info!("response: {:?}", &res);
         match res {
             Ok(res) => match res.json::<Value>().await {
-                Ok(res) => Ok(warp::reply::json(&res)),
-                Err(e) => Ok(warp::reply::json(&json!({ "error": e.to_string() }))),
+                Ok(res) => {
+                    log::info!("Ok res: {:?}", &res);
+                    Ok(warp::reply::json(&res))
+                }
+                Err(e) => {
+                    log::info!("Error: {:?}", &e);
+                    Ok(warp::reply::json(&json!({ "error": e.to_string() })))
+                }
             },
             Err(e) => return Ok(warp::reply::json(&json!({ "error": e.to_string() }))),
         }
