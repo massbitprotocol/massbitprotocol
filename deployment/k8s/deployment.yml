@@ -22,17 +22,135 @@ spec:
             - containerPort: 3032
           env:
             - name: DATABASE_URL
-              # Todo: Move this to secret
               value: postgres://user:pass@localhost/index-data
             - name: CHAIN_READER_URL
-              # Todo: Use Internal IP for better performance
               value: ""
             - name: IPFS_ADDRESS
-              # Todo: Use Internal IP for better performance
               value: ""
+            - name: SOLANA_URL
+              value: ""
+            - name: RUST_LOG_TYPE
+              value: "file"
+
           securityContext:
             runAsUser: 1000
       securityContext:
         fsGroup: 1000
       imagePullSecrets:
         - name: regcred
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: indexer-api
+  labels:
+    app: indexer-api
+spec:
+  selector:
+    matchLabels:
+      app: indexer-api
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: indexer-api
+    spec:
+      containers:
+        - name: indexer-api
+          imagePullPolicy: IfNotPresent
+          image: anhhuy0501/indexer-api
+          ports:
+            - containerPort: 3031
+          env:
+            - name: DATABASE_URL
+              value: postgres://user:pass@localhost/index-data
+            - name: IPFS_ADDRESS
+              value: ""
+            - name: INDEXER_MANAGER_ENDPOINT
+              value: ""
+            - name: RUST_LOG_TYPE
+              value: "file"
+
+          securityContext:
+            runAsUser: 1000
+      securityContext:
+        fsGroup: 1000
+      imagePullSecrets:
+        - name: regcred
+        containers:
+          - name: indexer-api
+            imagePullPolicy: IfNotPresent
+            image: anhhuy0501/indexer-api
+            ports:
+              - containerPort: 3031
+            env:
+              - name: DATABASE_URL
+                value: postgres://user:pass@localhost/index-data
+              - name: IPFS_ADDRESS
+                value: ""
+              - name: INDEXER_MANAGER_ENDPOINT
+                value: ""
+              - name: RUST_LOG_TYPE
+                value: "file"
+
+            securityContext:
+              runAsUser: 1000
+
+          - name: massbit-graphql
+            imagePullPolicy: IfNotPresent
+            image: anhhuy0501/massbit-graphql
+            ports:
+              - containerPort: 3041
+            env:
+              - name: DATABASE_URL
+                value: postgres://user:pass@localhost/index-data
+              - name: RUST_LOG_TYPE
+                value: "file"
+
+            securityContext:
+              runAsUser: 1000
+
+        securityContext:
+          fsGroup: 1000
+        imagePullSecrets:
+          - name: regcred
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chain-reader
+  labels:
+    app: chain-reader
+spec:
+  selector:
+    matchLabels:
+      app: chain-reader
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: chain-reader
+    spec:
+      containers:
+        - name: chain-reader
+          imagePullPolicy: IfNotPresent
+          image: anhhuy0501/chain-reader
+          ports:
+            - containerPort: 50051
+          env:
+            - name: CHAIN_READER_URL
+              value: ""
+            - name: SOLANA_URL
+              value: ""
+            - name: RUST_LOG_TYPE
+              value: "file"
+
+          securityContext:
+            runAsUser: 1000
+      securityContext:
+        fsGroup: 1000
+      imagePullSecrets:
+        - name: regcred
+
+
+
