@@ -67,6 +67,7 @@ impl<'a> IndexerServer {
             .create_route_indexer_deploy(self.indexer_service.clone(), self.indexer_manager.clone())
             .with(&cors)
             .recover(handle_rejection);
+        log::info!("entry_point: {}", &self.entry_point);
         let socket_addr: SocketAddr = self.entry_point.parse().unwrap();
 
         warp::serve(router).run(socket_addr).await;

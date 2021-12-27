@@ -58,3 +58,4 @@ terraform.tfstate.backup
 google-token.json
 
 .env
+/scripts/remote_deploy/.bash_profile
