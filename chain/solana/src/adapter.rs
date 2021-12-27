@@ -34,7 +34,7 @@ const GET_NEW_SLOT_DELAY_MS: u64 = 500;
 const BLOCK_BATCH_SIZE: usize = 10;
 const GET_BLOCK_TIMEOUT_SEC: u64 = 60;
 const RPC_BLOCK_ENCODING: UiTransactionEncoding = UiTransactionEncoding::Base64;
-const QUEUE_GET_BLOCK_TIME: usize = 40;
+const QUEUE_GET_BLOCK_TIME: usize = 40 - 1;
 const WINDOW_TIME: u128 = 10000;
 #[derive(Clone)]
 pub struct SolanaAdapter {
@@ -122,7 +122,7 @@ impl SolanaAdapter {
             }
         }
         if counter > 0 {
-            log::info!("Remove {:?} from request_times queue for network {:?}. Remained elements in queue {:?}. Oldest request sent at {:?}", 
+            log::info!("Remove {:?} elements from request_times queue for network {:?}. Remained elements in queue {:?}. Oldest request sent at {:?}", 
                 counter, &self.network, queue.len(), queue.get(0).and_then(|time| Some(time.elapsed())));
         }
         queue.push_back(Instant::now());
