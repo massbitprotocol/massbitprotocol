@@ -819,7 +819,7 @@ dependencies = [
  "num-integer",
  "num-traits",
  "serde",
- "time",
+ "time 0.1.44",
  "winapi 0.3.9",
 ]
 
@@ -2637,7 +2637,7 @@ dependencies = [
  "log 0.3.9",
  "mime 0.2.6",
  "num_cpus",
- "time",
+ "time 0.1.44",
  "traitobject",
  "typeable",
  "unicase 1.4.2",
@@ -2662,7 +2662,7 @@ dependencies = [
  "log 0.4.14",
  "net2",
  "rustc_version 0.2.3",
- "time",
+ "time 0.1.44",
  "tokio 0.1.22",
  "tokio-buf",
  "tokio-executor",
@@ -2980,6 +2980,7 @@ dependencies = [
  "bs58 0.4.0",
  "bytes 1.1.0",
  "chain-solana",
+ "chrono",
  "derive_more",
  "diesel",
  "diesel-derive-enum",
@@ -2987,6 +2988,7 @@ dependencies = [
  "futures 0.3.18",
  "indexer-orm",
  "itertools 0.10.3",
+ "jsonwebtoken 8.0.0-beta.7",
  "lazy_static",
  "libloading",
  "log 0.4.14",
@@ -3007,6 +3009,7 @@ dependencies = [
  "solana-sdk 1.9.0",
  "solana-transaction-status",
  "structopt",
+ "thiserror",
  "tokio 1.12.0",
  "tokio-compat-02",
  "tokio02-spawn",
@@ -3315,11 +3318,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "afabcc15e437a6484fc4f12d0fd63068fe457bf93f1c148d3d9649c60b103f32"
 dependencies = [
  "base64 0.12.3",
- "pem",
+ "pem 0.8.3",
  "ring",
  "serde",
  "serde_json",
- "simple_asn1",
+ "simple_asn1 0.4.1",
+]
+
+[[package]]
+name = "jsonwebtoken"
+version = "8.0.0-beta.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a87e7bf0fee595b438897abfcb4523d238ee74102bf742f84d68723032b1b75a"
+dependencies = [
+ "base64 0.13.0",
+ "pem 1.0.1",
+ "ring",
+ "serde",
+ "serde_json",
+ "simple_asn1 0.6.1",
 ]
 
 [[package]]
@@ -4284,7 +4301,7 @@ dependencies = [
  "futures 0.1.31",
  "parking_lot 0.3.8",
  "smallvec 0.3.4",
- "time",
+ "time 0.1.44",
 ]
 
 [[package]]
@@ -4348,7 +4365,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
- "time",
+ "time 0.1.44",
  "typemap",
  "url 1.7.2",
 ]
@@ -4520,7 +4537,7 @@ dependencies = [
  "bytes 1.1.0",
  "chrono",
  "hyperx",
- "jsonwebtoken",
+ "jsonwebtoken 7.2.0",
  "once_cell",
  "reqwest 0.11.6",
  "serde",
@@ -4810,6 +4827,17 @@ name = "pem"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fd56cbd21fea48d0c440b41cd69c589faacade08c992d9a54e471b79d0fd13eb"
+dependencies = [
+ "base64 0.13.0",
+ "once_cell",
+ "regex",
+]
+
+[[package]]
+name = "pem"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "06673860db84d02a63942fa69cd9543f2624a5df3aea7f33173048fa7ad5cf1a"
 dependencies = [
  "base64 0.13.0",
  "once_cell",
@@ -5377,6 +5405,15 @@ name = "quick-error"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a993555f31e5a609f617c12db6250dedcac1b0a85076912c436e6fc9b2c8e6a3"
+
+[[package]]
+name = "quickcheck"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "588f6378e4dd99458b60ec275b4477add41ce4fa9f64dcba6f15adccb19b50d6"
+dependencies = [
+ "rand 0.8.4",
+]
 
 [[package]]
 name = "quote"
@@ -6395,6 +6432,18 @@ dependencies = [
  "chrono",
  "num-bigint 0.2.6",
  "num-traits",
+]
+
+[[package]]
+name = "simple_asn1"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a762b1c38b9b990c694b9c2f8abe3372ce6a9ceaae6bca39cfc46e054f45745"
+dependencies = [
+ "num-bigint 0.4.2",
+ "num-traits",
+ "thiserror",
+ "time 0.3.5",
 ]
 
 [[package]]
@@ -7642,6 +7691,24 @@ dependencies = [
  "wasi 0.10.0+wasi-snapshot-preview1",
  "winapi 0.3.9",
 ]
+
+[[package]]
+name = "time"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41effe7cfa8af36f439fac33861b66b049edc6f9a32331e2312660529c1c24ad"
+dependencies = [
+ "itoa",
+ "libc",
+ "quickcheck",
+ "time-macros",
+]
+
+[[package]]
+name = "time-macros"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25eb0ca3468fc0acc11828786797f6ef9aa1555e4a211a60d64cc8e4d1be47d6"
 
 [[package]]
 name = "tiny-bip39"

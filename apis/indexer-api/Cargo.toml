@@ -25,7 +25,9 @@ massbit-storage-postgres = { path = "../../core/storage/postgres"}
 Inflector = "0.11.3"
 chain-solana = { path = "../../chain/solana" }
 structopt = "0.3.25"
-
+chrono = "0.4"
+jsonwebtoken = "8.0.0-beta.7"
+thiserror = "1.0"
 
 octocrab = "0.15.1"
 priority-queue = "0.7.0"
