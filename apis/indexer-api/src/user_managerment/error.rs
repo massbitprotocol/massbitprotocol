@@ -11,9 +11,9 @@ pub enum Error {
     JWTTokenError,
     #[error("jwt token creation error")]
     JWTTokenCreationError,
-    #[error("no auth header")]
+    #[error("no user header")]
     NoAuthHeaderError,
-    #[error("invalid auth header")]
+    #[error("invalid user header")]
     InvalidAuthHeaderError,
     #[error("no permission")]
     NoPermissionError,
