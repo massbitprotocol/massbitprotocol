@@ -26,7 +26,7 @@ thiserror = "1.0.30"
 
 # Massbit dependencies
 massbit-grpc = { path = "../../core/grpc" }
-
+massbit-data = { path = "../../core/data" }
 #[dependencies.massbit-grpc]
 #package = "massbit-grpc"
 #git = "https://github.com/massbitprotocol/massbitprotocol.git"

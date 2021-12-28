@@ -15,5 +15,5 @@ make dev-deploy id=54e42a73317d80d1cf8289b49af96302
 ### Manual deploy
 ```bash
 cd scripts
-./manual-deploy.sh
+./manual-remote_deploy.sh
 ```

@@ -1,10 +1,11 @@
-use crate::command::{ChainConfig, Config};
+//use crate::command::Config;
 use crate::indexer_broadcast::IndexerBroadcast;
 use crate::solana_chain;
 use crate::solana_chain_adapter::ChainAdapter;
-use crate::SOLANA_NETWORKS;
 use chain_ethereum::{Chain, TriggerFilter};
-use chain_solana::types::ConfirmedBlockWithSlot;
+use chain_solana::adapter::{SolanaNetworkAdapter, SolanaNetworkAdapters};
+use chain_solana::types::{ChainConfig, ConfirmedBlockWithSlot};
+use chain_solana::SOLANA_NETWORKS;
 use log::{error, info};
 use massbit::prelude::tokio::sync::mpsc::Sender;
 use massbit_chain_solana::data_type::SolanaFilter;
@@ -23,6 +24,7 @@ use tokio::task;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};
 use web3::api::Net;
+use web3::types::BlockId::Hash;
 
 const QUEUE_BUFFER: usize = 1024;
 
@@ -49,11 +51,9 @@ impl Stream for StreamService {
         let network = &request.get_ref().network;
         let mut services = self.network_services.write().await;
         if !services.contains_key(network) {
-            if let Some(config) = SOLANA_NETWORKS.get(network) {
-                let mut service = NetworkService::new(network, config);
-                &service.init();
-                services.insert(network.clone(), service);
-            }
+            let mut service = NetworkService::new(network);
+            &service.init();
+            services.insert(network.clone(), service);
         }
         if let Some(service) = services.get_mut(network) {
             service.register_indexer(request.get_ref(), tx);
@@ -64,28 +64,28 @@ impl Stream for StreamService {
 
 struct NetworkService {
     network: String,
-    chain_adapter: Arc<Mutex<ChainAdapter>>,
+    chain_adapters: Arc<Mutex<SolanaNetworkAdapters>>,
     broadcaster: Arc<Mutex<IndexerBroadcast>>,
 }
 
 impl NetworkService {
-    fn new(network: &String, config: &ChainConfig) -> Self {
+    fn new(network: &str) -> Self {
         let (tx, rx) = mpsc::channel(QUEUE_BUFFER);
-        let chain_adapter = Arc::new(Mutex::new(ChainAdapter::new(config, tx)));
+        //let chain_adapter = Arc::new(Mutex::new(ChainAdapter::new(config, tx)));
         let broadcaster = Arc::new(Mutex::new(IndexerBroadcast::new(rx)));
         NetworkService {
             network: network.to_string(),
-            chain_adapter,
+            chain_adapters: Arc::new(Mutex::new(SolanaNetworkAdapters::new(network, Some(tx)))),
             broadcaster,
         }
     }
     fn init(&mut self) {
         /// chain reader thread
-        let mut chain_adapter = self.chain_adapter.clone();
+        let mut chain_adapters = self.chain_adapters.clone();
         let name = format!("{:?}_reader", &self.network);
         massbit::spawn_thread(name, move || {
             massbit::block_on(task::unconstrained(async {
-                chain_adapter.lock().unwrap().start().await;
+                chain_adapters.lock().unwrap().start().await;
             }))
         });
         let mut broadcaster = self.broadcaster.clone();
@@ -93,12 +93,11 @@ impl NetworkService {
         massbit::spawn_thread(name, move || {
             massbit::block_on(task::unconstrained(async {
                 loop {
+                    ///Try get incoming block from chain adapter
                     let success = broadcaster.lock().unwrap().try_recv().await;
                     if !success {
                         sleep(Duration::from_millis(100)).await;
                         print!(".");
-                    } else {
-                        print!("*** Broadcaster receive block from chain_adapter");
                     }
                 }
             }))
@@ -114,26 +113,5 @@ impl NetworkService {
             &request.filter,
             indexer_sender,
         );
-    }
-}
-
-pub enum BlockInfo {
-    BlockSlot(u64),
-    ConfirmBlockWithSlot(ConfirmedBlockWithSlot),
-}
-
-impl From<u64> for BlockInfo {
-    fn from(slot: u64) -> Self {
-        BlockInfo::BlockSlot(slot)
-    }
-}
-
-impl From<(u64, ConfirmedBlock)> for BlockInfo {
-    fn from(val: (u64, ConfirmedBlock)) -> Self {
-        let (slot, block) = val;
-        BlockInfo::ConfirmBlockWithSlot(ConfirmedBlockWithSlot {
-            block_slot: slot,
-            block: Some(block),
-        })
     }
 }

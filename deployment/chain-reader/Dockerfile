@@ -1,6 +1,6 @@
 FROM rust
-COPY . .
+COPY "target/release/chain-reader" .
 RUN ls -ll
-RUN ["chmod", "+x", "target/release/chain-reader/chain-reader"]
+RUN ["chmod", "+x", "chain-reader"]
 RUN ls -ll
-CMD bash -c "sleep 5; RUST_LOG=info ./target/release/chain-reader/chain-reader"
+CMD bash -c "RUST_LOG_TYPE=file ./chain-reader 2>&1 | tee console-chain-reader.log"

@@ -15,4 +15,4 @@ CREATE TABLE IF NOT EXISTS indexers
             primary key
 );
 create unique index indexers_hash_uindex
-    on indexers_ (hash);
+    on indexer_deployments (hash);

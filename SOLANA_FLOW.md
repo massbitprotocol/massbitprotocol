@@ -22,7 +22,7 @@ git clone https://github.com/massbitprotocol/massbitprotocol.git
 cd massbitprotocol
 make run-code-compiler
 make run-chain-reader
-make run-index-manager
+make run-indexer-manager
 cd ..
 ```
 Or docker image (update later)
@@ -30,7 +30,7 @@ Or docker image (update later)
 ```
 8. Deploy 
 ```
-massbit-sol deploy --url http://127.0.0.1:3031/indexer/deploy --directory indexer
+massbit-sol deploy --url http://127.0.0.1:3032/indexer/deploy --directory indexer
 ```
 9. Check indexed data at
 ```

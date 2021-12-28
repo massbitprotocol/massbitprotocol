@@ -27,7 +27,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
         .get_matches();
     let port = matches.value_of("port").unwrap_or("50051").to_string();
     //command::run().await
-
     // Rpc server: listens incoming request from indexer.
     // For each indexer create a channel
     // and then filtered data is sent via this channel

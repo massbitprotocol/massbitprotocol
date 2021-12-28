@@ -1,6 +1,5 @@
 use crate::command::ChainConfig;
-use crate::stream_service::BlockInfo;
-use chain_solana::types::ConfirmedBlockWithSlot;
+use chain_solana::types::{BlockInfo, ConfirmedBlockWithSlot};
 use log::{debug, info, warn};
 use massbit::firehose::bstream::{BlockRequest, BlockResponse};
 use massbit::prelude::{Arc, Duration};
@@ -61,7 +60,7 @@ impl ChainAdapter {
                     //info!("Root: {:?}",new_info.root);
                     match self.last_block {
                         Some(value_last_indexed_slot) => {
-                            if current_root == value_last_indexed_slot {
+                            if current_root <= value_last_indexed_slot {
                                 sleep(Duration::from_millis(GET_NEW_SLOT_DELAY_MS)).await;
                                 continue;
                             }

@@ -1,5 +1,12 @@
-/target/
-**/target/
+**/target
+!target
+target/*
+!target/release
+target/release/*
+!target/release/chain-reader
+!target/release/indexer-api
+!target/release/indexer-manager
 .idea
 .git
 .github
+data/

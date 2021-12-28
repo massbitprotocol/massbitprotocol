@@ -1,5 +1,4 @@
-use crate::stream_service::BlockInfo;
-use chain_solana::types::ConfirmedBlockWithSlot;
+use chain_solana::types::{BlockInfo, ConfirmedBlockWithSlot};
 use log::{debug, info};
 use massbit::prelude::Future;
 use massbit_chain_solana::data_type::{ExtBlock, SolanaBlock, SolanaFilter};

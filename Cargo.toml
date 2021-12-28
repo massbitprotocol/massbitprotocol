@@ -2,25 +2,24 @@
 members = [
     "analytics",
     "apis/solana_api",
-    "apis/indexer_api",
+    "apis/indexer-api",
     "chain-reader",
-    "core/chain/solana",
-    "core/drive",
-    "core/index-store",
+    "core/indexer-orm",
+    "core/storage/postgres",
+    "core/hasura-client",
+    "core/data",
+    "core/indexer-orm",
     "cli",
     "chain/ethereum",
     "chain/solana",
     "chain/solana-sdk",
     "massbit",
-    "runtime/wasm",
-    "runtime/derive",
     "store/postgres",
     "manager",
-    "index-manager/main",
-    "plugin/adapter",
-    "plugin/plugin",
+    "indexer-manager",
     "tests",
-    "massbit-sol-cli"
+    "massbit-sol-cli",
+    "graphql"
 ]
 exclude = ["code-compiler/generated"]
 

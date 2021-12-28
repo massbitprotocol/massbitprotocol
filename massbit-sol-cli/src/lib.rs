@@ -12,7 +12,7 @@ use std::path::PathBuf;
 lazy_static! {
     pub static ref COMPONENT_NAME: String = String::from("[SolanaCli]");
     pub static ref INDEXER_ENDPOINT: String =
-        env::var("INDEXER_ENDPOINT").unwrap_or(String::from("http://127.0.0.1:3031"));
+        env::var("INDEXER_ENDPOINT").unwrap_or(String::from("http://127.0.0.1:3032"));
 }
 pub const METHOD_DEPLOY: &str = "indexer/deploy";
 pub const SO_FILE_NAME: &str = "libblock.so";

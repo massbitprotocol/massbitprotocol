@@ -35,10 +35,6 @@ chain-reader/data/
 # ignore node_modules of npm
 node_modules/
 
-# ignore all but .gitkeep
-index-manager/generated/*
-!index-manager/generated/.gitkeep
-
 log.html
 output.xml
 report.html
@@ -60,3 +56,6 @@ terraform.tfstate.backup
 
 # Google
 google-token.json
+
+.env
+/scripts/remote_deploy/.bash_profile

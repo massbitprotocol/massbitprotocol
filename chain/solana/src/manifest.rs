@@ -37,7 +37,6 @@ pub trait ManifestResolve {
         id: String,
         mut raw: serde_yaml::Mapping,
         resolver: &impl LinkResolver,
-        max_spec_version: semver::Version,
     ) -> Result<SolanaIndexerManifest, IndexerManifestResolveError>;
 }
 #[async_trait]
@@ -46,7 +45,6 @@ pub trait ManifestUnresolve {
         self,
         resolver: &impl LinkResolver,
         logger: &Logger,
-        max_spec_version: semver::Version,
     ) -> Result<SolanaIndexerManifest, anyhow::Error>;
 }
 impl UnresolvedSolanaSchema {
@@ -67,16 +65,18 @@ impl ManifestResolve for SolanaIndexerManifest {
         id: String,
         mut raw: Mapping,
         resolver: &impl LinkResolver,
-        max_spec_version: Version,
     ) -> Result<SolanaIndexerManifest, IndexerManifestResolveError> {
         // Inject the IPFS hash as the ID of the indexer into the definition.
-        raw.insert(serde_yaml::Value::from("id"), serde_yaml::Value::from(id));
+        raw.insert(
+            serde_yaml::Value::from("id"),
+            serde_yaml::Value::from(id.replace("-", "")),
+        );
 
         // Parse the YAML data into an UnresolvedIndexerManifest
         let unresolved: UnresolvedSolanaIndexerManifest = serde_yaml::from_value(raw.into())?;
 
         unresolved
-            .resolve(&*resolver, logger, max_spec_version)
+            .resolve(&*resolver, logger)
             .await
             .map_err(IndexerManifestResolveError::ResolveError)
     }
@@ -88,7 +88,6 @@ impl ManifestUnresolve for UnresolvedSolanaIndexerManifest {
         self,
         resolver: &impl LinkResolver,
         logger: &Logger,
-        max_spec_version: semver::Version,
     ) -> Result<SolanaIndexerManifest, anyhow::Error> {
         let UnresolvedSolanaIndexerManifest {
             id,
@@ -101,15 +100,15 @@ impl ManifestUnresolve for UnresolvedSolanaIndexerManifest {
             chain,
         } = self;
 
-        if !(MIN_SPEC_VERSION..=max_spec_version.clone()).contains(&spec_version) {
-            return Err(anyhow!(
-                "This Graph Node only supports manifest spec versions between {} and {}, but indexer `{}` uses `{}`",
-                MIN_SPEC_VERSION,
-                max_spec_version,
-                id,
-                spec_version
-            ));
-        }
+        // if !(MIN_SPEC_VERSION..=max_spec_version.clone()).contains(&spec_version) {
+        //     return Err(anyhow!(
+        //         "This Graph Node only supports manifest spec versions between {} and {}, but indexer `{}` uses `{}`",
+        //         MIN_SPEC_VERSION,
+        //         max_spec_version,
+        //         id,
+        //         spec_version
+        //     ));
+        // }
 
         let (schema, data_sources, templates) = try_join3(
             schema.resolve(id.clone(), resolver, logger),

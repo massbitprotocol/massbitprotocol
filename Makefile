@@ -53,7 +53,7 @@ test-run-contract:
 
 	@echo "Running polygon contract tests ..."
 	cd e2e-test/polygon && robot contract.robot
-	make restart-chain-reader-index-manager
+	make restart-chain-reader-indexer-manager
 
 	@echo "Running bsc contract tests ..."
 	cd e2e-test/bsc && robot contract.robot
@@ -73,11 +73,11 @@ test-run-basic:
 
 	@echo "Running basic solana tests ..."
 	cd e2e-test/solana && robot basic.robot
-	make restart-chain-reader-index-manager
+	make restart-chain-reader-indexer-manager
 
 	@echo "Running basic ethereum tests ..."
 	cd e2e-test/ethereum && robot basic.robot
-	make restart-chain-reader-index-manager
+	make restart-chain-reader-indexer-manager
 
 
 #This test start/restart all service and run all test
@@ -99,11 +99,11 @@ test-run-basic-and-up:
 
 	@echo "Running basic solana tests ..."
 	cd e2e-test/solana && robot basic.robot || true
-	make restart-chain-reader-index-manager
+	make restart-chain-reader-indexer-manager
 
 	@echo "Running basic ethereum tests ..."
 	cd e2e-test/ethereum && robot basic.robot || true
-	make restart-chain-reader-index-manager
+	make restart-chain-reader-indexer-manager
 
 test-init:
 	@echo "Installing all the dependencies for E2E tests ..."
@@ -116,12 +116,12 @@ create-list-user-example-json-file:
 	@echo "Create list user examples json file ..."
 	cd user-example && python create_example_json.py
 
-restart-chain-reader-index-manager:
-	@echo "Stop index-manager and chain-reader in tmux"
+restart-chain-reader-indexer-manager:
+	@echo "Stop indexer-manager and chain-reader in tmux"
 	tmux kill-session -t chain-reader
-	tmux kill-session -t index-manager
-	@echo "Run index-manager in tmux"
-	tmux new -d -s index-manager scripts/run-indexer-sol.sh
+	tmux kill-session -t indexer-manager
+	@echo "Run indexer-manager in tmux"
+	tmux new -d -s indexer-manager scripts/run-indexer-sol.sh
 	@echo "Run chain-reader in tmux"
 	tmux new -d -s chain-reader scripts/run-chain-reader.sh
 
@@ -143,9 +143,9 @@ deploy:
 	cargo run --bin massbit-sol -- deploy -u http://127.0.0.1:3031/indexers/deploy -d code-compiler/generated/$(id)
 
 
-run-index-manager:
-	@echo "Run index-manager"
-	cargo run --bin index-manager-main
+run-indexer-manager:
+	@echo "Run indexer-manager"
+	cargo run --bin indexer-manager
 
 run-chain-reader:
 	@echo "Run chain-reader"
@@ -236,8 +236,8 @@ tmux-indexer-api-binary:
 index-quickswap-full:
 	@echo "A quick fix to bypass the not able to start tmux error"
 	export TERM=xterm
-	@echo "Run index-manager in tmux"
-	tmux new -d -s index-manager scripts/run-indexer-sol.sh
+	@echo "Run indexer-manager in tmux"
+	tmux new -d -s indexer-manager scripts/run-indexer-sol.sh
 	@echo "Run chain-reader in tmux"
 	tmux new -d -s chain-reader scripts/run-chain-reader.sh
 	@echo "Run code-compiler in tmux"

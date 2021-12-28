@@ -16,7 +16,7 @@ jobs:
     name: Build Chain Reader & Indexer
     env:
       CHAIN_READER: chain-reader
-      INDEXER: index-manager-main
+      INDEXER: indexer-manager-main
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -40,8 +40,8 @@ jobs:
 
       - name: Allow chain-reader binary to be executable
         run: sudo chmod +x target/release/chain-reader
-      - name: Allow index-manager-main binary to be executable
-        run: sudo chmod +x target/release/index-manager-main
+      - name: Allow indexer-manager-main binary to be executable
+        run: sudo chmod +x target/release/indexer-manager-main
 
       - name: List release files
         run: ls -ll target/release
@@ -53,8 +53,8 @@ jobs:
       - name: Upload indexer artifact
         uses: actions/upload-artifact@v2
         with:
-          name: index-manager-main
-          path: target/release/index-manager-main
+          name: indexer-manager-main
+          path: target/release/indexer-manager-main
 
   ##################
   # Running docker #
@@ -117,12 +117,12 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v2
         with:
-          name: index-manager-main
-          path: target/release/index-manager-main
+          name: indexer-manager-main
+          path: target/release/indexer-manager-main
       - name: Allow binary to be executable
-        run: sudo chmod +x target/release/index-manager-main/index-manager-main
+        run: sudo chmod +x target/release/indexer-manager-main/indexer-manager-main
       - name: Get our docker file to the main source
-        run: cp deployment/index-manager/Dockerfile Dockerfile
+        run: cp deployment/indexer-manager/Dockerfile Dockerfile
       - name: Remove the .dockerignore file if it exists because we need the /target folder in prod
         run: rm -f -- .dockerignore
       - name: List files

@@ -5,19 +5,20 @@ use solana_transaction_status::{ConfirmedBlock, TransactionWithStatusMeta};
 use std::str::FromStr;
 
 pub type Pubkey = solana_program::pubkey::Pubkey;
-pub type BlockSlot = i32;
+pub type BlockSlot = i64;
 
 #[derive(Clone, Debug)]
 pub struct ChainConfig {
     pub url: String,
     pub ws: String,
+    pub name: String,
     pub network: String,
     pub supports_eip_1898: bool,
 }
 
 /// A block hash and block number from a specific block.
 ///
-/// Block numbers are signed 32 bit integers
+/// Block numbers are signed 64 bit integers
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct BlockPtr {
     pub hash: String,
@@ -90,6 +91,27 @@ impl SolanaFilter {
             })
             .collect();
         filtered_block
+    }
+}
+
+pub enum BlockInfo {
+    BlockSlot(u64),
+    ConfirmBlockWithSlot(ConfirmedBlockWithSlot),
+}
+
+impl From<u64> for BlockInfo {
+    fn from(slot: u64) -> Self {
+        BlockInfo::BlockSlot(slot)
+    }
+}
+
+impl From<(u64, ConfirmedBlock)> for BlockInfo {
+    fn from(val: (u64, ConfirmedBlock)) -> Self {
+        let (slot, block) = val;
+        BlockInfo::ConfirmBlockWithSlot(ConfirmedBlockWithSlot {
+            block_slot: slot,
+            block: Some(block),
+        })
     }
 }
 

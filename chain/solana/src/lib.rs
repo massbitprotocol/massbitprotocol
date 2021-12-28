@@ -21,10 +21,11 @@ const LIMIT_FILTER_RESULT: usize = 1000;
 lazy_static! {
     // Load default config
     pub static ref SOLANA_NETWORKS: HashMap<String, ChainConfig> = HashMap::<String, ChainConfig>::from_iter(IntoIter::new([
-        ("mainnet".to_string(), ChainConfig
+        ("mainnet-beta".to_string(), ChainConfig
                 {
                     ws: "ws://api.mainnet-beta.solana.com".to_string(),
                     url: "https://api.mainnet-beta.solana.com".to_string(),
+                    name: "mainnet-beta".to_string(),
                     network: "mainnet".to_string(),
                     supports_eip_1898: true,
                 }
@@ -33,7 +34,26 @@ lazy_static! {
                 {
                     ws: "ws://solana-api.projectserum.com".to_string(),
                     url: "https://solana-api.projectserum.com".to_string(),
-                    network: "projectserum".to_string(),
+                    name: "projectserum".to_string(),
+                    network: "mainnet".to_string(),
+                    supports_eip_1898: true,
+                }
+        ),
+        ("solana_testnet".to_string(), ChainConfig
+                {
+                    ws: "ws://api.testnet.solana.com".to_string(),
+                    url: "https://api.testnet.solana.com".to_string(),
+                    name: "solana_testnet".to_string(),
+                    network: "testnet".to_string(),
+                    supports_eip_1898: true,
+                }
+        ),
+        ("solana_devnet".to_string(), ChainConfig
+                {
+                    ws: "ws://api.devnet.solana.com".to_string(),
+                    url: "https://api.devnet.solana.com".to_string(),
+                    name: "solana_devnet".to_string(),
+                    network: "devnet".to_string(),
                     supports_eip_1898: true,
                 }
         ),
@@ -41,6 +61,7 @@ lazy_static! {
                 {
                     ws: "ws://194.163.156.242:8899".to_string(),
                     url: "http://194.163.156.242:8899".to_string(),
+                    name: "massbit2".to_string(),
                     network: "massbit2".to_string(),
                     supports_eip_1898: true,
                 }
@@ -49,6 +70,7 @@ lazy_static! {
                 {
                     ws: "ws://194.163.186.82:8899".to_string(),
                     url: "http://194.163.186.82:8899".to_string(),
+                    name: "massbit3".to_string(),
                     network: "massbit3".to_string(),
                     supports_eip_1898: true,
                 }
