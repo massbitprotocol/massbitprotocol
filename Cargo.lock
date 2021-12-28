@@ -4241,6 +4241,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "41f5c9112cb662acd3b204077e0de5bc66305fa8df65c8019d5adb10e9ab6e58"
 
 [[package]]
+name = "monitor"
+version = "0.1.0"
+dependencies = [
+ "diesel",
+ "futures 0.1.31",
+ "http 0.2.5",
+ "hyper 0.14.15",
+ "indexer-orm",
+ "massbit-common",
+ "structopt",
+ "thiserror",
+ "tokio 1.12.0",
+]
+
+[[package]]
 name = "more-asserts"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
