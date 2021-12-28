@@ -59,3 +59,4 @@ google-token.json
 
 .env
 /scripts/remote_deploy/.bash_profile
+/apis/indexer-api/src/user_managerment/pubkey.pem
