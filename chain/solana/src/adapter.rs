@@ -19,13 +19,14 @@ use solana_transaction_status::{
     InnerInstructions, TransactionStatusMeta, TransactionTokenBalance, TransactionWithStatusMeta,
     UiInnerInstructions, UiTransactionEncoding, UiTransactionTokenBalance,
 };
+use std::cmp::Ordering;
 use std::collections::{HashMap, VecDeque};
 use std::str::FromStr;
 use std::sync::Arc;
 use std::thread::Thread;
 use std::time::Instant;
 use tokio::sync::mpsc::Sender;
-use tokio::sync::{Mutex, Semaphore};
+use tokio::sync::{AcquireError, Mutex, OwnedSemaphorePermit, Semaphore};
 use tokio::time::error::Elapsed;
 use tokio::time::{sleep, timeout};
 
@@ -42,6 +43,7 @@ pub struct SolanaAdapter {
     //Time in ms when client send request to server
     request_times: Arc<Mutex<VecDeque<Instant>>>,
     network: String,
+    sem: Arc<Semaphore>,
 }
 
 impl SolanaAdapter {
@@ -53,7 +55,19 @@ impl SolanaAdapter {
             rpc_client,
             request_times: Arc::new(Mutex::new(VecDeque::with_capacity(QUEUE_GET_BLOCK_TIME))),
             network: config.name.clone(),
+            sem: Arc::new(Semaphore::new(2 * BLOCK_BATCH_SIZE)),
         }
+    }
+    pub async fn acquire_owned(&self) -> Result<OwnedSemaphorePermit, AcquireError> {
+        log::info!(
+            "Available semaphore limit on network {:?} is {:?}",
+            &self.network,
+            self.sem.available_permits()
+        );
+        Arc::clone(&self.sem).acquire_owned().await
+    }
+    pub fn get_available_permits(&self) -> usize {
+        self.sem.available_permits()
     }
     pub fn get_latest_block(&self) -> ClientResult<Slot> {
         self.rpc_client.clone().get_slot()
@@ -425,8 +439,6 @@ impl SolanaNetworkAdapter {
 pub struct SolanaNetworkAdapters {
     pub adapters: Vec<SolanaNetworkAdapter>,
     sender: Option<Sender<BlockInfo>>,
-    ///Map contains adapter for next call.
-    next_adapter: HashMap<String, usize>,
     sem: Arc<Semaphore>,
 }
 
@@ -445,26 +457,19 @@ impl SolanaNetworkAdapters {
         SolanaNetworkAdapters {
             adapters,
             sender: tx,
-            next_adapter: Default::default(),
             sem: Arc::new(Semaphore::new(2 * BLOCK_BATCH_SIZE)),
         }
     }
     ///Return 2 different adapters, second one will be used in case of error while get block from first one.
     pub fn get_adapters(&mut self, method: &str) -> Vec<Arc<SolanaAdapter>> {
-        let ind = match self.next_adapter.get(method) {
-            Some(val) => val.clone(),
-            None => 0,
-        };
-        let adapter_counter = self.adapters.len();
-        self.next_adapter
-            .insert(method.to_string(), (ind + 1) % adapter_counter);
-        let mut adapters = vec![];
-        for i in 0..=1 {
-            if let Some(adapter) = self.adapters.get((ind + i) % adapter_counter) {
-                adapters.push(adapter.adapter.clone());
-            }
-        }
-        adapters
+        self.adapters.sort_by(|a, b| {
+            let a_permits = a.adapter.get_available_permits();
+            b.adapter.get_available_permits().cmp(&a_permits)
+        });
+        self.adapters
+            .iter()
+            .map(|adapter| adapter.adapter.clone())
+            .collect::<Vec<Arc<SolanaAdapter>>>()
     }
     ///Get available blocks from [start_slot].
     /// If start_slot is none then result contains current block
@@ -519,66 +524,66 @@ impl SolanaNetworkAdapters {
 
                     for slot in slots {
                         let adapters = self.get_adapters("get_block");
-                        log::info!(
-                            "Available semaphore limit {:?}",
-                            self.sem.available_permits()
-                        );
-                        let permit = Arc::clone(&self.sem).acquire_owned().await.unwrap();
-                        let sender = self.sender.clone();
-                        tokio::spawn(async move {
-                            let adapter_counter = adapters.len();
-                            for (ind, adapter) in adapters.iter().enumerate() {
-                                log::info!(
-                                    "Spawn new thread for block {:?} using network {:?}",
-                                    &slot,
-                                    &adapter.network
-                                );
+                        let adapter_counter = adapters.len();
+                        if adapter_counter > 0 {
+                            //let permit = Arc::clone(&self.sem).acquire_owned().await.unwrap();
+                            let permit = adapters.get(0).unwrap().acquire_owned().await.unwrap();
+                            let sender = self.sender.clone();
+                            tokio::spawn(async move {
+                                for (ind, adapter) in adapters.iter().enumerate() {
+                                    log::info!(
+                                        "Spawn new thread for block {:?} using network {:?}",
+                                        &slot,
+                                        &adapter.network
+                                    );
 
-                                match timeout(
-                                    Duration::from_secs(GET_BLOCK_TIMEOUT_SEC),
-                                    adapter.get_block_data(slot),
-                                )
-                                .await
-                                {
-                                    Ok(Ok(block)) => {
-                                        debug!(
-                                            "*** ChainAdapter sending block: {}",
-                                            block.block_slot
-                                        );
-                                        if let Some(tx) = sender.as_ref() {
-                                            tx.send(BlockInfo::ConfirmBlockWithSlot(block)).await;
+                                    match timeout(
+                                        Duration::from_secs(GET_BLOCK_TIMEOUT_SEC),
+                                        adapter.get_block_data(slot),
+                                    )
+                                    .await
+                                    {
+                                        Ok(Ok(block)) => {
+                                            debug!(
+                                                "*** ChainAdapter sending block: {}",
+                                                block.block_slot
+                                            );
+                                            if let Some(tx) = sender.as_ref() {
+                                                tx.send(BlockInfo::ConfirmBlockWithSlot(block))
+                                                    .await;
+                                            }
+                                            break;
                                         }
-                                        break;
-                                    }
-                                    Ok(Err(err)) => {
-                                        if (ind < adapter_counter - 1) {
-                                            info!(
+                                        Ok(Err(err)) => {
+                                            if (ind < adapter_counter - 1) {
+                                                info!(
                                                 "Retry get data of block {:?} with next adapter",
                                                 &slot
                                             );
-                                        } else {
-                                            info!(
+                                            } else {
+                                                info!(
                                                 "Can not get data of the block {:?} from all available node in network",
                                                 &slot);
-                                            if let Some(tx) = sender.as_ref() {
-                                                tx.send(BlockInfo::ConfirmBlockWithSlot(
-                                                    ConfirmedBlockWithSlot {
-                                                        block_slot: slot,
-                                                        block: None,
-                                                    },
-                                                ))
-                                                .await;
+                                                if let Some(tx) = sender.as_ref() {
+                                                    tx.send(BlockInfo::ConfirmBlockWithSlot(
+                                                        ConfirmedBlockWithSlot {
+                                                            block_slot: slot,
+                                                            block: None,
+                                                        },
+                                                    ))
+                                                    .await;
+                                                }
                                             }
                                         }
-                                    }
-                                    Err(err) => {
-                                        warn!("get_block timed out at block number {}. Retry with second adapter", &slot);
+                                        Err(err) => {
+                                            warn!("get_block timed out at block number {}. Retry with second adapter", &slot);
+                                        }
                                     }
                                 }
-                            }
 
-                            drop(permit);
-                        });
+                                drop(permit);
+                            });
+                        }
                     }
                 }
                 Err(err) => {
