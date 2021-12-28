@@ -18,6 +18,7 @@ table! {
         got_block -> Int8,
         version -> Nullable<Varchar>,
         hash -> Varchar,
+        owner_id -> Varchar,
         v_id -> Int8,
     }
 }

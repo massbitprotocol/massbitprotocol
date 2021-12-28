@@ -18,6 +18,7 @@ create table indexers
     start_block bigint default 0 not null, -- start block from manifest
     got_block bigint default 0 not null,    --last got block
     version varchar,
+    owner_id varchar,
     hash varchar not null,
     v_id bigserial
         constraint indexers_pk

@@ -8,12 +8,14 @@ pub mod indexer_service;
 pub mod model;
 pub mod opt;
 pub mod server_builder;
+pub mod user_managerment;
 
 pub use indexer_orm::{models, schema};
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::env;
 use std::iter::FromIterator;
+use warp::Rejection;
 
 //Time out when get content from ipfs
 pub const IPFS_TIME_OUT: u64 = 10_u64;

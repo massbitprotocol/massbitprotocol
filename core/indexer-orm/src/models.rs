@@ -137,6 +137,7 @@ pub struct Indexer {
     pub got_block: i64,
     pub version: Option<String>,
     pub hash: String,
+    pub owner_id: String,
     pub v_id: i64,
 }
 
@@ -159,6 +160,7 @@ impl Default for Indexer {
             got_block: 0,
             version: None,
             hash: Uuid::new_v4().to_string(),
+            owner_id: "".to_string(),
             v_id: 0,
         }
     }

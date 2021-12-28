@@ -3,6 +3,7 @@ use super::MAX_UPLOAD_FILE_SIZE;
 use crate::config::AccessControl;
 use crate::indexer_service::IndexerService;
 use crate::model::IndexerData;
+use crate::user_managerment::auth::{with_auth, Role};
 use crate::MAX_JSON_BODY_SIZE;
 use futures::lock::Mutex;
 use log::info;
@@ -65,6 +66,9 @@ impl<'a> IndexerServer {
                 .create_route_indexer_create(self.indexer_service.clone())
                 .with(&cors))
             .or(self
+                .create_route_my_indexer_list(self.indexer_service.clone())
+                .with(&cors))
+            .or(self
                 .create_route_indexer_list(self.indexer_service.clone())
                 .with(&cors))
             .or(self
@@ -95,10 +99,12 @@ impl<'a> IndexerServer {
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("indexers" / "gitdeploy")
             .and(warp::post())
+            .and(with_auth(Role::User))
             .and(json_deploy_body())
-            .and_then(move |content: DeployParam| {
+            .and_then(move |owner_id: String, content: DeployParam| {
+                println!("owner_id: {}", owner_id);
                 let clone_service = service.clone();
-                async move { clone_service.deploy_git_indexer(content).await }
+                async move { clone_service.deploy_git_indexer(owner_id, content).await }
             })
     }
     /// Indexer create api
@@ -108,10 +114,12 @@ impl<'a> IndexerServer {
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("indexers" / "create")
             .and(warp::post())
+            .and(with_auth(Role::User))
             .and(json_body())
-            .and_then(move |content: IndexerData| {
+            .and_then(move |owner_id: String, content: IndexerData| {
+                println!("owner_id: {}", &owner_id);
                 let clone_service = service.clone();
-                async move { clone_service.create_indexer(content).await }
+                async move { clone_service.create_indexer(owner_id, content).await }
             })
     }
     /// Indexer list api
@@ -124,7 +132,21 @@ impl<'a> IndexerServer {
             .and(warp::query::<ListOptions>())
             .and_then(move |options: ListOptions| {
                 let clone_service = service.clone();
-                async move { clone_service.list_indexer(options).await }
+                async move { clone_service.list_indexer(None, options).await }
+            })
+    }
+    /// My-indexer list api
+    fn create_route_my_indexer_list(
+        &self,
+        service: Arc<IndexerService>,
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        warp::path!("my-indexers")
+            .and(warp::get())
+            .and(with_auth(Role::User))
+            .and(warp::query::<ListOptions>())
+            .and_then(move |owner_id: String, options: ListOptions| {
+                let clone_service = service.clone();
+                async move { clone_service.list_indexer(Some(owner_id), options).await }
             })
     }
     /// Indexer detail api
@@ -193,6 +215,11 @@ async fn handle_rejection(err: Rejection) -> std::result::Result<impl Reply, Inf
         (StatusCode::NOT_FOUND, "Not Found".to_string())
     } else if err.find::<warp::reject::PayloadTooLarge>().is_some() {
         (StatusCode::BAD_REQUEST, "Payload too large".to_string())
+    } else if err.find::<warp::reject::MethodNotAllowed>().is_some() {
+        (
+            StatusCode::BAD_REQUEST,
+            format!("Authorization error, {:?}", err),
+        )
     } else {
         eprintln!("unhandled error: {:?}", err);
         (
