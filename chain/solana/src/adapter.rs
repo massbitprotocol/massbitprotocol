@@ -509,16 +509,14 @@ impl SolanaNetworkAdapters {
                         sleep(Duration::from_millis(GET_NEW_SLOT_DELAY_MS)).await;
                         continue;
                     }
-                    if last_block.is_none() && slots.len() == 1 && self.sender.is_some() {
-                        let current_block = slots.get(0).unwrap().clone();
-                        log::info!("Current block {:?}", &current_block);
+                    if self.sender.is_some() {
                         self.sender
                             .as_ref()
                             .unwrap()
-                            .send(BlockInfo::from(current_block))
+                            .send(BlockInfo::from(&slots))
                             .await;
                     }
-                    log::info!("Pending blocks {:?}", &slots);
+                    log::info!("Pending blocks {}: {:?}", slots.len(), &slots);
                     //Prepare parameter for next iteration
                     last_block = slots.last().and_then(|val| Some(val + 1));
 
@@ -554,12 +552,12 @@ impl SolanaNetworkAdapters {
                                             }
                                             break;
                                         }
-                                        Ok(Err(err)) => {
+                                        _ => {
                                             if (ind < adapter_counter - 1) {
                                                 info!(
-                                                "Retry get data of block {:?} with next adapter",
-                                                &slot
-                                            );
+                                                    "Retry get data of block {:?} with next adapter",
+                                                    &slot
+                                                );
                                             } else {
                                                 info!(
                                                 "Can not get data of the block {:?} from all available node in network",
@@ -574,9 +572,6 @@ impl SolanaNetworkAdapters {
                                                     .await;
                                                 }
                                             }
-                                        }
-                                        Err(err) => {
-                                            warn!("get_block timed out at block number {}. Retry with second adapter", &slot);
                                         }
                                     }
                                 }
