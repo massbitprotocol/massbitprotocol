@@ -29,6 +29,8 @@ jobs:
           rustup component add rustfmt
           rustup default stable
           rustup update stable
+          touch apis/indexer-api/src/user_managerment/pubkey.pem
+
       - uses: Swatinem/rust-cache@v1
       - name: Run test
         run: |
