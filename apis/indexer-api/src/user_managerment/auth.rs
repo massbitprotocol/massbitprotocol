@@ -2,8 +2,7 @@ use crate::user_managerment::{error::Error, Result, WebResult};
 use chrono::prelude::*;
 use hex;
 use jsonwebtoken::{
-    dangerous_insecure_decode, dangerous_insecure_decode_with_validation, decode, decode_header,
-    encode, Algorithm, DecodingKey, EncodingKey, Header, Validation,
+    decode, decode_header, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation,
 };
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
@@ -56,26 +55,6 @@ pub fn with_auth(role: Role) -> impl Filter<Extract = (String,), Error = Rejecti
     headers_cloned()
         .map(move |headers: HeaderMap<HeaderValue>| (role.clone(), headers))
         .and_then(authorize)
-}
-
-pub fn create_jwt(uid: &str, role: &Role) -> Result<String> {
-    let expiration = Utc::now()
-        .checked_add_signed(chrono::Duration::seconds(60))
-        .expect("valid timestamp")
-        .timestamp();
-
-    let claims = Claims {
-        sub: uid.to_owned(),
-        iat: Utc::now().timestamp() as usize,
-        exp: expiration as usize,
-    };
-    let header = Header::new(Algorithm::HS256);
-    encode(
-        &header,
-        &claims,
-        &EncodingKey::from_base64_secret(&JWT_SECRET_KEY).unwrap(),
-    )
-    .map_err(|_| Error::JWTTokenCreationError)
 }
 
 async fn authorize((role, headers): (Role, HeaderMap<HeaderValue>)) -> WebResult<String> {
