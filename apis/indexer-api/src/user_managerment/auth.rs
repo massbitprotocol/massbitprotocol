@@ -50,7 +50,6 @@ struct Claims {
     sub: String,
     exp: usize,
     iat: usize,
-    iss: String,
 }
 
 pub fn with_auth(role: Role) -> impl Filter<Extract = (String,), Error = Rejection> + Clone {
@@ -69,7 +68,6 @@ pub fn create_jwt(uid: &str, role: &Role) -> Result<String> {
         sub: uid.to_owned(),
         iat: Utc::now().timestamp() as usize,
         exp: expiration as usize,
-        iss: "Massbit".to_string(),
     };
     let header = Header::new(Algorithm::HS256);
     encode(
@@ -91,7 +89,7 @@ async fn authorize((role, headers): (Role, HeaderMap<HeaderValue>)) -> WebResult
             )
             .map_err(|_| reject::custom(Error::JWTTokenError))?;
 
-            info!("authorize: {:?}", decoded.claims);
+            log::info!("authorize: {:?}", decoded.claims);
             Ok(decoded.claims.sub)
         }
         Err(e) => return Err(reject::custom(e)),
