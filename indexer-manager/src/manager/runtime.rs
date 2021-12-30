@@ -285,6 +285,7 @@ impl<'a> IndexerRuntime {
                 None
             };
             let (history_block_tx, mut history_block_rx) = mpsc::channel::<Vec<SolanaBlock>>(64);
+            let mut getting_history_blocks = false;
             loop {
                 // Todo: decide how indexer handle if some error occurred during phase get history data.
                 // And sometime there are many gaps of blocks need to filled.
@@ -321,7 +322,12 @@ impl<'a> IndexerRuntime {
                                         serde_json::from_slice(&mut data.payload).unwrap();
                                     //Get history block from first transaction in first block
                                     if let Some(block) = blocks.get(0) {
-                                        if block.block.parent_slot > self.indexer.got_block as u64 {
+                                        //Open history thread for the first detection
+                                        if !getting_history_blocks
+                                            && block.block.parent_slot
+                                                > self.indexer.got_block as u64
+                                        {
+                                            getting_history_blocks = true;
                                             let from_signature = block
                                                 .block
                                                 .transactions
