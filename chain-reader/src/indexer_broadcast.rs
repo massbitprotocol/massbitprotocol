@@ -1,10 +1,12 @@
 use chain_solana::types::{BlockInfo, ConfirmedBlockWithSlot};
 use log::{debug, info};
 use massbit::prelude::Future;
+use massbit::slog::log;
 use massbit_chain_solana::data_type::{ExtBlock, SolanaBlock, SolanaFilter};
 use massbit_grpc::firehose::bstream::BlockResponse;
+use solana_sdk::slot_history::Slot;
 use solana_transaction_status::ConfirmedBlock;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::iter::FromIterator;
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc::{Receiver, Sender};
@@ -12,44 +14,77 @@ use tokio::task;
 use tonic::Status;
 
 const VERSION: &str = "1.7.0";
+const MAX_BUFFER_SIZE: usize = 1000_usize;
 #[derive(Default)]
 pub struct BlockBuffer {
-    queue: HashMap<u64, ConfirmedBlockWithSlot>,
-    //The first block is requested from network
-    expected_slot: u64,
+    /// Map parent_slot => ConfirmedBlock
+    buffer: HashMap<u64, ConfirmedBlockWithSlot>,
+    /// Expected slots
+    expected_slots: VecDeque<u64>,
 }
 
 impl BlockBuffer {
-    fn handle_incoming_block(
-        &mut self,
-        block_info: BlockInfo,
-    ) -> Option<Vec<ConfirmedBlockWithSlot>> {
+    fn handle_incoming_block(&mut self, block_info: BlockInfo) -> Vec<ConfirmedBlockWithSlot> {
+        let mut blocks = vec![];
         match block_info {
-            BlockInfo::BlockSlot(slot) => {
+            BlockInfo::BlockSlots(slots) => {
                 //Current block_slot
-                debug!("*** handle_incoming_block receive block: {}", &slot);
-                self.expected_slot = slot;
-                None
+                debug!("*** handle_incoming_block receive block: {:?}", &slots);
+                for slot in slots.iter() {
+                    self.expected_slots.push_back(slot.clone());
+                }
+                //If buffer is full then send first block to indexers
+                while self.expected_slots.len() >= MAX_BUFFER_SIZE {
+                    if let Some(slot) = self.expected_slots.pop_front() {
+                        if let Some(block) = self.buffer.remove(&slot) {
+                            blocks.push(block);
+                        }
+                    }
+                }
+                //Get all exists blocks in queues
+                while self.expected_slots.len() > 0 {
+                    let first_slot = self.expected_slots.get(0).unwrap().clone();
+                    if let Some(block) = self.buffer.remove(&first_slot) {
+                        blocks.push(block);
+                        self.expected_slots.pop_front();
+                    } else {
+                        break;
+                    }
+                }
             }
             BlockInfo::ConfirmBlockWithSlot(confirm_block) => {
                 debug!("*** Receive block: {}", &confirm_block.block_slot);
-                if confirm_block.block_slot != self.expected_slot {
-                    self.queue.insert(confirm_block.block_slot, confirm_block);
-                    None
+                if self.expected_slots.len() == 0 {
+                    self.buffer.insert(confirm_block.block_slot, confirm_block);
                 } else {
-                    let mut blocks = vec![];
-                    blocks.push(confirm_block);
-                    //Todo: Handle case block slot is not continuous
-                    let mut key = self.expected_slot + 1;
-                    while let Some(block) = self.queue.remove(&key) {
-                        blocks.push(block);
-                        key += 1;
+                    let first_slot = self.expected_slots.get(0).unwrap().clone();
+                    if first_slot == confirm_block.block_slot {
+                        blocks.push(confirm_block);
+                        loop {
+                            // Remove received block
+                            self.expected_slots.pop_front();
+                            if let Some(next_block) = self.expected_slots.get(0) {
+                                if let Some(block) = self.buffer.remove(next_block) {
+                                    blocks.push(block);
+                                } else {
+                                    break;
+                                }
+                            } else {
+                                break;
+                            }
+                        }
+                    } else if first_slot < confirm_block.block_slot {
+                        self.buffer.insert(confirm_block.block_slot, confirm_block);
+                    } else {
+                        log::warn!(
+                            "Block {:?} come too late after remove expected slot",
+                            confirm_block.block_slot
+                        );
                     }
-                    self.expected_slot = key;
-                    Some(blocks)
                 }
             }
         }
+        blocks
     }
 }
 pub struct IndexerInfo {
@@ -76,7 +111,15 @@ impl IndexerBroadcast {
     pub async fn try_recv(&mut self) -> bool {
         match self.block_receiver.try_recv() {
             Ok(data) => {
-                if let Some(blocks) = self.block_buffer.handle_incoming_block(data) {
+                let blocks = self.block_buffer.handle_incoming_block(data);
+                if blocks.len() > 0 {
+                    log::info!(
+                        "Broadcast blocks: {:?}",
+                        blocks
+                            .iter()
+                            .map(|block| block.block_slot)
+                            .collect::<Vec<Slot>>()
+                    );
                     self.broadcast_blocks(blocks).await;
                 }
                 return true;

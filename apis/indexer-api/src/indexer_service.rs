@@ -58,7 +58,11 @@ impl IndexerService {
                 .ok()
         })
     }
-    pub async fn create_indexer(&self, content: IndexerData) -> Result<impl Reply, Rejection> {
+    pub async fn create_indexer(
+        &self,
+        owner_id: String,
+        content: IndexerData,
+    ) -> Result<impl Reply, Rejection> {
         log::info!("Create new indexer");
         let mut indexer = Indexer::default();
         indexer.network = content.network;
@@ -67,6 +71,7 @@ impl IndexerService {
         indexer.image_url = content.image_url;
         indexer.repository = content.repository;
         indexer.status = IndexerStatus::Draft;
+        indexer.owner_id = owner_id;
         indexer.got_block = -1;
 
         if let Ok(indexer) = self.store_indexer(indexer).await {
@@ -159,7 +164,11 @@ impl IndexerService {
     }
 
     /// for api deploy indexer from front-end
-    pub async fn deploy_git_indexer(&self, content: DeployParam) -> Result<impl Reply, Rejection> {
+    pub async fn deploy_git_indexer(
+        &self,
+        owner_id: String,
+        content: DeployParam,
+    ) -> Result<impl Reply, Rejection> {
         log::info!("Deploy new indexer from git {:?}.", &content);
         if let Ok(conn) = self.get_connection() {
             let results = dsl::indexers
@@ -171,6 +180,18 @@ impl IndexerService {
             match results.get(0) {
                 Some(res) => {
                     let mut indexer = res.clone();
+                    if indexer.owner_id != owner_id {
+                        log::error!(
+                            "User {} try to deploy indexer {} of owner {}",
+                            owner_id,
+                            &indexer.hash,
+                            &indexer.owner_id
+                        );
+                        return Ok(warp::reply::json(&json!(
+                            "{'error': 'Do not pass authorization check'}"
+                        )));
+                    }
+
                     if let Some(git_url) = &indexer.repository {
                         let git_helper = GitHelper::new(git_url);
 
@@ -252,16 +273,29 @@ impl IndexerService {
         }
     }
     /// for api list indexer: /indexers?limit=?&offset=?
-    pub async fn list_indexer(&self, options: ListOptions) -> Result<impl Reply, Rejection> {
+    pub async fn list_indexer(
+        &self,
+        owner_id: Option<String>,
+        options: ListOptions,
+    ) -> Result<impl Reply, Rejection> {
         let content: Vec<Indexer> = vec![];
         if let Ok(conn) = self.get_connection() {
-            match dsl::indexers
-                .filter(dsl::deleted.eq(false))
-                .order(dsl::v_id.asc())
-                .offset(options.offset.unwrap_or_default())
-                .limit(options.limit.unwrap_or(API_LIST_LIMIT))
-                .load::<Indexer>(conn.deref())
-            {
+            let res = match owner_id {
+                Some(owner_id) => dsl::indexers
+                    .filter(dsl::deleted.eq(false))
+                    .filter(dsl::owner_id.eq(owner_id))
+                    .order(dsl::v_id.asc())
+                    .offset(options.offset.unwrap_or_default())
+                    .limit(options.limit.unwrap_or(API_LIST_LIMIT))
+                    .load::<Indexer>(conn.deref()),
+                None => dsl::indexers
+                    .filter(dsl::deleted.eq(false))
+                    .order(dsl::v_id.asc())
+                    .offset(options.offset.unwrap_or_default())
+                    .limit(options.limit.unwrap_or(API_LIST_LIMIT))
+                    .load::<Indexer>(conn.deref()),
+            };
+            match res {
                 Ok(vals) => Ok(warp::reply::json(&vals)),
                 Err(err) => {
                     log::error!("{:?}", &err);

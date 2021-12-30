@@ -3,7 +3,7 @@ use crate::chain::Chain;
 use crate::data_source::DataSource;
 use crate::types::{BlockInfo, ConfirmedBlockWithSlot, Pubkey};
 use crate::{LIMIT_FILTER_RESULT, SOLANA_NETWORKS, TRANSACTION_BATCH_SIZE};
-use log::{debug, error, info, warn};
+use log::{debug, error, info, log, warn};
 use massbit::blockchain as bc;
 use massbit::blockchain::HostFn;
 use massbit::prelude::*;
@@ -19,12 +19,15 @@ use solana_transaction_status::{
     InnerInstructions, TransactionStatusMeta, TransactionTokenBalance, TransactionWithStatusMeta,
     UiInnerInstructions, UiTransactionEncoding, UiTransactionTokenBalance,
 };
-use std::collections::HashMap;
+use std::cmp::Ordering;
+use std::collections::{HashMap, VecDeque};
 use std::str::FromStr;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use std::thread::Thread;
 use std::time::Instant;
 use tokio::sync::mpsc::Sender;
-use tokio::sync::Semaphore;
+use tokio::sync::{AcquireError, Mutex, OwnedSemaphorePermit, Semaphore};
+use tokio::time::error::Elapsed;
 use tokio::time::{sleep, timeout};
 
 const BLOCK_AVAILABLE_MARGIN: u64 = 100;
@@ -32,10 +35,15 @@ const GET_NEW_SLOT_DELAY_MS: u64 = 500;
 const BLOCK_BATCH_SIZE: usize = 10;
 const GET_BLOCK_TIMEOUT_SEC: u64 = 60;
 const RPC_BLOCK_ENCODING: UiTransactionEncoding = UiTransactionEncoding::Base64;
+const QUEUE_GET_BLOCK_TIME: usize = 40 - 1;
+const WINDOW_TIME: u128 = 10000;
 #[derive(Clone)]
 pub struct SolanaAdapter {
     pub rpc_client: Arc<RpcClient>,
+    //Time in ms when client send request to server
+    request_times: Arc<Mutex<VecDeque<Instant>>>,
     network: String,
+    sem: Arc<Semaphore>,
 }
 
 impl SolanaAdapter {
@@ -45,8 +53,21 @@ impl SolanaAdapter {
         info!("Finished init Solana client");
         SolanaAdapter {
             rpc_client,
+            request_times: Arc::new(Mutex::new(VecDeque::with_capacity(QUEUE_GET_BLOCK_TIME))),
             network: config.name.clone(),
+            sem: Arc::new(Semaphore::new(2 * BLOCK_BATCH_SIZE)),
         }
+    }
+    pub async fn acquire_owned(&self) -> Result<OwnedSemaphorePermit, AcquireError> {
+        log::info!(
+            "Available semaphore limit on network {:?} is {:?}",
+            &self.network,
+            self.sem.available_permits()
+        );
+        Arc::clone(&self.sem).acquire_owned().await
+    }
+    pub fn get_available_permits(&self) -> usize {
+        self.sem.available_permits()
     }
     pub fn get_latest_block(&self) -> ClientResult<Slot> {
         self.rpc_client.clone().get_slot()
@@ -59,6 +80,8 @@ impl SolanaAdapter {
         block_slot: Slot,
     ) -> Result<ConfirmedBlockWithSlot, Box<dyn std::error::Error + Send + Sync + 'static>> {
         let now = Instant::now();
+        //Check if need sleep for awhile to avoid rate limit 40 request per 10 seconds
+        self.avoid_request_limit().await;
         let block = self
             .rpc_client
             .get_block_with_encoding(block_slot, RPC_BLOCK_ENCODING);
@@ -84,6 +107,36 @@ impl SolanaAdapter {
                 Err(format!("Error cannot get block").into())
             }
         }
+    }
+    async fn avoid_request_limit(&self) {
+        let request_times = self.request_times.clone();
+        let mut queue = request_times.lock().await;
+        //Remove old request times (elapsed > 10secs)
+        let mut counter = 0;
+        let mut flag = queue.len() >= QUEUE_GET_BLOCK_TIME;
+        while flag {
+            if let Some(first) = queue.pop_front() {
+                counter += 1;
+                let elapsed_time = first.elapsed().as_millis();
+                if elapsed_time < 10000 {
+                    //If queue is full then sleep for a while
+                    if queue.len() >= QUEUE_GET_BLOCK_TIME - 1 {
+                        log::info!("Fist block in WINDOW_TIME elapses in {:?}, sleep for {:?} ms before send new request.", first.elapsed(), 10000 - first.elapsed().as_millis());
+                        sleep(Duration::from_millis(10000u64 - elapsed_time as u64)).await;
+                    }
+                    flag = false;
+                }
+                // continue remove old elements
+            } else {
+                //Queue is empty
+                flag = false;
+            }
+        }
+        if counter > 0 {
+            log::info!("Remove {:?} elements from request_times queue for network {:?}. Remained elements in queue {:?}. Oldest request sent at {:?}", 
+                counter, &self.network, queue.len(), queue.get(0).and_then(|time| Some(time.elapsed())));
+        }
+        queue.push_back(Instant::now());
     }
     pub fn get_signatures_for_address(
         &self,
@@ -383,8 +436,6 @@ impl SolanaNetworkAdapter {
 pub struct SolanaNetworkAdapters {
     pub adapters: Vec<SolanaNetworkAdapter>,
     sender: Option<Sender<BlockInfo>>,
-    ///Map contains adapter for next call.
-    next_adapter: HashMap<String, usize>,
     sem: Arc<Semaphore>,
 }
 
@@ -403,28 +454,19 @@ impl SolanaNetworkAdapters {
         SolanaNetworkAdapters {
             adapters,
             sender: tx,
-            next_adapter: Default::default(),
             sem: Arc::new(Semaphore::new(2 * BLOCK_BATCH_SIZE)),
         }
     }
     ///Return 2 different adapters, second one will be used in case of error while get block from first one.
-    pub fn get_adapters(&mut self, method: &str) -> Vec<Option<Arc<SolanaAdapter>>> {
-        let ind = match self.next_adapter.get(method) {
-            Some(val) => val.clone(),
-            None => 0,
-        };
-        let adapter_counter = self.adapters.len();
-        self.next_adapter
-            .insert(method.to_string(), (ind + 1) % adapter_counter);
-        let first_adapter = self
-            .adapters
-            .get(ind)
-            .and_then(|adapter| Some(adapter.adapter.clone()));
-        let second_adapter = self
-            .adapters
-            .get((ind + 1) % adapter_counter)
-            .and_then(|adapter| Some(adapter.adapter.clone()));
-        vec![first_adapter, second_adapter]
+    pub fn get_adapters(&mut self, method: &str) -> Vec<Arc<SolanaAdapter>> {
+        self.adapters.sort_by(|a, b| {
+            let a_permits = a.adapter.get_available_permits();
+            b.adapter.get_available_permits().cmp(&a_permits)
+        });
+        self.adapters
+            .iter()
+            .map(|adapter| adapter.adapter.clone())
+            .collect::<Vec<Arc<SolanaAdapter>>>()
     }
     ///Get available blocks from [start_slot].
     /// If start_slot is none then result contains current block
@@ -433,22 +475,18 @@ impl SolanaNetworkAdapters {
         let network_adapters = self.get_adapters("get_block_slots");
         match start_slot {
             None => {
-                for sol_adapter in network_adapters {
-                    if let Some(adapter) = sol_adapter {
-                        let res = adapter.get_latest_block().and_then(|slot| Ok(vec![slot]));
-                        if res.is_ok() {
-                            return res;
-                        }
+                for adapter in network_adapters {
+                    let res = adapter.get_latest_block().and_then(|slot| Ok(vec![slot]));
+                    if res.is_ok() {
+                        return res;
                     }
                 }
             }
             Some(slot) => {
-                for sol_adapter in network_adapters {
-                    if let Some(adapter) = sol_adapter {
-                        let res = adapter.get_block_slots(slot);
-                        if res.is_ok() {
-                            return res;
-                        }
+                for adapter in network_adapters {
+                    let res = adapter.get_block_slots(slot);
+                    if res.is_ok() {
+                        return res;
                     }
                 }
             }
@@ -464,41 +502,36 @@ impl SolanaNetworkAdapters {
                 Ok(slots) => {
                     // Root is finalized block in Solana
                     if slots.len() == 0 {
-                        log::info!("No pending blocks. Sleep for awhile then continue with get available finality blocks");
+                        log::info!("No pending blocks. Sleep for a while then continue with get available finality blocks");
                         sleep(Duration::from_millis(GET_NEW_SLOT_DELAY_MS)).await;
                         continue;
                     }
-                    if last_block.is_none() && slots.len() == 1 && self.sender.is_some() {
-                        let current_block = slots.get(0).unwrap().clone();
-                        log::info!("Current block {:?}", &current_block);
+                    if self.sender.is_some() {
                         self.sender
                             .as_ref()
                             .unwrap()
-                            .send(BlockInfo::from(current_block))
+                            .send(BlockInfo::from(&slots))
                             .await;
                     }
-                    log::info!("Pending blocks {:?}", &slots);
+                    log::info!("Pending blocks {}: {:?}", slots.len(), &slots);
                     //Prepare parameter for next iteration
                     last_block = slots.last().and_then(|val| Some(val + 1));
 
                     for slot in slots {
-                        let adapters = self
-                            .get_adapters("get_block")
-                            .iter()
-                            .map(|item| item.as_ref().and_then(|adapter| Some(adapter.clone())))
-                            .collect::<Vec<Option<Arc<SolanaAdapter>>>>();
-
-                        let permit = Arc::clone(&self.sem).acquire_owned().await.unwrap();
-                        let sender = self.sender.clone();
-                        tokio::spawn(async move {
-                            let adapter_counter = adapters.len();
-                            for (ind, sol_adapter) in adapters.iter().enumerate() {
-                                if let Some(adapter) = sol_adapter {
+                        let adapters = self.get_adapters("get_block");
+                        let adapter_counter = adapters.len();
+                        if adapter_counter > 0 {
+                            //let permit = Arc::clone(&self.sem).acquire_owned().await.unwrap();
+                            let permit = adapters.get(0).unwrap().acquire_owned().await.unwrap();
+                            let sender = self.sender.clone();
+                            tokio::spawn(async move {
+                                for (ind, adapter) in adapters.iter().enumerate() {
                                     log::info!(
                                         "Spawn new thread for block {:?} using network {:?}",
                                         &slot,
                                         &adapter.network
                                     );
+
                                     match timeout(
                                         Duration::from_secs(GET_BLOCK_TIMEOUT_SEC),
                                         adapter.get_block_data(slot),
@@ -516,12 +549,12 @@ impl SolanaNetworkAdapters {
                                             }
                                             break;
                                         }
-                                        Ok(Err(err)) => {
+                                        _ => {
                                             if (ind < adapter_counter - 1) {
                                                 info!(
-                                                "Retry get data of block {:?} with next adapter",
-                                                &slot
-                                            );
+                                                    "Retry get data of block {:?} with next adapter",
+                                                    &slot
+                                                );
                                             } else {
                                                 info!(
                                                 "Can not get data of the block {:?} from all available node in network",
@@ -537,15 +570,12 @@ impl SolanaNetworkAdapters {
                                                 }
                                             }
                                         }
-                                        Err(err) => {
-                                            warn!("get_block timed out at block number {}. Retry with second adapter", &slot);
-                                        }
                                     }
                                 }
-                            }
 
-                            drop(permit);
-                        });
+                                drop(permit);
+                            });
+                        }
                     }
                 }
                 Err(err) => {
@@ -565,10 +595,9 @@ impl SolanaNetworkAdapters {
     ) -> Vec<String> {
         let adapters = self.get_adapters("get_signatures_for_address");
         //Todo: add round rubin between adapters
-        for sol_adapter in adapters {
-            if let Some(adapter) = sol_adapter {
-                return adapter.get_signatures_for_address(address, first_slot, end_signature);
-            }
+        for adapter in adapters {
+            //Using first adapter
+            return adapter.get_signatures_for_address(address, first_slot, end_signature);
         }
         Vec::default()
     }
@@ -579,10 +608,9 @@ impl SolanaNetworkAdapters {
     ) -> Vec<ConfirmedBlockWithSlot> {
         let adapters = self.get_adapters("get_confirmed_blocks");
         //Todo: add round rubin between adapters
-        for sol_adapter in adapters {
-            if let Some(adapter) = sol_adapter {
-                return adapter.get_confirmed_blocks(signatures);
-            }
+        for adapter in adapters {
+            //Using first adapter
+            return adapter.get_confirmed_blocks(signatures);
         }
         Vec::default()
     }

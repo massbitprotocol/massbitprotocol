@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS indexers
     index_status varchar,
     got_block bigint default 0 not null,
     hash varchar,
+    owner_id varchar,
     v_id serial
         constraint indexers_pk
             primary key
