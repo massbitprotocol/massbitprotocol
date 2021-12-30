@@ -42,7 +42,7 @@ impl BlockBuffer {
                     }
                 }
                 //Get all exists blocks in queues
-                loop {
+                while self.expected_slots.len() > 0 {
                     let first_slot = self.expected_slots.get(0).unwrap().clone();
                     if let Some(block) = self.buffer.remove(&first_slot) {
                         blocks.push(block);
