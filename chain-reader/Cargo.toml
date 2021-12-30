@@ -44,7 +44,7 @@ chain-solana = {path = "../chain/solana"}
 ipfs-client = { path = "../core/ipfs-client" }
 
 logger = { path = "../core/logger" }
-
+leveldb = "0.8"
 tonic = "0.5"
 prost-types = "0.8.0"
 bs58 = "0.4.0"

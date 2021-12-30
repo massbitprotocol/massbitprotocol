@@ -7,7 +7,7 @@ pub mod indexer_broadcast;
 pub mod solana_chain;
 pub mod solana_chain_adapter;
 pub mod stream_service;
-
+pub mod storage;
 use command::{ChainConfig, Config};
 use core::array::IntoIter;
 use lazy_static::lazy_static;
