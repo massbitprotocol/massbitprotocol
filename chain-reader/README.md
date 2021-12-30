@@ -1,5 +1,8 @@
 # Chain Reader
-
+Install leveldb for solana block cache
+```
+sudo apt-get install libleveldb-dev libsnappy-dev
+```
 ## Public RPC / Websocket nodes
 Solana
 - https://mainnet-beta-solana.massbit.io
