@@ -346,8 +346,9 @@ impl<'a> IndexerRuntime {
                                         }
                                     }
                                     ///
+                                    let clone_proxy = proxy.clone();
                                     tokio::spawn(async move {
-                                        match proxy.clone().handle_blocks(&blocks) {
+                                        match clone_proxy.handle_blocks(&blocks) {
                                             Err(err) => {
                                                 log::error!(
                                                     "{} Error while handle received message",
