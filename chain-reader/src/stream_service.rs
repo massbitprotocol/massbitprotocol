@@ -4,6 +4,7 @@ use crate::solana_chain;
 use crate::solana_chain_adapter::ChainAdapter;
 use chain_ethereum::{Chain, TriggerFilter};
 use chain_solana::adapter::{SolanaNetworkAdapter, SolanaNetworkAdapters};
+use chain_solana::storage::BlockStorage;
 use chain_solana::types::{ChainConfig, ConfirmedBlockWithSlot};
 use chain_solana::SOLANA_NETWORKS;
 use log::{error, info};
@@ -25,17 +26,19 @@ use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};
 use web3::api::Net;
 use web3::types::BlockId::Hash;
-
+use solana_chain::
 const QUEUE_BUFFER: usize = 1024;
 
 pub struct StreamService {
     network_services: RwLock<HashMap<String, NetworkService>>,
+    cache_db_path: Option<String>,
 }
 
 impl StreamService {
-    pub fn new() -> Self {
+    pub fn new(cache_db_path: Option<String>) -> Self {
         StreamService {
             network_services: Default::default(),
+            cache_db_path,
         }
     }
 }
@@ -51,7 +54,10 @@ impl Stream for StreamService {
         let network = &request.get_ref().network;
         let mut services = self.network_services.write().await;
         if !services.contains_key(network) {
-            let mut service = NetworkService::new(network);
+            let leveldb_storage = self
+                .cache_db_path
+                .and_then(|path| Some(Arc::new(Box::new(LevelDBStorage::new(path.as_str())))));
+            let mut service = NetworkService::new(network, leveldb_storage);
             &service.init();
             services.insert(network.clone(), service);
         }
@@ -69,13 +75,17 @@ struct NetworkService {
 }
 
 impl NetworkService {
-    fn new(network: &str) -> Self {
+    fn new(network: &str, storage: Option<Arc<Box<dyn BlockStorage + Sync + Send>>>) -> Self {
         let (tx, rx) = mpsc::channel(QUEUE_BUFFER);
         //let chain_adapter = Arc::new(Mutex::new(ChainAdapter::new(config, tx)));
         let broadcaster = Arc::new(Mutex::new(IndexerBroadcast::new(rx)));
         NetworkService {
             network: network.to_string(),
-            chain_adapters: Arc::new(Mutex::new(SolanaNetworkAdapters::new(network, Some(tx)))),
+            chain_adapters: Arc::new(Mutex::new(SolanaNetworkAdapters::new(
+                network,
+                storag,
+                Some(tx),
+            ))),
             broadcaster,
         }
     }

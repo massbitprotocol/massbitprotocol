@@ -1,6 +1,7 @@
 use super::types::ChainConfig;
 use crate::chain::Chain;
 use crate::data_source::DataSource;
+use crate::storage::BlockStorage;
 use crate::types::{BlockInfo, ConfirmedBlockWithSlot, Pubkey};
 use crate::{LIMIT_FILTER_RESULT, SOLANA_NETWORKS, TRANSACTION_BATCH_SIZE};
 use log::{debug, error, info, warn};
@@ -35,16 +36,21 @@ const RPC_BLOCK_ENCODING: UiTransactionEncoding = UiTransactionEncoding::Base64;
 #[derive(Clone)]
 pub struct SolanaAdapter {
     pub rpc_client: Arc<RpcClient>,
+    storage: Option<Arc<Box<dyn BlockStorage + Sync + Send>>>,
     network: String,
 }
 
 impl SolanaAdapter {
-    pub fn new(config: &ChainConfig) -> Self {
+    pub fn new(
+        storage: Option<Arc<Box<dyn BlockStorage + Sync + Send>>>,
+        config: &ChainConfig,
+    ) -> Self {
         info!("Init Solana client with url: {:?}", &config.url);
         let rpc_client = Arc::new(RpcClient::new(config.url.clone()));
         info!("Finished init Solana client");
         SolanaAdapter {
             rpc_client,
+            storage,
             network: config.name.clone(),
         }
     }
@@ -69,6 +75,7 @@ impl SolanaAdapter {
                     "Finished get Block: {:?} from network {:?}, time: {:?}, hash: {}",
                     block_slot, &self.network, elapsed, &block.blockhash
                 );
+                //Store block data in cache
                 Ok(ConfirmedBlockWithSlot {
                     block_slot,
                     block: Some(Self::decode_encoded_block(block)),
@@ -367,10 +374,15 @@ pub struct SolanaNetworkAdapter {
 }
 
 impl SolanaNetworkAdapter {
-    pub fn new(network: String, config: &ChainConfig, tx: Option<Sender<BlockInfo>>) -> Self {
+    pub fn new(
+        network: String,
+        storage: Option<Arc<Box<dyn BlockStorage + Sync + Send>>>,
+        config: &ChainConfig,
+        tx: Option<Sender<BlockInfo>>,
+    ) -> Self {
         SolanaNetworkAdapter {
             network,
-            adapter: Arc::new(SolanaAdapter::new(config)),
+            adapter: Arc::new(SolanaAdapter::new(storage, config)),
             tx,
         }
     }
@@ -389,12 +401,17 @@ pub struct SolanaNetworkAdapters {
 }
 
 impl SolanaNetworkAdapters {
-    pub fn new(network: &str, tx: Option<Sender<BlockInfo>>) -> Self {
+    pub fn new(
+        network: &str,
+        storage: Option<Arc<Box<dyn BlockStorage + Sync + Send>>>,
+        tx: Option<Sender<BlockInfo>>,
+    ) -> Self {
         let mut adapters = Vec::default();
         SOLANA_NETWORKS.iter().for_each(|(_, config)| {
             if config.network.as_str() == network {
                 adapters.push(SolanaNetworkAdapter::new(
                     network.to_string(),
+                    storage.clone(),
                     config,
                     tx.clone(),
                 ));

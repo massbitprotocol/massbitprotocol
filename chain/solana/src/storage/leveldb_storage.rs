@@ -1,8 +1,7 @@
-use crate::storage::BlockStorage;
 use std::path::Path;
 extern crate db_key as key;
 extern crate leveldb;
-use chain_ethereum::MappingTrigger::Block;
+use crate::storage::BlockStorage;
 use key::Key;
 use leveldb::database::Database;
 use leveldb::error::Error;
@@ -57,6 +56,7 @@ impl LevelDBStorage {
         };
         Self { database }
     }
+    pub fn remove_old_blocks(&self) {}
 }
 impl BlockStorage for LevelDBStorage {
     fn store_block(&self, block_slot: Slot, content: &[u8]) {
@@ -70,7 +70,8 @@ impl BlockStorage for LevelDBStorage {
                 log::error!("failed to write to database: {:?}", &err);
             }
         };
-        self.database.keys_iter()
+        //Todo: check if storage size exceed some limit then remove old blocks
+        self.remove_old_blocks();
     }
 
     fn get_block(&self, block_slot: Slot) -> Option<Vec<u8>> {
