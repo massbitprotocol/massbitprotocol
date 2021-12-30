@@ -86,6 +86,7 @@ impl NetworkService {
         massbit::spawn_thread(name, move || {
             massbit::block_on(task::unconstrained(async {
                 chain_adapters.lock().unwrap().start().await;
+                log::info!("Chain reader finished!");
             }))
         });
         let mut broadcaster = self.broadcaster.clone();
@@ -97,9 +98,9 @@ impl NetworkService {
                     let success = broadcaster.lock().unwrap().try_recv().await;
                     if !success {
                         sleep(Duration::from_millis(100)).await;
-                        print!(".");
                     }
                 }
+                log::info!("Broadcaster finished!");
             }))
         });
     }

@@ -1,3 +1,4 @@
+use std::future::pending;
 use chain_reader::command;
 use chain_reader::stream_service::StreamService;
 use clap::{App, Arg};
@@ -38,7 +39,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
         .add_service(StreamServer::new(stream_service))
         .serve(addr)
         .await?;
-
+    log::info!("Chain reader finished");
     // End
+    pending::<()>().await;
     Ok(())
 }

@@ -203,7 +203,11 @@ impl IndexerBroadcast {
         for indexer in indexers.iter() {
             if let Some(blocks) = filtered_blocks.remove(&indexer.hash) {
                 let block_response = Self::create_block_response(blocks);
-                debug!("*** GRPC Send block_response");
+                info!(
+                    "*** GRPC Send block_response to indexer {:?}. Channel capacity:  {:?}",
+                    &indexer.hash,
+                    indexer.sender.capacity()
+                );
                 indexer.sender.send(Ok(block_response)).await;
             }
         }
