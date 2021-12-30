@@ -1,6 +1,5 @@
-use crate::CACHE_DB_PATH;
-use chain_reader::command;
 use chain_reader::stream_service::StreamService;
+use chain_reader::{command, CACHE_DB_PATH};
 use clap::{App, Arg};
 use logger::core::init_logger;
 use massbit_grpc::firehose::bstream::stream_server::StreamServer;
@@ -32,8 +31,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     // and then filtered data is sent via this channel
     // Init StreamService
     // Run StreamoutServer
-    let config = CONFIG;
-    let stream_service = StreamService::new(CACHE_DB_PATH);
+    let stream_service = StreamService::new(CACHE_DB_PATH.clone());
     let addr = (URL.to_owned() + &port).parse()?;
     Server::builder()
         .add_service(StreamServer::new(stream_service))

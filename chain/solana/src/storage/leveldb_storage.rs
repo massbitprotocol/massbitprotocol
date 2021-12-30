@@ -1,4 +1,7 @@
+use anyhow::anyhow;
 use std::path::Path;
+use std::time::Instant;
+
 extern crate db_key as key;
 extern crate leveldb;
 use crate::storage::BlockStorage;
@@ -9,8 +12,9 @@ use leveldb::iterator::Iterable;
 use leveldb::kv::KV;
 use leveldb::options::{Options, ReadOptions, WriteOptions};
 use log::log;
+use massbit_common::prelude::serde_json;
 use solana_program::clock::Slot;
-
+use solana_transaction_status::EncodedConfirmedBlock;
 pub struct BlockKey {
     slot: u64,
 }
@@ -59,25 +63,40 @@ impl LevelDBStorage {
     pub fn remove_old_blocks(&self) {}
 }
 impl BlockStorage for LevelDBStorage {
-    fn store_block(&self, block_slot: Slot, content: &[u8]) {
+    fn store_block(
+        &self,
+        block_slot: Slot,
+        block: &EncodedConfirmedBlock,
+    ) -> Result<(), anyhow::Error> {
         let write_opts = WriteOptions::new();
-        match self
-            .database
-            .put(write_opts, BlockKey::from(block_slot), content)
-        {
-            Ok(_) => {}
-            Err(err) => {
+        let now = Instant::now();
+        let res = serde_json::to_vec(block)
+            .map_err(|err| {
                 log::error!("failed to write to database: {:?}", &err);
-            }
-        };
+                anyhow!("{:?}", &err)
+            })
+            .and_then(|content| {
+                self.database
+                    .put(write_opts, BlockKey::from(block_slot), content.as_slice())
+                    .map_err(|err| {
+                        log::error!("failed to write to database: {:?}", &err);
+                        anyhow!("{:?}", &err)
+                    })
+            });
+        log::info!("Store block in leveldb in {:?}", now.elapsed());
         //Todo: check if storage size exceed some limit then remove old blocks
         self.remove_old_blocks();
+        res
     }
 
-    fn get_block(&self, block_slot: Slot) -> Option<Vec<u8>> {
+    fn get_block(&self, block_slot: Slot) -> Option<EncodedConfirmedBlock> {
         let read_opts = ReadOptions::new();
         match self.database.get(read_opts, BlockKey::from(block_slot)) {
-            Ok(res) => res,
+            Ok(res) => res.and_then(|content| {
+                let block: Option<EncodedConfirmedBlock> =
+                    serde_json::from_slice(content.as_slice()).ok();
+                block
+            }),
             Err(err) => {
                 log::error!(
                     "failed to get block {:?} from database: {:?}",

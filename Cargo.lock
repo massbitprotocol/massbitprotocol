@@ -799,6 +799,7 @@ dependencies = [
  "leveldb",
  "log 0.4.14",
  "massbit",
+ "massbit-common",
  "mockall 0.10.2",
  "semver 1.0.4",
  "serde",

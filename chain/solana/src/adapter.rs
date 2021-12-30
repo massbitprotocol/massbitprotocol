@@ -99,6 +99,15 @@ impl SolanaAdapter {
                     block_slot, &self.network, elapsed, &block.blockhash
                 );
                 //Store block data in cache
+                if let Some(storage) = self.storage.as_ref() {
+                    match storage.store_block(block_slot, &block) {
+                        Ok(_) => {}
+                        Err(err) => {
+                            log::error!("Storage block {:?} with error {:?}", &block_slot, &err);
+                        }
+                    };
+                    if let Ok(content) = serde_json::to_vec(&block) {}
+                }
                 Ok(ConfirmedBlockWithSlot {
                     block_slot,
                     block: Some(Self::decode_encoded_block(block)),
