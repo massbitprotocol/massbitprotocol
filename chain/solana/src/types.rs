@@ -95,13 +95,19 @@ impl SolanaFilter {
 }
 
 pub enum BlockInfo {
-    BlockSlot(u64),
+    BlockSlots(Vec<u64>),
     ConfirmBlockWithSlot(ConfirmedBlockWithSlot),
 }
 
 impl From<u64> for BlockInfo {
     fn from(slot: u64) -> Self {
-        BlockInfo::BlockSlot(slot)
+        BlockInfo::BlockSlots(vec![slot])
+    }
+}
+
+impl From<&Vec<u64>> for BlockInfo {
+    fn from(slots: &Vec<u64>) -> Self {
+        BlockInfo::BlockSlots(slots.clone())
     }
 }
 
