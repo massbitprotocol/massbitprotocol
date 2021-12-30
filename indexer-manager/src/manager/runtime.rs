@@ -345,16 +345,28 @@ impl<'a> IndexerRuntime {
                                             .await;
                                         }
                                     }
-
-                                    match proxy.handle_blocks(&blocks) {
-                                        Err(err) => {
-                                            log::error!(
-                                                "{} Error while handle received message",
-                                                err
-                                            );
+                                    ///
+                                    tokio::spawn(async move {
+                                        match proxy.clone().handle_blocks(&blocks) {
+                                            Err(err) => {
+                                                log::error!(
+                                                    "{} Error while handle received message",
+                                                    err
+                                                );
+                                            }
+                                            Ok(block_slot) => {}
                                         }
-                                        Ok(block_slot) => {}
-                                    }
+                                    });
+                                    //Use following code to check health check
+                                    // match proxy.clone().handle_blocks(&blocks) {
+                                    //     Err(err) => {
+                                    //         log::error!(
+                                    //             "{} Error while handle received message",
+                                    //             err
+                                    //         );
+                                    //     }
+                                    //     Ok(block_slot) => {}
+                                    // }
                                 }
                             }
                             _ => {
