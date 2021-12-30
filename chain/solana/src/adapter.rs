@@ -118,14 +118,11 @@ impl SolanaAdapter {
             if let Some(first) = queue.pop_front() {
                 counter += 1;
                 let elapsed_time = first.elapsed().as_millis();
-                if first.elapsed().as_millis() < 10000 {
+                if elapsed_time < 10000 {
                     //If queue is full then sleep for a while
                     if queue.len() >= QUEUE_GET_BLOCK_TIME - 1 {
                         log::info!("Fist block in WINDOW_TIME elapses in {:?}, sleep for {:?} ms before send new request.", first.elapsed(), 10000 - first.elapsed().as_millis());
-                        sleep(Duration::from_millis(
-                            10000u64 - first.elapsed().as_millis() as u64,
-                        ))
-                        .await;
+                        sleep(Duration::from_millis(10000u64 - elapsed_time as u64)).await;
                     }
                     flag = false;
                 }

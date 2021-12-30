@@ -33,6 +33,24 @@ impl BlockBuffer {
                 for slot in slots.iter() {
                     self.expected_slots.push_back(slot.clone());
                 }
+                //If buffer is full then send first block to indexers
+                while self.expected_slots.len() >= MAX_BUFFER_SIZE {
+                    if let Some(slot) = self.expected_slots.pop_front() {
+                        if let Some(block) = self.buffer.remove(&slot) {
+                            blocks.push(block);
+                        }
+                    }
+                }
+                //Get all exists blocks in queues
+                loop {
+                    let first_slot = self.expected_slots.get(0).unwrap().clone();
+                    if let Some(block) = self.buffer.remove(&first_slot) {
+                        blocks.push(block);
+                        self.expected_slots.pop_front();
+                    } else {
+                        break;
+                    }
+                }
             }
             BlockInfo::ConfirmBlockWithSlot(confirm_block) => {
                 debug!("*** Receive block: {}", &confirm_block.block_slot);
@@ -63,10 +81,6 @@ impl BlockBuffer {
                             confirm_block.block_slot
                         );
                     }
-                }
-                //If buffer is full then send first block to indexers
-                if self.expected_slots.len() >= MAX_BUFFER_SIZE {
-                    self.expected_slots.pop_front();
                 }
             }
         }
