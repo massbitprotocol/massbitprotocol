@@ -45,6 +45,7 @@ ipfs-client = { path = "../core/ipfs-client" }
 
 logger = { path = "../core/logger" }
 leveldb = "0.8"
+db-key = "0.0.5"
 tonic = "0.5"
 prost-types = "0.8.0"
 bs58 = "0.4.0"
