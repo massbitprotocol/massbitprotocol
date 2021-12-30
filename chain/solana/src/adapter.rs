@@ -436,7 +436,6 @@ impl SolanaNetworkAdapter {
 pub struct SolanaNetworkAdapters {
     pub adapters: Vec<SolanaNetworkAdapter>,
     sender: Option<Sender<BlockInfo>>,
-    sem: Arc<Semaphore>,
 }
 
 impl SolanaNetworkAdapters {
@@ -454,7 +453,6 @@ impl SolanaNetworkAdapters {
         SolanaNetworkAdapters {
             adapters,
             sender: tx,
-            sem: Arc::new(Semaphore::new(2 * BLOCK_BATCH_SIZE)),
         }
     }
     ///Return 2 different adapters, second one will be used in case of error while get block from first one.
@@ -539,11 +537,11 @@ impl SolanaNetworkAdapters {
                                     .await
                                     {
                                         Ok(Ok(block)) => {
-                                            debug!(
-                                                "*** ChainAdapter sending block: {}",
-                                                block.block_slot
-                                            );
                                             if let Some(tx) = sender.as_ref() {
+                                                log::info!(
+                                                    "*** ChainAdapter sending block: {}. Channel capacity: {}",
+                                                    block.block_slot, tx.capacity()
+                                                );
                                                 tx.send(BlockInfo::ConfirmBlockWithSlot(block))
                                                     .await;
                                             }
@@ -560,6 +558,10 @@ impl SolanaNetworkAdapters {
                                                 "Can not get data of the block {:?} from all available node in network",
                                                 &slot);
                                                 if let Some(tx) = sender.as_ref() {
+                                                    log::info!(
+                                                        "*** ChainAdapter sending empty block: {}. Channel capacity: {}",
+                                                        slot, tx.capacity()
+                                                    );
                                                     tx.send(BlockInfo::ConfirmBlockWithSlot(
                                                         ConfirmedBlockWithSlot {
                                                             block_slot: slot,
@@ -584,6 +586,7 @@ impl SolanaNetworkAdapters {
                 }
             }
         }
+        log::info!("Chain reader loop broken!");
     }
 }
 impl SolanaNetworkAdapters {
