@@ -1,4 +1,5 @@
 pub mod runtime;
+use crate::INDEXER_PROCESS_THREAD_LIMIT;
 use indexer_orm::models::Indexer;
 use massbit::ipfs_client::IpfsClient;
 use massbit::slog::Logger;
@@ -28,8 +29,14 @@ impl IndexerManager {
         let logger = self.logger.clone();
         let ipfs_client = self.ipfs_client.clone();
         let join_handle = tokio::spawn(async move {
-            if let Some(mut runtime) =
-                IndexerRuntime::new(indexer, ipfs_client, connection_pool, logger).await
+            if let Some(mut runtime) = IndexerRuntime::new(
+                indexer,
+                ipfs_client,
+                connection_pool,
+                logger,
+                INDEXER_PROCESS_THREAD_LIMIT,
+            )
+            .await
             {
                 runtime.start().await;
             }
