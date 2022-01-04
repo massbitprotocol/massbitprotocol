@@ -2,6 +2,7 @@ pub mod adapter;
 pub mod chain;
 pub mod data_source;
 pub mod manifest;
+pub mod storage;
 pub mod trigger;
 pub mod types;
 

@@ -16,6 +16,7 @@ use std::collections::HashMap;
 use std::env;
 use std::iter::FromIterator;
 lazy_static! {
+    pub static ref CACHE_DB_PATH: Option<String> = env::var("CACHE_DB_PATH").ok();
     // Load default config
     static ref SOLANA_WS: String = env::var("SOLANA_WS").unwrap_or(String::from("ws://api.mainnet-beta.solana.com"));
     static ref SOLANA_URL: String = env::var("SOLANA_URL").unwrap_or(String::from("https://solana-api.projectserum.com"));
