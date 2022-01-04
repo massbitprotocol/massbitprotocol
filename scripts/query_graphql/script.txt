@@ -1,0 +1,39 @@
+query top_highest_bid_price
+{
+  newOrderV3S(orderBy: limit_price, orderDirection: desc, first: 10, where: {side:"\"Bid\""}) {
+    limit_price
+    id
+    side
+    account_paying_for_the_order
+  }
+}
+
+query top_lowest_bid_price
+{
+  newOrderV3S(orderBy: limit_price, orderDirection: asc, first: 10, where: {side:"\"Bid\""}) {
+    limit_price
+    id
+    side
+    account_paying_for_the_order
+  }
+}
+
+query top_lowest_ask_price
+{
+  newOrderV3S(orderBy: limit_price, orderDirection: asc, first: 10, where: {side:"\"Ask\""}) {
+    limit_price
+    id
+    side
+    account_paying_for_the_order
+  }
+}
+
+query top_highest_ask_price
+{
+  newOrderV3S(orderBy: limit_price, orderDirection: desc, first: 10, where: {side:"\"Ask\""}) {
+    limit_price
+    id
+    side
+    account_paying_for_the_order
+  }
+}
