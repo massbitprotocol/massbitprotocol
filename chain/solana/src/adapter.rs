@@ -539,7 +539,7 @@ impl SolanaNetworkAdapters {
                                         Ok(Ok(block)) => {
                                             if let Some(tx) = sender.as_ref() {
                                                 log::info!(
-                                                    "*** ChainAdapter sending block: {}. Channel capacity: {}",
+                                                    "*** ChainAdapter sending block: {}. Broadcast channel capacity: {}",
                                                     block.block_slot, tx.capacity()
                                                 );
                                                 tx.send(BlockInfo::ConfirmBlockWithSlot(block))
@@ -559,7 +559,7 @@ impl SolanaNetworkAdapters {
                                                 &slot);
                                                 if let Some(tx) = sender.as_ref() {
                                                     log::info!(
-                                                        "*** ChainAdapter sending empty block: {}. Channel capacity: {}",
+                                                        "*** ChainAdapter sending empty block: {}. Broadcast channel capacity: {}",
                                                         slot, tx.capacity()
                                                     );
                                                     tx.send(BlockInfo::ConfirmBlockWithSlot(

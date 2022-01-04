@@ -201,6 +201,18 @@ impl IndexerBroadcast {
                 });
             });
         for indexer in indexers.iter() {
+            if indexer.sender.capacity() == 0 {
+                info!(
+                    "Channel buffer for indexer {:?} is full. {:?} blocks: {:?} are not send.",
+                    &indexer.hash,
+                    block_with_slots.len(),
+                    block_with_slots
+                        .iter()
+                        .map(|block| block.block_slot)
+                        .collect::<Vec<Slot>>()
+                );
+                break;
+            }
             if let Some(blocks) = filtered_blocks.remove(&indexer.hash) {
                 let block_response = Self::create_block_response(blocks);
                 info!(
@@ -211,13 +223,6 @@ impl IndexerBroadcast {
                 indexer.sender.send(Ok(block_response)).await;
             }
         }
-        // indexers.iter().for_each(|indexer| {
-        //     if let Some(blocks) = filtered_blocks.remove(&indexer.hash) {
-        //         let block_response = Self::create_block_response(blocks);
-        //         debug!("*** GRPC Send block_response");
-        //         indexer.sender.send(Ok(block_response)).await;
-        //     }
-        // });
     }
     fn create_block_response(blocks: Vec<ConfirmedBlockWithSlot>) -> BlockResponse {
         let ext_blocks = blocks
