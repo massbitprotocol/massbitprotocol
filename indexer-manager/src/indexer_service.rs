@@ -21,6 +21,7 @@ use massbit_common::prelude::diesel::{
 };
 use massbit_common::prelude::r2d2::PooledConnection;
 use massbit_common::prelude::serde_json::json;
+use massbit_common::prelude::tokio::time::Duration;
 use massbit_data::prelude::StoreError;
 use massbit_storage_postgres::PRIMARY_SHARD;
 use solana_sdk::stake::instruction::StakeInstruction::Deactivate;
@@ -162,7 +163,11 @@ impl IndexerService {
             indexer.status = IndexerStatus::Invalid
         }
         let now = SystemTime::now();
-        let pg_timestamp = PgTimestamp(now.duration_since(UNIX_EPOCH).unwrap().as_secs() as i64);
+        let pg_timestamp = PgTimestamp(
+            now.duration_since(UNIX_EPOCH + Duration::from_secs(10957_u64 * 24 * 3600))
+                .unwrap()
+                .as_micros() as i64,
+        );
         match self.get_connection() {
             Ok(conn) => {
                 let schema_name = format!("sgd{:?}", &indexer.v_id);
