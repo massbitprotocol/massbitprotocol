@@ -1,4 +1,5 @@
 use crate::store::StoreBuilder;
+use crate::INDEXER_PROCESS_THREAD_LIMIT;
 use crate::{CHAIN_READER_URL, COMPONENT_NAME, GET_BLOCK_TIMEOUT_SEC, GET_STREAM_TIMEOUT_SEC};
 use chain_solana::adapter::{SolanaNetworkAdapter, SolanaNetworkAdapters};
 use chain_solana::data_source::{DataSource, DataSourceTemplate};
@@ -42,13 +43,13 @@ use std::ops::Deref;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 use std::{fs, thread};
-use tokio::sync::mpsc;
 use tokio::sync::mpsc::Sender;
+use tokio::sync::{mpsc, Semaphore};
 use tonic::transport::Channel;
 use tonic::{Request, Streaming};
 use tower::timeout::Timeout;
-
 const DEFAULT_NETWORK: &str = "mainnet";
 pub struct IndexerHandler {
     pub lib: Arc<Library>,
@@ -76,6 +77,7 @@ pub struct IndexerRuntime {
     pub indexer_handler: Option<IndexerHandler>,
     pub network_adapters: Arc<Mutex<SolanaNetworkAdapters>>,
     pub connection_pool: Arc<r2d2::Pool<ConnectionManager<PgConnection>>>,
+    thread_limit: Arc<Semaphore>,
 }
 /// Static methods
 impl IndexerRuntime {
@@ -121,6 +123,7 @@ impl IndexerRuntime {
                 indexer_handler: None,
                 network_adapters: Arc::new(Mutex::new(adapters)),
                 connection_pool,
+                thread_limit: Arc::new(Semaphore::new(INDEXER_PROCESS_THREAD_LIMIT)),
             };
             return Some(runtime);
         } else {
@@ -318,8 +321,14 @@ impl<'a> IndexerRuntime {
                         match response {
                             Ok(Ok(res)) => {
                                 if let Some(mut data) = res {
+                                    let now = Instant::now();
                                     let blocks: Vec<SolanaBlock> =
                                         serde_json::from_slice(&mut data.payload).unwrap();
+                                    log::info!(
+                                        "Deserialization time of {:? }blocks: {:?}",
+                                        blocks.len(),
+                                        now.elapsed()
+                                    );
                                     //Get history block from first transaction in first block
                                     if let Some(block) = blocks.get(0) {
                                         //Open history thread for the first detection
@@ -345,15 +354,34 @@ impl<'a> IndexerRuntime {
                                             .await;
                                         }
                                     }
-
-                                    match proxy.handle_blocks(&blocks) {
-                                        Err(err) => {
-                                            log::error!(
-                                                "{} Error while handle received message",
-                                                err
+                                    log::info!(
+                                        "Available thread for indexer {} is {}/{}",
+                                        &self.indexer.hash,
+                                        &self.thread_limit.available_permits(),
+                                        INDEXER_PROCESS_THREAD_LIMIT
+                                    );
+                                    if let Ok(permit) =
+                                        Arc::clone(&self.thread_limit).acquire_owned().await
+                                    {
+                                        let cloned_proxy = proxy.clone();
+                                        tokio::spawn(async move {
+                                            let now = Instant::now();
+                                            match cloned_proxy.handle_blocks(&blocks) {
+                                                Err(err) => {
+                                                    log::error!(
+                                                        "{} Error while handle received message",
+                                                        err
+                                                    );
+                                                }
+                                                Ok(block_slot) => {}
+                                            }
+                                            log::info!(
+                                                "Process {:?} received blocks in {:?}",
+                                                blocks.len(),
+                                                now.elapsed()
                                             );
-                                        }
-                                        Ok(block_slot) => {}
+                                            drop(permit);
+                                        });
                                     }
                                 }
                             }

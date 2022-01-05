@@ -19,6 +19,7 @@ pub const API_LIST_LIMIT: i64 = 100_i64;
 pub const GET_BLOCK_TIMEOUT_SEC: u64 = 600;
 pub const GET_STREAM_TIMEOUT_SEC: u64 = 30;
 pub const MAX_JSON_BODY_SIZE: u64 = 1024 * 1024;
+pub const INDEXER_PROCESS_THREAD_LIMIT: usize = 5;
 lazy_static! {
     pub static ref COMPONENT_NAME: String = String::from("[IndexerManager]");
     pub static ref CONNECTION_POOL_SIZE: u32 = env::var("CONNECTION_POOL_SIZE")
