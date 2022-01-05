@@ -1,3 +1,4 @@
+use crate::manager::buffer::IncomingBlocks;
 use crate::store::StoreBuilder;
 use crate::INDEXER_PROCESS_THREAD_LIMIT;
 use crate::{CHAIN_READER_URL, COMPONENT_NAME, GET_BLOCK_TIMEOUT_SEC, GET_STREAM_TIMEOUT_SEC};
@@ -50,6 +51,7 @@ use tokio::sync::{mpsc, Semaphore};
 use tonic::transport::Channel;
 use tonic::{Request, Streaming};
 use tower::timeout::Timeout;
+
 const DEFAULT_NETWORK: &str = "mainnet";
 pub struct IndexerHandler {
     pub lib: Arc<Library>,
@@ -85,6 +87,7 @@ impl IndexerRuntime {
         indexer: Indexer,
         ipfs_client: Arc<IpfsClient>,
         connection_pool: Arc<r2d2::Pool<ConnectionManager<PgConnection>>>,
+        block_buffer: Arc<IncomingBlocks>,
         logger: Logger,
     ) -> Option<Self> {
         let link_resolver = LinkResolver::from(ipfs_client.clone());
