@@ -13,7 +13,7 @@ use massbit_common::prelude::diesel::{r2d2, PgConnection};
 use massbit_grpc::firehose::bstream::BlockResponse;
 pub use runtime::IndexerRuntime;
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, RwLock};
 use tokio::task::JoinHandle;
 use tonic::Streaming;
 
@@ -23,7 +23,7 @@ pub struct IndexerManager {
     pub connection_pool: Arc<r2d2::Pool<ConnectionManager<PgConnection>>>,
     pub runtimes: HashMap<String, JoinHandle<()>>,
     //Buffer of incoming blocks by address
-    pub block_buffers: HashMap<String, Arc<IncomingBlocks>>,
+    pub block_buffers: HashMap<String, Arc<Mutex<IncomingBlocks>>>,
     pub logger: Logger,
 }
 
@@ -57,11 +57,16 @@ impl IndexerManager {
                 .block_buffers
                 .get(address)
                 .and_then(|arc| Some(arc.clone()))
-                .unwrap_or(Arc::new(IncomingBlocks::new(1024)));
+                .unwrap_or(Arc::new(Mutex::new(IncomingBlocks::new(1024))));
             if !self.block_buffers.contains_key(address) {
                 self.block_buffers.insert(address.clone(), buffer.clone());
                 //Start block stream for specified address if not started
-                self.start_block_stream(address, buffer.clone());
+                let network = indexer
+                    .network
+                    .as_ref()
+                    .and_then(|network| Some(network.clone()))
+                    .unwrap_or_default();
+                self.start_block_stream(network, address.clone(), buffer.clone());
             }
 
             let join_handle = tokio::spawn(async move {
@@ -78,48 +83,15 @@ impl IndexerManager {
     }
     async fn start_block_stream(
         &mut self,
-        address: &String,
-        buffer: Arc<IncomingBlocks>,
+        network: String,
+        address: String,
+        buffer: Arc<Mutex<IncomingBlocks>>,
     ) -> Result<(), anyhow::Error> {
         let join_handle = tokio::spawn(async move {
-            loop {
-                let mut block_stream = BlockStream::new(address.clone(), buffer.clone());
-                block_stream.start().await;
-            }
+            let block_stream =
+                BlockStream::new(network.to_string(), address.clone(), buffer.clone());
+            block_stream.start().await;
         });
         Ok(())
     }
-
-    // async fn try_create_block_stream(&self, address: String) -> Option<Streaming<BlockResponse>> {
-    //     let transaction_request = BlockRequest {
-    //         indexer_hash: self.indexer.hash.clone(),
-    //         start_block_number: start_block,
-    //         chain_type: chain_type as i32,
-    //         network: data_source.network.clone().unwrap_or(Default::default()),
-    //         filter: encoded_filter,
-    //     };
-    //     if let Ok(channel) = Channel::from_static(CHAIN_READER_URL.as_str())
-    //         .connect()
-    //         .await
-    //     {
-    //         let timeout_channel = Timeout::new(channel, Duration::from_secs(GET_BLOCK_TIMEOUT_SEC));
-    //         let mut client = StreamClient::new(timeout_channel);
-    //         match client
-    //             .blocks(Request::new(transaction_request.clone()))
-    //             .await
-    //         {
-    //             Ok(res) => Some(res.into_inner()),
-    //             Err(err) => {
-    //                 log::error!("Create new stream with error {:?}", &err);
-    //                 None
-    //             }
-    //         }
-    //     } else {
-    //         log::error!(
-    //             "Cannot connect to chain reader at address {:?}",
-    //             CHAIN_READER_URL.as_str()
-    //         );
-    //         None
-    //     }
-    // }
 }

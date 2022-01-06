@@ -1,7 +1,7 @@
 use crate::manager::buffer::IncomingBlocks;
 use crate::store::StoreBuilder;
-use crate::INDEXER_PROCESS_THREAD_LIMIT;
 use crate::{CHAIN_READER_URL, COMPONENT_NAME, GET_BLOCK_TIMEOUT_SEC, GET_STREAM_TIMEOUT_SEC};
+use crate::{INDEXER_PROCESS_THREAD_LIMIT, WAITING_FOR_INCOMING_BLOCK_MILLISECOND};
 use chain_solana::adapter::{SolanaNetworkAdapter, SolanaNetworkAdapters};
 use chain_solana::data_source::{DataSource, DataSourceTemplate};
 use chain_solana::manifest::ManifestResolve;
@@ -43,7 +43,7 @@ use std::error::Error;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use std::time::Instant;
 use std::{fs, thread};
 use tokio::sync::mpsc::Sender;
@@ -77,9 +77,9 @@ pub struct IndexerRuntime {
     pub schema_path: Option<PathBuf>,
     pub mapping_path: Option<PathBuf>,
     pub indexer_handler: Option<IndexerHandler>,
+    block_buffer: Arc<Mutex<IncomingBlocks>>,
     pub network_adapters: Arc<Mutex<SolanaNetworkAdapters>>,
     pub connection_pool: Arc<r2d2::Pool<ConnectionManager<PgConnection>>>,
-    thread_limit: Arc<Semaphore>,
 }
 /// Static methods
 impl IndexerRuntime {
@@ -87,7 +87,7 @@ impl IndexerRuntime {
         indexer: Indexer,
         ipfs_client: Arc<IpfsClient>,
         connection_pool: Arc<r2d2::Pool<ConnectionManager<PgConnection>>>,
-        block_buffer: Arc<IncomingBlocks>,
+        block_buffer: Arc<Mutex<IncomingBlocks>>,
         logger: Logger,
     ) -> Option<Self> {
         let link_resolver = LinkResolver::from(ipfs_client.clone());
@@ -124,9 +124,9 @@ impl IndexerRuntime {
                 mapping_path,
                 schema_path,
                 indexer_handler: None,
+                block_buffer,
                 network_adapters: Arc::new(Mutex::new(adapters)),
                 connection_pool,
-                thread_limit: Arc::new(Semaphore::new(INDEXER_PROCESS_THREAD_LIMIT)),
             };
             return Some(runtime);
         } else {
@@ -245,8 +245,6 @@ impl<'a> IndexerRuntime {
                 };
             }
             {
-                // let store: Arc<Mutex<Box<&mut dyn IndexStore>>> =
-                //     Arc::new(Mutex::new(Box::new(&mut store)));
                 self.start_mapping().await;
             }
         }
@@ -274,7 +272,34 @@ impl<'a> IndexerRuntime {
         self.indexer_handler = Some(registrar);
         Ok(())
     }
-    async fn start_mapping(
+    async fn start_mapping(&mut self) -> Result<(), Box<dyn Error>> {
+        let mut handler_proxy = self
+            .indexer_handler
+            .as_ref()
+            .and_then(|adapter| adapter.handler_proxies.clone());
+        let indexer_hash = self.indexer.hash.clone();
+        if let Some(proxy) = handler_proxy {
+            loop {
+                let mut buffer = self.block_buffer.lock().unwrap();
+                let blocks = buffer.read_blocks(&indexer_hash);
+                let size = blocks.len();
+                let now = Instant::now();
+                let vec_blocks = blocks
+                    .iter()
+                    .map(|block| (**block).clone())
+                    .collect::<Vec<SolanaBlock>>();
+                match proxy.handle_blocks(&vec_blocks) {
+                    Err(err) => {
+                        log::error!("{} Error while handle received message", err);
+                    }
+                    Ok(block_slot) => {}
+                }
+                log::info!("Process {:?} received blocks in {:?}", size, now.elapsed());
+            }
+        }
+        Ok(())
+    }
+    async fn start_mapping_seperated_stream(
         &mut self,
         //store: Arc<Mutex<Box<&mut dyn IndexStore>>>,
     ) -> Result<(), Box<dyn Error>> {
@@ -357,35 +382,22 @@ impl<'a> IndexerRuntime {
                                             .await;
                                         }
                                     }
-                                    log::info!(
-                                        "Available thread for indexer {} is {}/{}",
-                                        &self.indexer.hash,
-                                        &self.thread_limit.available_permits(),
-                                        INDEXER_PROCESS_THREAD_LIMIT
-                                    );
-                                    if let Ok(permit) =
-                                        Arc::clone(&self.thread_limit).acquire_owned().await
-                                    {
-                                        let cloned_proxy = proxy.clone();
-                                        tokio::spawn(async move {
-                                            let now = Instant::now();
-                                            match cloned_proxy.handle_blocks(&blocks) {
-                                                Err(err) => {
-                                                    log::error!(
-                                                        "{} Error while handle received message",
-                                                        err
-                                                    );
-                                                }
-                                                Ok(block_slot) => {}
-                                            }
-                                            log::info!(
-                                                "Process {:?} received blocks in {:?}",
-                                                blocks.len(),
-                                                now.elapsed()
+
+                                    let now = Instant::now();
+                                    match proxy.handle_blocks(&blocks) {
+                                        Err(err) => {
+                                            log::error!(
+                                                "{} Error while handle received message",
+                                                err
                                             );
-                                            drop(permit);
-                                        });
+                                        }
+                                        Ok(block_slot) => {}
                                     }
+                                    log::info!(
+                                        "Process {:?} received blocks in {:?}",
+                                        blocks.len(),
+                                        now.elapsed()
+                                    );
                                 }
                             }
                             _ => {
