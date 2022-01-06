@@ -10,7 +10,9 @@ use crate::metrics::stopwatch::StopwatchMetrics;
 use crate::prelude::{q, QueryExecutionError};
 use crate::schema::{ApiSchema, Schema};
 pub use crate::store::chain::{BlockNumber, BlockPtr};
-pub use crate::store::entity::{Entity, EntityKey, EntityModification, EntityQuery, EntityType};
+pub use crate::store::entity::{
+    Attribute, Entity, EntityKey, EntityModification, EntityQuery, EntityType,
+};
 pub use event::*;
 use massbit_common::prelude::{anyhow::Error, async_trait::async_trait, serde_json, tokio};
 use massbit_common::util::MovingStats;
