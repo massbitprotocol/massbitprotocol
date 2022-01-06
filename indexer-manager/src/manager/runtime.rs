@@ -20,7 +20,7 @@ use massbit_common::prelude::diesel::{
     ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl,
 };
 use massbit_common::prelude::r2d2::PooledConnection;
-use massbit_common::prelude::tokio::time::{sleep, timeout, Duration};
+use massbit_common::prelude::tokio::time::{sleep, timeout, Duration, Instant};
 use massbit_common::prelude::uuid::Uuid;
 use massbit_common::prelude::{
     anyhow::{self, Context},
@@ -318,8 +318,14 @@ impl<'a> IndexerRuntime {
                         match response {
                             Ok(Ok(res)) => {
                                 if let Some(mut data) = res {
+                                    let now = Instant::now();
                                     let blocks: Vec<SolanaBlock> =
                                         serde_json::from_slice(&mut data.payload).unwrap();
+                                    log::info!(
+                                        "Deserialization time of {:? }blocks: {:?}",
+                                        blocks.len(),
+                                        now.elapsed()
+                                    );
                                     //Get history block from first transaction in first block
                                     if let Some(block) = blocks.get(0) {
                                         //Open history thread for the first detection
@@ -353,7 +359,13 @@ impl<'a> IndexerRuntime {
                                                 err
                                             );
                                         }
-                                        Ok(block_slot) => {}
+                                        Ok(last_block_slot) => {
+                                            log::info!(
+                                                "Process {:?} received blocks in {:?}",
+                                                blocks.len(),
+                                                now.elapsed()
+                                            );
+                                        }
                                     }
                                 }
                             }
