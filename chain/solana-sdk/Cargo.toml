@@ -32,6 +32,11 @@ massbit-data = { path = "../../core/data" }
 #git = "https://github.com/massbitprotocol/massbitprotocol.git"
 #branch = "main"
 
+#[dependencies.massbit-data]
+#package = "massbit-data"
+#git = "https://github.com/massbitprotocol/massbitprotocol.git"
+#branch = "main"
+
 [dependencies.solana-transaction-status]
 package = "solana-transaction-status"
 git = "https://github.com/massbitprotocol/solana.git"
