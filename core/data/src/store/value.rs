@@ -273,13 +273,6 @@ impl From<bool> for Value {
         Value::Bool(value)
     }
 }
-
-impl From<i32> for Value {
-    fn from(value: i32) -> Value {
-        Value::Int(value)
-    }
-}
-
 impl From<scalar::BigDecimal> for Value {
     fn from(value: scalar::BigDecimal) -> Value {
         Value::BigDecimal(value)
@@ -291,10 +284,34 @@ impl From<scalar::BigInt> for Value {
         Value::BigInt(value)
     }
 }
-
+impl From<i32> for Value {
+    fn from(value: i32) -> Value {
+        Value::Int(value)
+    }
+}
 impl From<u64> for Value {
     fn from(value: u64) -> Value {
         Value::BigInt(value.into())
+    }
+}
+impl From<u8> for Value {
+    fn from(value: u8) -> Value {
+        Value::Int(value as i32)
+    }
+}
+impl From<i8> for Value {
+    fn from(value: i8) -> Value {
+        Value::Int(value as i32)
+    }
+}
+impl From<u16> for Value {
+    fn from(value: u16) -> Value {
+        Value::Int(value as i32)
+    }
+}
+impl From<i16> for Value {
+    fn from(value: i16) -> Value {
+        Value::Int(value as i32)
     }
 }
 
