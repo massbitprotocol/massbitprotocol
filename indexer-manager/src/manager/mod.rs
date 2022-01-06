@@ -3,6 +3,7 @@ pub mod runtime;
 pub mod streaming;
 
 use crate::manager::buffer::IncomingBlocks;
+use crate::manager::streaming::BlockStream;
 use indexer_orm::models::Indexer;
 use massbit::ipfs_client::IpfsClient;
 use massbit::slog::Logger;
@@ -75,9 +76,20 @@ impl IndexerManager {
 
         Ok(())
     }
-    fn start_block_stream(&mut self, address: &String, buffer: Arc<IncomingBlocks>) {
-        let join_handle = tokio::spawn(async move { loop {} });
+    async fn start_block_stream(
+        &mut self,
+        address: &String,
+        buffer: Arc<IncomingBlocks>,
+    ) -> Result<(), anyhow::Error> {
+        let join_handle = tokio::spawn(async move {
+            loop {
+                let mut block_stream = BlockStream::new(address.clone(), buffer.clone());
+                block_stream.start().await;
+            }
+        });
+        Ok(())
     }
+
     // async fn try_create_block_stream(&self, address: String) -> Option<Streaming<BlockResponse>> {
     //     let transaction_request = BlockRequest {
     //         indexer_hash: self.indexer.hash.clone(),
