@@ -44,7 +44,6 @@ use std::ops::Deref;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex, RwLock};
-use std::time::Instant;
 use std::{fs, thread};
 use tokio::sync::mpsc::Sender;
 use tokio::sync::{mpsc, Semaphore};
@@ -294,8 +293,12 @@ impl<'a> IndexerRuntime {
                             log::error!("{} Error while handle received message", err);
                         }
                         Ok(block_slot) => {
-                            log::info!("Indexer {:?} process {:?} received blocks in {:?}", 
-                                &self.indexer.hash, size, now.elapsed());
+                            log::info!(
+                                "Indexer {:?} process {:?} received blocks in {:?}",
+                                &self.indexer.hash,
+                                size,
+                                now.elapsed()
+                            );
                         }
                     }
                 } else {
@@ -407,11 +410,6 @@ impl<'a> IndexerRuntime {
                                             );
                                         }
                                     }
-                                    log::info!(
-                                        "Process {:?} received blocks in {:?}",
-                                        blocks.len(),
-                                        now.elapsed()
-                                    );
                                 }
                             }
                             _ => {
