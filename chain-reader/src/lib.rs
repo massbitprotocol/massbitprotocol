@@ -15,6 +15,7 @@ use massbit::firehose::bstream::ChainType;
 use std::collections::HashMap;
 use std::env;
 use std::iter::FromIterator;
+pub const DEFAULT_NETWORK: &str = "mainnet";
 lazy_static! {
     // Load default config
     static ref SOLANA_WS: String = env::var("SOLANA_WS").unwrap_or(String::from("ws://api.mainnet-beta.solana.com"));

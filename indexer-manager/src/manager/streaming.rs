@@ -48,7 +48,7 @@ impl BlockStream {
                                 let blocks: Vec<SolanaBlock> =
                                     serde_json::from_slice(&mut data.payload).unwrap();
                                 log::info!(
-                                    "Deserialization time of {:? }blocks: {:?}",
+                                    "Deserialization time of {:?} blocks: {:?}",
                                     blocks.len(),
                                     now.elapsed()
                                 );

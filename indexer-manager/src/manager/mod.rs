@@ -66,7 +66,8 @@ impl IndexerManager {
                     .as_ref()
                     .and_then(|network| Some(network.clone()))
                     .unwrap_or_default();
-                self.start_block_stream(network, address.clone(), buffer.clone());
+                self.start_block_stream(network, address.clone(), buffer.clone())
+                    .await;
             }
 
             let join_handle = tokio::spawn(async move {

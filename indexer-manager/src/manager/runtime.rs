@@ -283,18 +283,26 @@ impl<'a> IndexerRuntime {
                 let mut buffer = self.block_buffer.lock().unwrap();
                 let blocks = buffer.read_blocks(&indexer_hash);
                 let size = blocks.len();
-                let now = Instant::now();
-                let vec_blocks = blocks
-                    .iter()
-                    .map(|block| (**block).clone())
-                    .collect::<Vec<SolanaBlock>>();
-                match proxy.handle_blocks(&vec_blocks) {
-                    Err(err) => {
-                        log::error!("{} Error while handle received message", err);
+                if size > 0 {
+                    let now = Instant::now();
+                    let vec_blocks = blocks
+                        .iter()
+                        .map(|block| (**block).clone())
+                        .collect::<Vec<SolanaBlock>>();
+                    match proxy.handle_blocks(&vec_blocks) {
+                        Err(err) => {
+                            log::error!("{} Error while handle received message", err);
+                        }
+                        Ok(block_slot) => {
+                            log::info!("Indexer {:?} process {:?} received blocks in {:?}", 
+                                &self.indexer.hash, size, now.elapsed());
+                        }
                     }
-                    Ok(block_slot) => {}
+                } else {
+                    sleep(Duration::from_millis(
+                        WAITING_FOR_INCOMING_BLOCK_MILLISECOND,
+                    ));
                 }
-                log::info!("Process {:?} received blocks in {:?}", size, now.elapsed());
             }
         }
         Ok(())

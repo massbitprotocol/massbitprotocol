@@ -1,7 +1,7 @@
 //use crate::command::Config;
 use crate::indexer_broadcast::IndexerBroadcast;
-use crate::solana_chain;
 use crate::solana_chain_adapter::ChainAdapter;
+use crate::{solana_chain, DEFAULT_NETWORK};
 use chain_ethereum::{Chain, TriggerFilter};
 use chain_solana::adapter::{SolanaNetworkAdapter, SolanaNetworkAdapters};
 use chain_solana::types::{ChainConfig, ConfirmedBlockWithSlot};
@@ -48,14 +48,18 @@ impl Stream for StreamService {
     ) -> Result<Response<Self::BlocksStream>, Status> {
         info!("Request = {:?}", &request);
         let (tx, rx) = mpsc::channel(QUEUE_BUFFER);
-        let network = &request.get_ref().network;
+        let network = if request.get_ref().network.is_empty() {
+            DEFAULT_NETWORK.to_string()
+        } else {
+            request.get_ref().network.clone()
+        };
         let mut services = self.network_services.write().await;
-        if !services.contains_key(network) {
-            let mut service = NetworkService::new(network);
+        if !services.contains_key(&network) {
+            let mut service = NetworkService::new(&network);
             &service.init();
             services.insert(network.clone(), service);
         }
-        if let Some(service) = services.get_mut(network) {
+        if let Some(service) = services.get_mut(&network) {
             service.register_indexer(request.get_ref(), tx);
         };
         Ok(Response::new(ReceiverStream::new(rx)))

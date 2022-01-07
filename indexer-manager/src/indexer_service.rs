@@ -54,8 +54,12 @@ impl IndexerService {
         self.get_connection().ok().and_then(|conn| {
             dsl::indexers
                 .filter(dsl::deleted.eq(false))
-                .filter(dsl::status.ne(IndexerStatus::Draft))
+                .filter(dsl::status.eq(IndexerStatus::Deployed))
                 .load::<Indexer>(conn.deref())
+                .map_err(|err| {
+                    log::error!("{:?}", &err);
+                    err
+                })
                 .ok()
         })
     }
