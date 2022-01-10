@@ -23,7 +23,7 @@ pub struct IndexerManager {
     pub connection_pool: Arc<r2d2::Pool<ConnectionManager<PgConnection>>>,
     pub runtimes: HashMap<String, JoinHandle<()>>,
     //Buffer of incoming blocks by address
-    pub block_buffers: HashMap<String, Arc<Mutex<IncomingBlocks>>>,
+    pub block_buffers: HashMap<String, Arc<IncomingBlocks>>,
     pub logger: Logger,
 }
 
@@ -57,7 +57,7 @@ impl IndexerManager {
                 .block_buffers
                 .get(address)
                 .and_then(|arc| Some(arc.clone()))
-                .unwrap_or(Arc::new(Mutex::new(IncomingBlocks::new(1024))));
+                .unwrap_or(Arc::new(IncomingBlocks::new(1024)));
             if !self.block_buffers.contains_key(address) {
                 self.block_buffers.insert(address.clone(), buffer.clone());
                 //Start block stream for specified address if not started
@@ -86,7 +86,7 @@ impl IndexerManager {
         &mut self,
         network: String,
         address: String,
-        buffer: Arc<Mutex<IncomingBlocks>>,
+        buffer: Arc<IncomingBlocks>,
     ) -> Result<(), anyhow::Error> {
         let join_handle = tokio::spawn(async move {
             let block_stream =

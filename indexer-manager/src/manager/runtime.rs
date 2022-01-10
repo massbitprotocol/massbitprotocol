@@ -38,6 +38,7 @@ use massbit_solana_sdk::plugin::{AdapterDeclaration, BlockResponse, PluginRegist
 use massbit_solana_sdk::store::IndexStore;
 use massbit_solana_sdk::types::{ExtBlock, SolanaBlock};
 use solana_sdk::signature::Signature;
+use solana_sdk::slot_history::Slot;
 use std::env::temp_dir;
 use std::error::Error;
 use std::ops::Deref;
@@ -76,7 +77,8 @@ pub struct IndexerRuntime {
     pub schema_path: Option<PathBuf>,
     pub mapping_path: Option<PathBuf>,
     pub indexer_handler: Option<IndexerHandler>,
-    block_buffer: Arc<Mutex<IncomingBlocks>>,
+    block_buffer: Arc<IncomingBlocks>,
+    got_block: Option<Slot>,
     pub network_adapters: Arc<Mutex<SolanaNetworkAdapters>>,
     pub connection_pool: Arc<r2d2::Pool<ConnectionManager<PgConnection>>>,
 }
@@ -86,7 +88,7 @@ impl IndexerRuntime {
         indexer: Indexer,
         ipfs_client: Arc<IpfsClient>,
         connection_pool: Arc<r2d2::Pool<ConnectionManager<PgConnection>>>,
-        block_buffer: Arc<Mutex<IncomingBlocks>>,
+        block_buffer: Arc<IncomingBlocks>,
         logger: Logger,
     ) -> Option<Self> {
         let link_resolver = LinkResolver::from(ipfs_client.clone());
@@ -124,6 +126,7 @@ impl IndexerRuntime {
                 schema_path,
                 indexer_handler: None,
                 block_buffer,
+                got_block: None,
                 network_adapters: Arc::new(Mutex::new(adapters)),
                 connection_pool,
             };
@@ -276,11 +279,10 @@ impl<'a> IndexerRuntime {
             .indexer_handler
             .as_ref()
             .and_then(|adapter| adapter.handler_proxies.clone());
-        let indexer_hash = self.indexer.hash.clone();
+        let indexer_hash = self.indexer.got_block.clone();
         if let Some(proxy) = handler_proxy {
             loop {
-                let mut buffer = self.block_buffer.lock().unwrap();
-                let blocks = buffer.read_blocks(&indexer_hash);
+                let blocks = self.block_buffer.read_blocks(&self.got_block);
                 let size = blocks.len();
                 if size > 0 {
                     let now = Instant::now();
@@ -293,6 +295,7 @@ impl<'a> IndexerRuntime {
                             log::error!("{} Error while handle received message", err);
                         }
                         Ok(block_slot) => {
+                            self.got_block = Some(block_slot as Slot);
                             log::info!(
                                 "Indexer {:?} process {:?} received blocks in {:?}",
                                 &self.indexer.hash,

@@ -10,7 +10,6 @@ use std::sync::{Arc, RwLock};
 pub struct IncomingBlocks {
     capacity: usize,
     buffer: RwLock<VecDeque<Arc<SolanaBlock>>>,
-    last_reading_blocks: HashMap<String, Slot>,
 }
 
 impl IncomingBlocks {
@@ -18,10 +17,9 @@ impl IncomingBlocks {
         Self {
             capacity,
             buffer: RwLock::new(VecDeque::new()),
-            last_reading_blocks: Default::default(),
         }
     }
-    pub fn append_blocks(&mut self, blocks: Vec<SolanaBlock>) {
+    pub fn append_blocks(&self, blocks: Vec<SolanaBlock>) {
         let mut write_lock = self.buffer.write().unwrap();
         while write_lock.len() >= self.capacity - blocks.len() {
             //First cycle to fill buffer - just append into end of vector
@@ -33,8 +31,7 @@ impl IncomingBlocks {
     }
     /// Read all unprocessed blocks (blocks with indexes from next_reading_index to self.latest_index) in buffer for indexer
     /// Input: indexer hash
-    pub fn read_blocks(&mut self, indexer: &String) -> Vec<Arc<SolanaBlock>> {
-        let last_slot = self.last_reading_blocks.get(indexer);
+    pub fn read_blocks(&self, last_slot: &Option<Slot>) -> Vec<Arc<SolanaBlock>> {
         let mut read_lock = self.buffer.read().unwrap();
         let blocks = match last_slot {
             None => read_lock
@@ -47,10 +44,6 @@ impl IncomingBlocks {
                 .map(|block| block.clone())
                 .collect::<Vec<Arc<SolanaBlock>>>(),
         };
-        if blocks.len() > 0 {
-            self.last_reading_blocks
-                .insert(indexer.clone(), blocks.iter().last().unwrap().block_number);
-        }
         blocks
     }
 }

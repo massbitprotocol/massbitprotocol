@@ -16,11 +16,11 @@ use tower::timeout::Timeout;
 pub struct BlockStream {
     network: String,
     address: String,
-    buffer: Arc<Mutex<IncomingBlocks>>,
+    buffer: Arc<IncomingBlocks>,
 }
 
 impl BlockStream {
-    pub fn new(network: String, address: String, buffer: Arc<Mutex<IncomingBlocks>>) -> Self {
+    pub fn new(network: String, address: String, buffer: Arc<IncomingBlocks>) -> Self {
         Self {
             network,
             address,
@@ -52,8 +52,7 @@ impl BlockStream {
                                     blocks.len(),
                                     now.elapsed()
                                 );
-                                let mut write_buffer = self.buffer.lock().unwrap();
-                                write_buffer.append_blocks(blocks);
+                                self.buffer.append_blocks(blocks);
                             }
                         }
                         _ => {
