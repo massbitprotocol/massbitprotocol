@@ -130,12 +130,11 @@ impl ServerBuilder {
                 connection_pool: self.connection_pool.as_ref().unwrap().clone(),
                 logger: self.logger.as_ref().unwrap().clone(),
             }),
-            indexer_manager: Arc::new(Mutex::new(IndexerManager {
-                ipfs_client: ipfs_client.clone(),
-                connection_pool: self.connection_pool.as_ref().unwrap().clone(),
-                //runtimes: Default::default(),
-                logger: self.logger.as_ref().unwrap().clone(),
-            })),
+            indexer_manager: Arc::new(Mutex::new(IndexerManager::new(
+                ipfs_client.clone(),
+                self.connection_pool.as_ref().unwrap().clone(),
+                self.logger.as_ref().unwrap().clone(),
+            ))),
         }
     }
 }

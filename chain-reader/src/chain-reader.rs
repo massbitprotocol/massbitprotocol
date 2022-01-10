@@ -1,9 +1,9 @@
-use std::future::pending;
 use chain_reader::command;
 use chain_reader::stream_service::StreamService;
 use clap::{App, Arg};
 use logger::core::init_logger;
 use massbit_grpc::firehose::bstream::stream_server::StreamServer;
+use std::future::pending;
 use tonic::transport::Server;
 
 const QUEUE_BUFFER: usize = 1024;

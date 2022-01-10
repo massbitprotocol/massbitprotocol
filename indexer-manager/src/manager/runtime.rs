@@ -1,5 +1,7 @@
+use crate::manager::buffer::IncomingBlocks;
 use crate::store::StoreBuilder;
 use crate::{CHAIN_READER_URL, COMPONENT_NAME, GET_BLOCK_TIMEOUT_SEC, GET_STREAM_TIMEOUT_SEC};
+use crate::{INDEXER_PROCESS_THREAD_LIMIT, WAITING_FOR_INCOMING_BLOCK_MILLISECOND};
 use chain_solana::adapter::{SolanaNetworkAdapter, SolanaNetworkAdapters};
 use chain_solana::data_source::{DataSource, DataSourceTemplate};
 use chain_solana::manifest::ManifestResolve;
@@ -36,15 +38,16 @@ use massbit_solana_sdk::plugin::{AdapterDeclaration, BlockResponse, PluginRegist
 use massbit_solana_sdk::store::IndexStore;
 use massbit_solana_sdk::types::{ExtBlock, SolanaBlock};
 use solana_sdk::signature::Signature;
+use solana_sdk::slot_history::Slot;
 use std::env::temp_dir;
 use std::error::Error;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use std::{fs, thread};
-use tokio::sync::mpsc;
 use tokio::sync::mpsc::Sender;
+use tokio::sync::{mpsc, Semaphore};
 use tonic::transport::Channel;
 use tonic::{Request, Streaming};
 use tower::timeout::Timeout;
@@ -74,6 +77,8 @@ pub struct IndexerRuntime {
     pub schema_path: Option<PathBuf>,
     pub mapping_path: Option<PathBuf>,
     pub indexer_handler: Option<IndexerHandler>,
+    block_buffer: Arc<IncomingBlocks>,
+    got_block: Option<Slot>,
     pub network_adapters: Arc<Mutex<SolanaNetworkAdapters>>,
     pub connection_pool: Arc<r2d2::Pool<ConnectionManager<PgConnection>>>,
 }
@@ -83,6 +88,7 @@ impl IndexerRuntime {
         indexer: Indexer,
         ipfs_client: Arc<IpfsClient>,
         connection_pool: Arc<r2d2::Pool<ConnectionManager<PgConnection>>>,
+        block_buffer: Arc<IncomingBlocks>,
         logger: Logger,
     ) -> Option<Self> {
         let link_resolver = LinkResolver::from(ipfs_client.clone());
@@ -119,6 +125,8 @@ impl IndexerRuntime {
                 mapping_path,
                 schema_path,
                 indexer_handler: None,
+                block_buffer,
+                got_block: None,
                 network_adapters: Arc::new(Mutex::new(adapters)),
                 connection_pool,
             };
@@ -239,8 +247,6 @@ impl<'a> IndexerRuntime {
                 };
             }
             {
-                // let store: Arc<Mutex<Box<&mut dyn IndexStore>>> =
-                //     Arc::new(Mutex::new(Box::new(&mut store)));
                 self.start_mapping().await;
             }
         }
@@ -268,7 +274,46 @@ impl<'a> IndexerRuntime {
         self.indexer_handler = Some(registrar);
         Ok(())
     }
-    async fn start_mapping(
+    async fn start_mapping(&mut self) -> Result<(), Box<dyn Error>> {
+        let mut handler_proxy = self
+            .indexer_handler
+            .as_ref()
+            .and_then(|adapter| adapter.handler_proxies.clone());
+        let indexer_hash = self.indexer.got_block.clone();
+        if let Some(proxy) = handler_proxy {
+            loop {
+                let blocks = self.block_buffer.read_blocks(&self.got_block);
+                let size = blocks.len();
+                if size > 0 {
+                    let now = Instant::now();
+                    let vec_blocks = blocks
+                        .iter()
+                        .map(|block| (**block).clone())
+                        .collect::<Vec<SolanaBlock>>();
+                    match proxy.handle_blocks(&vec_blocks) {
+                        Err(err) => {
+                            log::error!("{} Error while handle received message", err);
+                        }
+                        Ok(block_slot) => {
+                            self.got_block = Some(block_slot as Slot);
+                            log::info!(
+                                "Indexer {:?} process {:?} received blocks in {:?}",
+                                &self.indexer.hash,
+                                size,
+                                now.elapsed()
+                            );
+                        }
+                    }
+                } else {
+                    sleep(Duration::from_millis(
+                        WAITING_FOR_INCOMING_BLOCK_MILLISECOND,
+                    ));
+                }
+            }
+        }
+        Ok(())
+    }
+    async fn start_mapping_seperated_stream(
         &mut self,
         //store: Arc<Mutex<Box<&mut dyn IndexStore>>>,
     ) -> Result<(), Box<dyn Error>> {
@@ -352,6 +397,7 @@ impl<'a> IndexerRuntime {
                                         }
                                     }
 
+                                    let now = Instant::now();
                                     match proxy.handle_blocks(&blocks) {
                                         Err(err) => {
                                             log::error!(
