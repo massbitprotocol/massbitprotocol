@@ -38,11 +38,19 @@ impl IncomingBlocks {
                 .iter()
                 .map(|block| block.clone())
                 .collect::<Vec<Arc<SolanaBlock>>>(),
-            Some(slot) => read_lock
-                .iter()
-                .filter(|block| block.block_number > *slot)
-                .map(|block| block.clone())
-                .collect::<Vec<Arc<SolanaBlock>>>(),
+            Some(slot) => {
+                let ind = read_lock.len() - 1;
+                let mut blocks = Vec::default();
+                for i in ind..=0 {
+                    let block = read_lock.get(i).unwrap();
+                    if block.block_number > *slot {
+                        blocks.insert(0, block.clone());
+                    } else {
+                        break;
+                    }
+                }
+                blocks
+            }
         };
         blocks
     }
