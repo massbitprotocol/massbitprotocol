@@ -52,7 +52,9 @@ impl BlockStream {
                                     blocks.len(),
                                     now.elapsed()
                                 );
-                                self.buffer.append_blocks(blocks);
+                                if blocks.len() > 0 {
+                                    self.buffer.append_blocks(blocks);
+                                }
                             }
                         }
                         _ => {
