@@ -6,7 +6,7 @@ pub type PositiveIntegerDefault0 = serde_json::Value;
 pub type SchemaArray = Vec<Schema>;
 pub type VariantArray = Vec<Variant>;
 pub type PropertyArray = Vec<Property>;
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct Variant {
     pub name: String,
     pub value: Option<i32>,

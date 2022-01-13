@@ -42,11 +42,20 @@ fn main() {
         }
     } else if let Some(ref matches) = matches.subcommand_matches("genstructure") {
         let structure_path = matches.value_of("source").unwrap_or("instruction.rs");
-        let config_path = matches.value_of("config").unwrap_or("config.json");
+        let name = matches.value_of("name").unwrap_or("instruction");
         let output = matches.value_of("output").unwrap_or("src");
-        let schema_builder = SchemaBuilder::builder()
+        let enums = matches.values_of("enums").and_then(|values| {
+            Some(
+                values
+                    .map(|value| value.to_string())
+                    .collect::<Vec<String>>(),
+            )
+        });
+        let mut schema_builder = SchemaBuilder::builder()
             .with_instruction_path(structure_path)
-            .with_output_dir(output);
+            .with_output_dir(output)
+            .with_enums(enums)
+            .with_name(name);
         schema_builder.build()
     } else if let Some(ref matches) = matches.subcommand_matches("release") {
         let project_dir = matches.value_of("project-dir").unwrap_or("./");
@@ -133,19 +142,28 @@ fn create_genstructure_cmd() -> App<'static, 'static> {
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("config")
-                .short("c")
-                .long("config")
-                .value_name("config")
-                .help("Input config file")
-                .takes_value(false),
-        )
-        .arg(
             Arg::with_name("output")
                 .short("o")
                 .long("output")
                 .value_name("output")
                 .help("Output file")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("name")
+                .short("n")
+                .long("name")
+                .value_name("name")
+                .help("Instruction name")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("enums")
+                .short("v")
+                .long("enums")
+                .value_name("enums")
+                .help("Enums variants name")
+                .multiple(true)
                 .takes_value(true),
         )
 }
