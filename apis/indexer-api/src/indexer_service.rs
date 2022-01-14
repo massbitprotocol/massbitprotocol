@@ -99,7 +99,7 @@ impl IndexerService {
             let name = format!("{}", &p.name());
             let p_name = name.as_str();
             match p_name {
-                "mapping" | "schema" | "manifest" => {
+                "mapping" | "unpack_instruction" | "schema" | "manifest" => {
                     let value = p
                         .stream()
                         .try_fold(Vec::new(), |mut vec, data| {
@@ -114,6 +114,9 @@ impl IndexerService {
                     match self.ipfs_client.add(value).await {
                         Ok(response) => match p_name {
                             "mapping" => indexer.mapping = response.hash.clone(),
+                            "unpack_instruction" => {
+                                indexer.unpack_instruction = response.hash.clone()
+                            }
                             "schema" => indexer.graphql = response.hash.clone(),
                             "manifest" => indexer.manifest = response.hash.clone(),
                             &_ => {}
