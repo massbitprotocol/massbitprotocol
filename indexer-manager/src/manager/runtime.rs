@@ -284,6 +284,11 @@ impl<'a> IndexerRuntime {
             loop {
                 let blocks = self.block_buffer.read_blocks(&self.got_block);
                 let size = blocks.len();
+                log::info!(
+                    "Indexer {:?} got {:?} blocks from buffer.",
+                    &self.indexer.hash,
+                    size
+                );
                 if size > 0 {
                     let now = Instant::now();
                     let vec_blocks = blocks
@@ -307,7 +312,8 @@ impl<'a> IndexerRuntime {
                 } else {
                     sleep(Duration::from_millis(
                         WAITING_FOR_INCOMING_BLOCK_MILLISECOND,
-                    ));
+                    ))
+                    .await;
                 }
             }
         }

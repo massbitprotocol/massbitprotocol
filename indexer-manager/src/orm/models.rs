@@ -18,6 +18,7 @@ pub struct Indexer {
     pub repository: Option<String>,
     pub manifest: String,
     pub mapping: String,
+    pub unpack_instruction: String,
     pub graphql: String,
     pub status: IndexerStatus,
     pub deleted: bool,

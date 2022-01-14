@@ -10,6 +10,7 @@ table! {
         repository -> Nullable<Varchar>,
         manifest -> Varchar,
         mapping -> Varchar,
+        unpack_instruction -> Varchar,
         graphql -> Varchar,
         status -> IndexerStatusMapping,
         deleted -> Bool,
