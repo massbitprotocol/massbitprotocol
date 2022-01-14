@@ -3,7 +3,7 @@ use clap::{App, Arg};
 use massbit_sol::generator::Generator;
 use massbit_sol::indexer_deploy::deploy_indexer;
 use massbit_sol::indexer_release::release_indexer;
-use massbit_sol::parser::SchemaBuilder;
+use massbit_sol::parser::IndexerBuilder;
 use massbit_sol::INDEXER_ENDPOINT;
 
 fn main() {
@@ -14,7 +14,7 @@ fn main() {
         .about("Massbit Solana CLI")
         .subcommand(create_gencode_cmd())
         .subcommand(create_deploy_cmd())
-        .subcommand(create_genstructure_cmd())
+        .subcommand(create_genindexer_cmd())
         .subcommand(create_release_cmd())
         .get_matches();
     if let Some(ref matches) = matches.subcommand_matches("gencode") {
@@ -40,23 +40,19 @@ fn main() {
                 println!("Error {:?}", &err);
             }
         }
-    } else if let Some(ref matches) = matches.subcommand_matches("genstructure") {
-        let structure_path = matches.value_of("source").unwrap_or("instruction.rs");
-        let name = matches.value_of("name").unwrap_or("instruction");
-        let output = matches.value_of("output").unwrap_or("src");
-        let enums = matches.values_of("enums").and_then(|values| {
-            Some(
-                values
-                    .map(|value| value.to_string())
-                    .collect::<Vec<String>>(),
-            )
-        });
-        let mut schema_builder = SchemaBuilder::builder()
-            .with_instruction_path(structure_path)
-            .with_output_dir(output)
-            .with_enums(enums)
-            .with_name(name);
-        schema_builder.build()
+    } else if let Some(ref matches) = matches.subcommand_matches("genindexer") {
+        let config_path = matches.value_of("config").unwrap_or("config.json");
+        // let name = matches.value_of("name").unwrap_or("instruction");
+        // let output = matches.value_of("output").unwrap_or("src");
+        // let enums = matches.values_of("enums").and_then(|values| {
+        //     Some(
+        //         values
+        //             .map(|value| value.to_string())
+        //             .collect::<Vec<String>>(),
+        //     )
+        // });
+        let mut indexer_builder = IndexerBuilder::builder().with_config_path(config_path);
+        indexer_builder.build()
     } else if let Some(ref matches) = matches.subcommand_matches("release") {
         let project_dir = matches.value_of("project-dir").unwrap_or("./");
         match release_indexer(project_dir) {
@@ -130,40 +126,15 @@ fn create_release_cmd() -> App<'static, 'static> {
     )
 }
 
-fn create_genstructure_cmd() -> App<'static, 'static> {
-    App::new("genstructure")
+fn create_genindexer_cmd() -> App<'static, 'static> {
+    App::new("genindexer")
         .about("Generate Solana smartcontract instruction structure from source code.")
         .arg(
-            Arg::with_name("source")
-                .short("s")
-                .long("source")
-                .value_name("source")
-                .help("Input instruction source code file")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("output")
-                .short("o")
-                .long("output")
-                .value_name("output")
-                .help("Output file")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("name")
-                .short("n")
-                .long("name")
-                .value_name("name")
-                .help("Instruction name")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("enums")
-                .short("v")
-                .long("enums")
-                .value_name("enums")
-                .help("Enums variants name")
-                .multiple(true)
+            Arg::with_name("config")
+                .short("c")
+                .long("config")
+                .value_name("config")
+                .help("Input indexer configuration file")
                 .takes_value(true),
         )
 }

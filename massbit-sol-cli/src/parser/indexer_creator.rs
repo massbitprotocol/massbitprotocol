@@ -1,3 +1,7 @@
+use crate::config::IndexerConfig;
+use crate::parser::handler::InstructionHandler;
+use crate::parser::parser::InstructionParser;
+use crate::parser::schema::GraphqlSchema;
 use crate::parser::visittor::Visitor;
 use crate::schema;
 use crate::schema::{Schema, VariantArray};
@@ -6,67 +10,80 @@ use std::{fs, io};
 use syn::__private::ToTokens;
 use syn::{Attribute, Field, Fields, File, Item, ItemEnum, ItemUse, Type, Variant};
 
-pub struct SchemaBuilder<'a> {
-    pub instruction_path: &'a str,
-    pub output_dir: &'a str,
-    name: &'a str,
-    enums: Vec<String>,
-    schema: Schema,
+pub struct IndexerBuilder<'a> {
+    pub config_path: &'a str,
+    config: Option<IndexerConfig>,
     context: VisitorContext<'a>,
 }
-impl<'a> SchemaBuilder<'a> {
+impl<'a> IndexerBuilder<'a> {
     fn default() -> Self {
         Self {
-            instruction_path: "",
-            output_dir: "",
-            name: "",
-            enums: Vec::default(),
-            schema: Default::default(),
+            config_path: "",
+            config: None,
             context: VisitorContext::default(),
         }
     }
-    pub fn builder() -> SchemaBuilder<'a> {
-        SchemaBuilder::default()
+    pub fn builder() -> IndexerBuilder<'a> {
+        IndexerBuilder::default()
     }
-    pub fn with_instruction_path(mut self, path: &'a str) -> Self {
-        self.instruction_path = path;
-        self
-    }
-    pub fn with_output_dir(mut self, output_dir: &'a str) -> Self {
-        self.output_dir = output_dir;
-        self
-    }
-    pub fn with_enums(mut self, enums: Option<Vec<String>>) -> Self {
-        if let Some(values) = enums {
-            values.iter().for_each(|val| {
-                self.enums.push(val.clone());
-            })
-        }
-        self
-    }
-    pub fn with_name(mut self, name: &'a str) -> Self {
-        self.name = name;
-        self.schema.name = Some(String::from(self.name));
+    pub fn with_config_path(mut self, path: &'a str) -> Self {
+        self.config_path = path;
+        let json = std::fs::read_to_string(path)
+            .unwrap_or_else(|err| panic!("Unable to read `{}`: {}", path, err));
+        let config: IndexerConfig = serde_json::from_str(&json)
+            .unwrap_or_else(|err| panic!("Cannot parse `{}` as JSON: {}", path, err));
+        self.config = Some(config);
         self
     }
     pub fn build(&mut self) {
-        let input_content = fs::read_to_string(self.instruction_path).unwrap_or_else(|_| {
-            panic!(
-                "Something went wrong reading the file {}",
-                &self.instruction_path
-            )
+        let config_parser = self.config.as_ref().map(|config| {
+            let mut parts = config
+                .main_instruction
+                .split("::")
+                .into_iter()
+                .map(|part| String::from(part))
+                .collect::<Vec<String>>();
+            let instruction_name = parts.remove(parts.len() - 1);
+            let instruction_path = format!(
+                "{}/src/{}.rs",
+                config.smart_contract_source,
+                parts.join("/")
+            );
+            log::info!(
+                "Load instruction {:?} from source file: {:?}",
+                &instruction_name,
+                &instruction_path
+            );
+            let input_content =
+                fs::read_to_string(instruction_path.as_str()).unwrap_or_else(|_| {
+                    panic!(
+                        "Something went wrong reading the file {}",
+                        &instruction_path
+                    )
+                });
+            (instruction_name, input_content)
         });
-        if let Ok(ast) = syn::parse_file(&input_content) {
-            self.visit_file(&ast);
-            if let Ok(content) = serde_json::to_string_pretty(&self.schema) {
-                let output_path = format!("{}/{}", self.output_dir, self.name);
-                if fs::create_dir_all(&output_path).is_ok() {
-                    let output_path = format!("{}/{}/instruction.json", self.output_dir, self.name);
-                    let path = Path::new(output_path.as_str());
-                    self.write_to_file(path, &content);
-                }
-            }
-        };
+        if let Some((main_instruction, content)) = config_parser {
+            self.config.as_mut().unwrap().main_instruction = main_instruction;
+            if let Ok(ast) = syn::parse_file(&content) {
+                let config = self.config.as_ref().unwrap().clone();
+                let mut handler = InstructionHandler::new(config.clone());
+                handler.visit_file(&ast);
+                // let mut parser = InstructionParser::default();
+                // parser.visit_file(&ast);
+                // let mut graphql = GraphqlSchema::default();
+                // graphql.visit_file(&ast);
+                // if let Ok(content) = serde_json::to_string_pretty(&self.schema) {
+                //     let output_path = format!("{}/{}", self.output_dir, self.name);
+                //     if fs::create_dir_all(&output_path).is_ok() {
+                //         let output_path =
+                //             format!("{}/{}/instruction.json", self.output_dir, self.name);
+                //         let path = Path::new(output_path.as_str());
+                //         self.write_to_file(path, &content);
+                //     }
+                // }
+            };
+        }
     }
     pub fn write_to_file<P: ?Sized + AsRef<Path>>(
         &self,
@@ -96,7 +113,7 @@ impl<'a> SchemaBuilder<'a> {
 pub struct VisitorContext<'a> {
     current_item: Option<&'a Item>,
 }
-impl<'a> SchemaBuilder<'a> {
+impl<'a> IndexerBuilder<'a> {
     fn create_variant(&self, item_variant: &Variant) -> schema::Variant {
         let mut variant = schema::Variant {
             name: item_variant.ident.to_string(),
@@ -143,7 +160,7 @@ impl<'a> SchemaBuilder<'a> {
     }
 }
 #[doc = " Instructions supported by the Fraction program."]
-impl<'a> Visitor<()> for SchemaBuilder<'a> {
+impl<'a> Visitor for IndexerBuilder<'a> {
     #[doc = " Instructions supported by the Fraction program."]
     fn visit_file(&mut self, file: &File) {
         for item in file.items.iter() {
@@ -188,10 +205,10 @@ impl<'a> Visitor<()> for SchemaBuilder<'a> {
     fn visit_item_enum(&mut self, item_enum: &ItemEnum) {
         println!("{:?}", item_enum.to_token_stream().to_string());
         let ident = item_enum.ident.to_string();
-        if self.enums.contains(&ident) && self.enums.len() == 1 {
-            self.schema.name = Some(ident.clone());
-            self.schema.variants = Some(Vec::new());
-        }
+        // if self.enums.contains(&ident) && self.enums.len() == 1 {
+        //     self.schema.name = Some(ident.clone());
+        //     self.schema.variants = Some(Vec::new());
+        // }
         for attr in item_enum.attrs.iter() {
             println!("{:?}", attr);
             println!("{:?}", attr.to_token_stream().to_string());
@@ -208,17 +225,17 @@ impl<'a> Visitor<()> for SchemaBuilder<'a> {
     }
     fn visit_item_variant(&mut self, item: &ItemEnum, item_variant: &Variant) {
         let item_ident = item.ident.to_string();
-        if self.enums.contains(&item_ident) {
-            let variant = self.create_variant(item_variant);
-            let definition = self.create_definition(item_variant);
-            if let Some(def) = definition {
-                self.schema
-                    .definitions
-                    .insert(item_variant.ident.to_string(), def);
-            }
-
-            self.schema.variants.as_mut().unwrap().push(variant);
-        }
+        // if self.enums.contains(&item_ident) {
+        //     let variant = self.create_variant(item_variant);
+        //     let definition = self.create_definition(item_variant);
+        //     if let Some(def) = definition {
+        //         self.schema
+        //             .definitions
+        //             .insert(item_variant.ident.to_string(), def);
+        //     }
+        //
+        //     self.schema.variants.as_mut().unwrap().push(variant);
+        // }
 
         // println!("Variant attrs {:?}", &item_variant.attrs);
         // println!("Variant ident {:?}", &item_variant.ident);
@@ -227,4 +244,4 @@ impl<'a> Visitor<()> for SchemaBuilder<'a> {
     }
     fn visit_item_use(&mut self, item_use: &ItemUse) {}
 }
-impl<'a> SchemaBuilder<'a> {}
+impl<'a> IndexerBuilder<'a> {}
