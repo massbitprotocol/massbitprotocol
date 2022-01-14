@@ -1,4 +1,5 @@
 pub mod plugin;
+pub mod smart_contract;
 pub mod store;
 pub mod types;
 
@@ -10,3 +11,4 @@ lazy_static! {
 pub mod entity {
     pub use massbit_data::store::{Attribute, Entity, Value};
 }
+pub use smart_contract::SmartContractRegistrar;
