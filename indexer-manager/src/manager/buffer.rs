@@ -40,9 +40,11 @@ impl IncomingBlocks {
         );
         let now = Instant::now();
         let remove_elm = write_lock.len() + blocks.len() - self.capacity;
-        for _ in 0..remove_elm {
-            //First cycle to fill buffer - just append into end of vector
-            write_lock.pop_front();
+        if remove_elm > 0 {
+            for _ in 0..remove_elm {
+                //First cycle to fill buffer - just append into end of vector
+                write_lock.pop_front();
+            }
         }
         for block in blocks.into_iter() {
             write_lock.push_back(Arc::new(block));
