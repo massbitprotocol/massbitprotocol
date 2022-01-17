@@ -362,11 +362,14 @@ impl IndexStore for CacheableStore {
                 };
                 match self.store.transact_block_operations(block_ptr, mods) {
                     Ok(_) => {
-                        log::info!(
-                            "Transact block operation with {} records successfully in {:?}",
-                            length,
-                            start.elapsed()
-                        );
+                        //Print log for every 100 blocks
+                        if block_slot % 100 == 0 {
+                            log::info!(
+                                "Transact block operation with {} records successfully in {:?}",
+                                length,
+                                start.elapsed()
+                            );
+                        }
                     }
                     Err(err) => {
                         log::error!("Transact block operation with error {:?}", &err);
