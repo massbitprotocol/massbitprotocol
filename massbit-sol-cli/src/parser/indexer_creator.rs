@@ -74,7 +74,7 @@ impl<'a> IndexerBuilder<'a> {
                 println!("Parse definitions");
                 let mut definitions = Definitions::new(config.clone());
                 definitions.visit_file(&ast);
-
+                println!("Create Handler");
                 let mut handler = InstructionHandler::new(config.clone());
                 handler.visit_file(&ast);
                 // let mut parser = InstructionParser::default();
