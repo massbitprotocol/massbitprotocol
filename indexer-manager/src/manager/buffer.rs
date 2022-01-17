@@ -39,12 +39,10 @@ impl IncomingBlocks {
             write_lock.len()
         );
         let now = Instant::now();
-        let remove_elm = write_lock.len() + blocks.len() - self.capacity;
-        if remove_elm > 0 {
-            for _ in 0..remove_elm {
-                //First cycle to fill buffer - just append into end of vector
-                write_lock.pop_front();
-            }
+        let total_size = write_lock.len() + blocks.len();
+        for _ in self.capacity..total_size {
+            //First cycle to fill buffer - just append into end of vector
+            write_lock.pop_front();
         }
         for block in blocks.into_iter() {
             write_lock.push_back(Arc::new(block));
@@ -79,7 +77,11 @@ impl IncomingBlocks {
                     blocks
                 }
             };
-            log::info!("Read from RwLockBuffer in {:?}", now.elapsed());
+            log::info!(
+                "Read {} blocks from RwLockBuffer in {:?}",
+                blocks.len(),
+                now.elapsed()
+            );
             blocks
         } else {
             Vec::default()
