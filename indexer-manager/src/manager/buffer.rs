@@ -27,8 +27,7 @@ impl IncomingBlocks {
             blocks
                 .iter()
                 .map(|block| block.block_number)
-                .collect::<Vec<Slot>>()
-                .join(","),
+                .collect::<Vec<Slot>>(),
             write_lock.len()
         );
         while write_lock.len() >= self.capacity - blocks.len() {
