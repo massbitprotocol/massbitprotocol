@@ -1,6 +1,7 @@
 use massbit_solana_sdk::types::{ExtBlock, SolanaBlock};
 use solana_sdk::clock::Slot;
 use std::collections::{HashMap, VecDeque};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 use std::time::Instant;
 
@@ -10,6 +11,7 @@ use std::time::Instant;
 ///
 pub struct IncomingBlocks {
     capacity: usize,
+    reading_flag: AtomicBool,
     buffer: RwLock<VecDeque<Arc<SolanaBlock>>>,
 }
 
@@ -17,15 +19,18 @@ impl IncomingBlocks {
     pub fn new(capacity: usize) -> Self {
         Self {
             capacity,
+            reading_flag: AtomicBool::new(true),
             buffer: RwLock::new(VecDeque::new()),
         }
     }
     pub fn append_blocks(&self, blocks: Vec<SolanaBlock>) {
         let now = Instant::now();
+        //Prevent other thread acquires lock for reading
+        self.reading_flag.store(false, Ordering::Relaxed);
         let mut write_lock = self.buffer.write().unwrap();
         log::info!(
             "Waiting time {:?} for append {} blocks: {:?} into buffer with current size: {}",
-            now.eslapsed(),
+            now.elapsed(),
             blocks.len(),
             blocks
                 .iter()
@@ -42,34 +47,40 @@ impl IncomingBlocks {
         for block in blocks.into_iter() {
             write_lock.push_back(Arc::new(block));
         }
+        self.reading_flag.store(true, Ordering::Relaxed);
         log::info!("Writing time {:?}", now.elapsed());
     }
     /// Read all unprocessed blocks (blocks with indexes from next_reading_index to self.latest_index) in buffer for indexer
     /// Input: indexer hash
     pub fn read_blocks(&self, last_slot: &Option<Slot>) -> Vec<Arc<SolanaBlock>> {
         let now = Instant::now();
-        let mut read_lock = self.buffer.read().unwrap();
-        let blocks = match last_slot {
-            None => read_lock
-                .iter()
-                .map(|block| block.clone())
-                .collect::<Vec<Arc<SolanaBlock>>>(),
-            Some(slot) => {
-                let mut ind = read_lock.len() - 1;
-                let mut blocks = Vec::default();
-                while ind >= 0 {
-                    let block = read_lock.get(ind).unwrap();
-                    if block.block_number > *slot {
-                        blocks.insert(0, block.clone());
-                    } else {
-                        break;
+        let readable = self.reading_flag.load(Ordering::Relaxed);
+        if readable {
+            let mut read_lock = self.buffer.read().unwrap();
+            let blocks = match last_slot {
+                None => read_lock
+                    .iter()
+                    .map(|block| block.clone())
+                    .collect::<Vec<Arc<SolanaBlock>>>(),
+                Some(slot) => {
+                    let mut ind = read_lock.len() - 1;
+                    let mut blocks = Vec::default();
+                    while ind >= 0 {
+                        let block = read_lock.get(ind).unwrap();
+                        if block.block_number > *slot {
+                            blocks.insert(0, block.clone());
+                        } else {
+                            break;
+                        }
+                        ind = ind - 1;
                     }
-                    ind = ind - 1;
+                    blocks
                 }
-                blocks
-            }
-        };
-        log::info!("Read from RwLockBuffer in {:?}", now.elapsed());
-        blocks
+            };
+            log::info!("Read from RwLockBuffer in {:?}", now.elapsed());
+            blocks
+        } else {
+            Vec::default()
+        }
     }
 }
