@@ -20,8 +20,17 @@ impl IncomingBlocks {
         }
     }
     pub fn append_blocks(&self, blocks: Vec<SolanaBlock>) {
-        log::info!("Lock and append {} blocks into buffer", blocks.len());
         let mut write_lock = self.buffer.write().unwrap();
+        log::info!(
+            "Lock and append {} blocks: {:?} into buffer with current size: {}",
+            blocks.len(),
+            blocks
+                .iter()
+                .map(|block| block.block_number)
+                .collect::<Vec<Slot>>()
+                .join(","),
+            write_lock.len()
+        );
         while write_lock.len() >= self.capacity - blocks.len() {
             //First cycle to fill buffer - just append into end of vector
             write_lock.pop_front();

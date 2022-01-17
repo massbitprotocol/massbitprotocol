@@ -285,9 +285,14 @@ impl<'a> IndexerRuntime {
                 let blocks = self.block_buffer.read_blocks(&self.got_block);
                 let size = blocks.len();
                 log::info!(
-                    "Indexer {:?} got {:?} blocks from buffer.",
+                    "Indexer {:?} got {:?} blocks: {:?} from buffer.",
                     &self.indexer.hash,
-                    size
+                    size,
+                    blocks
+                        .iter()
+                        .map(|block| { block.block_number })
+                        .collect::<Vec<Slot>>()
+                        .join(",")
                 );
                 if size > 0 {
                     let now = Instant::now();
@@ -302,10 +307,16 @@ impl<'a> IndexerRuntime {
                         Ok(block_slot) => {
                             self.got_block = Some(block_slot as Slot);
                             log::info!(
-                                "Indexer {:?} process {:?} received blocks in {:?}",
+                                "Indexer {:?} process {:?} received blocks {} in {:?}. Last got block {}",
                                 &self.indexer.hash,
                                 size,
-                                now.elapsed()
+                                vec_blocks
+                                    .iter()
+                                    .map(|block| block.block_number)
+                                    .collect::<Vec<Slot>>()
+                                    .join(","),
+                                now.elapsed(),
+                                block_slot
                             );
                         }
                     }
