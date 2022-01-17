@@ -1,4 +1,4 @@
-use syn::{Attribute, File, Item, ItemEnum, ItemUse, Variant};
+use syn::{Attribute, FieldsNamed, FieldsUnnamed, File, Item, ItemEnum, ItemUse, Variant};
 
 pub trait Visitor {
     fn visit_file(&mut self, file: &File) {
@@ -39,4 +39,7 @@ pub trait Visitor {
     fn visit_item_enum(&mut self, item_enum: &ItemEnum);
     fn visit_item_variant(&mut self, item_enum: &ItemEnum, variant: &Variant);
     fn visit_item_use(&mut self, item_use: &ItemUse);
+    fn visit_named_field(&mut self, ident_name: &String, field_named: &FieldsNamed);
+    fn visit_unnamed_field(&mut self, ident_name: &String, field_unnamed: &FieldsUnnamed);
+    fn visit_unit_field(&mut self, ident_name: &String);
 }

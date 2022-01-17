@@ -1,14 +1,18 @@
 use crate::config::IndexerConfig;
+use crate::parser::definitions::Definitions;
 use crate::parser::handler::InstructionHandler;
-use crate::parser::parser::InstructionParser;
 use crate::parser::schema::GraphqlSchema;
-use crate::parser::visittor::Visitor;
+use crate::parser::visitor::Visitor;
+use crate::parser::InstructionParser;
 use crate::schema;
 use crate::schema::{Schema, VariantArray};
 use std::path::Path;
 use std::{fs, io};
 use syn::__private::ToTokens;
-use syn::{Attribute, Field, Fields, File, Item, ItemEnum, ItemUse, Type, Variant};
+use syn::{
+    Attribute, Field, Fields, FieldsNamed, FieldsUnnamed, File, Item, ItemEnum, ItemUse, Type,
+    Variant,
+};
 
 pub struct IndexerBuilder<'a> {
     pub config_path: &'a str,
@@ -67,6 +71,10 @@ impl<'a> IndexerBuilder<'a> {
             self.config.as_mut().unwrap().main_instruction = main_instruction;
             if let Ok(ast) = syn::parse_file(&content) {
                 let config = self.config.as_ref().unwrap().clone();
+                println!("Parse definitions");
+                let mut definitions = Definitions::new(config.clone());
+                definitions.visit_file(&ast);
+
                 let mut handler = InstructionHandler::new(config.clone());
                 handler.visit_file(&ast);
                 // let mut parser = InstructionParser::default();
@@ -243,5 +251,11 @@ impl<'a> Visitor for IndexerBuilder<'a> {
         // println!("Variant discriminant {:?}", &item_variant.discriminant);
     }
     fn visit_item_use(&mut self, item_use: &ItemUse) {}
+
+    fn visit_named_field(&mut self, ident_name: &String, field_named: &FieldsNamed) {}
+
+    fn visit_unnamed_field(&mut self, ident_name: &String, field_unnamed: &FieldsUnnamed) {}
+
+    fn visit_unit_field(&mut self, ident_name: &String) {}
 }
 impl<'a> IndexerBuilder<'a> {}
