@@ -2,6 +2,7 @@ use massbit_solana_sdk::types::{ExtBlock, SolanaBlock};
 use solana_sdk::clock::Slot;
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, RwLock};
+use std::time::Instant;
 
 /// Buffer for storage incoming block from chain reader for each smart contract address
 /// Buffer is shared for one writing and multiple reading threads
@@ -20,9 +21,11 @@ impl IncomingBlocks {
         }
     }
     pub fn append_blocks(&self, blocks: Vec<SolanaBlock>) {
+        let now = Instant::now();
         let mut write_lock = self.buffer.write().unwrap();
         log::info!(
-            "Lock and append {} blocks: {:?} into buffer with current size: {}",
+            "Waiting time {:?} for append {} blocks: {:?} into buffer with current size: {}",
+            now.eslapsed(),
             blocks.len(),
             blocks
                 .iter()
@@ -30,17 +33,21 @@ impl IncomingBlocks {
                 .collect::<Vec<Slot>>(),
             write_lock.len()
         );
-        while write_lock.len() >= self.capacity - blocks.len() {
+        let now = Instant::now();
+        let remove_elm = write_lock.len() + blocks.len() - self.capacity;
+        for _ in 0..remove_elm {
             //First cycle to fill buffer - just append into end of vector
             write_lock.pop_front();
         }
         for block in blocks.into_iter() {
             write_lock.push_back(Arc::new(block));
         }
+        log::info!("Writing time {:?}", now.elapsed());
     }
     /// Read all unprocessed blocks (blocks with indexes from next_reading_index to self.latest_index) in buffer for indexer
     /// Input: indexer hash
     pub fn read_blocks(&self, last_slot: &Option<Slot>) -> Vec<Arc<SolanaBlock>> {
+        let now = Instant::now();
         let mut read_lock = self.buffer.read().unwrap();
         let blocks = match last_slot {
             None => read_lock
@@ -62,6 +69,7 @@ impl IncomingBlocks {
                 blocks
             }
         };
+        log::info!("Read from RwLockBuffer in {:?}", now.elapsed());
         blocks
     }
 }
