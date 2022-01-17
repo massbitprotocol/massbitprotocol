@@ -17,6 +17,7 @@ impl InstructionParser for SmartContractProxy {
     }
 }
 
+#[derive(Clone)]
 pub struct SmartContractRegistrar {
     pub parser_proxies: Option<Arc<SmartContractProxy>>,
 }
