@@ -20,6 +20,7 @@ impl IncomingBlocks {
         }
     }
     pub fn append_blocks(&self, blocks: Vec<SolanaBlock>) {
+        log::info!("Lock and append {} blocks into buffer", blocks.len());
         let mut write_lock = self.buffer.write().unwrap();
         while write_lock.len() >= self.capacity - blocks.len() {
             //First cycle to fill buffer - just append into end of vector
@@ -38,11 +39,20 @@ impl IncomingBlocks {
                 .iter()
                 .map(|block| block.clone())
                 .collect::<Vec<Arc<SolanaBlock>>>(),
-            Some(slot) => read_lock
-                .iter()
-                .filter(|block| block.block_number > *slot)
-                .map(|block| block.clone())
-                .collect::<Vec<Arc<SolanaBlock>>>(),
+            Some(slot) => {
+                let mut ind = read_lock.len() - 1;
+                let mut blocks = Vec::default();
+                while ind >= 0 {
+                    let block = read_lock.get(ind).unwrap();
+                    if block.block_number > *slot {
+                        blocks.insert(0, block.clone());
+                    } else {
+                        break;
+                    }
+                    ind = ind - 1;
+                }
+                blocks
+            }
         };
         blocks
     }

@@ -11,6 +11,7 @@ create table indexers
     repository varchar,               -- public Github repo url
     manifest varchar not null,  -- hash of manifest file from IPFS
     mapping varchar not null,   -- hash of mapping file from IPFS
+    unpack_instruction varchar not null,   -- hash of unpack_instruction file from IPFS
     graphql varchar not null,   -- hash of graphql file from IPFS
     status indexer_status not null,
     deleted bool not null default false, -- logical deleted indexer

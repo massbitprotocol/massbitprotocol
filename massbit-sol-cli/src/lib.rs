@@ -5,6 +5,7 @@ pub mod indexer_deploy;
 pub mod indexer_release;
 pub mod parser;
 pub mod schema;
+pub mod config;
 
 use lazy_static::lazy_static;
 use std::env;
@@ -12,10 +13,11 @@ use std::path::PathBuf;
 lazy_static! {
     pub static ref COMPONENT_NAME: String = String::from("[SolanaCli]");
     pub static ref INDEXER_ENDPOINT: String =
-        env::var("INDEXER_ENDPOINT").unwrap_or(String::from("http://127.0.0.1:3032"));
+        env::var("INDEXER_ENDPOINT").unwrap_or(String::from("http://127.0.0.1:3031"));
 }
 pub const METHOD_DEPLOY: &str = "indexer/deploy";
-pub const SO_FILE_NAME: &str = "libblock.so";
+pub const SO_MAPPING_FILE_NAME: &str = "libblock.so";
+pub const SO_UNPACK_INSTRUCTION_FILE_NAME: &str = "libunpack_instruction.so";
 pub const SO_FOLDER: &str = "target/release";
 pub const SCHEMA_FILE_NAME: &str = "schema.graphql";
 pub const SUBGRAPH_FILE_NAME: &str = "subgraph.yaml";
