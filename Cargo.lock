@@ -3891,6 +3891,7 @@ dependencies = [
  "solana-program 1.9.0",
  "solana-transaction-status",
  "thiserror",
+ "transport",
 ]
 
 [[package]]
@@ -8320,6 +8321,10 @@ name = "traitobject"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "efd1f82c56340fdf16f2a953d7bda4f8fdffba13d93b00844c25572110b26079"
+
+[[package]]
+name = "transport"
+version = "0.1.0"
 
 [[package]]
 name = "trust-dns-proto"

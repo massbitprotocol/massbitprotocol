@@ -76,6 +76,7 @@ pub struct IndexerRuntime {
     pub manifest: SolanaIndexerManifest,
     pub schema_path: Option<PathBuf>,
     pub mapping_path: Option<PathBuf>,
+    pub unpack_instruction_path: Option<PathBuf>,
     pub indexer_handler: Option<IndexerHandler>,
     block_buffer: Arc<IncomingBlocks>,
     got_block: Option<Slot>,
@@ -93,6 +94,8 @@ impl IndexerRuntime {
     ) -> Option<Self> {
         let link_resolver = LinkResolver::from(ipfs_client.clone());
         let mapping_path = Self::get_ipfs_file(ipfs_client.clone(), &indexer.mapping, "so").await;
+        let unpack_instruction_path =
+            Self::get_ipfs_file(ipfs_client.clone(), &indexer.unpack_instruction, "so").await;
         let schema_path =
             Self::get_ipfs_file(ipfs_client.clone(), &indexer.graphql, "graphql").await;
         let opt_manifest = match ipfs_client.cat_all(&indexer.manifest, None).await {
@@ -123,6 +126,7 @@ impl IndexerRuntime {
                 indexer,
                 manifest,
                 mapping_path,
+                unpack_instruction_path,
                 schema_path,
                 indexer_handler: None,
                 block_buffer,
@@ -262,6 +266,12 @@ impl<'a> IndexerRuntime {
         store: &mut dyn IndexStore,
     ) -> Result<(), Box<dyn Error>> {
         let library_path = self.mapping_path.as_ref().unwrap().as_os_str();
+        let unpack_instruction_path = self
+            .unpack_instruction_path
+            .as_ref()
+            .unwrap()
+            .clone()
+            .into_os_string();
         let lib = Arc::new(Library::new(library_path)?);
         // inject store to plugin
         lib.get::<*mut Option<&dyn IndexStore>>(b"STORE\0")?
@@ -270,7 +280,10 @@ impl<'a> IndexerRuntime {
             .get::<*mut AdapterDeclaration>(b"adapter_declaration\0")?
             .read();
         let mut registrar = IndexerHandler::new(lib);
-        (adapter_decl.register)(&mut registrar);
+        (adapter_decl.register)(
+            &mut registrar,
+            &unpack_instruction_path.to_str().unwrap().to_string(),
+        );
         self.indexer_handler = Some(registrar);
         Ok(())
     }
