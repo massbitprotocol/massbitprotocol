@@ -15,6 +15,10 @@ impl SolanaHandlerProxy {
 }
 impl SolanaHandler for SolanaHandlerProxy {
     fn handle_blocks(&self, blocks: &Vec<SolanaBlock>) -> Result<i64, Box<dyn Error>> {
+        println!(
+            "Start handle_blocks SolanaHandlerProxy, block len: {}",
+            blocks.len()
+        );
         self.handler.handle_blocks(blocks)
     }
 }

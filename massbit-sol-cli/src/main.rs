@@ -110,7 +110,7 @@ fn create_deploy_cmd() -> App<'static, 'static> {
                 .short("d")
                 .long("project-dir")
                 .value_name("project-dir")
-                .help("Compiled directory")
+                .help("compiled directories")
                 .takes_value(true),
         )
 }

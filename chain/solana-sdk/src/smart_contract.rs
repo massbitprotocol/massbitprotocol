@@ -13,7 +13,20 @@ impl SmartContractProxy {
 }
 impl InstructionParser for SmartContractProxy {
     fn unpack_instruction(&self, content: &[u8]) -> Result<TransportValue, Box<dyn Error>> {
-        self.parser.unpack_instruction(content)
+        println!(
+            "start unpack_instruction, content len: {:?}",
+            &content.len()
+        );
+        let result = self.parser.unpack_instruction(content);
+        match &result {
+            Ok(value) => {
+                println!("value: {:?}", value);
+            }
+            Err(err) => {
+                println!("err: {:?}", err);
+            }
+        }
+        result
     }
 }
 
@@ -31,6 +44,7 @@ impl SmartContractRegistrar {
 
 impl InterfaceRegistrar for SmartContractRegistrar {
     fn register_parser(&mut self, handler: Box<dyn InstructionParser + Send + Sync>) {
+        println!("start register_parser");
         self.parser_proxies = Some(Arc::new(SmartContractProxy::new(handler)));
     }
 }
