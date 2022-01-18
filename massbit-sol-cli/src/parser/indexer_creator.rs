@@ -1,9 +1,6 @@
+use super::{Definitions, InstructionHandler, InstructionParser, Visitor};
 use crate::config::IndexerConfig;
-use crate::parser::definitions::Definitions;
-use crate::parser::handler::InstructionHandler;
 use crate::parser::schema::GraphqlSchema;
-use crate::parser::visitor::Visitor;
-use crate::parser::InstructionParser;
 use crate::schema;
 use crate::schema::{Schema, VariantArray};
 use std::path::Path;
@@ -48,6 +45,11 @@ impl<'a> IndexerBuilder<'a> {
                 .map(|part| String::from(part))
                 .collect::<Vec<String>>();
             let instruction_name = parts.remove(parts.len() - 1);
+            let config = self.config.as_ref().unwrap().clone();
+            println!("Parse definitions");
+            let mut definitions = Definitions::new(config.clone());
+            definitions.current_paths = parts.clone();
+            definitions.visit_module(config.smart_contract_source.as_str(), &parts);
             let instruction_path = format!(
                 "{}/src/{}.rs",
                 config.smart_contract_source,
@@ -65,20 +67,19 @@ impl<'a> IndexerBuilder<'a> {
                         &instruction_path
                     )
                 });
-            (instruction_name, input_content)
+            (instruction_name, input_content, definitions)
         });
-        if let Some((main_instruction, content)) = config_parser {
+        if let Some((main_instruction, content, definitions)) = config_parser {
             self.config.as_mut().unwrap().main_instruction = main_instruction;
             if let Ok(ast) = syn::parse_file(&content) {
                 let config = self.config.as_ref().unwrap().clone();
-                println!("Parse definitions");
-                let mut definitions = Definitions::new(config.clone());
-                definitions.visit_file(&ast);
-                println!("Create Handler");
-                let mut handler = InstructionHandler::new(config.clone());
-                handler.visit_file(&ast);
-                // let mut parser = InstructionParser::default();
-                // parser.visit_file(&ast);
+                //println!("Create Handler");
+                //let mut handler = InstructionHandler::new(config.clone(), &definitions);
+                //handler.visit_file(&ast);
+                //handler.write_output("handler.rs");
+                let mut parser = InstructionParser::new(config.clone(), &definitions);
+                parser.visit_file(&ast);
+                parser.write_output("instruction.rs");
                 // let mut graphql = GraphqlSchema::default();
                 // graphql.visit_file(&ast);
                 // if let Ok(content) = serde_json::to_string_pretty(&self.schema) {
@@ -257,5 +258,13 @@ impl<'a> Visitor for IndexerBuilder<'a> {
     fn visit_unnamed_field(&mut self, ident_name: &String, field_unnamed: &FieldsUnnamed) {}
 
     fn visit_unit_field(&mut self, ident_name: &String) {}
+
+    fn create_content(&self) -> String {
+        String::new()
+    }
+
+    fn create_dir_path(&self) -> String {
+        String::new()
+    }
 }
 impl<'a> IndexerBuilder<'a> {}

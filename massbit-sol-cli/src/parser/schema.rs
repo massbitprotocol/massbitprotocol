@@ -45,4 +45,12 @@ impl Visitor for GraphqlSchema {
     fn visit_unnamed_field(&mut self, ident_name: &String, field_unnamed: &FieldsUnnamed) {}
 
     fn visit_unit_field(&mut self, ident_name: &String) {}
+
+    fn create_content(&self) -> String {
+        String::new()
+    }
+
+    fn create_dir_path(&self) -> String {
+        String::new()
+    }
 }

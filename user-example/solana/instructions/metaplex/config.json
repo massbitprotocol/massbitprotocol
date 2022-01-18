@@ -1,5 +1,6 @@
 {
   "smart_contract_source" : "/home/viettai/Massbit/solana-smart-contracts/metaplex-program-library/metaplex/program",
+  "package_name": "mpl-metaplex",
   "main_instruction" : "instruction::MetaplexInstruction",
   "unpack_function" : "try_from_slice",
   "output_unpacking" : "/home/viettai/Massbit/solana-indexer-examples/metaplex/unpack-instruction",
