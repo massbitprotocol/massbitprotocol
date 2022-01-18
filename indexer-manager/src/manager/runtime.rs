@@ -35,8 +35,12 @@ use massbit_grpc::firehose::bstream::{BlockRequest, ChainType};
 use massbit_solana_sdk::plugin::handler::SolanaHandler;
 use massbit_solana_sdk::plugin::proxy::SolanaHandlerProxy;
 use massbit_solana_sdk::plugin::{AdapterDeclaration, BlockResponse, PluginRegistrar};
+use massbit_solana_sdk::smart_contract::{
+    InstructionInterface, InstructionParser, InterfaceRegistrar, SmartContractProxy,
+};
 use massbit_solana_sdk::store::IndexStore;
 use massbit_solana_sdk::types::{ExtBlock, SolanaBlock};
+use massbit_solana_sdk::SmartContractRegistrar;
 use solana_sdk::signature::Signature;
 use solana_sdk::slot_history::Slot;
 use std::env::temp_dir;
@@ -240,21 +244,51 @@ impl<'a> IndexerRuntime {
             deployment_hash,
         ) {
             unsafe {
-                match self.load_mapping_library(&mut store).await {
-                    Ok(_) => {
-                        log::info!("{} Load library successfully", &*COMPONENT_NAME);
+                if let Ok(mut sm_proxy) = self.load_unpacking_library() {
+                    match self.load_mapping_library(&mut store).await {
+                        Ok(_) => {
+                            log::info!("{} Load library successfully", &*COMPONENT_NAME);
+                            //Inject smartcontract interface
+                            self.indexer_handler
+                                .as_ref()
+                                .unwrap()
+                                .lib
+                                .get::<*mut Option<&dyn InstructionParser>>(b"INTERFACE\0")?
+                                .write(Some(&(*sm_proxy)));
+                        }
+                        Err(err) => {
+                            log::error!("Load library with error {:?}", &err);
+                            return Err(err);
+                        }
                     }
-                    Err(err) => {
-                        log::error!("Load library with error {:?}", &err);
-                        return Err(err);
-                    }
-                };
+                }
             }
             {
                 self.start_mapping().await;
             }
         }
         Ok(())
+    }
+    pub unsafe fn load_unpacking_library(
+        &mut self,
+    ) -> Result<Arc<SmartContractProxy>, anyhow::Error> {
+        let unpack_instruction_path = self
+            .unpack_instruction_path
+            .as_ref()
+            .unwrap()
+            .clone()
+            .into_os_string();
+        let unpacking_lib = Arc::new(
+            Library::new(unpack_instruction_path.as_os_str())
+                .map_err(|err| anyhow!("{:?}", &err))?,
+        );
+        let sm_entrypoint = unpacking_lib
+            .get::<*mut InstructionInterface>(b"entrypoint\0")
+            .unwrap()
+            .read();
+        let mut sm_registrar = SmartContractRegistrar::new();
+        (sm_entrypoint.register)(&mut sm_registrar);
+        sm_registrar.parser_proxies.ok_or(anyhow!(""))
     }
     /// Load a plugin library
     /// A plugin library **must** be implemented using the
@@ -272,6 +306,7 @@ impl<'a> IndexerRuntime {
             .unwrap()
             .clone()
             .into_os_string();
+
         let lib = Arc::new(Library::new(library_path)?);
         // inject store to plugin
         lib.get::<*mut Option<&dyn IndexStore>>(b"STORE\0")?
