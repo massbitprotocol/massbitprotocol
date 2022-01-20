@@ -1,56 +1,102 @@
 use crate::config::IndexerConfig;
 use crate::parser::visitor::Visitor;
+use crate::parser::Definitions;
+use inflector::Inflector;
+use std::fmt::Write;
 use syn::__private::ToTokens;
-use syn::{Attribute, FieldsNamed, FieldsUnnamed, File, Item, ItemEnum, ItemUse, Variant};
+use syn::{FieldsNamed, FieldsUnnamed, File, Item, ItemEnum, ItemUse, Type, Variant};
 
-#[derive(Default)]
-pub struct GraphqlSchema {
+pub struct GraphqlSchema<'a> {
     pub config: IndexerConfig,
+    definitions: &'a Definitions,
+    entity_types: Vec<String>,
 }
 
-impl GraphqlSchema {
-    pub fn new(config: IndexerConfig) -> Self {
-        Self { config }
-    }
-}
-impl Visitor for GraphqlSchema {
-    fn visit_item_enum(&mut self, item_enum: &ItemEnum) {
-        println!("{:?}", item_enum.to_token_stream().to_string());
-        let ident = item_enum.ident.to_string();
-        // if self.enums.contains(&ident) && self.enums.len() == 1 {
-        //     self.schema.name = Some(ident.clone());
-        //     self.schema.variants = Some(Vec::new());
-        // }
-        for attr in item_enum.attrs.iter() {
-            println!("{:?}", attr);
-            println!("{:?}", attr.to_token_stream().to_string());
+impl<'a> GraphqlSchema<'a> {
+    pub fn new(config: IndexerConfig, definitions: &'a Definitions) -> Self {
+        Self {
+            config,
+            definitions,
+            entity_types: Vec::default(),
         }
-        println!(
-            "Enum name {:?}, Variant number: {}",
-            item_enum.ident,
-            item_enum.variants.len()
-        );
-        item_enum
-            .variants
-            .iter()
-            .for_each(|variant| self.visit_item_variant(item_enum, variant));
     }
+}
 
-    fn visit_item_variant(&mut self, item_enum: &ItemEnum, variant: &Variant) {}
+impl<'a> Visitor for GraphqlSchema<'a> {
+    fn visit_item_enum(&mut self, item_enum: &ItemEnum) {
+        let ident = item_enum.ident.to_string();
+        if self.config.main_instruction.as_str() == ident.as_str() {
+            // for attr in item_enum.attrs.iter() {
+            //     println!("{:?}", attr);
+            //     println!("{:?}", attr.to_token_stream().to_string());
+            // }
+            item_enum
+                .variants
+                .iter()
+                .for_each(|variant| self.visit_item_variant(item_enum, variant));
+        }
+    }
 
     fn visit_item_use(&mut self, item_use: &ItemUse) {}
 
-    fn visit_named_field(&mut self, ident_name: &String, field_named: &FieldsNamed) {}
+    fn visit_named_field(&mut self, ident_name: &String, field_named: &FieldsNamed) {
+        let fields = if let Some(field) = field_named.named.first() {
+            let item_def = field.ty.to_token_stream().to_string();
+            self.definitions
+                .get_item_def(&item_def)
+                .map(|item_def| item_def.create_entity_fields(self.definitions))
+                .unwrap_or_default()
+        } else {
+            Vec::default()
+        };
+        let entity = format!(
+            r#"type {entity_name} @entity {{
+    id: ID!,
+    {fields}
+}}"#,
+            entity_name = ident_name,
+            fields = fields.join(",\n\t")
+        );
+        self.entity_types.push(entity);
+    }
 
-    fn visit_unnamed_field(&mut self, ident_name: &String, field_unnamed: &FieldsUnnamed) {}
+    fn visit_unnamed_field(&mut self, ident_name: &String, field_unnamed: &FieldsUnnamed) {
+        let fields = if let Some(field) = field_unnamed.unnamed.first() {
+            let item_def = field.ty.to_token_stream().to_string();
+            self.definitions
+                .get_item_def(&item_def)
+                .map(|item_def| item_def.create_entity_fields(self.definitions))
+                .unwrap_or_default()
+        } else {
+            Vec::default()
+        };
+        let entity = format!(
+            r#"type {entity_name} @entity {{
+    id: ID!,
+    {fields}
+}}"#,
+            entity_name = ident_name,
+            fields = fields.join(",\n\t")
+        );
+        self.entity_types.push(entity);
+    }
 
-    fn visit_unit_field(&mut self, ident_name: &String) {}
+    fn visit_unit_field(&mut self, ident_name: &String) {
+        let ident_snake = ident_name.to_snake_case();
+        let entity = format!(
+            r#"type {entity_name} @entity {{
+    id: ID!,
+}}"#,
+            entity_name = ident_name
+        );
+        self.entity_types.push(entity);
+    }
 
     fn create_content(&self) -> String {
-        String::new()
+        self.entity_types.join("\n")
     }
 
     fn create_dir_path(&self) -> String {
-        String::new()
+        format!("{}/src", self.config.output_logic)
     }
 }

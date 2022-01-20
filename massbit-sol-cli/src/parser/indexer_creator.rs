@@ -73,24 +73,16 @@ impl<'a> IndexerBuilder<'a> {
             self.config.as_mut().unwrap().main_instruction = main_instruction;
             if let Ok(ast) = syn::parse_file(&content) {
                 let config = self.config.as_ref().unwrap().clone();
-                //println!("Create Handler");
-                //let mut handler = InstructionHandler::new(config.clone(), &definitions);
-                //handler.visit_file(&ast);
-                //handler.write_output("handler.rs");
+                println!("Create Handler");
+                let mut handler = InstructionHandler::new(config.clone(), &definitions);
+                handler.visit_file(&ast);
+                handler.write_output("handler.rs");
                 let mut parser = InstructionParser::new(config.clone(), &definitions);
                 parser.visit_file(&ast);
                 parser.write_output("instruction.rs");
-                // let mut graphql = GraphqlSchema::default();
-                // graphql.visit_file(&ast);
-                // if let Ok(content) = serde_json::to_string_pretty(&self.schema) {
-                //     let output_path = format!("{}/{}", self.output_dir, self.name);
-                //     if fs::create_dir_all(&output_path).is_ok() {
-                //         let output_path =
-                //             format!("{}/{}/instruction.json", self.output_dir, self.name);
-                //         let path = Path::new(output_path.as_str());
-                //         self.write_to_file(path, &content);
-                //     }
-                // }
+                let mut graphql = GraphqlSchema::new(config, &definitions);
+                graphql.visit_file(&ast);
+                graphql.write_output("schema.graphql");
             };
         }
     }
@@ -146,11 +138,8 @@ impl<'a> IndexerBuilder<'a> {
                 Type::Never(_) => {}
                 Type::Paren(_) => {}
                 Type::Path(path) => {
-                    variant.inner_type = path
-                        .path
-                        .segments
-                        .first()
-                        .and_then(|seg| Some(seg.ident.to_string()));
+                    variant.inner_type =
+                        path.path.segments.first().map(|seg| seg.ident.to_string());
                 }
                 Type::Ptr(_) => {}
                 Type::Reference(_) => {}
@@ -164,10 +153,8 @@ impl<'a> IndexerBuilder<'a> {
 
         variant
     }
-    fn create_definition(&self, item_variant: &Variant) -> Option<schema::Schema> {
-        None
-    }
 }
+/*
 #[doc = " Instructions supported by the Fraction program."]
 impl<'a> Visitor for IndexerBuilder<'a> {
     #[doc = " Instructions supported by the Fraction program."]
@@ -232,25 +219,6 @@ impl<'a> Visitor for IndexerBuilder<'a> {
             .iter()
             .for_each(|variant| self.visit_item_variant(item_enum, variant));
     }
-    fn visit_item_variant(&mut self, item: &ItemEnum, item_variant: &Variant) {
-        let item_ident = item.ident.to_string();
-        // if self.enums.contains(&item_ident) {
-        //     let variant = self.create_variant(item_variant);
-        //     let definition = self.create_definition(item_variant);
-        //     if let Some(def) = definition {
-        //         self.schema
-        //             .definitions
-        //             .insert(item_variant.ident.to_string(), def);
-        //     }
-        //
-        //     self.schema.variants.as_mut().unwrap().push(variant);
-        // }
-
-        // println!("Variant attrs {:?}", &item_variant.attrs);
-        // println!("Variant ident {:?}", &item_variant.ident);
-        // println!("Variant fields {:?}", &item_variant.fields);
-        // println!("Variant discriminant {:?}", &item_variant.discriminant);
-    }
     fn visit_item_use(&mut self, item_use: &ItemUse) {}
 
     fn visit_named_field(&mut self, ident_name: &String, field_named: &FieldsNamed) {}
@@ -267,4 +235,4 @@ impl<'a> Visitor for IndexerBuilder<'a> {
         String::new()
     }
 }
-impl<'a> IndexerBuilder<'a> {}
+*/

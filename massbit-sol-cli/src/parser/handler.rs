@@ -4,7 +4,7 @@ use crate::config::IndexerConfig;
 use inflector::Inflector;
 use std::fmt::Write;
 use syn::__private::ToTokens;
-use syn::{Attribute, Fields, FieldsNamed, FieldsUnnamed, File, Item, ItemEnum, ItemUse, Variant};
+use syn::{Fields, FieldsNamed, FieldsUnnamed, File, Item, ItemEnum, ItemUse, Variant};
 
 const MODULES: &str = r#"
 use crate::STORE;
@@ -121,7 +121,7 @@ impl<'a> Visitor for InstructionHandler<'a> {
                 .ty
                 .to_token_stream()
                 .to_string();
-            let item_struct = self.definitions.get_item_struct(&inner_type);
+            let item_struct = self.definitions.get_item_def(&inner_type);
             println!("Item struct for {}: {:?}", &inner_type, item_struct);
             println!(
                 "Ident: {:?}, Unnamed fields {:?}",

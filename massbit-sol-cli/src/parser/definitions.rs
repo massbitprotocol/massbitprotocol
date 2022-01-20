@@ -1,5 +1,5 @@
 use crate::config::IndexerConfig;
-use crate::parser::model::ItemStructDef;
+use crate::parser::model::{ItemDef, ItemType};
 use crate::parser::visitor::Visitor;
 use std::collections::HashMap;
 use std::fs;
@@ -13,7 +13,7 @@ use syn::{
 pub struct Definitions {
     pub config: IndexerConfig,
     parsed_modules: Vec<String>,
-    defined_structs: HashMap<String, ItemStructDef>,
+    defined_items: HashMap<String, ItemDef>,
     pub current_paths: Vec<String>,
 }
 
@@ -22,19 +22,31 @@ impl Definitions {
         Self {
             config,
             parsed_modules: vec![],
-            defined_structs: Default::default(),
+            defined_items: Default::default(),
             current_paths: vec![],
         }
     }
-    pub fn get_item_struct(&self, struct_name: &String) -> Option<&ItemStructDef> {
-        self.defined_structs.get(struct_name)
+    pub fn get_item_def(&self, item_def: &String) -> Option<&ItemDef> {
+        self.defined_items.get(item_def)
     }
 }
 impl Visitor for Definitions {
     fn visited_module(&mut self, path: &String) -> bool {
         self.parsed_modules.contains(path)
     }
-    fn visit_item_enum(&mut self, item_enum: &ItemEnum) {}
+    fn mark_module_visited(&mut self, path: &String) {
+        self.parsed_modules.push(path.clone());
+    }
+    fn visit_item_enum(&mut self, item_enum: &ItemEnum) {
+        self.defined_items.insert(
+            item_enum.ident.to_string(),
+            ItemDef::new(
+                self.config.package_name.clone(),
+                self.current_paths.clone(),
+                ItemType::ItemEnum(item_enum.clone()),
+            ),
+        );
+    }
 
     fn visit_item_variant(&mut self, item_enum: &ItemEnum, variant: &Variant) {}
 
@@ -47,9 +59,13 @@ impl Visitor for Definitions {
     fn visit_item_extern_crate(&mut self, item_extern_create: &ItemExternCrate) {}
     fn visit_item_module(&mut self, item_module: &ItemMod) {}
     fn visit_item_struct(&mut self, item_struct: &ItemStruct) {
-        self.defined_structs.insert(
+        self.defined_items.insert(
             item_struct.ident.to_string(),
-            ItemStructDef::new(self.current_paths.clone(), item_struct.clone()),
+            ItemDef::new(
+                self.config.package_name.clone(),
+                self.current_paths.clone(),
+                ItemType::ItemStruct(item_struct.clone()),
+            ),
         );
     }
     fn visit_named_field(&mut self, ident_name: &String, field_named: &FieldsNamed) {}
@@ -70,18 +86,11 @@ impl Definitions {
     fn parse_use_tree(&mut self, use_tree: &UseTree) {
         match use_tree {
             UseTree::Path(path) => {
-                //let current_paths = self.current_paths.clone();
+                let current_paths = self.current_paths.clone();
                 let ident = path.ident.to_string();
-                if ident.as_str() == "state" {
-                    println!(
-                        "Current paths {:?}, append path {}",
-                        &self.current_paths,
-                        path.ident.to_string()
-                    );
-                }
                 self.current_paths.push(ident);
                 self.parse_use_tree(path.tree.as_ref());
-                //self.current_paths = current_paths;
+                self.current_paths = current_paths;
             }
             UseTree::Name(name) => {
                 if self.current_paths.len() > 0

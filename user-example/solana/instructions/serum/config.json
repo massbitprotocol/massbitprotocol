@@ -1,4 +1,10 @@
 {
+  "smart_contract_source" : "/home/viettai/Massbit/project-serum/serum-dex/dex",
+  "package_name": "serum_dex",
+  "main_instruction" : "instruction::MarketInstruction",
+  "unpack_function" : "unpack",
+  "output_unpacking" : "/home/viettai/Massbit/solana-indexer-examples/serum/unpack-instruction",
+  "output_logic" : "/home/viettai/Massbit/solana-indexer-examples/serum/indexer-logic",
   "start_block" : 0,
   "contract_address" : "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin",
   "name": "Serum-Indexer"

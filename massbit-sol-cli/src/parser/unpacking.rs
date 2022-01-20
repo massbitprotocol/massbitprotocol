@@ -11,7 +11,7 @@ use std::error::Error;
 use mpl_metaplex::instruction::MetaplexInstruction;
 use borsh::BorshDeserialize;
 use transport::interface::InstructionParser as InstructionParserTrait;
-use transport::TransportValue;
+use transport::{TransportValue, Value};
 "#;
 
 pub struct InstructionParser<'a> {
@@ -34,54 +34,70 @@ impl<'a> InstructionParser<'a> {
 
 impl<'a> Visitor for InstructionParser<'a> {
     fn visit_item_enum(&mut self, item_enum: &ItemEnum) {
-        println!("{:?}", item_enum.to_token_stream().to_string());
         let ident = item_enum.ident.to_string();
-        // if self.enums.contains(&ident) && self.enums.len() == 1 {
-        //     self.schema.name = Some(ident.clone());
-        //     self.schema.variants = Some(Vec::new());
-        // }
-        for attr in item_enum.attrs.iter() {
-            println!("{:?}", attr);
-            println!("{:?}", attr.to_token_stream().to_string());
+        if self.config.main_instruction.as_str() == ident.as_str() {
+            // for attr in item_enum.attrs.iter() {
+            //     println!("{:?}", attr);
+            //     println!("{:?}", attr.to_token_stream().to_string());
+            // }
+            item_enum
+                .variants
+                .iter()
+                .for_each(|variant| self.visit_item_variant(item_enum, variant));
         }
-        println!(
-            "Enum name {:?}, Variant number: {}",
-            item_enum.ident,
-            item_enum.variants.len()
-        );
-        item_enum
-            .variants
-            .iter()
-            .for_each(|variant| self.visit_item_variant(item_enum, variant));
     }
 
     fn visit_item_use(&mut self, item_use: &ItemUse) {}
 
     fn visit_named_field(&mut self, ident_name: &String, field_named: &FieldsNamed) {
         let ident_snake = ident_name.to_snake_case();
-        let output = format!(
-            r#"{}::{}(input) => {{
+
+        let inner_names = field_named
+            .named
+            .iter()
+            .map(|field| field.ty.to_token_stream().to_string())
+            .collect::<Vec<String>>();
+        if inner_names.len() == 1 {
+            let output = format!(
+                r#"{}::{}(input) => {{
                 let mut transport_value = self.unpack_{}(input);
                 transport_value
             }}"#,
-            self.config.main_instruction, ident_name, &ident_snake
-        );
-        self.patterns.push(output);
-        //Generate process function
-        let function = format!(
-            r#"fn unpack_{fn_name}(
-                &self,
-                input: TransportValue,
-            ) -> Result<TransportValue, anyhow::Error> {{
-                let mut transport_value = TransportValue::default();
-                Ok(transport_value)
-            }}"#,
-            fn_name = ident_snake
-        );
-        self.unpack_functions.push(function);
+                self.config.main_instruction, ident_name, &ident_snake
+            );
+            self.patterns.push(output);
+            //Generate process function
+            let inner_type = field_named
+                .named
+                .iter()
+                .last()
+                .unwrap()
+                .ty
+                .to_token_stream()
+                .to_string();
+            let item_def = self.definitions.get_item_def(&inner_type);
+            if let Some(struct_def) = item_def {
+                let function = format!(
+                    r#"fn unpack_{fn_name}(
+                        &self,
+                        input: {inner_type},
+                    ) -> Result<TransportValue, anyhow::Error> {{
+                        {body}
+                    }}"#,
+                    fn_name = ident_snake,
+                    inner_type = format!(
+                        "{}::{}",
+                        struct_def.get_module_path(),
+                        inner_names.get(0).unwrap(),
+                    ),
+                    body = struct_def.create_unpack_function(&ident_name, self.definitions),
+                );
+                self.unpack_functions.push(function);
+            }
+        }
     }
     fn visit_unnamed_field(&mut self, ident_name: &String, field_unnamed: &FieldsUnnamed) {
-        let ident_snake = ident_name.to_snake_case();
+        let ident_snake = &ident_name.to_snake_case();
         //Todo: handle case field_unnamed has only one inner (field_unnamed.len() == 1)
         let inner_names = field_unnamed
             .unnamed
@@ -103,23 +119,22 @@ impl<'a> Visitor for InstructionParser<'a> {
                 .ty
                 .to_token_stream()
                 .to_string();
-            let item_struct = self.definitions.get_item_struct(&inner_type);
+            let item_struct = self.definitions.get_item_def(&inner_type);
             if let Some(struct_def) = item_struct {
                 let function = format!(
                     r#"fn unpack_{fn_name}(
-                &self,
-                input: {inner_type},
-            ) -> Result<TransportValue, anyhow::Error> {{
-                let mut transport_value = TransportValue::default();
-                Ok(transport_value)
-            }}"#,
+                        &self,
+                        input: {inner_type},
+                    ) -> Result<TransportValue, anyhow::Error> {{
+                        {body}
+                    }}"#,
                     fn_name = ident_snake,
                     inner_type = format!(
-                        "{}::{}::{}",
-                        self.config.package_name,
-                        struct_def.mods.join("::"),
+                        "{}::{}",
+                        struct_def.get_module_path(),
                         inner_names.get(0).unwrap()
-                    )
+                    ),
+                    body = struct_def.create_unpack_function(&ident_name, self.definitions),
                 );
                 self.unpack_functions.push(function);
             }
@@ -153,13 +168,15 @@ impl<'a> Visitor for InstructionParser<'a> {
             &mut out,
             r#"#[derive(Debug, Clone, PartialEq)]
                 pub struct InstructionParser;
-                impl InstructionParser {{
-                    fn unpack_instruction(&self, input: &[u8]) -> Result<TransportValue, Box<dyn Error>> {{
+                impl InstructionParserTrait for InstructionParser {{
+                    fn unpack_instruction(&self, input: &[u8]) -> Result<TransportValue, anyhow::Error> {{
                         let instruction = {instruction}::{fn_unpacking}(input)?;                                     
                         match instruction {{
                             {patterns}
                         }}
-                    }}
+                    }}                  
+                }}
+                impl InstructionParser {{
                     {unpack_functions}
                 }}"#,
             instruction = self.config.main_instruction,

@@ -11,6 +11,7 @@ pub trait Visitor {
             let content = fs::read_to_string(module_path.as_str()).unwrap_or_else(|_| {
                 panic!("Something went wrong reading the file {}", &module_path)
             });
+            self.mark_module_visited(&module_path);
             if let Ok(ast) = syn::parse_file(&content) {
                 self.visit_file(&ast);
             }
@@ -19,6 +20,7 @@ pub trait Visitor {
     fn visited_module(&mut self, path: &String) -> bool {
         false
     }
+    fn mark_module_visited(&mut self, path: &String) {}
     fn visit_file(&mut self, file: &File) {
         for item in file.items.iter() {
             self.visit_item(item);
@@ -84,7 +86,6 @@ pub trait Visitor {
     fn create_dir_path(&self) -> String;
     fn write_output(&self, file_name: &str) {
         let dir_path = self.create_dir_path();
-        let content = self.create_content();
         if std::fs::create_dir_all(&dir_path).is_ok() {
             let output_path = format!("{}/{}", &dir_path, file_name);
             let content = self.create_content();

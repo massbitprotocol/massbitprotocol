@@ -1,11 +1,12 @@
 #[macro_use]
 extern crate serde_derive;
+pub mod config;
+pub mod consts;
 pub mod generator;
 pub mod indexer_deploy;
 pub mod indexer_release;
 pub mod parser;
 pub mod schema;
-pub mod config;
 
 use lazy_static::lazy_static;
 use std::env;
