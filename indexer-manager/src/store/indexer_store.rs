@@ -15,6 +15,7 @@ use massbit_data::prelude::{CloneableAnyhowError, QueryExecutionError, StoreErro
 use massbit_data::store::chain::BLOCK_NUMBER_MAX;
 use massbit_data::store::{Entity, EntityKey, EntityModification, EntityType};
 use massbit_solana_sdk::store::IndexStore;
+use massbit_solana_sdk::transport::Value;
 use massbit_storage_postgres::{
     relational::{Layout, DELETE_OPERATION_CHUNK_SIZE, POSTGRES_MAX_PARAMETERS},
     relational_queries::{ClampRangeQuery, EntityData, FindManyQuery, FindQuery, InsertQuery},
@@ -322,6 +323,10 @@ impl IndexStore for CacheableStore {
             };
             self.entity_cache.set(key.clone(), data);
         }
+    }
+
+    fn save_values(&mut self, entity_name: &String, values: &HashMap<String, Value>) {
+        todo!()
     }
 
     fn get(&mut self, entity_name: String, entity_id: &String) -> Option<Entity> {

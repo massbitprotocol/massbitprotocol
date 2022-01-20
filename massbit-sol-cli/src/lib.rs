@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate serde_derive;
 pub mod config;
+pub mod consts;
 pub mod generator;
 pub mod indexer_deploy;
 pub mod indexer_release;
