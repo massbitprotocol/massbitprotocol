@@ -12,3 +12,4 @@ pub mod entity {
     pub use massbit_data::store::{Attribute, Entity, Value};
 }
 pub use smart_contract::SmartContractRegistrar;
+pub use transport;
