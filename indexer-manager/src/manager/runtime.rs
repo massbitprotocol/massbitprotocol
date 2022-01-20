@@ -9,7 +9,7 @@ use chain_solana::types::{Pubkey, SolanaFilter};
 use chain_solana::SolanaIndexerManifest;
 use diesel::{Connection, EqAll};
 use indexer_orm::{models::Indexer, schema::*};
-use libloading::Library;
+use libloading::{Library, Symbol};
 use log::info;
 use massbit::components::link_resolver::LinkResolver as _;
 use massbit::data::indexer::MAX_SPEC_VERSION;
@@ -35,8 +35,12 @@ use massbit_grpc::firehose::bstream::{BlockRequest, ChainType};
 use massbit_solana_sdk::plugin::handler::SolanaHandler;
 use massbit_solana_sdk::plugin::proxy::SolanaHandlerProxy;
 use massbit_solana_sdk::plugin::{AdapterDeclaration, BlockResponse, PluginRegistrar};
+use massbit_solana_sdk::smart_contract::{
+    InstructionInterface, InstructionParser, InterfaceRegistrar, SmartContractProxy,
+};
 use massbit_solana_sdk::store::IndexStore;
 use massbit_solana_sdk::types::{ExtBlock, SolanaBlock};
+use massbit_solana_sdk::SmartContractRegistrar;
 use solana_sdk::signature::Signature;
 use solana_sdk::slot_history::Slot;
 use std::env::temp_dir;
@@ -78,6 +82,7 @@ pub struct IndexerRuntime {
     pub mapping_path: Option<PathBuf>,
     pub unpack_instruction_path: Option<PathBuf>,
     pub indexer_handler: Option<IndexerHandler>,
+    pub unpacking_handler: Option<SmartContractRegistrar>,
     block_buffer: Arc<IncomingBlocks>,
     got_block: Option<Slot>,
     pub network_adapters: Arc<Mutex<SolanaNetworkAdapters>>,
@@ -129,6 +134,7 @@ impl IndexerRuntime {
                 unpack_instruction_path,
                 schema_path,
                 indexer_handler: None,
+                unpacking_handler: None,
                 block_buffer,
                 got_block: None,
                 network_adapters: Arc::new(Mutex::new(adapters)),
@@ -239,21 +245,44 @@ impl<'a> IndexerRuntime {
             schema_path,
             deployment_hash,
         ) {
+            // Todo: reduce Unsafe code.
             unsafe {
-                match self.load_mapping_library(&mut store).await {
-                    Ok(_) => {
-                        log::info!("{} Load library successfully", &*COMPONENT_NAME);
+                if self.load_unpacking_library().is_ok() {
+                    match self.load_mapping_library(&mut store).await {
+                        Ok(_) => {
+                            log::info!("{} Load library successfully", &*COMPONENT_NAME);
+                        }
+                        Err(err) => {
+                            log::error!("Load library with error {:?}", &err);
+                            return Err(err);
+                        }
                     }
-                    Err(err) => {
-                        log::error!("Load library with error {:?}", &err);
-                        return Err(err);
-                    }
-                };
+                }
             }
             {
                 self.start_mapping().await;
             }
         }
+        Ok(())
+    }
+    pub unsafe fn load_unpacking_library(&mut self) -> Result<(), Box<dyn Error>> {
+        let unpack_instruction_path = self
+            .unpack_instruction_path
+            .as_ref()
+            .unwrap()
+            .clone()
+            .into_os_string();
+        let unpacking_lib = Arc::new(
+            Library::new(unpack_instruction_path.as_os_str())
+                .map_err(|err| anyhow!("{:?}", &err))?,
+        );
+        let sm_entrypoint = unpacking_lib
+            .get::<*mut InstructionInterface>(b"entrypoint\0")
+            .unwrap()
+            .read();
+        let mut sm_registrar = SmartContractRegistrar::new(unpacking_lib);
+        (sm_entrypoint.register)(&mut sm_registrar);
+        self.unpacking_handler = Some(sm_registrar);
         Ok(())
     }
     /// Load a plugin library
@@ -266,24 +295,36 @@ impl<'a> IndexerRuntime {
         store: &mut dyn IndexStore,
     ) -> Result<(), Box<dyn Error>> {
         let library_path = self.mapping_path.as_ref().unwrap().as_os_str();
-        let unpack_instruction_path = self
-            .unpack_instruction_path
-            .as_ref()
-            .unwrap()
-            .clone()
-            .into_os_string();
+        // let unpack_instruction_path = self
+        //     .unpack_instruction_path
+        //     .as_ref()
+        //     .unwrap()
+        //     .clone()
+        //     .into_os_string();
+
         let lib = Arc::new(Library::new(library_path)?);
         // inject store to plugin
         lib.get::<*mut Option<&dyn IndexStore>>(b"STORE\0")?
             .write(Some(store));
+        let proxy = self.unpacking_handler.as_ref().and_then(|handler| {
+            handler
+                .parser_proxies
+                .as_ref()
+                .and_then(|proxy| Some(&*proxy.parser))
+        });
+        match lib.get::<*mut Option<&dyn InstructionParser>>(b"INTERFACE\0") {
+            Ok(res) => {
+                res.write(proxy);
+            }
+            Err(err) => {
+                log::info!("get INTERFACE err: {:?}", err);
+            }
+        }
         let adapter_decl = lib
             .get::<*mut AdapterDeclaration>(b"adapter_declaration\0")?
             .read();
         let mut registrar = IndexerHandler::new(lib);
-        (adapter_decl.register)(
-            &mut registrar,
-            &unpack_instruction_path.to_str().unwrap().to_string(),
-        );
+        (adapter_decl.register)(&mut registrar);
         self.indexer_handler = Some(registrar);
         Ok(())
     }

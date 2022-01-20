@@ -17,6 +17,8 @@ lazy_static! {
         env::var("INDEXER_ENDPOINT").unwrap_or(String::from("http://127.0.0.1:3031"));
 }
 pub const METHOD_DEPLOY: &str = "indexer/deploy";
+pub const INDEXER_LOGIC_FOLDER: &str = "indexer-logic";
+pub const UNPACK_INSTRUCTION_FOLDER: &str = "unpack-instruction";
 pub const SO_MAPPING_FILE_NAME: &str = "libblock.so";
 pub const SO_UNPACK_INSTRUCTION_FILE_NAME: &str = "libunpack_instruction.so";
 pub const SO_FOLDER: &str = "target/release";

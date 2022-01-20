@@ -98,8 +98,9 @@ impl IndexerService {
             log::info!("Receive file: {}/{}", &p.name(), p.filename().unwrap());
             let name = format!("{}", &p.name());
             let p_name = name.as_str();
+            println!("p_name: {}", p_name);
             match p_name {
-                "mapping" | "unpack_instruction" | "schema" | "manifest" => {
+                "mapping" | "unpack-instruction" | "schema" | "manifest" => {
                     let value = p
                         .stream()
                         .try_fold(Vec::new(), |mut vec, data| {
@@ -111,10 +112,12 @@ impl IndexerService {
                             eprintln!("reading file error: {}", e);
                             warp::reject::reject()
                         })?;
+
                     match self.ipfs_client.add(value).await {
                         Ok(response) => match p_name {
                             "mapping" => indexer.mapping = response.hash.clone(),
-                            "unpack_instruction" => {
+                            "unpack-instruction" => {
+                                println!("response: {:?}", &response);
                                 indexer.unpack_instruction = response.hash.clone()
                             }
                             "schema" => indexer.graphql = response.hash.clone(),
