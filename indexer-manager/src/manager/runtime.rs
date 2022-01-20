@@ -237,7 +237,7 @@ impl<'a> IndexerRuntime {
         let db_schema = self.indexer.namespace.as_str();
         let schema_path = self.schema_path.clone().unwrap();
         let deployment_hash = DeploymentHash::new("_indexer").unwrap();
-        if let Ok(mut store) = StoreBuilder::create_store(
+        match StoreBuilder::create_store(
             connection_pool,
             db_schema,
             network,
@@ -245,24 +245,31 @@ impl<'a> IndexerRuntime {
             schema_path,
             deployment_hash,
         ) {
-            // Todo: reduce Unsafe code.
-            unsafe {
-                if self.load_unpacking_library().is_ok() {
-                    match self.load_mapping_library(&mut store).await {
-                        Ok(_) => {
-                            log::info!("{} Load library successfully", &*COMPONENT_NAME);
-                        }
-                        Err(err) => {
-                            log::error!("Load library with error {:?}", &err);
-                            return Err(err);
+            Ok(mut store) => {
+                println!("start unsafe");
+                // Todo: reduce Unsafe code.
+                unsafe {
+                    if self.load_unpacking_library().is_ok() {
+                        match self.load_mapping_library(&mut store).await {
+                            Ok(_) => {
+                                log::info!("{} Load library successfully", &*COMPONENT_NAME);
+                            }
+                            Err(err) => {
+                                log::error!("Load library with error {:?}", &err);
+                                return Err(err);
+                            }
                         }
                     }
                 }
+                {
+                    self.start_mapping().await;
+                }
             }
-            {
-                self.start_mapping().await;
+            Err(err) => {
+                println!("create_store error: {:?}", err);
             }
-        }
+        };
+
         Ok(())
     }
     pub unsafe fn load_unpacking_library(&mut self) -> Result<(), Box<dyn Error>> {
