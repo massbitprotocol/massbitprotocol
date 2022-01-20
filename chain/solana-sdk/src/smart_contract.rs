@@ -13,7 +13,7 @@ impl SmartContractProxy {
     }
 }
 impl InstructionParser for SmartContractProxy {
-    fn unpack_instruction(&self, content: &[u8]) -> Result<TransportValue, Box<dyn Error>> {
+    fn unpack_instruction(&self, content: &[u8]) -> Result<TransportValue, anyhow::Error> {
         println!(
             "start unpack_instruction, content len: {:?}",
             &content.len()

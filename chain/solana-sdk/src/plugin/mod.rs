@@ -14,7 +14,7 @@ pub trait PluginRegistrar {
 
 #[derive(Copy, Clone)]
 pub struct AdapterDeclaration {
-    pub register: unsafe extern "C" fn(&mut dyn PluginRegistrar, &String),
+    pub register: unsafe extern "C" fn(&mut dyn PluginRegistrar),
 }
 
 // General trait for handling message,

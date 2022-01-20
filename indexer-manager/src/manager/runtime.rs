@@ -295,12 +295,12 @@ impl<'a> IndexerRuntime {
         store: &mut dyn IndexStore,
     ) -> Result<(), Box<dyn Error>> {
         let library_path = self.mapping_path.as_ref().unwrap().as_os_str();
-        let unpack_instruction_path = self
-            .unpack_instruction_path
-            .as_ref()
-            .unwrap()
-            .clone()
-            .into_os_string();
+        // let unpack_instruction_path = self
+        //     .unpack_instruction_path
+        //     .as_ref()
+        //     .unwrap()
+        //     .clone()
+        //     .into_os_string();
 
         let lib = Arc::new(Library::new(library_path)?);
         // inject store to plugin
@@ -324,10 +324,7 @@ impl<'a> IndexerRuntime {
             .get::<*mut AdapterDeclaration>(b"adapter_declaration\0")?
             .read();
         let mut registrar = IndexerHandler::new(lib);
-        (adapter_decl.register)(
-            &mut registrar,
-            &unpack_instruction_path.to_str().unwrap().to_string(),
-        );
+        (adapter_decl.register)(&mut registrar);
         self.indexer_handler = Some(registrar);
         Ok(())
     }
