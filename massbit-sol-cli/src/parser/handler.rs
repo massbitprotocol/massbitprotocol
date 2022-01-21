@@ -1,7 +1,9 @@
 use super::visitor::Visitor;
 use super::Definitions;
 use crate::config::IndexerConfig;
+use crate::schema::AccountInfo;
 use inflector::Inflector;
+use std::collections::HashMap;
 use std::fmt::Write;
 use syn::__private::ToTokens;
 use syn::{Fields, FieldsNamed, FieldsUnnamed, File, Item, ItemEnum, ItemUse, Variant};
@@ -39,15 +41,21 @@ pub struct InstructionHandler<'a> {
     definitions: &'a Definitions,
     patterns: Vec<String>,
     handler_functions: Vec<String>,
+    variant_accounts: &'a HashMap<String, Vec<AccountInfo>>,
 }
 
 impl<'a> InstructionHandler<'a> {
-    pub fn new(config: IndexerConfig, definitions: &'a Definitions) -> Self {
+    pub fn new(
+        config: IndexerConfig,
+        definitions: &'a Definitions,
+        variant_accounts: &'a HashMap<String, Vec<AccountInfo>>,
+    ) -> Self {
         Self {
             config,
             definitions,
             patterns: vec![],
             handler_functions: vec![],
+            variant_accounts,
         }
     }
 }
@@ -89,6 +97,18 @@ impl<'a> Visitor for InstructionHandler<'a> {
             Fields::Unit => self.visit_unit_field(&ident_name),
         }
         //Generate process function
+        let account_values = self.variant_accounts.get(&ident_name).map(|acc_infos| {
+            acc_infos
+                .iter()
+                .map(|info| {
+                    format!(
+                        r#"input.set_value("{account_name}", TransValue::from(accounts.get({acc_index}).map(|acc|acc.to_string())));"#,
+                        account_name = &info.name,
+                        acc_index = info.index
+                    )
+                })
+                .collect::<Vec<String>>()
+        }).unwrap_or_default();
         let function = format!(
             r#"fn process_{fn_name}(
                 &self,
@@ -104,11 +124,13 @@ impl<'a> Visitor for InstructionHandler<'a> {
                 );
                 input.set_value("block_timestamp", TransValue::from(block.timestamp));
                 input.set_value("tx_hash", TransValue::from(transaction.transaction.signatures.iter().map(|sig| sig.to_string()).collect::<Vec<String>>().join(",'")));
+                {account_values}
                 input.save();
                 println!("Write to db {{:?}}",input);
                 Ok(())
             }}"#,
-            fn_name = ident_snake
+            fn_name = ident_snake,
+            account_values = account_values.join("")
         );
         self.handler_functions.push(function);
     }

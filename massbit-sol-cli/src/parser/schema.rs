@@ -1,8 +1,8 @@
 use crate::config::IndexerConfig;
 use crate::parser::visitor::Visitor;
 use crate::parser::Definitions;
-use inflector::Inflector;
-use std::fmt::Write;
+use crate::schema::AccountInfo;
+use std::collections::HashMap;
 use syn::__private::ToTokens;
 use syn::{Fields, FieldsNamed, FieldsUnnamed, File, Item, ItemEnum, ItemUse, Type, Variant};
 
@@ -11,15 +11,21 @@ pub struct GraphqlSchema<'a> {
     definitions: &'a Definitions,
     entity_types: Vec<String>,
     current_entity_fields: Vec<String>,
+    variant_accounts: &'a HashMap<String, Vec<AccountInfo>>,
 }
 
 impl<'a> GraphqlSchema<'a> {
-    pub fn new(config: IndexerConfig, definitions: &'a Definitions) -> Self {
+    pub fn new(
+        config: IndexerConfig,
+        definitions: &'a Definitions,
+        variant_accounts: &'a HashMap<String, Vec<AccountInfo>>,
+    ) -> Self {
         Self {
             config,
             definitions,
             entity_types: Vec::default(),
             current_entity_fields: vec![],
+            variant_accounts,
         }
     }
 }
@@ -48,12 +54,23 @@ impl<'a> Visitor for GraphqlSchema<'a> {
                 self.visit_unnamed_field(&ident_name, fields_unnamed);
             }
             Fields::Unit => self.visit_unit_field(&ident_name),
-        }
+        };
+        let mut accounts = self
+            .variant_accounts
+            .get(&ident_name)
+            .map(|accounts| {
+                accounts
+                    .iter()
+                    .map(|acc| format!("{}: String", acc.name.clone()))
+                    .collect::<Vec<String>>()
+            })
+            .unwrap_or_default();
+        self.current_entity_fields.append(&mut accounts);
         let entity = format!(
             r#"type {entity_name} @entity {{
     id: ID!,
     block_timestamp: BigInt!,
-    tx_hash: String
+    tx_hash: String,
     {fields}
 }}"#,
             entity_name = ident_name,

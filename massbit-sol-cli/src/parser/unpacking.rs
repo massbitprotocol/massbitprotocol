@@ -1,7 +1,9 @@
 use super::Visitor;
 use crate::config::IndexerConfig;
 use crate::parser::Definitions;
+use crate::schema::AccountInfo;
 use inflector::Inflector;
+use std::collections::HashMap;
 use std::fmt::Write;
 use syn::__private::ToTokens;
 use syn::{FieldsNamed, FieldsUnnamed, File, Item, ItemEnum, ItemUse, Variant};
@@ -19,15 +21,21 @@ pub struct InstructionParser<'a> {
     definitions: &'a Definitions,
     patterns: Vec<String>,
     unpack_functions: Vec<String>,
+    variant_accounts: &'a HashMap<String, Vec<AccountInfo>>,
 }
 
 impl<'a> InstructionParser<'a> {
-    pub fn new(config: IndexerConfig, definitions: &'a Definitions) -> Self {
+    pub fn new(
+        config: IndexerConfig,
+        definitions: &'a Definitions,
+        variant_accounts: &'a HashMap<String, Vec<AccountInfo>>,
+    ) -> Self {
         Self {
             config,
             definitions,
             patterns: vec![],
             unpack_functions: vec![],
+            variant_accounts,
         }
     }
 }

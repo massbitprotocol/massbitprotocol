@@ -2,6 +2,7 @@ pub mod definitions;
 pub mod ext;
 pub mod handler;
 pub mod indexer_creator;
+pub mod instruction_meta;
 mod model;
 pub mod schema;
 pub mod unpacking;
