@@ -10,7 +10,7 @@ const MODULES: &str = r#"
 use crate::STORE;
 use massbit_solana_sdk::entity::{Attribute, Entity, Value};
 use massbit_solana_sdk::{
-    transport::TransportValue,
+    transport::{TransportValue, Value as TransValue},
     types::SolanaBlock
 };
 use serde_json;
@@ -71,98 +71,23 @@ impl<'a> Visitor for InstructionHandler<'a> {
                 .for_each(|variant| self.visit_item_variant(item_enum, variant));
         }
     }
-
-    fn visit_item_use(&mut self, item_use: &ItemUse) {}
-    fn visit_named_field(&mut self, ident_name: &String, field_named: &FieldsNamed) {
+    fn visit_item_variant(&mut self, item_enum: &ItemEnum, variant: &Variant) {
+        let ident_name = variant.ident.to_string();
         let ident_snake = ident_name.to_snake_case();
-        let output = format!(
-            r#""{}" => {{self.process_{}(block, transaction, program_id, accounts, input);}}"#,
+        let pattern = format!(
+            r#""{}" => {{self.process_{}(block, transaction, program_id, accounts, &mut input);}}"#,
             ident_name, &ident_snake
         );
-        self.patterns.push(output);
-        //Generate process function
-        let function = format!(
-            r#"fn process_{fn_name}(
-                &self,
-                block: &SolanaBlock,
-                transaction: &TransactionWithStatusMeta,
-                program_id: &Pubkey,
-                accounts: &Vec<Pubkey>,
-                input: TransportValue,
-            ) -> Result<(), anyhow::Error> {{
-                println!(
-                    "call function process_initialize for handle incoming block {{}} with argument {{:?}}",
-                    block.block_number, &input.name
-                );
-                input.save();
-                //Entity::from(input).save("Initialize");
-                println!("Write to db {{:?}}",input);
-                Ok(())
-            }}"#,
-            fn_name = ident_snake
-        );
-        self.handler_functions.push(function);
-    }
-    fn visit_unnamed_field(&mut self, ident_name: &String, field_unnamed: &FieldsUnnamed) {
-        let ident_snake = ident_name.to_snake_case();
-        //Todo: handle case field_unnamed has only one inner (field_unnamed.len() == 1)
-        if field_unnamed.unnamed.len() == 1 {
-            let output = format!(
-                r#""{}" => {{self.process_{}(block, transaction, program_id, accounts, input);}}"#,
-                ident_name, &ident_snake
-            );
-            self.patterns.push(output);
-            //Generate process function
-            let inner_type = field_unnamed
-                .unnamed
-                .iter()
-                .last()
-                .unwrap()
-                .ty
-                .to_token_stream()
-                .to_string();
-            let item_struct = self.definitions.get_item_def(&inner_type);
-            println!("Item struct for {}: {:?}", &inner_type, item_struct);
-            println!(
-                "Ident: {:?}, Unnamed fields {:?}",
-                ident_name,
-                field_unnamed
-                    .unnamed
-                    .iter()
-                    .map(|field| field.ty.to_token_stream().to_string())
-                    .collect::<Vec<String>>()
-            );
-            let function = format!(
-                r#"fn process_{fn_name}(
-                &self,
-                block: &SolanaBlock,
-                transaction: &TransactionWithStatusMeta,
-                program_id: &Pubkey,
-                accounts: &Vec<Pubkey>,
-                input: TransportValue,
-            ) -> Result<(), anyhow::Error> {{
-                println!(
-                    "call function process_initialize for handle incoming block {{}} with argument {{:?}}",
-                    block.block_number, &input.name
-                );
-                input.save();
-                //Entity::from(input).save("Initialize");
-                println!("Write to db {{:?}}",input);
-                Ok(())
-            }}"#,
-                fn_name = ident_snake
-            );
-            self.handler_functions.push(function);
-        } else if field_unnamed.unnamed.len() > 1 {
+        self.patterns.push(pattern);
+        match &variant.fields {
+            Fields::Named(named_field) => {
+                self.visit_named_field(&ident_name, named_field);
+            }
+            Fields::Unnamed(fields_unnamed) => {
+                self.visit_unnamed_field(&ident_name, fields_unnamed);
+            }
+            Fields::Unit => self.visit_unit_field(&ident_name),
         }
-    }
-    fn visit_unit_field(&mut self, ident_name: &String) {
-        let ident_snake = ident_name.to_snake_case();
-        let output = format!(
-            r#""{}" => {{self.process_{}(block, transaction, program_id, accounts);}}"#,
-            ident_name, &ident_snake
-        );
-        self.patterns.push(output);
         //Generate process function
         let function = format!(
             r#"fn process_{fn_name}(
@@ -170,21 +95,27 @@ impl<'a> Visitor for InstructionHandler<'a> {
                 block: &SolanaBlock,
                 transaction: &TransactionWithStatusMeta,
                 program_id: &Pubkey,
-                accounts: &Vec<Pubkey>
+                accounts: &Vec<Pubkey>,
+                input: &mut TransportValue,
             ) -> Result<(), anyhow::Error> {{
                 println!(
-                    "call function process_initialize for handle incoming block {{}} without argument.",
-                    block.block_number
+                    "call function process_initialize for handle incoming block {{}} with argument {{:?}}",
+                    block.block_number, &input.name
                 );
-        
-                //Entity::from(input).save("Initialize");
-                println!("Write to db");
+                input.set_value("block_timestamp", TransValue::from(block.timestamp));
+                input.set_value("tx_hash", TransValue::from(transaction.transaction.signatures.iter().map(|sig| sig.to_string()).collect::<Vec<String>>().join(",'")));
+                input.save();
+                println!("Write to db {{:?}}",input);
                 Ok(())
             }}"#,
             fn_name = ident_snake
         );
         self.handler_functions.push(function);
     }
+    fn visit_item_use(&mut self, item_use: &ItemUse) {}
+    fn visit_named_field(&mut self, ident_name: &String, field_named: &FieldsNamed) {}
+    fn visit_unnamed_field(&mut self, ident_name: &String, field_unnamed: &FieldsUnnamed) {}
+    fn visit_unit_field(&mut self, ident_name: &String) {}
     fn create_content(&self) -> String {
         let mut out = String::new();
         let _ = writeln!(&mut out, "{}", MODULES);
@@ -199,7 +130,7 @@ impl<'a> Visitor for InstructionHandler<'a> {
                             transaction: &TransactionWithStatusMeta,
                             program_id: &Pubkey,
                             accounts: &Vec<Pubkey>,
-                            input: TransportValue,
+                            mut input: TransportValue,
                         ) {{
                             //println!("Process block {{}} with input {{:?}}", block.block_number, input);                           
                             match input.name.as_str() {{

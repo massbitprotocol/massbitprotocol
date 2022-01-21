@@ -1,10 +1,12 @@
 use crate::prelude::{q, s, QueryExecutionError};
 use crate::store::scalar;
+use crate::store::scalar::{BigDecimal, BigInt};
 use crate::utils::cache_weight::CacheWeight;
 use massbit_common::prelude::anyhow::{anyhow, Error};
 use serde_derive::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::fmt;
+use std::fmt::format;
 use std::str::FromStr;
 use strum::AsStaticRef as _;
 use strum_macros::AsStaticStr;
@@ -347,7 +349,31 @@ where
         }
     }
 }
-
+type TransValue = transport::Value;
+impl From<&TransValue> for Value {
+    fn from(value: &TransValue) -> Self {
+        match value {
+            TransValue::Null => Self::Null,
+            TransValue::Bool(val) => Self::Bool(*val),
+            TransValue::String(val) => Self::String(val.clone()),
+            TransValue::Usize(val) => Self::BigInt(BigInt::from(*val as u64)),
+            TransValue::U8(val) => Self::Int(*val as i32),
+            TransValue::U16(val) => Self::Int(*val as i32),
+            TransValue::U32(val) => Self::Int(*val as i32),
+            TransValue::U64(val) => Self::BigInt(BigInt::from(*val)),
+            TransValue::I8(val) => Self::Int(*val as i32),
+            TransValue::I16(val) => Self::Int(*val as i32),
+            TransValue::I32(val) => Self::Int(*val),
+            TransValue::I64(val) => Self::BigInt(BigInt::from(*val)),
+            TransValue::Array(arr) => Self::List(
+                arr.iter()
+                    .map(|item| Value::from(item))
+                    .collect::<Vec<Value>>(),
+            ),
+            TransValue::Object(obj) => Self::String(format!("{:?}", obj)),
+        }
+    }
+}
 impl CacheWeight for Value {
     fn indirect_weight(&self) -> usize {
         match self {

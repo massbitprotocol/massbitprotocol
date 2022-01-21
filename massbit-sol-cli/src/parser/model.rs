@@ -1,6 +1,7 @@
 use crate::consts::{MAPPING_RUST_TYPES_TO_DB, PRIMITIVE_DATA_TYPES};
 use crate::parser::Definitions;
 use std::fmt::Write;
+use std::ops::Add;
 use syn::__private::ToTokens;
 use syn::{Fields, ItemEnum, ItemStruct, PathArguments, PathSegment, Type, Visibility};
 
@@ -52,16 +53,51 @@ impl ItemType {
                             None => String::from("Value::Null"),
                             Some(segment) => {
                                 let ident = segment.ident.to_string();
-                                if PRIMITIVE_DATA_TYPES.contains(&ident.as_str()) {
-                                    format!("Value::from(input.{field})", field = field)
-                                } else if let Some(type_def) = definitions.get_item_def(&ident) {
-                                    type_def.create_unpack_value(&field, definitions)
-                                } else {
-                                    format!(
-                                        r#"Value::String(format!("{{:?}}", input.{field}))"#,
-                                        field = field
-                                    )
+                                let str = ident.as_str();
+
+                                match ident.as_str() {
+                                    id @ "Vec" | id @ "Option" => match &segment.arguments {
+                                        PathArguments::None => String::from("Value::Null"),
+                                        PathArguments::AngleBracketed(arg) => {
+                                            let type_name = arg.args.to_token_stream().to_string();
+                                            if PRIMITIVE_DATA_TYPES.contains(&type_name.as_str())
+                                            {
+                                                format!("Value::from(input.{field})", field = field)
+                                            } else if let Some(type_def) = definitions.get_item_def(&type_name) {
+                                                //spread fields
+                                                println!("{:?}", type_def);
+                                                if id == "Vec" {
+                                                    format!(r#"Value::from(input.{field}.iter().map(|item|{{
+                                                        format!("{{:?}}",item)
+                                                       }}).collect::<Vec<String>>())"#, field = field)
+                                                } else {
+                                                    format!(r#"Value::from(input.{field}.map(|item|{{
+                                                        format!("{{:?}}",item)
+                                                       }}))"#, field = field)
+                                                }
+
+                                            } else {
+                                                String::from("Value::Null")
+                                            }
+
+                                        }
+                                        PathArguments::Parenthesized(_) => String::from("Value::Null")
+                                    },
+                                    id => {
+                                        if PRIMITIVE_DATA_TYPES.contains(&str)
+                                            {
+                                            format!("Value::from(input.{field})", field = field)
+                                        } else if let Some(type_def) = definitions.get_item_def(&ident) {
+                                            type_def.create_unpack_value(&field, definitions)
+                                        } else {
+                                            format!(
+                                                r#"Value::String(format!("{{:?}}", input.{field}))"#,
+                                                field = field
+                                            )
+                                        }
+                                    }
                                 }
+
                             }
                         };
 
@@ -214,8 +250,8 @@ impl ItemDef {
                             PathArguments::Parenthesized(_) => {}
                         },
                         id => {
-                            if PRIMITIVE_DATA_TYPES.contains(&id) {
-                                out = ident.clone();
+                            if let Some(graphql_type) = MAPPING_RUST_TYPES_TO_DB.get(&id) {
+                                let _ = write!(&mut out, "{}", graphql_type);
                             } else if let Some(item_def) = definitions.get_item_def(&ident) {
                                 // println!(
                                 //     "{:?}",

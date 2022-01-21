@@ -9,20 +9,20 @@ lazy_static! {
 
     // https://kotiri.com/2018/01/31/postgresql-diesel-rust-types.html
     pub static ref MAPPING_RUST_TYPES_TO_DB: HashMap<&'static str, &'static str> = HashMap::from([
-        ("bool", "Bool"),
+        ("bool", "Boolean"),
         //The graph generator postgres sql only handles with bigint
-        ("i8", "Integer"),
-        ("u8", "Integer"),
-        ("i16", "Integer"),
-        ("u16", "Integer"),
-        ("i32", "Integer"),
-        ("u32", "Integer"),
-        ("NonZeroU8", "Integer"),
-        ("NonZeroU16", "Integer"),
-        ("NonZeroI8", "Integer"),
-        ("NonZeroI16", "Integer"),
-        ("NonZeroI32", "Integer"),
-        ("NonZeroU32", "Integer"),
+        ("i8", "Int"),
+        ("u8", "Int"),
+        ("i16", "Int"),
+        ("u16", "Int"),
+        ("i32", "Int"),
+        ("u32", "Int"),
+        ("NonZeroU8", "Int"),
+        ("NonZeroU16", "Int"),
+        ("NonZeroI8", "Int"),
+        ("NonZeroI16", "Int"),
+        ("NonZeroI32", "Int"),
+        ("NonZeroU32", "Int"),
         ("i64", "BigInt"),
         ("u64", "BigInt"),
         ("isize", "BigInt"),
@@ -41,16 +41,12 @@ lazy_static! {
         ("char", "String"),
     ]);
     pub static ref MAPPING_DB_TYPES_TO_RUST: HashMap<&'static str, &'static str> = HashMap::from([
-        ("Bool", "bool"),
-
-        ("SmallInt", "i64"),
-        ("Integer", "i64"),
+        ("Boolean", "bool"),
+        ("SmallInt", "i16"),
+        ("Int", "i32"),
         ("BigInt", "i64"),
-
         ("Float", "f32"),
-
         ("Double", "f64"),
-
         ("String", "String"),
     ]);
 

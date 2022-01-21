@@ -1,10 +1,11 @@
 {
   "smart_contract_source" : "/home/viettai/Massbit/solana-smart-contracts/metaplex-program-library/metaplex/program",
   "main_instruction" : "instruction::MetaplexInstruction",
+  "package_name" : "mpl_metaplex",
   "unpack_function" : "try_from_slice",
   "output_unpacking" : "/home/viettai/Massbit/solana-indexer-examples/metaplex/unpack-instruction",
   "output_logic" : "/home/viettai/Massbit/solana-indexer-examples/metaplex/indexer-logic",
   "start_block" : 0,
-  "contract_address" : "SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ",
+  "contract_address" : "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98",
   "name": "metaplex"
 }

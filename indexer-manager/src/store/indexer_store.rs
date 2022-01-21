@@ -10,10 +10,12 @@ use massbit_common::prelude::diesel::r2d2::{ConnectionManager, PooledConnection}
 use massbit_common::prelude::diesel::{Connection, PgConnection, RunQueryDsl};
 use massbit_common::prelude::tokio::time::Instant;
 use massbit_common::prelude::{anyhow, async_trait::async_trait, r2d2, slog::Logger};
+use massbit_data::entity;
 use massbit_data::indexer::DeploymentHash;
 use massbit_data::prelude::{CloneableAnyhowError, QueryExecutionError, StoreError};
 use massbit_data::store::chain::BLOCK_NUMBER_MAX;
 use massbit_data::store::{Entity, EntityKey, EntityModification, EntityType};
+use massbit_solana_sdk::entity;
 use massbit_solana_sdk::store::IndexStore;
 use massbit_solana_sdk::transport::Value;
 use massbit_storage_postgres::{
@@ -326,7 +328,29 @@ impl IndexStore for CacheableStore {
     }
 
     fn save_values(&mut self, entity_name: &String, values: &HashMap<String, Value>) {
-        todo!()
+        // let id_key = String::from("id");
+        // if let Some(id_value) = values.get(&id_key) {
+        //     if let Value::String(entity_id) = id_value {
+        //         let key = EntityKey {
+        //             indexer_hash: DeploymentHash::new(self.indexer_id.clone()).unwrap(),
+        //             entity_type: EntityType::new(entity_name.clone()),
+        //             entity_id: entity_id.clone(),
+        //         };
+        //         self.entity_cache.set_values(key.clone(), values);
+        //     }
+        // }
+        let mut entity_values = HashMap::new();
+        if let Some(Value::String(entity_id)) = values.get("id") {
+            for (key, value) in values.into_iter() {
+                entity_values.insert(key.clone(), entity::Value::from(value));
+            }
+            let key = EntityKey {
+                indexer_hash: DeploymentHash::new(self.indexer_id.clone()).unwrap(),
+                entity_type: EntityType::new(entity_name.clone()),
+                entity_id: entity_id.clone(),
+            };
+            self.entity_cache.set(key, Entity::from(entity_values));
+        }
     }
 
     fn get(&mut self, entity_name: String, entity_id: &String) -> Option<Entity> {

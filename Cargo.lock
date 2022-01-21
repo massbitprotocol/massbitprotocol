@@ -3779,6 +3779,7 @@ dependencies = [
  "strum",
  "strum_macros",
  "thiserror",
+ "transport",
 ]
 
 [[package]]
@@ -8327,6 +8328,7 @@ name = "transport"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "uuid",
 ]
 
 [[package]]

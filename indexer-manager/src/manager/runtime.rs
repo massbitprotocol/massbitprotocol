@@ -246,7 +246,6 @@ impl<'a> IndexerRuntime {
             deployment_hash,
         ) {
             Ok(mut store) => {
-                println!("start unsafe");
                 // Todo: reduce Unsafe code.
                 unsafe {
                     if self.load_unpacking_library().is_ok() {

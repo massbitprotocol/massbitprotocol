@@ -153,9 +153,10 @@ impl<'a> Visitor for InstructionParser<'a> {
             r#"fn unpack_{fn_name}(
                 &self
             ) -> Result<TransportValue, anyhow::Error> {{
-                let mut transport_value = TransportValue::default();
+                let mut transport_value = TransportValue::new("{entity_name}");
                 Ok(transport_value)
             }}"#,
+            entity_name = ident_name,
             fn_name = ident_snake
         );
         self.unpack_functions.push(function);
