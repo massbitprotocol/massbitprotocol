@@ -1,0 +1,11 @@
+{
+  "smart_contract_source" : "/home/viettai/Massbit/solana-smart-contracts/metaplex-program-library/token-vault/program",
+  "main_instruction" : "instruction::VaultInstruction",
+  "package_name" : "mpl_token_vault",
+  "unpack_function" : "try_from_slice",
+  "output_unpacking" : "/home/viettai/Massbit/solana-indexer-examples/token-vault/unpack-instruction",
+  "output_logic" : "/home/viettai/Massbit/solana-indexer-examples/token-vault/indexer-logic",
+  "start_block" : 0,
+  "contract_address" : "p1exdMJcjVao65QdewkaZRUnU6VPSXhus9n2GzWfh98",
+  "name": "token-vault"
+}

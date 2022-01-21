@@ -1,0 +1,11 @@
+{
+  "smart_contract_source" : "/home/huy/work/block_chain/indexer/metaplex-program-library/token-metadata/program",
+  "main_instruction" : "instruction::MetadataInstruction",
+  "package_name" : "mpl_token_metadata",
+  "unpack_function" : "try_from_slice",
+  "output_unpacking" : "/home/huy/work/block_chain/indexer/solana-indexer-examples/token-metadata/unpack-instruction",
+  "output_logic" : "/home/huy/work/block_chain/indexer/solana-indexer-examples/token-metadata/indexer-logic",
+  "start_block" : 0,
+  "contract_address" : "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s",
+  "name": "token-metadata"
+}

@@ -1,0 +1,11 @@
+{
+  "smart_contract_source" : "/home/huy/work/block_chain/indexer/metaplex-program-library/auction/program",
+  "main_instruction" : "instruction::AuctionInstruction",
+  "package_name" : "mpl_auction",
+  "unpack_function" : "try_from_slice",
+  "output_unpacking" : "/home/huy/work/block_chain/indexer/solana-indexer-examples/auction/unpack-instruction",
+  "output_logic" : "/home/huy/work/block_chain/indexer/solana-indexer-examples/auction/indexer-logic",
+  "start_block" : 0,
+  "contract_address" : "auctxRXPeJoc4817jDhf4HbjnhEcr1cCXenosMhK5R8",
+  "name": "auction"
+}
