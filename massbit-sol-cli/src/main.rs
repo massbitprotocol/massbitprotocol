@@ -42,16 +42,13 @@ fn main() {
         }
     } else if let Some(ref matches) = matches.subcommand_matches("genindexer") {
         let config_path = matches.value_of("config").unwrap_or("config.json");
-        // let name = matches.value_of("name").unwrap_or("instruction");
-        // let output = matches.value_of("output").unwrap_or("src");
-        // let enums = matches.values_of("enums").and_then(|values| {
-        //     Some(
-        //         values
-        //             .map(|value| value.to_string())
-        //             .collect::<Vec<String>>(),
-        //     )
-        // });
-        let mut indexer_builder = IndexerBuilder::builder().with_config_path(config_path);
+        let gen_meta: bool = matches
+            .value_of("gen_meta")
+            .and_then(|val| val.parse().ok())
+            .unwrap_or_default();
+        let mut indexer_builder = IndexerBuilder::builder()
+            .with_config_path(config_path)
+            .gen_meta(gen_meta);
         indexer_builder.build()
     } else if let Some(ref matches) = matches.subcommand_matches("release") {
         let project_dir = matches.value_of("project-dir").unwrap_or("./");
@@ -135,6 +132,14 @@ fn create_genindexer_cmd() -> App<'static, 'static> {
                 .long("config")
                 .value_name("config")
                 .help("Input indexer configuration file")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("gen_inst")
+                .short("i")
+                .long("gen_inst")
+                .value_name("gen_inst")
+                .help("Optional generate instruction list")
                 .takes_value(true),
         )
 }

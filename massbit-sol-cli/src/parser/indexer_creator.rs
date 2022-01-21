@@ -1,8 +1,10 @@
 use super::{Definitions, InstructionHandler, InstructionParser, Visitor};
 use crate::config::IndexerConfig;
+use crate::parser::instruction_meta::InstructionMeta;
 use crate::parser::schema::GraphqlSchema;
 use crate::schema;
-use crate::schema::{Schema, VariantArray};
+use crate::schema::{AccountInfo, InstructionSchema, Schema, VariantArray};
+use std::collections::HashMap;
 use std::path::Path;
 use std::{fs, io};
 use syn::__private::ToTokens;
@@ -14,6 +16,7 @@ use syn::{
 pub struct IndexerBuilder<'a> {
     pub config_path: &'a str,
     config: Option<IndexerConfig>,
+    gen_meta: bool,
     context: VisitorContext<'a>,
 }
 impl<'a> IndexerBuilder<'a> {
@@ -21,6 +24,7 @@ impl<'a> IndexerBuilder<'a> {
         Self {
             config_path: "",
             config: None,
+            gen_meta: false,
             context: VisitorContext::default(),
         }
     }
@@ -34,6 +38,10 @@ impl<'a> IndexerBuilder<'a> {
         let config: IndexerConfig = serde_json::from_str(&json)
             .unwrap_or_else(|err| panic!("Cannot parse `{}` as JSON: {}", path, err));
         self.config = Some(config);
+        self
+    }
+    pub fn gen_meta(mut self, gen_meta: bool) -> Self {
+        self.gen_meta = gen_meta;
         self
     }
     pub fn build(&mut self) {
@@ -73,14 +81,35 @@ impl<'a> IndexerBuilder<'a> {
             self.config.as_mut().unwrap().main_instruction = main_instruction;
             if let Ok(ast) = syn::parse_file(&content) {
                 let config = self.config.as_ref().unwrap().clone();
+                //Gen instruction file in ouput
+                let file_meta = "instruction.json";
+                let config_path = Path::new(self.config_path)
+                    .parent()
+                    .map(|path| format!("{}", path.to_string_lossy()))
+                    .unwrap_or_default();
+                let file_path = format!("{}/{}", &config_path, &file_meta);
+                if !Path::new(file_path.as_str()).exists() {
+                    let mut instruction_meta = InstructionMeta::new(config_path, config.clone());
+                    instruction_meta.visit_file(&ast);
+                    instruction_meta.write_output(file_meta);
+                }
+                let json = std::fs::read_to_string(file_path.as_str())
+                    .unwrap_or_else(|err| panic!("Unable to read `{}`: {}", &file_path, err));
+                let variant_accounts: HashMap<String, Vec<AccountInfo>> =
+                    serde_json::from_str(&json).unwrap_or_else(|err| {
+                        panic!("Cannot parse `{}` as JSON: {}", &file_path, err)
+                    });
+
                 println!("Create Handler");
-                let mut handler = InstructionHandler::new(config.clone(), &definitions);
+                let mut handler =
+                    InstructionHandler::new(config.clone(), &definitions, &variant_accounts);
                 handler.visit_file(&ast);
                 handler.write_output("handler.rs");
-                let mut parser = InstructionParser::new(config.clone(), &definitions);
+                let mut parser =
+                    InstructionParser::new(config.clone(), &definitions, &variant_accounts);
                 parser.visit_file(&ast);
                 parser.write_output("instruction.rs");
-                let mut graphql = GraphqlSchema::new(config, &definitions);
+                let mut graphql = GraphqlSchema::new(config, &definitions, &variant_accounts);
                 graphql.visit_file(&ast);
                 graphql.write_output("schema.graphql");
             };

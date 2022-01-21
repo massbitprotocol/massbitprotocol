@@ -128,6 +128,10 @@ pub struct Schema {
     pub variant_tag_length: Option<usize>,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize, Default)]
+pub struct InstructionSchema {
+    pub variants: VariantArray,
+}
 impl Schema {
     pub fn get_pascal_name(&self, name: &String) -> String {
         replace_invalid_identifier_chars(&name.as_str().to_pascal_case())
