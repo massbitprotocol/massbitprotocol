@@ -81,6 +81,8 @@ impl Visitor for Definitions {
     fn create_dir_path(&self) -> String {
         String::new()
     }
+
+    fn build(&self) {}
 }
 impl Definitions {
     fn parse_use_tree(&mut self, use_tree: &UseTree) {

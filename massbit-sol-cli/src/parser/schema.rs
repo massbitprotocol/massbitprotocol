@@ -115,4 +115,8 @@ impl<'a> Visitor for GraphqlSchema<'a> {
     fn create_dir_path(&self) -> String {
         format!("{}/src", self.config.output_logic)
     }
+
+    fn build(&self) {
+        self.write_output("schema.graphql");
+    }
 }

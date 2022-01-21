@@ -8,14 +8,6 @@ use std::fmt::Write;
 use syn::__private::ToTokens;
 use syn::{FieldsNamed, FieldsUnnamed, File, Item, ItemEnum, ItemUse, Variant};
 
-const MODULES: &str = r#"
-use std::error::Error;
-use mpl_metaplex::instruction::MetaplexInstruction;
-use borsh::BorshDeserialize;
-use transport::interface::InstructionParser as InstructionParserTrait;
-use transport::{TransportValue, Value};
-"#;
-
 pub struct InstructionParser<'a> {
     pub config: IndexerConfig,
     definitions: &'a Definitions,
@@ -172,7 +164,18 @@ impl<'a> Visitor for InstructionParser<'a> {
 
     fn create_content(&self) -> String {
         let mut out = String::new();
-        let _ = writeln!(&mut out, "{}", MODULES);
+        let _ = writeln!(
+            &mut out,
+            r#"
+use std::error::Error;
+use {package_name}::instruction::{main_instruction};
+use borsh::BorshDeserialize;
+use transport::interface::InstructionParser as InstructionParserTrait;
+use transport::{{TransportValue, Value}};
+"#,
+            package_name = &self.config.package_name.replace("-", "_"),
+            main_instruction = &self.config.main_instruction
+        );
         let _ = writeln!(
             &mut out,
             r#"#[derive(Debug, Clone, PartialEq)]
@@ -198,5 +201,85 @@ impl<'a> Visitor for InstructionParser<'a> {
 
     fn create_dir_path(&self) -> String {
         format!("{}/src", self.config.output_unpacking)
+    }
+
+    fn build(&self) {
+        self.write_output("instruction.rs");
+        self.gen_cargo_toml();
+        self.gen_lib();
+    }
+}
+
+impl<'a> InstructionParser<'a> {
+    fn gen_cargo_toml(&self) {
+        if std::fs::create_dir_all(&self.config.output_unpacking).is_ok() {
+            let output_path = format!("{}/Cargo.toml", &self.config.output_unpacking);
+            let content = format!(
+                r#"
+[package]
+name = "unpack-instruction"
+version = "0.0.1"
+description = "Unpack instruction"
+authors = ["Maintainers <contact@massbit.io>"]
+repository = "https://github.com/massbitprotocol/solana-indexer-examples.git"
+license = "Apache-2.0"
+edition = "2018"
+
+[dependencies]
+num-derive = "0.3"
+num-traits = "0.2"
+arrayref = "0.3.6"
+solana-program = "1.7.11"
+spl-token = {{ version="3.1.1", features = [ "no-entrypoint" ] }}
+thiserror = "1.0"
+borsh = "0.9.1"
+lazy_static = "1.4.0"
+anyhow = "1.0"
+[dependencies.{package_name}]
+package = "{package_name}"
+git = "https://github.com/metaplex-foundation/metaplex-program-library.git"
+
+[dependencies.transport]
+package = "transport"
+path = "../../../solana-indexer/transport"
+#git = "https://github.com/massbitprotocol/solana-indexer.git"
+
+
+[lib]
+crate-type = ["cdylib", "lib"]            
+"#,
+                package_name = &self.config.package_name
+            );
+            match std::fs::write(&output_path, &content) {
+                Ok(res) => {
+                    log::info!("Write file cargo.toml success full");
+                }
+                Err(err) => {
+                    log::error!("{:?}", &err);
+                }
+            }
+        }
+    }
+    fn gen_lib(&self) {
+        let output_path = format!("{}/src/lib.rs", &self.config.output_unpacking);
+        let content = r#"
+pub mod instruction;
+use transport::{{interface::{{InterfaceRegistrar, InstructionInterface}}, export_interface}};
+use crate::instruction::InstructionParser;
+export_interface!(register);
+#[allow(dead_code, improper_ctypes_definitions)]
+extern "C" fn register(registrar: &mut dyn InterfaceRegistrar) {{
+    registrar.register_parser(Box::new(InstructionParser));
+}}"#;
+        match std::fs::write(&output_path, &content) {
+            Ok(_) => {
+                use std::process::Command;
+                let _ = Command::new("rustfmt").arg(output_path).output();
+                log::info!("Write file cargo.toml success full");
+            }
+            Err(err) => {
+                log::error!("{:?}", &err);
+            }
+        }
     }
 }

@@ -152,7 +152,7 @@ impl ItemDef {
         }
     }
     pub fn get_module_path(&self) -> String {
-        let mut path = self.package_name.clone();
+        let mut path = self.package_name.clone().replace("-", "_");
         for module in self.mods.iter() {
             let str = module.as_str();
             if str != "crate" {

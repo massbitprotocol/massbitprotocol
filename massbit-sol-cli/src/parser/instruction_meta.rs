@@ -67,4 +67,6 @@ impl Visitor for InstructionMeta {
     fn create_dir_path(&self) -> String {
         format!("{}", &self.config_path)
     }
+
+    fn build(&self) {}
 }

@@ -171,4 +171,8 @@ impl<'a> Visitor for InstructionHandler<'a> {
     fn create_dir_path(&self) -> String {
         format!("{}/src/generated", self.config.output_logic)
     }
+
+    fn build(&self) {
+        self.write_output("handler.rs");
+    }
 }

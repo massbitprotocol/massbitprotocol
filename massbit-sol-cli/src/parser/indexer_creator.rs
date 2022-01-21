@@ -104,14 +104,15 @@ impl<'a> IndexerBuilder<'a> {
                 let mut handler =
                     InstructionHandler::new(config.clone(), &definitions, &variant_accounts);
                 handler.visit_file(&ast);
-                handler.write_output("handler.rs");
+                handler.build();
+
                 let mut parser =
                     InstructionParser::new(config.clone(), &definitions, &variant_accounts);
                 parser.visit_file(&ast);
-                parser.write_output("instruction.rs");
+                parser.build();
                 let mut graphql = GraphqlSchema::new(config, &definitions, &variant_accounts);
                 graphql.visit_file(&ast);
-                graphql.write_output("schema.graphql");
+                graphql.build();
             };
         }
     }

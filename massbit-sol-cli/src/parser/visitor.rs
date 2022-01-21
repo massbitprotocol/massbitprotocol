@@ -6,7 +6,7 @@ use syn::{
 
 pub trait Visitor {
     fn visit_module(&mut self, base_dir: &str, paths: &Vec<String>) {
-        let module_path = format!("{}/src/{}.rs", base_dir, paths.join(","));
+        let module_path = format!("{}/src/{}.rs", base_dir, paths.join("/"));
         if !self.visited_module(&module_path) {
             let content = fs::read_to_string(module_path.as_str()).unwrap_or_else(|_| {
                 panic!("Something went wrong reading the file {}", &module_path)
@@ -84,6 +84,7 @@ pub trait Visitor {
     fn visit_unit_field(&mut self, ident_name: &String);
     fn create_content(&self) -> String;
     fn create_dir_path(&self) -> String;
+    fn build(&self);
     fn write_output(&self, file_name: &str) {
         let dir_path = self.create_dir_path();
         if std::fs::create_dir_all(&dir_path).is_ok() {
