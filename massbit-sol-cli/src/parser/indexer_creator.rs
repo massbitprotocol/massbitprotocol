@@ -1,5 +1,6 @@
 use super::{Definitions, InstructionHandler, InstructionParser, Visitor};
 use crate::config::IndexerConfig;
+use crate::parser::indexer_logic::IndexerLogicGenerator;
 use crate::parser::instruction_meta::InstructionMeta;
 use crate::parser::schema::GraphqlSchema;
 use crate::schema;
@@ -100,11 +101,10 @@ impl<'a> IndexerBuilder<'a> {
                         panic!("Cannot parse `{}` as JSON: {}", &file_path, err)
                     });
 
-                println!("Create Handler");
-                let mut handler =
-                    InstructionHandler::new(config.clone(), &definitions, &variant_accounts);
-                handler.visit_file(&ast);
-                handler.build();
+                println!("Create logic Handler");
+                let indexer_logic =
+                    IndexerLogicGenerator::new(config.clone(), &definitions, &variant_accounts);
+                indexer_logic.generate(&ast);
 
                 let mut parser =
                     InstructionParser::new(config.clone(), &definitions, &variant_accounts);

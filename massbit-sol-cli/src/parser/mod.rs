@@ -7,6 +7,7 @@ mod model;
 pub mod schema;
 pub mod unpacking;
 pub mod visitor;
+pub mod indexer_logic;
 
 pub use definitions::Definitions;
 pub use handler::InstructionHandler;

@@ -210,8 +210,7 @@ impl<'a> InstructionParser<'a> {
         if std::fs::create_dir_all(&self.config.output_unpacking).is_ok() {
             let output_path = format!("{}/Cargo.toml", &self.config.output_unpacking);
             let content = format!(
-                r#"
-[package]
+                r#"[package]
 name = "unpack-instruction"
 version = "0.0.1"
 description = "Unpack instruction"

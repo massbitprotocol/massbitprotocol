@@ -173,6 +173,6 @@ impl<'a> Visitor for InstructionHandler<'a> {
     }
 
     fn build(&self) {
-        self.write_output("handler.rs");
+        
     }
 }
