@@ -18,6 +18,14 @@ or
 ```bash
 massbit-sol gencode -s user-example/solana/instructions/serum/instruction.json -o code-compiler/generated/serum-index -c user-example/solana/instructions/serum/config.json
 ```
+## Run CLI for genindexer
+```bash
+cargo run --bin massbit-sol -- genindexer  -c user-example/solana/instructions/metaplex/token-metadata/config.json 
+```
+or 
+```bash
+massbit-sol genindexer  -c user-example/solana/instructions/metaplex/token-metadata/config.json 
+```
 ## Build indexer
 ```bash
 cd serum-index

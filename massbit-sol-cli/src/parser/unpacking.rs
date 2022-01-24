@@ -36,10 +36,6 @@ impl<'a> Visitor for InstructionParser<'a> {
     fn visit_item_enum(&mut self, item_enum: &ItemEnum) {
         let ident = item_enum.ident.to_string();
         if self.config.main_instruction.as_str() == ident.as_str() {
-            // for attr in item_enum.attrs.iter() {
-            //     println!("{:?}", attr);
-            //     println!("{:?}", attr.to_token_stream().to_string());
-            // }
             item_enum
                 .variants
                 .iter()
@@ -51,7 +47,6 @@ impl<'a> Visitor for InstructionParser<'a> {
 
     fn visit_named_field(&mut self, ident_name: &String, field_named: &FieldsNamed) {
         let ident_snake = ident_name.to_snake_case();
-
         let inner_names = field_named
             .named
             .iter()
@@ -226,18 +221,18 @@ license = "Apache-2.0"
 edition = "2018"
 
 [dependencies]
-num-derive = "0.3"
-num-traits = "0.2"
-arrayref = "0.3.6"
-solana-program = "1.7.11"
-spl-token = {{ version="3.1.1", features = [ "no-entrypoint" ] }}
-thiserror = "1.0"
+#num-derive = "0.3"
+#num-traits = "0.2"
+#arrayref = "0.3.6"
+#solana-program = "1.7.11"
+#spl-token = {{ version="3.1.1", features = [ "no-entrypoint" ] }}
+#thiserror = "1.0"
 borsh = "0.9.1"
-lazy_static = "1.4.0"
+#lazy_static = "1.4.0"
 anyhow = "1.0"
 [dependencies.{package_name}]
 package = "{package_name}"
-git = "https://github.com/metaplex-foundation/metaplex-program-library.git"
+git = "{git_repo}"
 
 [dependencies.transport]
 package = "transport"
@@ -248,6 +243,7 @@ path = "../../../solana-indexer/transport"
 [lib]
 crate-type = ["cdylib", "lib"]            
 "#,
+                git_repo = &self.config.git_repository,
                 package_name = &self.config.package_name
             );
             match std::fs::write(&output_path, &content) {

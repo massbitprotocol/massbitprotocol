@@ -1,6 +1,7 @@
 #[derive(Clone, Debug, Deserialize, Serialize, Default)]
 pub struct IndexerConfig {
     pub smart_contract_source: String,
+    pub git_repository: String,
     pub package_name: String,
     pub main_instruction: String,
     pub unpack_function: String,
