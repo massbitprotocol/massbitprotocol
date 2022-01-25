@@ -14,6 +14,16 @@ pub struct GraphqlSchema<'a> {
     variant_accounts: &'a HashMap<String, Vec<AccountInfo>>,
 }
 
+// Max length is 63 but we need converter from camel -> snake case, so let's use 63-10=53 char.
+const NAMEDATALEN_POSTGRES: usize = 53;
+
+fn truncate(s: &str, max_chars: usize) -> &str {
+    match s.char_indices().nth(max_chars) {
+        None => s,
+        Some((idx, _)) => &s[..idx],
+    }
+}
+
 impl<'a> GraphqlSchema<'a> {
     pub fn new(
         config: IndexerConfig,
@@ -73,7 +83,7 @@ impl<'a> Visitor for GraphqlSchema<'a> {
     tx_hash: String,
     {fields}
 }}"#,
-            entity_name = ident_name,
+            entity_name = truncate(ident_name.as_str(), NAMEDATALEN_POSTGRES),
             fields = self.current_entity_fields.join(",\n\t")
         );
         self.entity_types.push(entity);

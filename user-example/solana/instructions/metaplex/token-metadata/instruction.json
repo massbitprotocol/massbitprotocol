@@ -1,0 +1,140 @@
+{
+  "MintNewEditionFromMasterEditionViaVaultProxy": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "SignMetadata": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "UpdateMetadataAccount": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "DeprecatedCreateReservationList": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "DeprecatedMintPrintingTokensViaToken": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "ConvertMasterEditionV1ToV2": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "DeprecatedSetReservationList": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "DeprecatedMintPrintingTokens": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "ApproveUseAuthority": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "RevokeUseAuthority": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "Utilize": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "UpdateMetadataAccountV2": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "DeprecatedCreateMasterEdition": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "UnverifyCollection": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "MintNewEditionFromMasterEditionViaToken": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "CreateMetadataAccountV2": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "DeprecatedMintNewEditionFromMasterEditionViaPrintingToken": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "VerifyCollection": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "CreateMasterEdition": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "CreateMetadataAccount": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "UpdatePrimarySaleHappenedViaToken": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "PuffMetadata": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "CreateMasterEditionV3": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ]
+}

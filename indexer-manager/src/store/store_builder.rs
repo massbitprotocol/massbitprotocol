@@ -53,6 +53,7 @@ impl StoreBuilder {
                         let sql = layout.as_ddl().map_err(|_| {
                             StoreError::Unknown(anyhow!("failed to generate DDL for layout"))
                         })?;
+                        println!("sql: {}", &sql);
                         match conn.batch_execute(&sql) {
                             Ok(_) => {}
                             Err(e) => {

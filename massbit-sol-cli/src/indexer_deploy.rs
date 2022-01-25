@@ -29,7 +29,10 @@ pub fn deploy_indexer(indexer_url: &str, project_dir: &str) -> Result<String, an
     println!("schema_file_path: {:?}", &schema_file_path);
     println!("manifest_file_path: {:?}", &manifest_file_path);
     println!("so_mapping_file_path: {:?}", &so_mapping_file_path);
-    println!("so_unpack_instruction_file_path: {:?}", &schema_file_path);
+    println!(
+        "so_unpack_instruction_file_path: {:?}",
+        &so_unpack_instruction_file_path
+    );
     let multipart = Form::new()
         .part(
             "unpack-instruction",

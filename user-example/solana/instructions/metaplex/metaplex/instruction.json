@@ -1,0 +1,178 @@
+{
+  "RedeemBid": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "DecommissionAuctionManager": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "DeprecatedPopulateParticipationPrintingAccount": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "RedeemFullRightsTransferBid": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "SetStoreIndex": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "DeprecatedValidateParticipation": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "WithdrawMasterEdition": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "StartAuction": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "SetWhitelistedCreator": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "RedeemParticipationBidV3": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "SetAuctionCache": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "SetStoreV2": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "DeprecatedRedeemParticipationBidV2": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "EmptyPaymentAccount": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "EndAuction": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "DeprecatedInitAuctionManagerV1": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "SetStore": [
+    {
+      "index": 0,
+      "name": "store_key"
+    },
+    {
+      "index": 1,
+      "name": "admin_wallet"
+    },
+    {
+      "index": 2,
+      "name": "Payer"
+    },
+    {
+      "index": 3,
+      "name": "token_program"
+    },
+    {
+      "index": 4,
+      "name": "token_vault"
+    },
+    {
+      "index": 5,
+      "name": "token_metadata"
+    },
+    {
+      "index": 6,
+      "name": "auction_program"
+    },
+    {
+      "index": 7,
+      "name": "system"
+    },
+    {
+      "index": 8,
+      "name": "rent_sysvar"
+    }
+  ],
+  "RedeemUnusedWinningConfigItemsAsAuctioneer": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "InitAuctionManagerV2": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "RedeemPrintingV2Bid": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "DeprecatedRedeemParticipationBid": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "ValidateSafetyDepositBoxV2": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "DeprecatedValidateSafetyDepositBoxV1": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ],
+  "ClaimBid": [
+    {
+      "index": 0,
+      "name": "account_name"
+    }
+  ]
+}
