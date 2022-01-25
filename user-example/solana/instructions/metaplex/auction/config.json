@@ -1,5 +1,6 @@
 {
   "smart_contract_source" : "/home/huy/work/block_chain/indexer/metaplex-program-library/auction/program",
+  "git_repository": "https://github.com/metaplex-foundation/metaplex-program-library.git",
   "main_instruction" : "instruction::AuctionInstruction",
   "package_name" : "mpl_auction",
   "unpack_function" : "try_from_slice",

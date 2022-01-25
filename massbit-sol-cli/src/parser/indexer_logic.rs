@@ -24,6 +24,7 @@ impl<'a> IndexerLogicGenerator<'a> {
     pub fn generate(&self, ast: &File) {
         //Cargo toml
         self.gen_cargo_toml();
+        self.gen_indexer_project();
         //mapping.rs
         self.gen_mapping();
         //lib.rs
@@ -45,8 +46,8 @@ impl<'a> IndexerLogicGenerator<'a> {
     }
     pub fn gen_mapping(&self) {
         let output_path = format!("{}/src/mapping.rs", &self.config.output_logic);
-        let content = format!(
-            r#"use std::sync::Arc;
+        let content = r#"use std::collections::HashMap;
+use std::sync::Arc;
 use massbit_solana_sdk::smart_contract::{{InstructionParser, SmartContractProxy}};
 use massbit_solana_sdk::types::SolanaBlock;
 use crate::generated::handler::Handler;
@@ -65,7 +66,6 @@ use solana_transaction_status::{{parse_instruction, ConfirmedBlock, TransactionW
 use massbit_solana_sdk::transport::interface::InterfaceRegistrar;
 use uuid::Uuid;
 
-
 pub fn handle_block(interface: &mut dyn InstructionParser, block: &SolanaBlock) -> Result<(), Box<dyn std::error::Error>> {{
     println!("Start handle_block, block.block_number: {{}}", block.block_number);
     for (tx_ind, tran) in block.block.transactions.iter().enumerate() {{
@@ -81,39 +81,98 @@ pub fn handle_block(interface: &mut dyn InstructionParser, block: &SolanaBlock) 
     }}
     Ok(())
 }}
-fn parse_instructions(interface: &mut dyn InstructionParser, block: &SolanaBlock, tran: &TransactionWithStatusMeta, tx_ind: usize) {{
-    for (ind, inst) in tran.transaction.message.instructions.iter().enumerate() {{
-        let program_key = inst.program_id(tran.transaction.message.account_keys.as_slice());
-        if program_key.to_string().as_str() == ADDRESS {{
-            let mut accounts = Vec::default();
-            let mut work = |unique_ind: usize, acc_ind: usize| {{
-                if let Some(key) = tran.transaction.message.account_keys.get(acc_ind) {{
-                    accounts.push(key.clone());
-                }};
-                Ok(())
-            }};
-            inst.visit_each_account(&mut work);
+fn parse_instructions(
+    interface: &mut dyn InstructionParser,
+    block: &SolanaBlock,
+    tran: &TransactionWithStatusMeta,
+    tx_ind: usize,
+) {
+    let map_inner_instructions  = tran.meta.as_ref().and_then(|trans_meta|
+        trans_meta.inner_instructions.as_ref().map(|insts| insts.iter().map(|inner_inst|{
+            (inner_inst.index, &inner_inst.instructions)
+        }).collect::<HashMap<u8, &Vec<CompiledInstruction>>>())).unwrap_or_default();
+    let handler = Handler {};
+    for (ind, inst) in tran.transaction.message.instructions.iter().enumerate() {
+        process_instruction(interface, &handler, block, tran, inst);
+        let inner_key = ind as u8;
+        if let Some(inner_instructions) = map_inner_instructions.get(&inner_key) {
+            inner_instructions.iter().for_each(|inner_instruction| {
+                process_instruction(interface, &handler, block, tran, inner_instruction);
+            })
+        }
+    }
+}
 
-            let handler = Handler {{}};
-            // Fixme: Get account_infos from chain take a lot of time. For now, use empty vector.
-            println!("Start unpack_instruction, inst {{:?}}", &inst);
-            match interface.unpack_instruction(inst.data.as_slice()) {{
-                Ok(trans_value) => {{
-                    println!("unpack_instruction Ok, trans_value: {{:?}}", &trans_value);
-                    handler.process(block, tran, program_key, &accounts, trans_value);
-                }},
-                Err(e) => {{
-                    println!("Error unpack_instruction: {{:?}}",e);
-                }}
-            }}
-        }}
-    }}
-}}
-            "#
-        );
+fn process_instruction(interface: &mut dyn InstructionParser, handler: &Handler, block: &SolanaBlock, tran: &TransactionWithStatusMeta, instruction: &CompiledInstruction) {
+    let program_key = instruction.program_id(tran.transaction.message.account_keys.as_slice());
+    if program_key.to_string().as_str() == ADDRESS {
+        let mut accounts = Vec::default();
+        let mut work = |unique_ind: usize, acc_ind: usize| {
+            if let Some(key) = tran.transaction.message.account_keys.get(acc_ind) {
+                accounts.push(key.clone());
+            };
+            Ok(())
+        };
+        instruction.visit_each_account(&mut work);
+        // Fixme: Get account_infos from chain take a lot of time. For now, use empty vector.
+        println!("Start unpack_instruction, inst {:?}", &instruction);
+        match interface.unpack_instruction(instruction.data.as_slice()) {
+            Ok(trans_value) => {
+                println!("unpack_instruction Ok, trans_value: {:?}", &trans_value);
+                &handler.process(block, tran, program_key, &accounts, trans_value);
+            }
+            Err(e) => {
+                println!("Error unpack_instruction: {:?}", e);
+            }
+        }
+    }
+}"#;
+
         match std::fs::write(&output_path, &content) {
             Ok(res) => {
                 log::info!("Write file cargo.toml success full");
+            }
+            Err(err) => {
+                log::error!("{:?}", &err);
+            }
+        }
+    }
+    fn gen_indexer_project(&self) {
+        let output_path = format!("{}/src/subgraph.yaml", &self.config.output_logic);
+        let content = format!(
+            r#"specVersion: 0.0.2
+description: Indexer for solana nft
+repository: https://github.com/massbitprotocol/{name}
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: solana
+    name: {name}
+    network: mainnet
+    source:
+      address: {address}
+      abi: nft,
+      start_block: 0
+    mapping:
+      kind: solana/BlockHandler
+      apiVersion: 0.0.4
+      language: rust
+      entities:
+        - nft
+      handlers:
+        - handler: handleBlock
+          kind: solana/BlockHandler
+      file: ./src/mapping.rs
+      abis:
+        - name: nft
+          file: ./abis/nft.json
+        "#,
+            name = &self.config.name.clone().unwrap_or_default(),
+            address = &self.config.contract_address
+        );
+        match std::fs::write(&output_path, &content) {
+            Ok(res) => {
+                log::info!("Write file subgraph.yaml success full");
             }
             Err(err) => {
                 log::error!("{:?}", &err);

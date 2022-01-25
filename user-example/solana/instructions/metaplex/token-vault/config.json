@@ -1,5 +1,6 @@
 {
   "smart_contract_source" : "/home/viettai/Massbit/solana-smart-contracts/metaplex-program-library/token-vault/program",
+  "git_repository": "https://github.com/metaplex-foundation/metaplex-program-library.git",
   "main_instruction" : "instruction::VaultInstruction",
   "package_name" : "mpl_token_vault",
   "unpack_function" : "try_from_slice",
